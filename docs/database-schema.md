@@ -8,3 +8,15 @@ Core tables:
 - `maintenance_requests`: operational issue tracking.
 
 See `supabase/migrations/0001_initial_schema.sql` for executable SQL.
+
+## Marketing form tables
+
+### contact_inquiries
+
+Stores owner, guest, listing optimization, and general inquiries submitted from the contact page.
+
+### lead_magnet_downloads
+
+Stores checklist download leads from the owner lead magnet landing page.
+
+Both tables use RLS and are intended to be written by server actions using the Supabase service role key.

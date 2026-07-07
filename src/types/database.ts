@@ -38,3 +38,28 @@ export type Booking = {
   total_amount: number;
   status: BookingStatus;
 };
+
+export type ContactInquiryStatus = "new" | "reviewed" | "responded" | "closed";
+
+export type ContactInquiry = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  inquiry_type: string;
+  property_market: string | null;
+  message: string;
+  source: string;
+  status: ContactInquiryStatus;
+  created_at: string;
+};
+
+export type LeadMagnetDownload = {
+  id: string;
+  name: string;
+  email: string;
+  property_market: string;
+  property_status: string;
+  lead_magnet: string;
+  created_at: string;
+};
