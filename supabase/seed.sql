@@ -1,0 +1,4 @@
+insert into public.properties (name, slug, description, city, state, bedrooms, bathrooms, max_guests, nightly_rate, amenities, images, status)
+values
+('Mesa Downtown Retreat', 'mesa-downtown-retreat', 'A polished desert stay with boutique hotel touches, two queen bedrooms, curated amenities, and easy access to Mesa, Tempe, and Phoenix attractions.', 'Mesa', 'AZ', 2, 1, 4, 168, array['Fast Wi-Fi','Self check-in','Fully stocked kitchen','Workspace'], array['https://images.unsplash.com/photo-1618220179428-22790b461013?q=80&w=1400&auto=format&fit=crop'], 'active'),
+('Desert Casita Haven', 'desert-casita-haven', 'Warm neutrals, thoughtful design, and an effortless stay experience for leisure travelers, remote workers, and weekend escapes.', 'Scottsdale', 'AZ', 1, 1, 2, 215, array['Pool access','Smart TV','Premium linens','Coffee bar'], array['https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1400&auto=format&fit=crop'], 'active');

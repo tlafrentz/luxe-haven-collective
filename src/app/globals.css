@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fbfaf7;
+  --foreground: #171412;
+  --muted: #e8e0d4;
+  --muted-foreground: #766b5f;
+  --card: #ffffff;
+  --card-foreground: #171412;
+  --border: #ded4c5;
+  --primary: #171412;
+  --primary-foreground: #fbfaf7;
+  --accent: #b9935a;
+  --accent-foreground: #171412;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.luxury-gradient {
+  background: radial-gradient(circle at top left, rgba(185, 147, 90, 0.22), transparent 36%),
+    linear-gradient(135deg, #fbfaf7 0%, #efe6d8 47%, #fbfaf7 100%);
+}
+
+.container-shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }

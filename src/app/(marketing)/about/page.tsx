@@ -1,0 +1,3 @@
+export default function AboutPage() {
+  return <main className="py-20"><div className="container-shell max-w-4xl"><p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent">About</p><h1 className="mt-4 font-serif text-5xl">Hospitality systems for homes that feel personal, polished, and profitable.</h1><p className="mt-6 text-lg leading-8 text-muted-foreground">Luxe Haven Collective is being built as a boutique STR platform that brings together premium guest experience, operational discipline, and owner-focused reporting. The goal is simple: make every stay feel elevated and every property easier to manage.</p></div></main>;
+}

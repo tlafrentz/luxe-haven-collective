@@ -1,0 +1,1 @@
+export default function MessagesPage() { return <section><h1 className="font-serif text-5xl">Messages</h1><div className="mt-8 rounded-3xl border border-border bg-card p-6"><p className="text-muted-foreground">Guest and owner messaging shell. Supabase realtime threads are planned for a later sprint.</p></div></section>; }
