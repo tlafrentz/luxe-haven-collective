@@ -1,56 +1,57 @@
+import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import type { Property } from "@/types/database";
 
-export const featuredProperties: Property[] = [
-  {
-    id: "mesa-retreat",
-    owner_id: null,
-    name: "Mesa Downtown Retreat",
-    slug: "mesa-downtown-retreat",
-    description: "A polished desert stay with boutique hotel touches, two queen bedrooms, curated amenities, and easy access to Mesa, Tempe, and Phoenix attractions.",
-    city: "Mesa",
-    state: "AZ",
-    bedrooms: 2,
-    bathrooms: 1,
-    max_guests: 4,
-    nightly_rate: 168,
-    amenities: ["Fast Wi-Fi", "Self check-in", "Fully stocked kitchen", "Workspace"],
-    images: ["https://images.unsplash.com/photo-1618220179428-22790b461013?q=80&w=1400&auto=format&fit=crop"],
-    status: "active"
-  },
-  {
-    id: "desert-casita",
-    owner_id: null,
-    name: "Desert Casita Haven",
-    slug: "desert-casita-haven",
-    description: "Warm neutrals, thoughtful design, and an effortless stay experience for leisure travelers, remote workers, and weekend escapes.",
-    city: "Scottsdale",
-    state: "AZ",
-    bedrooms: 1,
-    bathrooms: 1,
-    max_guests: 2,
-    nightly_rate: 215,
-    amenities: ["Pool access", "Smart TV", "Premium linens", "Coffee bar"],
-    images: ["https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1400&auto=format&fit=crop"],
-    status: "active"
-  },
-  {
-    id: "urban-haven",
-    owner_id: null,
-    name: "Urban Haven Suite",
-    slug: "urban-haven-suite",
-    description: "A refined city base designed for seamless arrivals, restful evenings, and guest-ready hospitality from the first message to checkout.",
-    city: "Phoenix",
-    state: "AZ",
-    bedrooms: 2,
-    bathrooms: 2,
-    max_guests: 5,
-    nightly_rate: 245,
-    amenities: ["Garage parking", "Balcony", "In-unit laundry", "Gym access"],
-    images: ["https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?q=80&w=1400&auto=format&fit=crop"],
-    status: "active"
-  }
-];
+const propertySelect = "id, owner_id, name, slug, headline, short_description, description, property_type, address, neighborhood, city, state, bedrooms, bathrooms, max_guests, nightly_rate, cleaning_fee, service_fee, tax_rate, minimum_nights, check_in_time, check_out_time, amenities, highlights, house_rules, images, featured_image, seo_title, seo_description, status, created_at, updated_at, published_at";
 
-export function getPropertyBySlug(slug: string) {
-  return featuredProperties.find((property) => property.slug === slug);
+export async function getPublishedProperties() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select(propertySelect)
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Property[];
+}
+
+export async function getAllPropertiesForAdmin() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select(propertySelect)
+    .order("updated_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Property[];
+}
+
+export async function getPublishedPropertyBySlug(slug: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select(propertySelect)
+    .eq("slug", slug)
+    .eq("status", "active")
+    .single();
+
+  if (error || !data) notFound();
+  return data as Property;
+}
+
+export async function getPropertyByIdForAdmin(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select(propertySelect)
+    .eq("id", id)
+    .single();
+
+  if (error || !data) notFound();
+  return data as Property;
+}
+
+export function propertyImage(property: Pick<Property, "featured_image" | "images">) {
+  return property.featured_image || property.images?.[0] || "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1600&auto=format&fit=crop";
 }

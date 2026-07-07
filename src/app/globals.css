@@ -56,3 +56,16 @@ img { max-width: 100%; display: block; }
     linear-gradient(135deg, #171412 0%, #2a241f 100%);
 }
 .text-balance { text-wrap: balance; }
+
+.input-dark {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(255 255 255 / 0.06);
+  padding: 0.85rem 1rem;
+  color: white;
+  outline: none;
+}
+.input-dark::placeholder { color: rgb(255 255 255 / 0.35); }
+.input-dark:focus { border-color: rgb(201 166 107 / 0.65); box-shadow: 0 0 0 3px rgb(201 166 107 / 0.12); }
+.input-dark option { color: black; }

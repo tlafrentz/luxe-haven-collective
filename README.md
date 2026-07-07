@@ -79,3 +79,15 @@ This version adds Supabase Auth and role-based routing:
 - RLS policies for admin and owner access
 
 After uploading, run your Supabase migrations and configure Auth redirect URLs. See `docs/authentication.md`.
+
+## Property CMS Build
+
+This version includes the first Supabase-backed admin property CMS. Run:
+
+```bash
+supabase db push
+npm install
+npm run dev
+```
+
+Then log in as an admin and visit `/admin/properties`.

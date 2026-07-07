@@ -1,13 +1,14 @@
 import Link from "next/link";
 import type { Property } from "@/types/database";
 import { Card } from "@/components/ui/card";
+import { propertyImage } from "@/lib/properties";
 
 export function PropertyCard({ property }: { property: Property }) {
   return (
     <Card className="group overflow-hidden">
       <Link href={`/stays/${property.slug}`}>
         <div className="aspect-[4/3] overflow-hidden bg-muted">
-          <img src={property.images[0]} alt={property.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+          <img src={propertyImage(property)} alt={property.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         </div>
         <div className="p-6">
           <div className="flex items-start justify-between gap-4">
@@ -15,9 +16,9 @@ export function PropertyCard({ property }: { property: Property }) {
               <h3 className="font-serif text-2xl">{property.name}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{property.city}, {property.state}</p>
             </div>
-            <p className="text-right text-sm font-semibold">${property.nightly_rate}<span className="font-normal text-muted-foreground">/night</span></p>
+            <p className="text-right text-sm font-semibold">${Number(property.nightly_rate).toLocaleString()}<span className="font-normal text-muted-foreground">/night</span></p>
           </div>
-          <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted-foreground">{property.description}</p>
+          <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted-foreground">{property.short_description || property.description}</p>
           <div className="mt-5 flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span>{property.bedrooms} bedrooms</span><span>•</span><span>{property.bathrooms} baths</span><span>•</span><span>{property.max_guests} guests</span>
           </div>
