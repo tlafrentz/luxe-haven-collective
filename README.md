@@ -1,69 +1,41 @@
 # Luxe Haven Collective
 
-Boutique short-term rental hospitality platform for premium guest stays, owner reporting, and internal operations.
+Boutique short-term rental hospitality platform built with Next.js, TypeScript, Tailwind CSS, and Supabase.
 
-## Stack
+## Sprint 3: Complete Luxury Marketing Website
 
-- Next.js App Router
-- React + TypeScript
-- Tailwind CSS v4
-- Supabase Auth, Database, and Storage foundation
-- React Hook Form + Zod ready
-- Resend ready for transactional email
+This build includes a polished marketing site foundation:
 
-## Getting Started
+- Homepage with luxury hero, featured stays, owner services, value props, and CTA sections
+- Stays listing page and property detail pages
+- Services page
+- Owners landing page
+- About page
+- Resources page
+- FAQ page
+- Contact page
+- Lead magnet landing page
+- Shared header, footer, page hero, section heading, CTA, cards, and property components
+- SEO foundation with metadata, sitemap, and robots
+- Existing owner/admin portal shells preserved
+
+## Local Development
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Then open `http://localhost:3000`.
 
 ## Environment
 
-Add Supabase and email values to `.env.local`:
+Copy `.env.example` to `.env.local` and add Supabase/Resend values when you are ready to wire forms, auth, email, and database-backed listings.
 
-```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-RESEND_API_KEY=
-CONTACT_TO_EMAIL=
-```
+## Next Product Milestones
 
-## Routes
-
-- `/` marketing homepage
-- `/stays` property listing page
-- `/stays/[slug]` property detail page
-- `/about` brand/about page
-- `/contact` owner/guest inquiry form shell
-- `/dashboard` owner portal
-- `/properties` owner property view
-- `/bookings` booking table shell
-- `/messages` message shell
-- `/admin` internal admin dashboard
-- `/api/health` health check
-
-## Supabase
-
-Run the migration in `supabase/migrations/0001_initial_schema.sql` and optionally seed sample properties with `supabase/seed.sql`.
-
-## Sprint 2 Status
-
-Built:
-- Public marketing site
-- Featured property system
-- Property detail pages
-- Owner portal shell
-- Admin dashboard shell
-- Supabase schema and seed data
-- CI workflow
-
-Next:
-- Connect live Supabase queries
-- Add auth pages and role redirects
-- Wire contact form to Resend
-- Add booking request workflow
+1. Connect contact and lead magnet forms to Supabase + Resend
+2. Add Supabase Auth with roles for admin, owner, guest, cleaner, and contractor
+3. Replace static properties with database-backed CMS records
+4. Build booking request/availability flow
+5. Expand owner portal with live property performance data
