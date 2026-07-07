@@ -62,3 +62,20 @@ supabase db push
 ```
 
 Forms will still render without the Supabase service role key or Resend API key, but submissions will only fully persist and send email when those variables are configured.
+
+
+## Auth Build Added
+
+This version adds Supabase Auth and role-based routing:
+
+- `/login`
+- `/register`
+- `/forgot-password`
+- `/update-password`
+- `/auth/callback`
+- protected portal routes
+- admin-only dashboard protection
+- profile creation trigger
+- RLS policies for admin and owner access
+
+After uploading, run your Supabase migrations and configure Auth redirect URLs. See `docs/authentication.md`.
