@@ -1,0 +1,47 @@
+import type { ReactNode } from "react";
+import { EditorSidebar } from "./editor-sidebar";
+import { SaveBar } from "./save-bar";
+
+type EditorShellProps = {
+  title: string;
+  description?: string;
+  status?: string;
+  children: ReactNode;
+};
+
+export function EditorShell({
+  title,
+  description,
+  status,
+  children,
+}: EditorShellProps) {
+  return (
+    <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+      <EditorSidebar />
+
+      <div className="min-w-0">
+        <div className="mb-6 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6">
+          <div>
+            {status ? (
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brass">
+                {status}
+              </p>
+            ) : null}
+
+            <h1 className="mt-2 font-serif text-4xl text-white">{title}</h1>
+
+            {description ? (
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/55">
+                {description}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        {children}
+
+        <SaveBar />
+      </div>
+    </div>
+  );
+}

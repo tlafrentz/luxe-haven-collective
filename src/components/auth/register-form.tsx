@@ -27,7 +27,7 @@ export function RegisterForm() {
         </select>
       </label>
       {state.message ? null : <p className="text-sm text-stone-500">Admin and team roles are assigned internally after account creation.</p>}
-      <SubmitButton label="Create account" pendingLabel="Creating account..." />
+      <SubmitButton>Create account</SubmitButton>
       <p className="text-sm text-stone-600">Already have an account? <Link href="/login" className="font-medium text-stone-950">Sign in</Link></p>
     </form>
   );

@@ -23,7 +23,7 @@ export function LoginForm() {
         <Link href="/forgot-password" className="text-stone-600 underline underline-offset-4">Forgot password?</Link>
         <Link href="/register" className="font-medium text-stone-950">Create account</Link>
       </div>
-      <SubmitButton label="Sign in" pendingLabel="Signing in..." />
+     <SubmitButton>Sign in</SubmitButton>
     </form>
   );
 }
