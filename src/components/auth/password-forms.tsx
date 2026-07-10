@@ -13,7 +13,7 @@ export function ForgotPasswordForm() {
       <label className="block text-sm font-medium text-stone-700">Email
         <input name="email" type="email" required className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4" />
       </label>
-      <SubmitButton label="Send reset link" pendingLabel="Sending..." />
+     <SubmitButton>Send reset link</SubmitButton>
     </form>
   );
 }
@@ -26,7 +26,7 @@ export function UpdatePasswordForm() {
       <label className="block text-sm font-medium text-stone-700">New password
         <input name="password" type="password" minLength={8} required className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4" />
       </label>
-      <SubmitButton label="Update password" pendingLabel="Updating..." />
+     <SubmitButton>Update Password</SubmitButton>
     </form>
   );
 }

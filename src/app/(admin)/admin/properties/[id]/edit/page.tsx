@@ -1,15 +1,34 @@
-import Link from "next/link";
 import { PropertyForm } from "@/components/admin/property-form";
+import {
+  PropertyLivePreview,
+  PropertyStudio,
+} from "@/components/admin/property-studio";
+import { getPropertyMedia } from "@/lib/property-media";
 import { getPropertyByIdForAdmin } from "@/lib/properties";
 
-export default async function EditPropertyPage({ params }: { params: Promise<{ id: string }> }) {
+type Props = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+export default async function EditPropertyPage({ params }: Props) {
   const { id } = await params;
+
   const property = await getPropertyByIdForAdmin(id);
+  const media = await getPropertyMedia(id);
+
   return (
-    <section>
-      <Link href={`/admin/properties/${property.id}`} className="text-sm text-white/50 hover:text-white">← Back to property</Link>
-      <h1 className="mt-4 font-serif text-5xl">Edit {property.name}</h1>
-      <div className="mt-10"><PropertyForm property={property} /></div>
-    </section>
+    <PropertyStudio
+      property={property}
+      media={media}
+      editor={
+        <PropertyForm
+          property={property}
+          media={media}
+        />
+      }
+      preview={<PropertyLivePreview />}
+    />
   );
 }

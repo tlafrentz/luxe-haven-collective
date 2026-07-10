@@ -1,93 +1,59 @@
-# Luxe Haven Collective
+# Luxe Haven Admin Property Management System
 
-Boutique short-term rental hospitality platform built with Next.js, TypeScript, Tailwind CSS, and Supabase.
+This feature bundle adds a real admin property CMS backed by your existing Supabase `properties` table.
 
-## Sprint 3: Complete Luxury Marketing Website
+## What it adds
 
-This build includes a polished marketing site foundation:
+- Admin property list at `/admin/properties`
+- Search and status filters
+- Create property page
+- Edit property page
+- Publish/unpublish/archive/delete actions
+- Reusable property form
+- Property status badges
+- Supabase-backed public `/stays` page
+- Dynamic public `/stays/[slug]` pages
+- SEO metadata from property records
 
-- Homepage with luxury hero, featured stays, owner services, value props, and CTA sections
-- Stays listing page and property detail pages
-- Services page
-- Owners landing page
-- About page
-- Resources page
-- FAQ page
-- Contact page
-- Lead magnet landing page
-- Shared header, footer, page hero, section heading, CTA, cards, and property components
-- SEO foundation with metadata, sitemap, and robots
-- Existing owner/admin portal shells preserved
+## Install
 
-## Local Development
+From your project root:
 
 ```bash
-npm install
+cp -R /path/to/lhc_admin_property_management/files/* .
+```
+
+Or manually copy the `files/` contents into the matching project paths.
+
+## Test
+
+```bash
 npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Open:
 
-## Environment
-
-Copy `.env.example` to `.env.local` and add Supabase/Resend values when you are ready to wire forms, auth, email, and database-backed listings.
-
-## Next Product Milestones
-
-1. Connect contact and lead magnet forms to Supabase + Resend
-2. Add Supabase Auth with roles for admin, owner, guest, cleaner, and contractor
-3. Replace static properties with database-backed CMS records
-4. Build booking request/availability flow
-5. Expand owner portal with live property performance data
-
-## Marketing forms
-
-This build wires the contact page and lead magnet page to Next.js server actions, Supabase, and Resend.
-
-Set these variables before testing form submissions:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-RESEND_API_KEY=
-RESEND_FROM_EMAIL="Luxe Haven Collective <hello@yourdomain.com>"
-CONTACT_TO_EMAIL=hello@yourdomain.com
+```text
+http://localhost:3000/admin/properties
 ```
 
-Then apply the new migration in Supabase:
+Make sure your logged-in profile has `role = 'admin'` in `public.profiles`.
+
+## Commit
 
 ```bash
-supabase db push
+git add .
+git commit -m "feat: add admin property management system"
+git push -u origin feature/property-cms
 ```
 
-Forms will still render without the Supabase service role key or Resend API key, but submissions will only fully persist and send email when those variables are configured.
+## Notes
 
+This feature uses the current enum values from your initial migration:
 
-## Auth Build Added
+- `draft`
+- `active`
+- `inactive`
+- `archived`
 
-This version adds Supabase Auth and role-based routing:
-
-- `/login`
-- `/register`
-- `/forgot-password`
-- `/update-password`
-- `/auth/callback`
-- protected portal routes
-- admin-only dashboard protection
-- profile creation trigger
-- RLS policies for admin and owner access
-
-After uploading, run your Supabase migrations and configure Auth redirect URLs. See `docs/authentication.md`.
-
-## Property CMS Build
-
-This version includes the first Supabase-backed admin property CMS. Run:
-
-```bash
-supabase db push
-npm install
-npm run dev
-```
-
-Then log in as an admin and visit `/admin/properties`.
+The public marketing site treats `active` as published.
