@@ -1,29 +1,34 @@
 import Link from "next/link";
+
 import { signOutAction } from "@/app/actions/auth";
 import { getSessionProfile } from "@/lib/auth/session";
 
 const nav = [
-  { href: "/stays", label: "Stays" },
   { href: "/services", label: "Services" },
+  { href: "/stays", label: "Properties" },
   { href: "/owners", label: "Owners" },
+  { href: "/resources", label: "Luxe Insights" },
   { href: "/notary", label: "Notary" },
-  { href: "/resources", label: "Resources" },
-  { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
 
 export async function SiteHeader() {
   const { user, profile } = await getSessionProfile();
-  const portalHref = profile?.role === "admin" ? "/admin" : "/dashboard";
+
+  const portalHref =
+    profile?.role === "admin" ? "/admin" : "/dashboard";
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur-xl">
       <div className="container-shell flex min-h-20 items-center justify-between gap-5">
-        <Link
-          href="/"
-          className="shrink-0 text-base font-semibold uppercase tracking-[0.24em] md:text-lg"
-        >
-          Luxe Haven
+        <Link href="/" className="shrink-0">
+          <span className="block text-base font-semibold uppercase tracking-[0.24em] md:text-lg">
+            Luxe Haven
+          </span>
+
+          <span className="mt-0.5 hidden text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:block">
+            Hospitality Collective
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-5 text-sm text-muted-foreground xl:flex">
@@ -58,16 +63,16 @@ export async function SiteHeader() {
             <>
               <Link
                 href="/login"
-                className="rounded-full border border-border px-5 py-3 text-sm font-semibold transition hover:bg-muted/50"
+                className="rounded-full px-3 py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
               >
                 Sign in
               </Link>
 
               <Link
-                href="/contact"
+                href="/contact?service=consulting"
                 className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
               >
-                Start a Conversation
+                Schedule Consultation
               </Link>
             </>
           )}
@@ -78,7 +83,7 @@ export async function SiteHeader() {
             Menu
           </summary>
 
-          <div className="absolute right-0 top-12 z-50 w-64 rounded-2xl border border-border bg-background p-4 shadow-2xl">
+          <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-border bg-background p-4 shadow-2xl">
             <nav className="grid gap-1">
               {nav.map((item) => (
                 <Link
@@ -89,6 +94,13 @@ export async function SiteHeader() {
                   {item.label}
                 </Link>
               ))}
+
+              <Link
+                href="/about"
+                className="rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                About
+              </Link>
             </nav>
 
             <div className="mt-4 border-t border-border pt-4">
@@ -117,10 +129,10 @@ export async function SiteHeader() {
                   </Link>
 
                   <Link
-                    href="/contact"
+                    href="/contact?service=consulting"
                     className="rounded-full bg-primary px-4 py-2.5 text-center text-sm font-semibold text-primary-foreground"
                   >
-                    Start a Conversation
+                    Schedule Consultation
                   </Link>
                 </div>
               )}
