@@ -6,7 +6,35 @@ export const luxeInsightsMockData: LuxeInsightsData = {
     name: "Mesa Downtown Retreat",
     location: "Mesa, Arizona",
   },
+
+  availableProperties: [
+    {
+      id: "mesa-downtown-retreat",
+      name: "Mesa Downtown Retreat",
+      location: "Mesa, Arizona",
+    },
+    {
+      id: "scottsdale-desert-suite",
+      name: "Scottsdale Desert Suite",
+      location: "Scottsdale, Arizona",
+    },
+    {
+      id: "tempe-modern-loft",
+      name: "Tempe Modern Loft",
+      location: "Tempe, Arizona",
+    },
+  ],
+
   periodLabel: "Last 30 days",
+  lastUpdatedLabel: "Updated 12 minutes ago",
+
+  performanceScore: {
+    score: 92,
+    label: "Excellent",
+    percentile: 8,
+    marketName: "Mesa market",
+  },
+
   metrics: [
     {
       id: "revenue",
@@ -63,14 +91,78 @@ export const luxeInsightsMockData: LuxeInsightsData = {
       comparisonLabel: "maintained this period",
     },
   ],
+
   performance: [
-    { label: "Jan", revenue: 3180, occupancy: 68 },
-    { label: "Feb", revenue: 3540, occupancy: 71 },
-    { label: "Mar", revenue: 3890, occupancy: 74 },
-    { label: "Apr", revenue: 4225, occupancy: 78 },
-    { label: "May", revenue: 4510, occupancy: 80 },
-    { label: "Jun", revenue: 4832, occupancy: 82 },
+    {
+      label: "Jan",
+      revenue: 3180,
+      occupancy: 68,
+      adr: 153,
+      revpar: 104,
+    },
+    {
+      label: "Feb",
+      revenue: 3540,
+      occupancy: 71,
+      adr: 158,
+      revpar: 112,
+    },
+    {
+      label: "Mar",
+      revenue: 3890,
+      occupancy: 74,
+      adr: 164,
+      revpar: 121,
+    },
+    {
+      label: "Apr",
+      revenue: 4225,
+      occupancy: 78,
+      adr: 169,
+      revpar: 132,
+    },
+    {
+      label: "May",
+      revenue: 4510,
+      occupancy: 80,
+      adr: 174,
+      revpar: 139,
+    },
+    {
+      label: "Jun",
+      revenue: 4832,
+      occupancy: 82,
+      adr: 178,
+      revpar: 146,
+    },
+    {
+      label: "Jul",
+      revenue: 5120,
+      occupancy: 84,
+      adr: 183,
+      revpar: 154,
+      forecast: true,
+    },
+    {
+      label: "Aug",
+      revenue: 5360,
+      occupancy: 85,
+      adr: 187,
+      revpar: 159,
+      forecast: true,
+    },
   ],
+
+  occupancyByDay: [
+    { day: "Monday", occupancy: 68 },
+    { day: "Tuesday", occupancy: 57 },
+    { day: "Wednesday", occupancy: 63 },
+    { day: "Thursday", occupancy: 76 },
+    { day: "Friday", occupancy: 91 },
+    { day: "Saturday", occupancy: 96 },
+    { day: "Sunday", occupancy: 82 },
+  ],
+
   marketComparisons: [
     {
       id: "market-adr",
@@ -94,30 +186,43 @@ export const luxeInsightsMockData: LuxeInsightsData = {
       format: "currency",
     },
   ],
+
   recommendations: [
     {
       id: "weekend-pricing",
+      category: "revenue",
       title: "Increase weekend pricing by 8%",
       description:
-        "Your weekend occupancy remains strong while comparable homes are charging more for Friday and Saturday nights.",
+        "Weekend demand remains strong while comparable homes are charging more for Friday and Saturday nights.",
       priority: "high",
       estimatedImpact: "+$240 to $360 monthly",
+      confidence: 92,
+      effort: "5 minutes",
+      actionLabel: "Review pricing rule",
     },
     {
       id: "weekday-pricing",
-      title: "Create a Tuesday and Wednesday pricing rule",
+      category: "occupancy",
+      title: "Create a Tuesday and Wednesday discount",
       description:
-        "Midweek demand trails the local market. A targeted rate adjustment could improve occupancy without lowering weekend revenue.",
+        "Midweek demand trails the local market. A targeted adjustment could improve occupancy without lowering weekend revenue.",
       priority: "medium",
       estimatedImpact: "+3 to 5 occupied nights",
+      confidence: 86,
+      effort: "10 minutes",
+      actionLabel: "Create midweek rule",
     },
     {
       id: "listing-photos",
-      title: "Add more exterior and arrival photos",
+      category: "listing",
+      title: "Add exterior and arrival photos",
       description:
-        "Your listing has fewer exterior images than similar high-performing properties, which may reduce guest confidence before booking.",
+        "Your listing has fewer exterior images than similar high-performing properties, which may reduce booking confidence.",
       priority: "medium",
-      estimatedImpact: "Potential conversion lift",
+      estimatedImpact: "Potential 3% to 6% conversion lift",
+      confidence: 78,
+      effort: "30 minutes",
+      actionLabel: "Review listing photos",
     },
   ],
 }

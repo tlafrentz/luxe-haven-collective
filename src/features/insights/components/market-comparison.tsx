@@ -1,7 +1,7 @@
 import {
   calculateDifference,
   formatMetricValue,
-} from "../formatters"
+} from "../lib/formatters"
 import type { MarketComparison as MarketComparisonType } from "../types"
 
 interface MarketComparisonProps {

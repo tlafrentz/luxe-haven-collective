@@ -1,4 +1,4 @@
-import { formatMetricValue } from "../formatters"
+import { formatMetricValue } from "../lib/formatters"
 import type { InsightMetric } from "../types"
 
 interface MetricCardProps {

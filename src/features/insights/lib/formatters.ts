@@ -1,5 +1,4 @@
-import type { MetricFormat } from "./types"
-
+import type { MetricFormat } from "../types"
 export function formatMetricValue(
   value: number,
   format: MetricFormat,
