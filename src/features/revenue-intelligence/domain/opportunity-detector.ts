@@ -1,5 +1,6 @@
 import type {
   AnalyticsBooking,
+  OccupancyDataPoint,
 } from "@/features/analytics";
 
 import type {
@@ -15,6 +16,7 @@ export type OpportunityDetectionContext = {
   performance: PropertyPerformance;
   previousPerformance?: PropertyPerformance;
   bookings: AnalyticsBooking[];
+  occupancySeries?: OccupancyDataPoint[];
   detectedAt: string;
 };
 
@@ -25,4 +27,3 @@ export type OpportunityDetector = {
     context: OpportunityDetectionContext,
   ) => RevenueOpportunity[];
 };
-

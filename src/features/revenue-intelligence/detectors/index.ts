@@ -7,5 +7,9 @@ export {
 } from "./cancellations";
 
 export {
+  lowWeekdayOccupancyOpportunityDetector,
+} from "./low-weekday-occupancy";
+
+export {
   paymentsOpportunityDetector,
 } from "./payments";

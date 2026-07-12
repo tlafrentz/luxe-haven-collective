@@ -1,6 +1,7 @@
 import {
   bookingSourceConcentrationOpportunityDetector,
   cancellationsOpportunityDetector,
+  lowWeekdayOccupancyOpportunityDetector,
   paymentsOpportunityDetector,
 } from "../detectors";
 
@@ -13,4 +14,5 @@ export const opportunityDetectors: readonly OpportunityDetector[] =
     paymentsOpportunityDetector,
     cancellationsOpportunityDetector,
     bookingSourceConcentrationOpportunityDetector,
+    lowWeekdayOccupancyOpportunityDetector,
   ];

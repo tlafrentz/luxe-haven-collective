@@ -13,6 +13,7 @@ export {
 export {
   bookingSourceConcentrationOpportunityDetector,
   cancellationsOpportunityDetector,
+  lowWeekdayOccupancyOpportunityDetector,
   paymentsOpportunityDetector,
 } from "./detectors";
 
