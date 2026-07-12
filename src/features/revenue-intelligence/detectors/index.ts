@@ -7,6 +7,10 @@ export {
 } from "./cancellations";
 
 export {
+  gapNightOpportunityDetector,
+} from "./gap-nights";
+
+export {
   lowWeekdayOccupancyOpportunityDetector,
 } from "./low-weekday-occupancy";
 
