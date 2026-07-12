@@ -1,4 +1,5 @@
 import {
+  cancellationsOpportunityDetector,
   paymentsOpportunityDetector,
 } from "../detectors";
 
@@ -9,4 +10,5 @@ import type {
 export const opportunityDetectors: readonly OpportunityDetector[] =
   [
     paymentsOpportunityDetector,
+    cancellationsOpportunityDetector,
   ];
