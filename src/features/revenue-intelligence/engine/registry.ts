@@ -4,6 +4,7 @@ import {
   gapNightOpportunityDetector,
   lowWeekdayOccupancyOpportunityDetector,
   paymentsOpportunityDetector,
+  weekendPricingOpportunityDetector,
 } from "../detectors";
 
 import type {
@@ -17,4 +18,5 @@ export const opportunityDetectors: readonly OpportunityDetector[] =
     bookingSourceConcentrationOpportunityDetector,
     lowWeekdayOccupancyOpportunityDetector,
     gapNightOpportunityDetector,
+    weekendPricingOpportunityDetector,
   ];

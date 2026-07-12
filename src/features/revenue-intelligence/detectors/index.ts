@@ -17,3 +17,7 @@ export {
 export {
   paymentsOpportunityDetector,
 } from "./payments";
+
+export {
+  weekendPricingOpportunityDetector,
+} from "./weekend-pricing";

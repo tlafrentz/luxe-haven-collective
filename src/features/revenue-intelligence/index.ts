@@ -16,6 +16,7 @@ export {
   gapNightOpportunityDetector,
   lowWeekdayOccupancyOpportunityDetector,
   paymentsOpportunityDetector,
+  weekendPricingOpportunityDetector,
 } from "./detectors";
 
 export {
