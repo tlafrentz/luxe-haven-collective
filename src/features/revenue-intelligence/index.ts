@@ -11,6 +11,7 @@ export {
 } from "./services/run-opportunity-engine";
 
 export {
+  bookingSourceConcentrationOpportunityDetector,
   cancellationsOpportunityDetector,
   paymentsOpportunityDetector,
 } from "./detectors";

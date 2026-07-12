@@ -1,4 +1,8 @@
 export {
+  bookingSourceConcentrationOpportunityDetector,
+} from "./booking-source-concentration";
+
+export {
   cancellationsOpportunityDetector,
 } from "./cancellations";
 
