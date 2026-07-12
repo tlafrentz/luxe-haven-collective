@@ -1,59 +1,101 @@
-# Luxe Haven Admin Property Management System
+# Luxe Haven Collective
 
-This feature bundle adds a real admin property CMS backed by your existing Supabase `properties` table.
+A production hospitality operations platform for short-term rental owners, operators, and guests.
 
-## What it adds
+Luxe Haven Collective combines a polished marketing website, property management, operational administration, analytics, and live PMS synchronization in a single Next.js application.
 
-- Admin property list at `/admin/properties`
-- Search and status filters
-- Create property page
-- Edit property page
-- Publish/unpublish/archive/delete actions
-- Reusable property form
-- Property status badges
-- Supabase-backed public `/stays` page
-- Dynamic public `/stays/[slug]` pages
-- SEO metadata from property records
+**Production:** https://luxehavencollective.co
 
-## Install
+## Platform Capabilities
 
-From your project root:
+### Marketing and Lead Generation
 
-```bash
-cp -R /path/to/lhc_admin_property_management/files/* .
-```
+- Public hospitality website
+- Dynamic property listings and stay pages
+- Services, owner, notary, resource, FAQ, and contact pages
+- Lead-magnet delivery
+- Search-engine metadata, sitemap, and robots configuration
+- Resend-powered inquiry and lead notifications
 
-Or manually copy the `files/` contents into the matching project paths.
+### Property Management
 
-## Test
+- Admin property inventory
+- Create, edit, publish, pause, and archive workflows
+- Property media management
+- Listing content, pricing, amenities, house rules, and SEO fields
+- Supabase-backed public property pages
 
-```bash
-npm run dev
-```
+### Luxe Insights
 
-Open:
+- Property-level analytics
+- Revenue and occupancy trends
+- Booking performance summaries
+- Date-range comparisons
+- Operational recommendations
+- Live property selector
+- Hospitable-synced booking data
+
+### Hospitable Integration
+
+- Hospitable property discovery and synchronization
+- Reservation synchronization
+- External-property mapping
+- Duplicate reservation protection
+- Batch processing
+- Protected manual sync endpoint
+- Sync history and status tracking
+- Concurrent-sync prevention
+- Provider timeouts and controlled error handling
+
+### Authentication and Administration
+
+- Supabase authentication
+- Role-based access
+- Protected admin and dashboard routes
+- Admin-only integration controls
+- Row Level Security policies
+- Server-only service-role operations
+
+## Technology
+
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- Supabase
+- PostgreSQL
+- Vercel
+- Hospitable API
+- Resend
+- Recharts
+- Zod
+- React Hook Form
+
+## Architecture
+
+The project uses a feature-first structure for business capabilities and App Router route groups for user-facing application areas.
 
 ```text
-http://localhost:3000/admin/properties
-```
-
-Make sure your logged-in profile has `role = 'admin'` in `public.profiles`.
-
-## Commit
-
-```bash
-git add .
-git commit -m "feat: add admin property management system"
-git push -u origin feature/property-cms
-```
-
-## Notes
-
-This feature uses the current enum values from your initial migration:
-
-- `draft`
-- `active`
-- `inactive`
-- `archived`
-
-The public marketing site treats `active` as published.
+src/
+├── app/
+│   ├── (admin)/
+│   ├── (auth)/
+│   ├── (dashboard)/
+│   ├── (marketing)/
+│   ├── (portal)/
+│   ├── actions/
+│   └── api/
+├── components/
+│   ├── admin/
+│   ├── auth/
+│   ├── forms/
+│   ├── marketing/
+│   ├── portal/
+│   ├── property/
+│   ├── shared/
+│   └── ui/
+├── features/
+│   ├── analytics/
+│   └── integrations/
+├── lib/
+└── types/
