@@ -11,6 +11,10 @@ export {
 } from "./services/run-opportunity-engine";
 
 export {
+  paymentsOpportunityDetector,
+} from "./detectors";
+
+export {
   deduplicateOpportunities,
   opportunityDetectors,
   sortOpportunities,
