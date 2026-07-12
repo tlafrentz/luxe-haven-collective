@@ -7,6 +7,7 @@ const links = [
   { href: "/admin/properties", label: "Properties" },
   { href: "/admin/owners", label: "Owners" },
   { href: "/admin/inquiries", label: "Inquiries" },
+  { href: "/admin/integrations", label: "Integrations" },
 ];
 
 export default async function AdminLayout({
