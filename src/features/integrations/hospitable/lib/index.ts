@@ -39,6 +39,7 @@ export {
 
 export {
   syncHospitableReservations,
+  SYNC_ALREADY_RUNNING_ERROR,
   type ReservationSyncOptions,
   type ReservationSyncResult,
 } from "./sync-reservations";

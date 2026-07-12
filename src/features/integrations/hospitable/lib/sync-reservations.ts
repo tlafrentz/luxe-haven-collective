@@ -16,6 +16,10 @@ import { runInBatches } from "./run-in-batches";
 const PROVIDER = "hospitable";
 const CONNECTION_NAME = "Hospitable Primary";
 const DEFAULT_BATCH_SIZE = 5;
+const MAX_RUNNING_SYNC_AGE_MINUTES = 30;
+
+export const SYNC_ALREADY_RUNNING_ERROR =
+  "A Hospitable reservation sync is already running.";
 
 type ConnectionRow = {
   id: string;
@@ -137,6 +141,42 @@ async function getLinkedProperties(
   return (data ?? []) as ExternalPropertyRow[];
 }
 
+async function expireStaleSyncRuns({
+  connectionId,
+}: {
+  connectionId: string;
+}): Promise<void> {
+  const supabase = createAdminClient();
+
+  const staleBefore = new Date(
+    Date.now() -
+      MAX_RUNNING_SYNC_AGE_MINUTES *
+        60 *
+        1000,
+  ).toISOString();
+
+  const completedAt = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("integration_sync_runs")
+    .update({
+      status: "failed",
+      completed_at: completedAt,
+      error_message:
+        "Sync automatically failed after exceeding the maximum running time.",
+    })
+    .eq("connection_id", connectionId)
+    .eq("sync_type", "reservations")
+    .eq("status", "running")
+    .lt("started_at", staleBefore);
+
+  if (error) {
+    throw new Error(
+      `Unable to expire stale reservation syncs: ${error.message}`,
+    );
+  }
+}
+
 async function startSyncRun({
   connectionId,
   startDate,
@@ -146,6 +186,10 @@ async function startSyncRun({
   startDate: string;
   endDate: string;
 }): Promise<string> {
+  await expireStaleSyncRuns({
+    connectionId,
+  });
+
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
@@ -163,6 +207,12 @@ async function startSyncRun({
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      throw new Error(
+        SYNC_ALREADY_RUNNING_ERROR,
+      );
+    }
+
     throw new Error(
       `Unable to start reservation sync: ${error.message}`,
     );
@@ -228,12 +278,14 @@ async function updateConnectionStatus({
   const supabase = createAdminClient();
   const timestamp = new Date().toISOString();
 
-  const { data: connection, error: selectError } =
-    await supabase
-      .from("integration_connections")
-      .select("metadata")
-      .eq("id", connectionId)
-      .single();
+  const {
+    data: connection,
+    error: selectError,
+  } = await supabase
+    .from("integration_connections")
+    .select("metadata")
+    .eq("id", connectionId)
+    .single();
 
   if (selectError) {
     throw new Error(
@@ -254,17 +306,23 @@ async function updateConnectionStatus({
       errorMessage ?? null,
   };
 
+  const connectionUpdate =
+    status === "active"
+      ? {
+          status,
+          last_synced_at: timestamp,
+          updated_at: timestamp,
+          metadata,
+        }
+      : {
+          status,
+          updated_at: timestamp,
+          metadata,
+        };
+
   const { error } = await supabase
     .from("integration_connections")
-    .update({
-      status,
-      last_synced_at:
-        status === "active"
-          ? timestamp
-          : undefined,
-      updated_at: timestamp,
-      metadata,
-    })
+    .update(connectionUpdate)
     .eq("id", connectionId);
 
   if (error) {
@@ -373,6 +431,54 @@ async function upsertBooking(
   if (error) {
     throw new Error(
       `Unable to upsert reservation "${booking.external_reservation_id}": ${error.message}`,
+    );
+  }
+}
+
+async function safelyFinalizeFailedSync({
+  syncRunId,
+  connectionId,
+  result,
+}: {
+  syncRunId: string;
+  connectionId: string;
+  result: ReservationSyncResult;
+}): Promise<void> {
+  try {
+    await finishSyncRun({
+      syncRunId,
+      result,
+    });
+  } catch (finalizationError) {
+    console.error(
+      "Unable to finalize failed Hospitable sync run",
+      {
+        syncRunId,
+        error:
+          finalizationError instanceof Error
+            ? finalizationError.message
+            : "Unknown sync finalization error.",
+      },
+    );
+  }
+
+  try {
+    await updateConnectionStatus({
+      connectionId,
+      status: "error",
+      errorMessage:
+        result.errors.join("\n"),
+    });
+  } catch (connectionError) {
+    console.error(
+      "Unable to mark Hospitable connection as failed",
+      {
+        connectionId,
+        error:
+          connectionError instanceof Error
+            ? connectionError.message
+            : "Unknown connection update error.",
+      },
     );
   }
 }
@@ -536,7 +642,9 @@ export async function syncHospitableReservations({
     await updateConnectionStatus({
       connectionId: connection.id,
       status:
-        result.failed > 0 ? "error" : "active",
+        result.failed > 0
+          ? "error"
+          : "active",
       errorMessage:
         result.errors.length > 0
           ? result.errors.join("\n")
@@ -545,28 +653,34 @@ export async function syncHospitableReservations({
 
     return result;
   } catch (error) {
+    const primaryError =
+      error instanceof Error
+        ? error
+        : new Error(
+            "Unknown Hospitable reservation sync error.",
+          );
+
     result.failed = Math.max(
       result.failed,
       1,
     );
 
-    result.errors.push(
-      error instanceof Error
-        ? error.message
-        : "Unknown Hospitable reservation sync error.",
-    );
+    if (
+      !result.errors.includes(
+        primaryError.message,
+      )
+    ) {
+      result.errors.push(
+        primaryError.message,
+      );
+    }
 
-    await finishSyncRun({
+    await safelyFinalizeFailedSync({
       syncRunId,
+      connectionId: connection.id,
       result,
     });
 
-    await updateConnectionStatus({
-      connectionId: connection.id,
-      status: "error",
-      errorMessage: result.errors.join("\n"),
-    });
-
-    throw error;
+    throw primaryError;
   }
 }

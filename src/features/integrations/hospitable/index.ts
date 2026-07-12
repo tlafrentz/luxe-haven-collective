@@ -11,6 +11,7 @@ export {
   runInBatches,
   syncHospitableProperties,
   syncHospitableReservations,
+  SYNC_ALREADY_RUNNING_ERROR,
 } from "./lib";
 
 export type {

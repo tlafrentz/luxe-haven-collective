@@ -3,7 +3,39 @@ import { NextResponse } from "next/server";
 import {
   authorizeHospitableSyncRequest,
   runHospitableReservationSync,
+  SYNC_ALREADY_RUNNING_ERROR,
 } from "@/features/integrations/hospitable";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+type PublicSyncError = {
+  message: string;
+  status: number;
+};
+
+function getPublicSyncError(
+  error: unknown,
+): PublicSyncError {
+  if (
+    error instanceof Error &&
+    error.message ===
+      SYNC_ALREADY_RUNNING_ERROR
+  ) {
+    return {
+      message:
+        SYNC_ALREADY_RUNNING_ERROR,
+      status: 409,
+    };
+  }
+
+  return {
+    message:
+      "The Hospitable sync could not be completed. Review sync history or server logs for details.",
+    status: 500,
+  };
+}
 
 export async function POST(
   request: Request,
@@ -30,15 +62,24 @@ export async function POST(
       },
       {
         status,
+        headers: {
+          "Cache-Control": "no-store",
+        },
       },
     );
   }
 
-  console.log(
-    `Hospitable sync requested via ${authorization.method}`,
-  );
-
   const startedAt = Date.now();
+
+  console.info(
+    "Hospitable reservation sync started",
+    {
+      authorizationMethod:
+        authorization.method,
+      requestedBy:
+        authorization.userId ?? null,
+    },
+  );
 
   try {
     const result =
@@ -47,10 +88,13 @@ export async function POST(
     const durationMs =
       Date.now() - startedAt;
 
-    console.log(
+    console.info(
       "Hospitable reservation sync completed",
       {
-        method: authorization.method,
+        authorizationMethod:
+          authorization.method,
+        requestedBy:
+          authorization.userId ?? null,
         durationMs,
         processed: result.processed,
         created: result.created,
@@ -60,32 +104,48 @@ export async function POST(
       },
     );
 
-    return NextResponse.json({
-      success: true,
-      durationMs,
-      result,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        durationMs,
+        result,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
+    );
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unknown Hospitable sync error.";
+    const publicError =
+      getPublicSyncError(error);
 
     console.error(
       "Hospitable reservation sync failed",
       {
-        method: authorization.method,
-        error: message,
+        authorizationMethod:
+          authorization.method,
+        requestedBy:
+          authorization.userId ?? null,
+        durationMs:
+          Date.now() - startedAt,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown sync error.",
       },
     );
 
     return NextResponse.json(
       {
         success: false,
-        error: message,
+        error: publicError.message,
       },
       {
-        status: 500,
+        status: publicError.status,
+        headers: {
+          "Cache-Control": "no-store",
+        },
       },
     );
   }
