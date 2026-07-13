@@ -1,7 +1,3 @@
-import type {
-  AnalyticsRecommendation,
-} from "./recommendations";
-
 export const REVENUE_BOOKING_STATUSES = [
   "confirmed",
   "completed",
@@ -42,6 +38,44 @@ export type AnalyticsProperty = {
   name: string;
 };
 
+export type RevenueBreakdown = {
+  roomRevenue: number;
+  cleaningFees: number;
+  taxes: number;
+  serviceFees: number;
+  otherRevenue: number;
+  grossRevenue: number;
+};
+
+export type BookingSourceMetric = {
+  source: string;
+  bookingCount: number;
+  bookingShare: number;
+  occupiedNights: number;
+  roomRevenue: number;
+  averageDailyRate: number;
+};
+
+export type StayLengthBucketId =
+  | "one-night"
+  | "two-nights"
+  | "three-to-four-nights"
+  | "five-to-seven-nights"
+  | "eight-to-thirteen-nights"
+  | "fourteen-to-twenty-nine-nights"
+  | "thirty-plus-nights";
+
+export type StayLengthBucket = {
+  id: StayLengthBucketId;
+  label: string;
+  minimumNights: number;
+  maximumNights: number | null;
+  bookingCount: number;
+  bookingShare: number;
+  occupiedNights: number;
+  roomRevenue: number;
+};
+
 export type DashboardMetrics = {
   grossRevenue: number;
   roomRevenue: number;
@@ -51,10 +85,15 @@ export type DashboardMetrics = {
   averageDailyRate: number;
   revPar: number;
   averageLengthOfStay: number;
+  averageBookingLeadTime: number;
+  cancellationRate: number;
   totalBookings: number;
   upcomingBookings: number;
   completedBookings: number;
   cancelledBookings: number;
+  revenueBreakdown: RevenueBreakdown;
+  bookingSources: BookingSourceMetric[];
+  stayLengthDistribution: StayLengthBucket[];
 };
 
 export type DashboardAnalytics = {
@@ -65,7 +104,6 @@ export type DashboardAnalytics = {
   properties: AnalyticsProperty[];
   dateRange: AnalyticsDateRange;
   previousDateRange: AnalyticsDateRange;
-recommendations: AnalyticsRecommendation[];
   selectedPropertyId: string | null;
 };
 

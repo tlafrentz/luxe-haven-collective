@@ -1,55 +1,39 @@
 import {
-  buildDailyOccupancySeries,
+  AnalyticsControls,
+  BookingsTable,
+  OccupancyTrendChart,
+  PerformanceSummary,
+  ReportContext,
+  RevenueTrendChart,
+  StatsGrid,
   buildDailyRevenueSeries,
   generatePerformanceInsights,
-} from "../lib";
+} from "@/features/analytics";
 
 import type {
-  DashboardAnalytics,
+  RevenueIntelligence,
 } from "../types";
 
 import {
-  AnalyticsControls,
-} from "./analytics-controls";
+  toDashboardAnalytics,
+} from "../adapters/to-dashboard-analytics";
 
 import {
-  BookingsTable,
-} from "./bookings-table";
+  OpportunityIntelligence,
+} from "./opportunity-intelligence";
 
-import {
-  OccupancyTrendChart,
-} from "./occupancy-trend-chart";
-
-import {
-  PerformanceSummary,
-} from "./performance-summary";
-
-import {
-  ReportContext,
-} from "./report-context";
-
-import {
-  RevenueTrendChart,
-} from "./revenue-trend-chart";
-
-import {
-  StatsGrid,
-} from "./stats-grid";
-
-type InsightsDashboardProps = {
-  analytics: DashboardAnalytics;
+type RevenueIntelligenceDashboardProps = {
+  intelligence: RevenueIntelligence;
 };
 
-export function InsightsDashboard({
-  analytics,
-}: InsightsDashboardProps) {
+export function RevenueIntelligenceDashboard({
+  intelligence,
+}: RevenueIntelligenceDashboardProps) {
+  const analytics =
+    toDashboardAnalytics(intelligence);
+
   const hasProperties =
     analytics.properties.length > 0;
-
-  const propertyCount =
-    analytics.selectedPropertyId
-      ? 1
-      : analytics.properties.length;
 
   const insights =
     generatePerformanceInsights({
@@ -62,13 +46,6 @@ export function InsightsDashboard({
     buildDailyRevenueSeries({
       bookings: analytics.bookings,
       dateRange: analytics.dateRange,
-    });
-
-  const occupancySeries =
-    buildDailyOccupancySeries({
-      bookings: analytics.bookings,
-      dateRange: analytics.dateRange,
-      propertyCount,
     });
 
   return (
@@ -85,7 +62,7 @@ export function InsightsDashboard({
       {!hasProperties ? (
         <EmptyState
           title="No active properties"
-          description="Add or activate a property before viewing live performance analytics."
+          description="Add or activate a property before viewing live performance intelligence."
         />
       ) : (
         <>
@@ -102,16 +79,24 @@ export function InsightsDashboard({
             />
 
             <OccupancyTrendChart
-              data={occupancySeries}
+              data={
+                intelligence.occupancySeries
+              }
             />
           </div>
+
+          <OpportunityIntelligence
+            report={
+              intelligence.opportunityReport
+            }
+          />
 
           <PerformanceSummary
             insights={insights}
           />
 
           <BookingsTable
-            bookings={analytics.bookings}
+            bookings={intelligence.bookings}
           />
         </>
       )}

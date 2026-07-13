@@ -3,6 +3,7 @@ export type {
   AnalyticsDateRange,
   AnalyticsProperty,
   AnalyticsQueryParams,
+  BookingSourceMetric,
   DashboardAnalytics,
   DashboardComparison,
   DashboardMetrics,
@@ -12,17 +13,12 @@ export type {
   OccupancyDataPoint,
   PerformanceInsight,
   RevenueBookingStatus,
+  RevenueBreakdown,
   RevenueDataPoint,
+  StayLengthBucket,
+  StayLengthBucketId,
 } from "./analytics";
 
 export {
   REVENUE_BOOKING_STATUSES,
 } from "./analytics";
-
-export type {
-  AnalyticsRecommendation,
-  RecommendationCategory,
-  RecommendationConfidence,
-  RecommendationEvidence,
-  RecommendationPriority,
-} from "./recommendations";

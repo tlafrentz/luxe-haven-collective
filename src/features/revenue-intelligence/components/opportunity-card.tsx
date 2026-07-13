@@ -1,26 +1,31 @@
-import type { LucideIcon } from "lucide-react";
+import type {
+  LucideIcon,
+} from "lucide-react";
+
 import {
   BadgeDollarSign,
   BedDouble,
+  CalendarRange,
+  ChartNoAxesCombined,
   CircleDollarSign,
   ClipboardCheck,
-  CreditCard,
   Gauge,
-  TrendingUp,
+  Network,
 } from "lucide-react";
 
 import type {
-  AnalyticsRecommendation,
-  RecommendationCategory,
-  RecommendationConfidence,
-  RecommendationPriority,
+  OpportunityCategory,
+  OpportunityConfidence,
+  OpportunityEvidence,
+  OpportunitySeverity,
+  RevenueOpportunity,
 } from "../types";
 
-type RecommendationCardProps = {
-  recommendation: AnalyticsRecommendation;
+type OpportunityCardProps = {
+  opportunity: RevenueOpportunity;
 };
 
-type PriorityStyle = {
+type SeverityConfig = {
   label: string;
   badge: string;
   border: string;
@@ -31,18 +36,20 @@ type CategoryConfig = {
   icon: LucideIcon;
 };
 
-const priorityStyles: Record<
-  RecommendationPriority,
-  PriorityStyle
+const severityConfig: Record<
+  OpportunitySeverity,
+  SeverityConfig
 > = {
   high: {
     label: "High priority",
-    badge: "bg-red-50 text-red-700 ring-red-600/20",
+    badge:
+      "bg-red-50 text-red-700 ring-red-600/20",
     border: "border-red-200",
   },
   medium: {
     label: "Medium priority",
-    badge: "bg-amber-50 text-amber-700 ring-amber-600/20",
+    badge:
+      "bg-amber-50 text-amber-700 ring-amber-600/20",
     border: "border-amber-200",
   },
   low: {
@@ -54,7 +61,7 @@ const priorityStyles: Record<
 };
 
 const confidenceStyles: Record<
-  RecommendationConfidence,
+  OpportunityConfidence,
   string
 > = {
   high:
@@ -66,7 +73,7 @@ const confidenceStyles: Record<
 };
 
 const categoryConfig: Record<
-  RecommendationCategory,
+  OpportunityCategory,
   CategoryConfig
 > = {
   pricing: {
@@ -79,11 +86,11 @@ const categoryConfig: Record<
   },
   revenue: {
     label: "Revenue",
-    icon: TrendingUp,
+    icon: ChartNoAxesCombined,
   },
-  payments: {
-    label: "Payments",
-    icon: CreditCard,
+  distribution: {
+    label: "Distribution",
+    icon: Network,
   },
   operations: {
     label: "Operations",
@@ -92,27 +99,103 @@ const categoryConfig: Record<
 };
 
 function formatConfidence(
-  confidence: RecommendationConfidence,
+  confidence: OpportunityConfidence,
 ): string {
   return `${confidence.charAt(0).toUpperCase()}${confidence.slice(
     1,
   )} confidence`;
 }
 
-export function RecommendationCard({
-  recommendation,
-}: RecommendationCardProps) {
-  const priority =
-    priorityStyles[recommendation.priority];
+function formatCurrency(
+  value: number,
+  currency = "USD",
+): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatEvidenceValue(
+  evidence: OpportunityEvidence,
+): string {
+  const { value, unit } = evidence;
+
+  if (value === null) {
+    return "Not available";
+  }
+
+  if (
+    unit === "currency" &&
+    typeof value === "number"
+  ) {
+    return formatCurrency(value);
+  }
+
+  if (
+    unit === "percentage" &&
+    typeof value === "number"
+  ) {
+    return `${value.toFixed(1)}%`;
+  }
+
+  if (
+    typeof value === "boolean"
+  ) {
+    return value ? "Yes" : "No";
+  }
+
+  return String(value);
+}
+
+function formatDateRange(
+  opportunity: RevenueOpportunity,
+): string | null {
+  if (!opportunity.dateRange) {
+    return null;
+  }
+
+  const formatter =
+    new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+
+  const start = formatter.format(
+    new Date(
+      `${opportunity.dateRange.startDate}T00:00:00.000Z`,
+    ),
+  );
+
+  const end = formatter.format(
+    new Date(
+      `${opportunity.dateRange.endDate}T00:00:00.000Z`,
+    ),
+  );
+
+  return `${start} – ${end}`;
+}
+
+export function OpportunityCard({
+  opportunity,
+}: OpportunityCardProps) {
+  const severity =
+    severityConfig[opportunity.severity];
 
   const category =
-    categoryConfig[recommendation.category];
+    categoryConfig[opportunity.category];
 
   const CategoryIcon = category.icon;
 
+  const dateRange =
+    formatDateRange(opportunity);
+
   return (
     <article
-      className={`rounded-2xl border bg-white p-5 shadow-sm ${priority.border}`}
+      className={`rounded-2xl border bg-white p-5 shadow-sm ${severity.border}`}
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
@@ -126,9 +209,9 @@ export function RecommendationCard({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${priority.badge}`}
+                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${severity.badge}`}
               >
-                {priority.label}
+                {severity.label}
               </span>
 
               <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-700 ring-1 ring-inset ring-neutral-600/20">
@@ -138,23 +221,34 @@ export function RecommendationCard({
               <span
                 className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
                   confidenceStyles[
-                    recommendation.confidence
+                    opportunity.confidence
                   ]
                 }`}
               >
                 {formatConfidence(
-                  recommendation.confidence,
+                  opportunity.confidence,
                 )}
               </span>
             </div>
 
             <h3 className="mt-3 text-lg font-semibold text-neutral-950">
-              {recommendation.title}
+              {opportunity.title}
             </h3>
 
             <p className="mt-2 text-sm leading-6 text-neutral-600">
-              {recommendation.description}
+              {opportunity.summary}
             </p>
+
+            {dateRange ? (
+              <div className="mt-3 flex items-center gap-2 text-xs font-medium text-neutral-500">
+                <CalendarRange
+                  aria-hidden="true"
+                  className="h-4 w-4"
+                />
+
+                <span>{dateRange}</span>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -168,17 +262,17 @@ export function RecommendationCard({
 
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Suggested action
+              Recommended action
             </p>
 
             <p className="mt-1 text-sm leading-6 text-neutral-800">
-              {recommendation.suggestedAction}
+              {opportunity.action.summary}
             </p>
           </div>
         </div>
       </div>
 
-      {recommendation.expectedImpact ? (
+      {opportunity.impact ? (
         <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
           <div className="flex items-start gap-3">
             <CircleDollarSign
@@ -188,28 +282,46 @@ export function RecommendationCard({
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                Expected impact
+                Estimated impact
               </p>
 
-              <p className="mt-1 text-sm leading-6 text-emerald-900">
-                {recommendation.expectedImpact}
+              <p className="mt-1 text-sm font-semibold text-emerald-950">
+                {typeof opportunity.impact
+                  .estimatedAmount === "number"
+                  ? formatCurrency(
+                      opportunity.impact
+                        .estimatedAmount,
+                      opportunity.impact
+                        .currency,
+                    )
+                  : opportunity.impact
+                        .estimatedPercentage !==
+                      undefined
+                    ? `${opportunity.impact.estimatedPercentage.toFixed(
+                        1,
+                      )}% potential improvement`
+                    : "Operational impact identified"}
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-emerald-800">
+                {opportunity.impact.basis}
               </p>
             </div>
           </div>
         </div>
       ) : null}
 
-      {recommendation.evidence.length > 0 ? (
+      {opportunity.evidence.length > 0 ? (
         <div className="mt-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            Evidence
+            Supporting evidence
           </p>
 
           <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {recommendation.evidence.map(
+            {opportunity.evidence.map(
               (item) => (
                 <div
-                  key={`${recommendation.id}-${item.label}`}
+                  key={`${opportunity.id}-${item.key}`}
                   className="rounded-xl border border-neutral-200 px-3 py-3"
                 >
                   <dt className="text-xs text-neutral-500">
@@ -217,7 +329,7 @@ export function RecommendationCard({
                   </dt>
 
                   <dd className="mt-1 text-sm font-semibold text-neutral-950">
-                    {item.value}
+                    {formatEvidenceValue(item)}
                   </dd>
                 </div>
               ),

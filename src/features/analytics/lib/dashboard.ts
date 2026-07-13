@@ -4,19 +4,19 @@ import type {
   DashboardComparison,
 } from "../types";
 
-import { calculateDashboardMetrics } from "./calculations";
+import {
+  calculateDashboardMetrics,
+} from "./calculations";
+
 import {
   calculateTrend,
   getPreviousDateRange,
 } from "./comparison";
-import { buildDailyOccupancySeries } from "./occupancy-series";
+
 import {
   getAnalyticsBookings,
   getAnalyticsProperties,
 } from "./queries";
-import {
-  generateAnalyticsRecommendations,
-} from "./recommendations";
 
 export async function getDashboardAnalytics({
   propertyId,
@@ -100,29 +100,10 @@ export async function getDashboardAnalytics({
     ),
   };
 
-  const occupancySeries =
-    buildDailyOccupancySeries({
-      bookings: currentBookings,
-      dateRange: {
-        startDate,
-        endDate,
-      },
-      propertyCount,
-    });
-
-  const recommendations =
-    generateAnalyticsRecommendations({
-      metrics: currentMetrics,
-      comparison,
-      bookings: currentBookings,
-      occupancySeries,
-    });
-
   return {
     metrics: currentMetrics,
     previousMetrics,
     comparison,
-    recommendations,
     bookings: currentBookings,
     properties,
     dateRange: {

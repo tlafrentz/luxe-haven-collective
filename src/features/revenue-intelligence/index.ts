@@ -32,6 +32,12 @@ export {
 } from "./engine";
 
 export {
+  OpportunityCard,
+  OpportunityIntelligence,
+  RevenueIntelligenceDashboard,
+} from "./components";
+
+export {
   OPPORTUNITY_CATEGORIES,
   OPPORTUNITY_TYPES,
 } from "./types";

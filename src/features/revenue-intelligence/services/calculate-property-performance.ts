@@ -46,18 +46,20 @@ export function calculatePropertyPerformance({
   propertyId,
   today,
 }: CalculatePropertyPerformanceParams): PropertyPerformance {
+  const scope = createPerformanceScope({
+    propertyId,
+    propertyCount,
+  });
+
   const metrics = calculateDashboardMetrics({
     bookings,
-    propertyCount,
+    propertyCount: scope.propertyCount,
     dateRange,
     today,
   });
 
   return {
-    scope: createPerformanceScope({
-      propertyId,
-      propertyCount,
-    }),
+    scope,
     period: dateRange,
     revenue: {
       grossRevenue: metrics.grossRevenue,
@@ -90,4 +92,3 @@ export function calculatePropertyPerformance({
     },
   };
 }
-
