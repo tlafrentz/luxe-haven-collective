@@ -7,10 +7,6 @@ export {
 } from "./bookings-table";
 
 export {
-  InsightsDashboard,
-} from "./insights-dashboard";
-
-export {
   MetricTrendIndicator,
 } from "./metric-trend-indicator";
 

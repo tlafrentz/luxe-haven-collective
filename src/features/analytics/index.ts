@@ -12,7 +12,6 @@ export {
   formatPercentage,
   getAnalyticsBookings,
   getAnalyticsProperties,
-  getDashboardAnalytics,
   getMonthToDateRange,
   getOverlappingNights,
   getPreviousDateRange,
@@ -45,7 +44,6 @@ export type {
 export {
   AnalyticsControls,
   BookingsTable,
-  InsightsDashboard,
   MetricTrendIndicator,
   OccupancyTrendChart,
   PerformanceSummary,

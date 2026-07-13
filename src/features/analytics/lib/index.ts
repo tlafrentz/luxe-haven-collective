@@ -5,10 +5,6 @@ export {
 } from "./calculations";
 
 export {
-  getDashboardAnalytics,
-} from "./dashboard";
-
-export {
   generatePerformanceInsights,
 } from "./insights";
 
