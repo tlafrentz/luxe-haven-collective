@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 
 import { CTASection } from "@/components/marketing/cta-section";
 import {
@@ -16,7 +18,8 @@ export async function generateMetadata({
   params,
 }: PropertyPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const property = await getPublishedPropertyBySlug(slug);
+  const property =
+    await getPublishedPropertyBySlug(slug);
 
   const title =
     property.seo_title ||
@@ -42,7 +45,8 @@ export default async function PropertyDetailPage({
   params,
 }: PropertyPageProps) {
   const { slug } = await params;
-  const property = await getPublishedPropertyBySlug(slug);
+  const property =
+    await getPublishedPropertyBySlug(slug);
 
   const gallery = [
     propertyImage(property),
@@ -92,41 +96,63 @@ export default async function PropertyDetailPage({
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-muted-foreground">
-              <p>{property.minimum_nights}+ night minimum</p>
-              <p>Up to {property.max_guests} guests</p>
-              <p>Check-in {property.check_in_time}</p>
-              <p>Check-out {property.check_out_time}</p>
+              <p>
+                {property.minimum_nights}+ night
+                minimum
+              </p>
+              <p>
+                Up to {property.max_guests} guests
+              </p>
+              <p>
+                Check-in {property.check_in_time}
+              </p>
+              <p>
+                Check-out {property.check_out_time}
+              </p>
             </div>
 
-            <a
+            <Link
               href="/contact?service=stay"
               className="mt-6 block rounded-full bg-primary px-6 py-3 text-center text-sm font-semibold text-primary-foreground"
             >
               Request Dates
-            </a>
+            </Link>
           </div>
         </div>
       </section>
 
-      {gallery.length ? (
+      {gallery.length > 0 ? (
         <section className="py-10">
           <div className="container-shell grid gap-4 md:grid-cols-[1.4fr_.6fr]">
-            <img
-              src={gallery[0]}
-              alt={property.name}
-              className="h-[520px] w-full rounded-[2.5rem] object-cover"
-            />
+            <div className="relative h-[520px] overflow-hidden rounded-[2.5rem]">
+              <Image
+                src={gallery[0]}
+                alt={property.name}
+                fill
+                priority
+                sizes="(min-width: 768px) 70vw, 100vw"
+                className="object-cover"
+              />
+            </div>
 
             {gallery.length > 1 ? (
               <div className="grid gap-4">
-                {gallery.slice(1, 3).map((image, index) => (
-                  <img
-                    key={image}
-                    src={image}
-                    alt={`${property.name} gallery ${index + 1}`}
-                    className="h-[252px] w-full rounded-[2rem] object-cover"
-                  />
-                ))}
+                {gallery
+                  .slice(1, 3)
+                  .map((image, index) => (
+                    <div
+                      key={image}
+                      className="relative h-[252px] overflow-hidden rounded-[2rem]"
+                    >
+                      <Image
+                        src={image}
+                        alt={`${property.name} gallery ${index + 1}`}
+                        fill
+                        sizes="(min-width: 768px) 30vw, 100vw"
+                        className="object-cover"
+                      />
+                    </div>
+                  ))}
               </div>
             ) : null}
           </div>
@@ -136,12 +162,20 @@ export default async function PropertyDetailPage({
       <section className="py-12">
         <div className="container-shell grid gap-10 lg:grid-cols-[.75fr_1.25fr]">
           <aside className="rounded-3xl border border-border bg-card p-6">
-            <p className="font-semibold">Property Details</p>
+            <p className="font-semibold">
+              Property Details
+            </p>
 
             <div className="mt-5 grid gap-3 text-sm text-muted-foreground">
-              <p>{property.bedrooms} bedrooms</p>
-              <p>{property.bathrooms} bathrooms</p>
-              <p>Up to {property.max_guests} guests</p>
+              <p>
+                {property.bedrooms} bedrooms
+              </p>
+              <p>
+                {property.bathrooms} bathrooms
+              </p>
+              <p>
+                Up to {property.max_guests} guests
+              </p>
               <p>
                 {property.neighborhood
                   ? `${property.neighborhood}, `
@@ -162,14 +196,16 @@ export default async function PropertyDetailPage({
 
             {property.highlights?.length ? (
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                {property.highlights.map((highlight) => (
-                  <p
-                    key={highlight}
-                    className="rounded-2xl border border-border bg-card px-5 py-4 text-sm"
-                  >
-                    {highlight}
-                  </p>
-                ))}
+                {property.highlights.map(
+                  (highlight) => (
+                    <p
+                      key={highlight}
+                      className="rounded-2xl border border-border bg-card px-5 py-4 text-sm"
+                    >
+                      {highlight}
+                    </p>
+                  ),
+                )}
               </div>
             ) : null}
 
@@ -180,14 +216,16 @@ export default async function PropertyDetailPage({
                 </h3>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  {property.amenities.map((amenity) => (
-                    <p
-                      key={amenity}
-                      className="rounded-full border border-border bg-card px-5 py-3 text-sm"
-                    >
-                      {amenity}
-                    </p>
-                  ))}
+                  {property.amenities.map(
+                    (amenity) => (
+                      <p
+                        key={amenity}
+                        className="rounded-full border border-border bg-card px-5 py-3 text-sm"
+                      >
+                        {amenity}
+                      </p>
+                    ),
+                  )}
                 </div>
               </>
             ) : null}

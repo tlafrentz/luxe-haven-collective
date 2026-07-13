@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export function HeroSection() {
@@ -42,12 +43,24 @@ export function HeroSection() {
 
           <div className="mt-12 grid max-w-2xl gap-5 border-t border-border pt-8 sm:grid-cols-3">
             {[
-              ["Guest Experience", "Thoughtful hospitality standards"],
-              ["Owner Performance", "Clear, revenue-focused decisions"],
-              ["Operating Systems", "Consistent execution and reporting"],
+              [
+                "Guest Experience",
+                "Thoughtful hospitality standards",
+              ],
+              [
+                "Owner Performance",
+                "Clear, revenue-focused decisions",
+              ],
+              [
+                "Operating Systems",
+                "Consistent execution and reporting",
+              ],
             ].map(([title, description]) => (
               <div key={title}>
-                <p className="text-sm font-semibold">{title}</p>
+                <p className="text-sm font-semibold">
+                  {title}
+                </p>
+
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   {description}
                 </p>
@@ -58,14 +71,20 @@ export function HeroSection() {
 
         <div className="relative">
           <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full border border-accent/30" />
+
           <div className="absolute -bottom-12 -right-12 h-56 w-56 rounded-full bg-accent/10 blur-3xl" />
 
           <div className="relative overflow-hidden rounded-[2.5rem] border border-border bg-card p-3 shadow-2xl shadow-black/10">
-            <img
-              src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1400&auto=format&fit=crop"
-              alt="Elevated living room representing Luxe Haven hospitality"
-              className="h-[540px] w-full rounded-[2rem] object-cover md:h-[620px]"
-            />
+            <div className="relative h-[540px] w-full md:h-[620px]">
+              <Image
+                src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1400&auto=format&fit=crop"
+                alt="Elevated living room representing Luxe Haven hospitality"
+                fill
+                priority
+                sizes="(min-width: 1024px) 45vw, 100vw"
+                className="rounded-[2rem] object-cover"
+              />
+            </div>
           </div>
 
           <div className="absolute -bottom-8 left-5 right-5 rounded-[1.75rem] border border-border bg-background/95 p-5 shadow-xl backdrop-blur md:left-auto md:right-6 md:w-72">
@@ -74,7 +93,8 @@ export function HeroSection() {
             </p>
 
             <p className="mt-3 font-serif text-2xl">
-              Every detail should support the stay and the investment.
+              Every detail should support the stay and the
+              investment.
             </p>
           </div>
         </div>

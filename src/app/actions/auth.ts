@@ -3,26 +3,40 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+
 import { roleHome } from "@/lib/auth/roles";
+import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/database";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters."),
+  next: z.string().optional(),
 });
 
-const registerSchema = loginSchema.extend({
-  fullName: z.string().min(2, "Enter your full name."),
-  role: z.enum(["guest", "owner"]).default("guest"),
-});
+const registerSchema = loginSchema
+  .omit({
+    next: true,
+  })
+  .extend({
+    fullName: z
+      .string()
+      .min(2, "Enter your full name."),
+    role: z
+      .enum(["guest", "owner"])
+      .default("guest"),
+  });
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Enter a valid email."),
 });
 
 const updatePasswordSchema = z.object({
-  password: z.string().min(8, "Password must be at least 8 characters."),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters."),
 });
 
 export type AuthActionState = {
@@ -31,11 +45,31 @@ export type AuthActionState = {
   errors?: Record<string, string[]>;
 };
 
-function toFormErrors(error: z.ZodError): AuthActionState {
+function toFormErrors(
+  error: z.ZodError,
+): AuthActionState {
   return {
     ok: false,
     errors: error.flatten().fieldErrors,
   };
+}
+
+function resolvePostLoginDestination({
+  nextPath,
+  fallback,
+}: {
+  nextPath?: string;
+  fallback: string;
+}): string {
+  if (
+    nextPath &&
+    nextPath.startsWith("/") &&
+    !nextPath.startsWith("//")
+  ) {
+    return nextPath;
+  }
+
+  return fallback;
 }
 
 async function getRoleForCurrentUser(): Promise<UserRole> {
@@ -45,31 +79,42 @@ async function getRoleForCurrentUser(): Promise<UserRole> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return "guest";
+  if (!user) {
+    return "guest";
+  }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .maybeSingle<{ role: UserRole }>();
+    .maybeSingle<{
+      role: UserRole;
+    }>();
 
   return profile?.role ?? "guest";
 }
 
 export async function signInAction(
   _prevState: AuthActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AuthActionState> {
-  const parsed = loginSchema.safeParse(Object.fromEntries(formData));
+  const parsed = loginSchema.safeParse(
+    Object.fromEntries(formData),
+  );
 
-  if (!parsed.success) return toFormErrors(parsed.error);
+  if (!parsed.success) {
+    return toFormErrors(parsed.error);
+  }
 
   const supabase = await createClient();
 
   const {
     data: { user },
     error,
-  } = await supabase.auth.signInWithPassword(parsed.data);
+  } = await supabase.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
 
   if (error) {
     return {
@@ -81,11 +126,15 @@ export async function signInAction(
   if (!user?.id) {
     return {
       ok: false,
-      message: "Unable to verify your account. Please try again.",
+      message:
+        "Unable to verify your account. Please try again.",
     };
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
     .select("id, email, role")
     .eq("id", user.id)
@@ -104,20 +153,36 @@ export async function signInAction(
 
   const role = profile?.role ?? "guest";
 
+  const destination =
+    resolvePostLoginDestination({
+      nextPath: parsed.data.next,
+      fallback: roleHome[role],
+    });
+
   revalidatePath("/", "layout");
-  redirect(roleHome[role]);
+  redirect(destination);
 }
 
 export async function registerAction(
   _prevState: AuthActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AuthActionState> {
-  const parsed = registerSchema.safeParse(Object.fromEntries(formData));
+  const parsed = registerSchema.safeParse(
+    Object.fromEntries(formData),
+  );
 
-  if (!parsed.success) return toFormErrors(parsed.error);
+  if (!parsed.success) {
+    return toFormErrors(parsed.error);
+  }
 
   const supabase = await createClient();
-  const { email, password, fullName, role } = parsed.data;
+
+  const {
+    email,
+    password,
+    fullName,
+    role,
+  } = parsed.data;
 
   const { error } = await supabase.auth.signUp({
     email,
@@ -139,7 +204,8 @@ export async function registerAction(
 
   return {
     ok: true,
-    message: "Account created. Check your email to confirm your sign-in.",
+    message:
+      "Account created. Check your email to confirm your sign-in.",
   };
 }
 
@@ -154,18 +220,30 @@ export async function signOutAction() {
 
 export async function forgotPasswordAction(
   _prevState: AuthActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AuthActionState> {
-  const parsed = forgotPasswordSchema.safeParse(Object.fromEntries(formData));
+  const parsed =
+    forgotPasswordSchema.safeParse(
+      Object.fromEntries(formData),
+    );
 
-  if (!parsed.success) return toFormErrors(parsed.error);
+  if (!parsed.success) {
+    return toFormErrors(parsed.error);
+  }
 
   const supabase = await createClient();
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${origin}/auth/callback?next=/update-password`,
-  });
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "http://localhost:3000";
+
+  const { error } =
+    await supabase.auth.resetPasswordForEmail(
+      parsed.data.email,
+      {
+        redirectTo: `${origin}/auth/callback?next=/update-password`,
+      },
+    );
 
   if (error) {
     return {
@@ -182,17 +260,23 @@ export async function forgotPasswordAction(
 
 export async function updatePasswordAction(
   _prevState: AuthActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AuthActionState> {
-  const parsed = updatePasswordSchema.safeParse(Object.fromEntries(formData));
+  const parsed =
+    updatePasswordSchema.safeParse(
+      Object.fromEntries(formData),
+    );
 
-  if (!parsed.success) return toFormErrors(parsed.error);
+  if (!parsed.success) {
+    return toFormErrors(parsed.error);
+  }
 
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.updateUser({
-    password: parsed.data.password,
-  });
+  const { error } =
+    await supabase.auth.updateUser({
+      password: parsed.data.password,
+    });
 
   if (error) {
     return {
@@ -201,7 +285,8 @@ export async function updatePasswordAction(
     };
   }
 
-  const role = await getRoleForCurrentUser();
+  const role =
+    await getRoleForCurrentUser();
 
   revalidatePath("/", "layout");
   redirect(roleHome[role]);
