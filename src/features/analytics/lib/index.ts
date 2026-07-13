@@ -4,8 +4,9 @@ export {
   getOverlappingNights,
 } from "./calculations";
 
-export { getDashboardAnalytics } from "./dashboard";
-export { generatePerformanceInsights } from "./insights";
+export {
+  generatePerformanceInsights,
+} from "./insights";
 
 export {
   getAnalyticsBookings,
@@ -32,8 +33,10 @@ export {
   getPreviousDateRange,
 } from "./comparison";
 
-export { buildDailyRevenueSeries } from "./revenue-series";
-export { buildDailyOccupancySeries } from "./occupancy-series";
 export {
-  generateAnalyticsRecommendations,
-} from "./recommendations";
+  buildDailyRevenueSeries,
+} from "./revenue-series";
+
+export {
+  buildDailyOccupancySeries,
+} from "./occupancy-series";

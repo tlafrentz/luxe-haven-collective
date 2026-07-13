@@ -1,50 +1,52 @@
 import {
-  buildDailyOccupancySeries,
+  AnalyticsControls,
+  BookingsTable,
+  OccupancyTrendChart,
+  PerformanceSummary,
+  ReportContext,
+  RevenueTrendChart,
+  StatsGrid,
   buildDailyRevenueSeries,
   generatePerformanceInsights,
-} from "../lib";
-import type { DashboardAnalytics } from "../types";
+} from "@/features/analytics";
 
-import { AnalyticsControls } from "./analytics-controls";
-import { BookingsTable } from "./bookings-table";
-import { OccupancyTrendChart } from "./occupancy-trend-chart";
-import { PerformanceSummary } from "./performance-summary";
-import { ReportContext } from "./report-context";
-import { RevenueIntelligence } from "./revenue-intelligence";
-import { RevenueTrendChart } from "./revenue-trend-chart";
-import { StatsGrid } from "./stats-grid";
+import type {
+  RevenueIntelligence,
+} from "../types";
 
-type InsightsDashboardProps = {
-  analytics: DashboardAnalytics;
+import {
+  toDashboardAnalytics,
+} from "../adapters/to-dashboard-analytics";
+
+import {
+  OpportunityIntelligence,
+} from "./opportunity-intelligence";
+
+type RevenueIntelligenceDashboardProps = {
+  intelligence: RevenueIntelligence;
 };
 
-export function InsightsDashboard({
-  analytics,
-}: InsightsDashboardProps) {
+export function RevenueIntelligenceDashboard({
+  intelligence,
+}: RevenueIntelligenceDashboardProps) {
+  const analytics =
+    toDashboardAnalytics(intelligence);
+
   const hasProperties =
     analytics.properties.length > 0;
 
-  const propertyCount =
-    analytics.selectedPropertyId
-      ? 1
-      : analytics.properties.length;
+  const insights =
+    generatePerformanceInsights({
+      metrics: analytics.metrics,
+      comparison: analytics.comparison,
+      bookings: analytics.bookings,
+    });
 
-  const insights = generatePerformanceInsights({
-    metrics: analytics.metrics,
-    comparison: analytics.comparison,
-    bookings: analytics.bookings,
-  });
-
-  const revenueSeries = buildDailyRevenueSeries({
-    bookings: analytics.bookings,
-    dateRange: analytics.dateRange,
-  });
-
-  const occupancySeries = buildDailyOccupancySeries({
-    bookings: analytics.bookings,
-    dateRange: analytics.dateRange,
-    propertyCount,
-  });
+  const revenueSeries =
+    buildDailyRevenueSeries({
+      bookings: analytics.bookings,
+      dateRange: analytics.dateRange,
+    });
 
   return (
     <div className="space-y-6">
@@ -60,7 +62,7 @@ export function InsightsDashboard({
       {!hasProperties ? (
         <EmptyState
           title="No active properties"
-          description="Add or activate a property before viewing live performance analytics."
+          description="Add or activate a property before viewing live performance intelligence."
         />
       ) : (
         <>
@@ -77,13 +79,15 @@ export function InsightsDashboard({
             />
 
             <OccupancyTrendChart
-              data={occupancySeries}
+              data={
+                intelligence.occupancySeries
+              }
             />
           </div>
 
-          <RevenueIntelligence
-            recommendations={
-              analytics.recommendations
+          <OpportunityIntelligence
+            report={
+              intelligence.opportunityReport
             }
           />
 
@@ -92,7 +96,7 @@ export function InsightsDashboard({
           />
 
           <BookingsTable
-            bookings={analytics.bookings}
+            bookings={intelligence.bookings}
           />
         </>
       )}
