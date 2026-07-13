@@ -1,4 +1,8 @@
 export {
+  buildPerformanceComparison,
+} from "./build-performance-comparison";
+
+export {
   deduplicateOpportunities,
 } from "./deduplicator";
 

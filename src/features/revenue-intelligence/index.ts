@@ -24,6 +24,7 @@ export {
 } from "./detectors";
 
 export {
+  buildPerformanceComparison,
   deduplicateOpportunities,
   opportunityDetectors,
   sortOpportunities,

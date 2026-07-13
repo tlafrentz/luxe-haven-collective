@@ -1,14 +1,16 @@
 import {
   buildDailyOccupancySeries,
-  calculateTrend,
   type AnalyticsQueryParams,
 } from "@/features/analytics";
 
 import type {
-  PerformanceComparison,
   RevenueIntelligence,
   RevenueIntelligenceReport,
 } from "../types";
+
+import {
+  buildPerformanceComparison,
+} from "../engine/build-performance-comparison";
 
 import {
   calculatePropertyPerformance,
@@ -21,49 +23,6 @@ import {
 import {
   runOpportunityEngine,
 } from "./run-opportunity-engine";
-
-function buildPerformanceComparison({
-  current,
-  previous,
-}: {
-  current: RevenueIntelligenceReport["current"];
-  previous: RevenueIntelligenceReport["previous"];
-}): PerformanceComparison {
-  return {
-    grossRevenue: calculateTrend(
-      current.revenue.grossRevenue,
-      previous.revenue.grossRevenue,
-    ),
-    roomRevenue: calculateTrend(
-      current.revenue.roomRevenue,
-      previous.revenue.roomRevenue,
-    ),
-    occupancyRate: calculateTrend(
-      current.occupancy.occupancyRate,
-      previous.occupancy.occupancyRate,
-    ),
-    averageDailyRate: calculateTrend(
-      current.revenue.averageDailyRate,
-      previous.revenue.averageDailyRate,
-    ),
-    revPar: calculateTrend(
-      current.revenue.revPar,
-      previous.revenue.revPar,
-    ),
-    averageLengthOfStay: calculateTrend(
-      current.bookings.averageLengthOfStay,
-      previous.bookings.averageLengthOfStay,
-    ),
-    averageBookingLeadTime: calculateTrend(
-      current.bookings.averageBookingLeadTime,
-      previous.bookings.averageBookingLeadTime,
-    ),
-    cancellationRate: calculateTrend(
-      current.bookings.cancellationRate,
-      previous.bookings.cancellationRate,
-    ),
-  };
-}
 
 export async function getRevenueIntelligence({
   propertyId,
@@ -108,10 +67,11 @@ export async function getRevenueIntelligence({
   const report: RevenueIntelligenceReport = {
     current,
     previous,
-    comparison: buildPerformanceComparison({
-      current,
-      previous,
-    }),
+    comparison:
+      buildPerformanceComparison({
+        current,
+        previous,
+      }),
     properties: inputs.properties,
     selectedProperty:
       inputs.selectedProperty,
