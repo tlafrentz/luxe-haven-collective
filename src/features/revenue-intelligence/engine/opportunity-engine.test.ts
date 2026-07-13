@@ -8,64 +8,19 @@ import {
   runOpportunityEngine,
 } from "../services/run-opportunity-engine";
 
-import type {
-  OpportunityDetectionContext,
-  PropertyPerformance,
-} from "../types";
+import {
+  createOpportunity,
+  createOpportunityDetectionContext,
+} from "../test-support/factories";
 
-function createEmptyPerformance(): PropertyPerformance {
-  return {
-    scope: {
-      type: "property",
-      propertyId: "property-1",
-      propertyCount: 1,
-    },
-    period: {
-      startDate: "2026-07-01",
-      endDate: "2026-08-01",
-    },
-    revenue: {
-      grossRevenue: 0,
-      roomRevenue: 0,
-      averageDailyRate: 0,
-      revPar: 0,
-      breakdown: {
-        roomRevenue: 0,
-        cleaningFees: 0,
-        taxes: 0,
-        serviceFees: 0,
-        otherRevenue: 0,
-        grossRevenue: 0,
-      },
-    },
-    occupancy: {
-      occupiedNights: 0,
-      availableNights: 31,
-      occupancyRate: 0,
-    },
-    bookings: {
-      totalBookings: 0,
-      upcomingBookings: 0,
-      completedBookings: 0,
-      cancelledBookings: 0,
-      cancellationRate: 0,
-      averageBookingLeadTime: 0,
-      averageLengthOfStay: 0,
-    },
-    bookingBehavior: {
-      sources: [],
-      stayLengthDistribution: [],
-    },
-  };
-}
+import type {
+  OpportunityDetector,
+} from "../types";
 
 describe("runOpportunityEngine", () => {
   it("returns a stable empty report when no detectors are supplied", () => {
-    const context: OpportunityDetectionContext = {
-      performance: createEmptyPerformance(),
-      bookings: [],
-      detectedAt: "2026-07-12T18:00:00.000Z",
-    };
+    const context =
+      createOpportunityDetectionContext();
 
     const result = runOpportunityEngine({
       context,
@@ -96,6 +51,86 @@ describe("runOpportunityEngine", () => {
       },
       generatedAt:
         "2026-07-12T18:00:00.000Z",
+    });
+  });
+
+  it("executes detectors, deduplicates results, sorts them, and builds a summary", () => {
+    const duplicateOpportunity =
+      createOpportunity({
+        id: "duplicate-opportunity",
+        severity: "medium",
+        confidence: "medium",
+        impact: {
+          type: "revenue-increase",
+          estimatedAmount: 100,
+          currency: "USD",
+          basis: "Test impact.",
+        },
+      });
+
+    const highPriorityOpportunity =
+      createOpportunity({
+        id: "high-priority-opportunity",
+        severity: "high",
+        confidence: "high",
+        category: "operations",
+        impact: {
+          type: "revenue-at-risk",
+          estimatedAmount: 300,
+          currency: "USD",
+          basis: "Test risk.",
+        },
+      });
+
+    const firstDetector: OpportunityDetector = {
+      id: "first-detector",
+      opportunityTypes: ["gap-night"],
+      detect: () => [
+        duplicateOpportunity,
+        highPriorityOpportunity,
+      ],
+    };
+
+    const secondDetector: OpportunityDetector = {
+      id: "second-detector",
+      opportunityTypes: ["gap-night"],
+      detect: () => [
+        createOpportunity({
+          ...duplicateOpportunity,
+          title: "Duplicate replacement",
+        }),
+      ],
+    };
+
+    const result = runOpportunityEngine({
+      context:
+        createOpportunityDetectionContext(),
+      detectors: [
+        firstDetector,
+        secondDetector,
+      ],
+    });
+
+    expect(
+      result.opportunities.map(
+        (opportunity) => opportunity.id,
+      ),
+    ).toEqual([
+      "high-priority-opportunity",
+      "duplicate-opportunity",
+    ]);
+
+    expect(result.opportunities[1].title).toBe(
+      "Test opportunity",
+    );
+
+    expect(result.summary).toMatchObject({
+      total: 2,
+      highPriority: 1,
+      mediumPriority: 1,
+      lowPriority: 0,
+      estimatedRevenueImpact: 400,
+      currency: "USD",
     });
   });
 });
