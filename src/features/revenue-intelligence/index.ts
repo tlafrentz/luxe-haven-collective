@@ -3,6 +3,10 @@ export {
 } from "./services/calculate-property-performance";
 
 export {
+  getRevenueIntelligence,
+} from "./services/get-revenue-intelligence";
+
+export {
   getRevenueIntelligenceReport,
 } from "./services/get-revenue-intelligence-report";
 
@@ -52,6 +56,7 @@ export type {
   PerformanceComparison,
   PerformanceScope,
   PropertyPerformance,
+  RevenueIntelligence,
   RevenueIntelligenceReport,
   RevenueOpportunity,
   RevenueOpportunityType,

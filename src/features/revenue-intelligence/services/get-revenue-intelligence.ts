@@ -1,12 +1,14 @@
 import {
+  buildDailyOccupancySeries,
   calculateTrend,
   type AnalyticsQueryParams,
 } from "@/features/analytics";
 
 import type {
   PerformanceComparison,
+  RevenueIntelligence,
   RevenueIntelligenceReport,
-} from "../domain/revenue-intelligence-report";
+} from "../types";
 
 import {
   calculatePropertyPerformance,
@@ -15,6 +17,10 @@ import {
 import {
   loadRevenueIntelligenceInputs,
 } from "./load-revenue-intelligence-inputs";
+
+import {
+  runOpportunityEngine,
+} from "./run-opportunity-engine";
 
 function buildPerformanceComparison({
   current,
@@ -59,11 +65,20 @@ function buildPerformanceComparison({
   };
 }
 
-export async function getRevenueIntelligenceReport(
-  params: AnalyticsQueryParams,
-): Promise<RevenueIntelligenceReport> {
+export async function getRevenueIntelligence({
+  propertyId,
+  startDate,
+  endDate,
+  detectedAt = new Date().toISOString(),
+}: AnalyticsQueryParams & {
+  detectedAt?: string;
+}): Promise<RevenueIntelligence> {
   const inputs =
-    await loadRevenueIntelligenceInputs(params);
+    await loadRevenueIntelligenceInputs({
+      propertyId,
+      startDate,
+      endDate,
+    });
 
   const current =
     calculatePropertyPerformance({
@@ -83,7 +98,14 @@ export async function getRevenueIntelligenceReport(
       dateRange: inputs.previousDateRange,
     });
 
-  return {
+  const occupancySeries =
+    buildDailyOccupancySeries({
+      bookings: inputs.currentBookings,
+      dateRange: inputs.dateRange,
+      propertyCount: inputs.propertyCount,
+    });
+
+  const report: RevenueIntelligenceReport = {
     current,
     previous,
     comparison: buildPerformanceComparison({
@@ -96,5 +118,24 @@ export async function getRevenueIntelligenceReport(
     dateRange: inputs.dateRange,
     previousDateRange:
       inputs.previousDateRange,
+  };
+
+  const opportunityReport =
+    runOpportunityEngine({
+      context: {
+        performance: current,
+        previousPerformance: previous,
+        bookings: inputs.currentBookings,
+        occupancySeries,
+        detectedAt,
+      },
+    });
+
+  return {
+    report,
+    opportunityReport,
+    bookings: inputs.currentBookings,
+    occupancySeries,
+    generatedAt: detectedAt,
   };
 }

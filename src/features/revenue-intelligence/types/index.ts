@@ -13,6 +13,10 @@ export type {
 } from "../domain/revenue-intelligence-report";
 
 export type {
+  RevenueIntelligence,
+} from "../domain/revenue-intelligence";
+
+export type {
   OpportunityAction,
   OpportunityActionType,
   OpportunityCategory,
