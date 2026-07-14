@@ -1,10 +1,18 @@
 export {
+  buildDailyBookingChanges,
+} from "./build-daily-booking-changes";
+
+export {
   buildExecutiveBrief,
 } from "./build-executive-brief";
 
 export {
   buildExecutivePriorities,
 } from "./build-executive-priorities";
+
+export {
+  buildIntelligenceChanges,
+} from "./build-intelligence-changes";
 
 export {
   buildPortfolioChanges,

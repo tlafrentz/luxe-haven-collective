@@ -1,5 +1,6 @@
-import type {
-  AnalyticsQueryParams,
+import {
+  getBookingActivity,
+  type AnalyticsQueryParams,
 } from "@/features/analytics";
 
 import {
@@ -15,12 +16,20 @@ import type {
 } from "../domain";
 
 import {
+  buildDailyBookingChanges,
+} from "./build-daily-booking-changes";
+
+import {
   buildExecutiveBrief,
 } from "./build-executive-brief";
 
 import {
   buildExecutivePriorities,
 } from "./build-executive-priorities";
+
+import {
+  buildIntelligenceChanges,
+} from "./build-intelligence-changes";
 
 import {
   buildPortfolioChanges,
@@ -46,13 +55,21 @@ export async function getExecutiveIntelligence({
 }: AnalyticsQueryParams & {
   generatedAt?: string;
 }): Promise<ExecutiveIntelligenceReport> {
-  const revenueIntelligence =
-    await getRevenueIntelligence({
+  const [
+    revenueIntelligence,
+    bookingActivity,
+  ] = await Promise.all([
+    getRevenueIntelligence({
       propertyId,
       startDate,
       endDate,
       detectedAt: generatedAt,
-    });
+    }),
+    getBookingActivity({
+      propertyId,
+      now: new Date(generatedAt),
+    }),
+  ]);
 
   const hpmPerformance =
     buildInitialHpmPerformance({
@@ -75,10 +92,21 @@ export async function getExecutiveIntelligence({
       revenueIntelligence,
     );
 
-  const changes =
-    buildPortfolioChanges(
+  const dailyChanges =
+    buildDailyBookingChanges(
+      bookingActivity,
+    );
+
+  const intelligenceChanges =
+    buildIntelligenceChanges(
       revenueIntelligence,
     );
+
+  const changes =
+    buildPortfolioChanges({
+      dailyChanges,
+      intelligenceChanges,
+    });
 
   const portfolioHealth =
     buildPortfolioHealth(

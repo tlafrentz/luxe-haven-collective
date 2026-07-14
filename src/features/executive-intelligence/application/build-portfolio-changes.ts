@@ -1,62 +1,35 @@
 import type {
-  RevenueIntelligence,
-} from "@/features/revenue-intelligence";
-
-import type {
   PortfolioChange,
 } from "../domain";
 
-export function buildPortfolioChanges(
-  intelligence: RevenueIntelligence,
-): PortfolioChange[] {
-  return intelligence.opportunityReport
-    .opportunities
-    .slice(0, 8)
-    .map((opportunity) => {
-      const isRisk =
-        opportunity.impact?.type ===
-          "revenue-at-risk" ||
-        opportunity.impact?.type ===
-          "operational-risk";
+type BuildPortfolioChangesParams = {
+  dailyChanges: PortfolioChange[];
+  intelligenceChanges: PortfolioChange[];
+  limit?: number;
+};
 
-      return {
-        id: `portfolio-change-${opportunity.id}`,
-        type: isRisk
-          ? "risk-detected"
-          : "opportunity-detected",
-        tone: isRisk
-          ? opportunity.severity === "high"
-            ? "negative"
-            : "warning"
-          : "informational",
-        pillar:
-          opportunity.category ===
-          "operations"
-            ? "operations"
-            : opportunity.category ===
-                "distribution"
-              ? "growth"
-              : "revenue",
-        propertyId: opportunity.propertyId,
-        title: opportunity.title,
-        description: opportunity.summary,
-        occurredAt: opportunity.detectedAt,
-        value:
-          opportunity.impact
-            ?.estimatedAmount ??
-          opportunity.impact
-            ?.estimatedPercentage,
-        unit:
-          opportunity.impact
-            ?.estimatedAmount !== undefined
-            ? "currency"
-            : opportunity.impact
-                  ?.estimatedPercentage !==
-                undefined
-              ? "percentage"
-              : undefined,
-        currency:
-          opportunity.impact?.currency,
-      } satisfies PortfolioChange;
-    });
+export function buildPortfolioChanges({
+  dailyChanges,
+  intelligenceChanges,
+  limit = 12,
+}: BuildPortfolioChangesParams): PortfolioChange[] {
+  const uniqueChanges =
+    new Map<string, PortfolioChange>();
+
+  for (const change of [
+    ...dailyChanges,
+    ...intelligenceChanges,
+  ]) {
+    uniqueChanges.set(change.id, change);
+  }
+
+  return [...uniqueChanges.values()]
+    .sort(
+      (left, right) =>
+        new Date(
+          right.occurredAt,
+        ).getTime() -
+        new Date(left.occurredAt).getTime(),
+    )
+    .slice(0, limit);
 }

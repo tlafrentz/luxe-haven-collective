@@ -5,12 +5,21 @@ export {
 } from "./calculations";
 
 export {
+  DEFAULT_ACTIVITY_TIME_ZONE,
+  filterBookingsCreatedOnLocalDate,
+  getBroadUtcActivityWindow,
+  getLocalDateString,
+  isTimestampOnLocalDate,
+} from "./daily-activity";
+
+export {
   generatePerformanceInsights,
 } from "./insights";
 
 export {
   getAnalyticsBookings,
   getAnalyticsProperties,
+  getBookingActivity,
   getRecentAnalyticsBookings,
 } from "./queries";
 

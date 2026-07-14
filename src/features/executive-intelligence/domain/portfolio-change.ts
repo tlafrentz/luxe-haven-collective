@@ -4,6 +4,8 @@ import type {
 
 export type PortfolioChangeType =
   | "booking-created"
+  | "guest-arriving"
+  | "guest-departing"
   | "booking-cancelled"
   | "revenue-increased"
   | "revenue-decreased"

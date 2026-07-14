@@ -149,3 +149,11 @@ export type OccupancyDataPoint = {
   availableNights: number;
   occupancyRate: number;
 };
+
+export type BookingActivity = {
+  createdToday: AnalyticsBooking[];
+  arrivingToday: AnalyticsBooking[];
+  departingToday: AnalyticsBooking[];
+  localDate: string;
+  generatedAt: string;
+};

@@ -3,6 +3,7 @@ export type {
   AnalyticsDateRange,
   AnalyticsProperty,
   AnalyticsQueryParams,
+  BookingActivity,
   BookingSourceMetric,
   DashboardAnalytics,
   DashboardComparison,

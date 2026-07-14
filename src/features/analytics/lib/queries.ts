@@ -1,10 +1,20 @@
-import { createClient } from "@/lib/supabase/server";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 import type {
   AnalyticsBooking,
   AnalyticsProperty,
   AnalyticsQueryParams,
+  BookingActivity,
 } from "../types";
+
+import {
+  DEFAULT_ACTIVITY_TIME_ZONE,
+  filterBookingsCreatedOnLocalDate,
+  getBroadUtcActivityWindow,
+  getLocalDateString,
+} from "./daily-activity";
 
 type RawBookingRow = {
   id: string;
@@ -24,18 +34,44 @@ type RawBookingRow = {
   created_at: string;
 };
 
-function toNumber(value: number | string | null): number {
+const BOOKING_SELECTION = `
+  id,
+  property_id,
+  guest_full_name,
+  check_in,
+  check_out,
+  guests,
+  nightly_rate,
+  cleaning_fee,
+  taxes,
+  service_fee,
+  total_amount,
+  status,
+  payment_status,
+  source,
+  created_at
+`;
+
+function toNumber(
+  value: number | string | null,
+): number {
   if (value === null) {
     return 0;
   }
 
   const parsedValue =
-    typeof value === "number" ? value : Number.parseFloat(value);
+    typeof value === "number"
+      ? value
+      : Number.parseFloat(value);
 
-  return Number.isFinite(parsedValue) ? parsedValue : 0;
+  return Number.isFinite(parsedValue)
+    ? parsedValue
+    : 0;
 }
 
-function mapBooking(row: RawBookingRow): AnalyticsBooking {
+function mapBooking(
+  row: RawBookingRow,
+): AnalyticsBooking {
   return {
     id: row.id,
     propertyId: row.property_id,
@@ -43,16 +79,30 @@ function mapBooking(row: RawBookingRow): AnalyticsBooking {
     checkIn: row.check_in,
     checkOut: row.check_out,
     guests: row.guests ?? 0,
-    nightlyRate: toNumber(row.nightly_rate),
-    cleaningFee: toNumber(row.cleaning_fee),
+    nightlyRate: toNumber(
+      row.nightly_rate,
+    ),
+    cleaningFee: toNumber(
+      row.cleaning_fee,
+    ),
     taxes: toNumber(row.taxes),
-    serviceFee: toNumber(row.service_fee),
-    totalAmount: toNumber(row.total_amount),
+    serviceFee: toNumber(
+      row.service_fee,
+    ),
+    totalAmount: toNumber(
+      row.total_amount,
+    ),
     status: row.status,
     paymentStatus: row.payment_status,
     source: row.source,
     createdAt: row.created_at,
   };
+}
+
+function mapBookingRows(
+  rows: RawBookingRow[] | null,
+): AnalyticsBooking[] {
+  return (rows ?? []).map(mapBooking);
 }
 
 export async function getAnalyticsProperties(): Promise<
@@ -64,7 +114,9 @@ export async function getAnalyticsProperties(): Promise<
     .from("properties")
     .select("id, name")
     .eq("status", "active")
-    .order("name", { ascending: true });
+    .order("name", {
+      ascending: true,
+    });
 
   if (error) {
     throw new Error(
@@ -82,42 +134,25 @@ export async function getAnalyticsBookings({
   propertyId,
   startDate,
   endDate,
-}: AnalyticsQueryParams): Promise<AnalyticsBooking[]> {
+}: AnalyticsQueryParams): Promise<
+  AnalyticsBooking[]
+> {
   const supabase = await createClient();
 
-  /*
-   * A booking overlaps the reporting period when:
-   *
-   * check_in < endDate
-   * check_out > startDate
-   *
-   * endDate is exclusive.
-   */
   let query = supabase
     .from("bookings")
-    .select(`
-      id,
-      property_id,
-      guest_full_name,
-      check_in,
-      check_out,
-      guests,
-      nightly_rate,
-      cleaning_fee,
-      taxes,
-      service_fee,
-      total_amount,
-      status,
-      payment_status,
-      source,
-      created_at
-    `)
+    .select(BOOKING_SELECTION)
     .lt("check_in", endDate)
     .gt("check_out", startDate)
-    .order("check_in", { ascending: true });
+    .order("check_in", {
+      ascending: true,
+    });
 
   if (propertyId) {
-    query = query.eq("property_id", propertyId);
+    query = query.eq(
+      "property_id",
+      propertyId,
+    );
   }
 
   const { data, error } = await query;
@@ -128,7 +163,9 @@ export async function getAnalyticsBookings({
     );
   }
 
-  return ((data ?? []) as RawBookingRow[]).map(mapBooking);
+  return mapBookingRows(
+    data as RawBookingRow[] | null,
+  );
 }
 
 export async function getRecentAnalyticsBookings({
@@ -142,28 +179,17 @@ export async function getRecentAnalyticsBookings({
 
   let query = supabase
     .from("bookings")
-    .select(`
-      id,
-      property_id,
-      guest_full_name,
-      check_in,
-      check_out,
-      guests,
-      nightly_rate,
-      cleaning_fee,
-      taxes,
-      service_fee,
-      total_amount,
-      status,
-      payment_status,
-      source,
-      created_at
-    `)
-    .order("created_at", { ascending: false })
+    .select(BOOKING_SELECTION)
+    .order("created_at", {
+      ascending: false,
+    })
     .limit(limit);
 
   if (propertyId) {
-    query = query.eq("property_id", propertyId);
+    query = query.eq(
+      "property_id",
+      propertyId,
+    );
   }
 
   const { data, error } = await query;
@@ -174,5 +200,137 @@ export async function getRecentAnalyticsBookings({
     );
   }
 
-  return ((data ?? []) as RawBookingRow[]).map(mapBooking);
+  return mapBookingRows(
+    data as RawBookingRow[] | null,
+  );
+}
+
+export async function getBookingActivity({
+  propertyId,
+  now = new Date(),
+  timeZone =
+    DEFAULT_ACTIVITY_TIME_ZONE,
+}: {
+  propertyId?: string | null;
+  now?: Date;
+  timeZone?: string;
+}): Promise<BookingActivity> {
+  const supabase = await createClient();
+
+  const localDate =
+    getLocalDateString(now, timeZone);
+
+  const broadWindow =
+    getBroadUtcActivityWindow(
+      localDate,
+    );
+
+  let createdQuery = supabase
+    .from("bookings")
+    .select(BOOKING_SELECTION)
+    .gte(
+      "created_at",
+      broadWindow.startAt,
+    )
+    .lt(
+      "created_at",
+      broadWindow.endAt,
+    )
+    .order("created_at", {
+      ascending: false,
+    });
+
+  let arrivalQuery = supabase
+    .from("bookings")
+    .select(BOOKING_SELECTION)
+    .eq("check_in", localDate)
+    .neq("status", "cancelled")
+    .order("check_in", {
+      ascending: true,
+    });
+
+  let departureQuery = supabase
+    .from("bookings")
+    .select(BOOKING_SELECTION)
+    .eq("check_out", localDate)
+    .neq("status", "cancelled")
+    .order("check_out", {
+      ascending: true,
+    });
+
+  if (propertyId) {
+    createdQuery = createdQuery.eq(
+      "property_id",
+      propertyId,
+    );
+
+    arrivalQuery = arrivalQuery.eq(
+      "property_id",
+      propertyId,
+    );
+
+    departureQuery =
+      departureQuery.eq(
+        "property_id",
+        propertyId,
+      );
+  }
+
+  const [
+    createdResult,
+    arrivalResult,
+    departureResult,
+  ] = await Promise.all([
+    createdQuery,
+    arrivalQuery,
+    departureQuery,
+  ]);
+
+  if (createdResult.error) {
+    throw new Error(
+      `Unable to load bookings created today: ${createdResult.error.message}`,
+    );
+  }
+
+  if (arrivalResult.error) {
+    throw new Error(
+      `Unable to load today's arrivals: ${arrivalResult.error.message}`,
+    );
+  }
+
+  if (departureResult.error) {
+    throw new Error(
+      `Unable to load today's departures: ${departureResult.error.message}`,
+    );
+  }
+
+  const createdCandidates =
+    mapBookingRows(
+      createdResult.data as
+        | RawBookingRow[]
+        | null,
+    );
+
+  return {
+    createdToday:
+      filterBookingsCreatedOnLocalDate({
+        bookings: createdCandidates,
+        localDate,
+        timeZone,
+      }),
+    arrivingToday:
+      mapBookingRows(
+        arrivalResult.data as
+          | RawBookingRow[]
+          | null,
+      ),
+    departingToday:
+      mapBookingRows(
+        departureResult.data as
+          | RawBookingRow[]
+          | null,
+      ),
+    localDate,
+    generatedAt: now.toISOString(),
+  };
 }

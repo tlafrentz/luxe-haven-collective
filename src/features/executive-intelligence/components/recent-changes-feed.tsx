@@ -38,12 +38,11 @@ export function RecentChangesFeed({
 }: RecentChangesFeedProps) {
   return (
     <section>
-      <SectionHeading
-        eyebrow="Current signals"
-        title="Recent changes"
-        description="New risks and opportunities surfaced during the latest intelligence run."
-      />
-
+<SectionHeading
+  eyebrow="Daily briefing"
+  title="What changed today"
+  description="Reservations created today, scheduled arrivals and departures, and new intelligence signals."
+/>
       <div className="mt-5 overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
         {changes.length > 0 ? (
           changes.map((change, index) => {

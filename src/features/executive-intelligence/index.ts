@@ -15,8 +15,10 @@ export {
 } from "./components";
 
 export {
+  buildDailyBookingChanges,
   buildExecutiveBrief,
   buildExecutivePriorities,
+  buildIntelligenceChanges,
   buildPortfolioChanges,
   buildPortfolioHealth,
   buildPortfolioSnapshot,

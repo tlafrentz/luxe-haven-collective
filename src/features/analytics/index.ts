@@ -18,6 +18,12 @@ export {
   getRecentAnalyticsBookings,
   isValidDateString,
   resolveAnalyticsDateRange,
+  DEFAULT_ACTIVITY_TIME_ZONE,
+  filterBookingsCreatedOnLocalDate,
+  getBookingActivity,
+  getBroadUtcActivityWindow,
+  getLocalDateString,
+  isTimestampOnLocalDate,
 } from "./lib";
 
 export type {
@@ -26,6 +32,7 @@ export type {
   AnalyticsProperty,
   AnalyticsQueryParams,
   BookingSourceMetric,
+  BookingActivity,
   DashboardAnalytics,
   DashboardComparison,
   DashboardMetrics,
