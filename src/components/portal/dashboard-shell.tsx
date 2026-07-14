@@ -20,11 +20,11 @@ type NavigationItem = {
 }
 
 const navigationItems: NavigationItem[] = [
-  {
-    label: "Overview",
-    href: "/dashboard",
-    abbreviation: "OV",
-  },
+{
+  label: "Revenue Intelligence",
+  href: "/dashboard/insights",
+  abbreviation: "RI",
+},
   {
     label: "Luxe Insights",
     href: "/dashboard/insights",
@@ -244,11 +244,10 @@ function getPageDetails(pathname: string) {
       title: "Bookings",
     }
   }
-
-  return {
-    eyebrow: "Hospitality operations",
-    title: "Dashboard",
-  }
+return {
+  eyebrow: "Executive intelligence",
+  title: "Command Center",
+}
 }
 
 export function DashboardShell({
