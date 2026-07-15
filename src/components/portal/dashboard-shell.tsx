@@ -20,15 +20,20 @@ type NavigationItem = {
 }
 
 const navigationItems: NavigationItem[] = [
-{
-  label: "Revenue Intelligence",
-  href: "/dashboard/insights",
-  abbreviation: "RI",
-},
   {
-    label: "Luxe Insights",
+    label: "Executive Overview",
+    href: "/dashboard",
+    abbreviation: "EO",
+  },
+  {
+    label: "Revenue Intelligence",
     href: "/dashboard/insights",
-    abbreviation: "LI",
+    abbreviation: "RI",
+  },
+  {
+    label: "Action Center",
+    href: "/dashboard/actions",
+    abbreviation: "AC",
   },
   {
     label: "Properties",
@@ -222,12 +227,18 @@ function Sidebar({
     </div>
   )
 }
-
 function getPageDetails(pathname: string) {
+  if (pathname.startsWith("/dashboard/actions")) {
+    return {
+      eyebrow: "Execution workspace",
+      title: "Action Center",
+    }
+  }
+
   if (pathname.startsWith("/dashboard/insights")) {
     return {
       eyebrow: "Performance intelligence",
-      title: "Luxe Insights",
+      title: "Revenue Intelligence",
     }
   }
 
@@ -244,10 +255,11 @@ function getPageDetails(pathname: string) {
       title: "Bookings",
     }
   }
-return {
-  eyebrow: "Executive intelligence",
-  title: "Command Center",
-}
+
+  return {
+    eyebrow: "Executive intelligence",
+    title: "Executive Overview",
+  }
 }
 
 export function DashboardShell({
