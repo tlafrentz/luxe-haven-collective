@@ -1,4 +1,8 @@
 import {
+  AcquisitionTypeSelector,
+} from "./acquisition-type-selector";
+
+import {
   FinancingCard,
 } from "./financing-card";
 
@@ -45,6 +49,10 @@ export function AcquisitionSetup() {
           </div>
         </div>
       </header>
+
+      <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+        <AcquisitionTypeSelector />
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <PropertyProfileCard />

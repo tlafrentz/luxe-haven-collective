@@ -1,0 +1,1 @@
+import {describe,it,expect} from "vitest";import {calculateMarketHealth} from "../calculate-market-health";describe("calculateMarketHealth",()=>{it("classifies scores",()=>{expect(calculateMarketHealth(90).status).toBe("excellent");expect(calculateMarketHealth(60).status).toBe("fair");});});

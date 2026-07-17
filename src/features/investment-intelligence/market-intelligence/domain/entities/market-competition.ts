@@ -1,0 +1,1 @@
+export interface MarketCompetition{avgRating:number;reviewVelocity:number;}

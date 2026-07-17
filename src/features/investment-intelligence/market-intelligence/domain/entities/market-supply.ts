@@ -1,0 +1,1 @@
+export interface MarketSupply{newListings:number;trend:"growing"|"stable"|"declining";}

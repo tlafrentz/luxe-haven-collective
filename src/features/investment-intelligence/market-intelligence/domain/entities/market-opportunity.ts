@@ -1,0 +1,1 @@
+export interface MarketOpportunity{title:string;expectedUpside:string;}

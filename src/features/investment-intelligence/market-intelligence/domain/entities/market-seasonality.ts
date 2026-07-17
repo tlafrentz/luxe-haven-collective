@@ -1,0 +1,1 @@
+export interface MarketSeasonality{peakMonths:string[];lowMonths:string[];}

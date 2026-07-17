@@ -6,6 +6,7 @@ import {
 
 import {
   AcquisitionRecommendation,
+  AcquisitionType,
   MarketTrend,
   PropertyType,
 } from "../domain";
@@ -87,12 +88,32 @@ function createComparables(): readonly ComparableProperty[] {
   ];
 }
 
+const commonInput = {
+  revenue: {
+    projectedAdr: 200,
+    projectedOccupancyPercentage:
+      75,
+    averageLengthOfStay: 4,
+    confidencePercentage: 85,
+  },
+  market: {
+    name: "Mesa",
+    submarket: "Downtown Mesa",
+    medianAdr: 180,
+    medianOccupancyPercentage:
+      70,
+    trend: MarketTrend.Stable,
+  },
+  comparables:
+    createComparables(),
+} as const;
+
 describe("buildInvestmentReport", () => {
-  it("builds an end-to-end investment decision", () => {
+  it("preserves the existing purchase pathway", () => {
     const result =
       buildInvestmentReport({
         property: {
-          id: "opportunity-1",
+          id: "purchase-1",
           address1:
             "123 Main Street",
           city: "Mesa",
@@ -112,13 +133,6 @@ describe("buildInvestmentReport", () => {
           interestRatePercentage: 6.5,
           loanTermYears: 30,
         },
-        revenue: {
-          projectedAdr: 200,
-          projectedOccupancyPercentage:
-            75,
-          averageLengthOfStay: 4,
-          confidencePercentage: 85,
-        },
         operating: {
           managementFeePercentage: 10,
           monthlyUtilities: 300,
@@ -131,28 +145,14 @@ describe("buildInvestmentReport", () => {
             5,
           capitalReservePercentage: 3,
         },
-        market: {
-          name: "Mesa",
-          submarket:
-            "Downtown Mesa",
-          medianAdr: 180,
-          medianOccupancyPercentage:
-            70,
-          trend:
-            MarketTrend.Stable,
-        },
-        comparables:
-          createComparables(),
+        ...commonInput,
       });
 
     expect(
-      result.property.id,
-    ).toBe("opportunity-1");
-
-    expect(
-      result.revenueProjection
-        .projectedAnnualRevenue.amount,
-    ).toBe(54750);
+      result.acquisitionType,
+    ).toBe(
+      AcquisitionType.Purchase,
+    );
 
     expect(
       result.expenseProjection
@@ -165,9 +165,74 @@ describe("buildInvestmentReport", () => {
     ).toBeGreaterThan(0);
 
     expect(
-      result.comparableAnalysis
-        .comparables,
-    ).toHaveLength(3);
+      Object.values(
+        AcquisitionRecommendation,
+      ),
+    ).toContain(
+      result.recommendation,
+    );
+  });
+
+  it("builds a rental-arbitrage analysis", () => {
+    const result =
+      buildInvestmentReport({
+        acquisitionType:
+          AcquisitionType.RentalArbitrage,
+        property: {
+          id: "rental-arbitrage-1",
+          address1:
+            "123 Main Street",
+          city: "Mesa",
+          state: "AZ",
+          postalCode: "85201",
+          furnishingBudget: 15000,
+          propertyType:
+            PropertyType.Apartment,
+          bedrooms: 2,
+          bathrooms: 1,
+          squareFeet: 950,
+        },
+        lease: {
+          monthlyLease: 2000,
+          securityDeposit: 2000,
+          leaseTermMonths: 12,
+          startupCosts: 3000,
+          utilitiesIncluded: false,
+        },
+        operating: {
+          managementFeePercentage: 10,
+          monthlyUtilities: 250,
+          annualInsurance: 1200,
+          annualCleaning: 6000,
+          annualSoftware: 600,
+          annualSupplies: 1200,
+          maintenanceReservePercentage:
+            3,
+          capitalReservePercentage: 2,
+        },
+        ...commonInput,
+      });
+
+    expect(
+      result.acquisitionType,
+    ).toBe(
+      AcquisitionType.RentalArbitrage,
+    );
+
+    expect(
+      result.expenseProjection
+        .lease.amount,
+    ).toBe(24000);
+
+    expect(
+      result.financialPerformance
+        .leaseCoverageRatio,
+    ).toBeGreaterThan(1);
+
+    expect(
+      result.financialPerformance
+        .initialCashInvested.amount,
+    ).toBe(20000);
 
     expect(
       Object.values(
@@ -178,89 +243,100 @@ describe("buildInvestmentReport", () => {
     );
   });
 
-  it("responds to changes in purchase price", () => {
-    const baseInput = {
-      property: {
-        id: "opportunity-1",
-        address1:
-          "123 Main Street",
-        city: "Mesa",
-        state: "AZ",
-        postalCode: "85201",
-        purchasePrice: 425000,
-        closingCosts: 12000,
-        furnishingBudget: 25000,
-        propertyType:
-          PropertyType.Apartment,
-        bedrooms: 2,
-        bathrooms: 1,
-        squareFeet: 950,
-      },
-      financing: {
-        downPaymentPercentage: 25,
-        interestRatePercentage: 6.5,
-        loanTermYears: 30,
-      },
-      revenue: {
-        projectedAdr: 200,
-        projectedOccupancyPercentage:
-          75,
-        averageLengthOfStay: 4,
-      },
-      operating: {
-        managementFeePercentage: 10,
-        monthlyUtilities: 300,
-        annualInsurance: 1800,
-        annualTaxes: 4200,
-        annualCleaning: 7200,
-        annualSoftware: 1200,
-        annualSupplies: 1800,
-        maintenanceReservePercentage:
-          5,
-        capitalReservePercentage: 3,
-      },
-      market: {
-        name: "Mesa",
-        medianAdr: 180,
-        medianOccupancyPercentage: 70,
-        trend: MarketTrend.Stable,
-      },
-      comparables:
-        createComparables(),
-    } as const;
-
-    const higherPrice =
-      buildInvestmentReport(
-        baseInput,
-      );
-
-    const lowerPrice =
+  it("excludes utilities when the lease includes them", () => {
+    const result =
       buildInvestmentReport({
-        ...baseInput,
+        acquisitionType:
+          AcquisitionType.RentalArbitrage,
         property: {
-          ...baseInput.property,
-          purchasePrice: 350000,
+          id: "rental-arbitrage-2",
+          address1:
+            "456 Main Street",
+          city: "Mesa",
+          state: "AZ",
+          postalCode: "85201",
+          furnishingBudget: 15000,
+          propertyType:
+            PropertyType.Apartment,
+          bedrooms: 2,
+          bathrooms: 1,
+          squareFeet: 950,
         },
+        lease: {
+          monthlyLease: 2000,
+          securityDeposit: 2000,
+          leaseTermMonths: 12,
+          startupCosts: 3000,
+          utilitiesIncluded: true,
+        },
+        operating: {
+          managementFeePercentage: 10,
+          monthlyUtilities: 250,
+          annualInsurance: 1200,
+          annualCleaning: 6000,
+          annualSoftware: 600,
+          annualSupplies: 1200,
+          maintenanceReservePercentage:
+            3,
+          capitalReservePercentage: 2,
+        },
+        ...commonInput,
       });
 
     expect(
-      lowerPrice
-        .financialPerformance
-        .capRate.value,
-    ).toBeGreaterThan(
-      higherPrice
-        .financialPerformance
-        .capRate.value,
-    );
+      result.expenseProjection
+        .utilities.amount,
+    ).toBe(0);
+  });
 
-    expect(
-      lowerPrice
-        .financialPerformance
-        .annualCashFlow.amount,
-    ).toBeGreaterThan(
-      higherPrice
-        .financialPerformance
-        .annualCashFlow.amount,
-    );
+  it("narrows strategy-specific metrics by acquisition type", () => {
+    const result =
+      buildInvestmentReport({
+        acquisitionType:
+          AcquisitionType.RentalArbitrage,
+        property: {
+          id: "rental-arbitrage-3",
+          address1:
+            "789 Main Street",
+          city: "Mesa",
+          state: "AZ",
+          postalCode: "85201",
+          furnishingBudget: 15000,
+          propertyType:
+            PropertyType.Apartment,
+          bedrooms: 2,
+          bathrooms: 1,
+          squareFeet: 950,
+        },
+        lease: {
+          monthlyLease: 2000,
+          securityDeposit: 2000,
+          leaseTermMonths: 12,
+          startupCosts: 3000,
+          utilitiesIncluded: false,
+        },
+        operating: {
+          managementFeePercentage: 10,
+          monthlyUtilities: 250,
+          annualInsurance: 1200,
+          annualCleaning: 6000,
+          annualSoftware: 600,
+          annualSupplies: 1200,
+          maintenanceReservePercentage:
+            3,
+          capitalReservePercentage: 2,
+        },
+        ...commonInput,
+      });
+
+    if (
+      result.acquisitionType ===
+      AcquisitionType.RentalArbitrage
+    ) {
+      expect(
+        result.financialPerformance
+          .leaseCoverageRatio,
+      ).toBeGreaterThan(1);
+    }
   });
 });

@@ -1,4 +1,5 @@
 import type {
+  AcquisitionType,
   ComparableAnalysis,
   ExpenseProjection,
   FinancialPerformance,
@@ -12,6 +13,10 @@ import type {
 import {
   assessInvestmentRisks,
 } from "./assess-investment-risks";
+
+import {
+  buildAcquisitionStrategy,
+} from "./build-acquisition-strategy";
 
 import {
   buildSupportingEvidence,
@@ -30,6 +35,8 @@ import type {
 } from "./investment-decision-policies";
 
 export type BuildInvestmentDecisionInput = {
+  readonly acquisitionType: AcquisitionType;
+
   readonly property: PropertyProfile;
   readonly market: MarketSnapshot;
   readonly assumptions: InvestmentAssumptions;
@@ -43,6 +50,7 @@ export type BuildInvestmentDecisionInput = {
 };
 
 export function buildInvestmentDecision({
+  acquisitionType,
   property,
   market,
   assumptions,
@@ -94,7 +102,22 @@ export function buildInvestmentDecision({
         policies?.recommendation,
     });
 
+  const strategy =
+    buildAcquisitionStrategy({
+      property,
+      assumptions,
+      revenueProjection,
+      expenseProjection,
+      financialPerformance,
+      score,
+      recommendation:
+        decision.recommendation,
+      risks: riskAssessment.risks,
+      supportingEvidence,
+    });
+
   return {
+    acquisitionType,
     property,
     market,
     assumptions,
@@ -109,5 +132,6 @@ export function buildInvestmentDecision({
       decision.recommendation,
     confidence:
       decision.confidence,
+    strategy,
   };
 }

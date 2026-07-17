@@ -1,0 +1,1 @@
+export interface MarketDemand{occupancy:number;adr:number;trend:"growing"|"stable"|"declining";}

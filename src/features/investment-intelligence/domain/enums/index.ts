@@ -1,4 +1,5 @@
 export * from "./acquisition-recommendation";
+export * from "./acquisition-type";
 export * from "./confidence-level";
 export * from "./evidence-direction";
 export * from "./evidence-type";

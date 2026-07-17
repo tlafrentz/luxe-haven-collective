@@ -1,9 +1,5 @@
-import {
-  AcquisitionRecommendation,
-  ConfidenceLevel,
-} from "./enums";
-
 import type {
+  AcquisitionStrategy,
   ComparableAnalysis,
   ExpenseProjection,
   FinancialPerformance,
@@ -16,7 +12,15 @@ import type {
   SupportingEvidence,
 } from "./entities";
 
+import type {
+  AcquisitionRecommendation,
+  AcquisitionType,
+  ConfidenceLevel,
+} from "./enums";
+
 export interface InvestmentDecision {
+  readonly acquisitionType: AcquisitionType;
+
   readonly property: PropertyProfile;
   readonly market: MarketSnapshot;
   readonly assumptions: InvestmentAssumptions;
@@ -24,14 +28,17 @@ export interface InvestmentDecision {
   readonly revenueProjection: RevenueProjection;
   readonly expenseProjection: ExpenseProjection;
   readonly financialPerformance: FinancialPerformance;
-
   readonly comparableAnalysis: ComparableAnalysis;
-
-  readonly risks: readonly InvestmentRisk[];
-  readonly supportingEvidence: readonly SupportingEvidence[];
 
   readonly score: InvestmentScore;
 
-  readonly recommendation: AcquisitionRecommendation;
+  readonly risks: readonly InvestmentRisk[];
+  readonly supportingEvidence:
+    readonly SupportingEvidence[];
+
+  readonly recommendation:
+    AcquisitionRecommendation;
   readonly confidence: ConfidenceLevel;
+
+  readonly strategy: AcquisitionStrategy;
 }

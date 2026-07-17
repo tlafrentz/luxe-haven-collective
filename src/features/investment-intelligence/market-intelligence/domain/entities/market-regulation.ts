@@ -1,0 +1,1 @@
+export interface MarketRegulation{risk:"low"|"medium"|"high";summary:string;}

@@ -1,0 +1,1 @@
+export function calculateMarketHealth(score:number){return{score,status:score>=85?"excellent":score>=70?"good":score>=50?"fair":"poor",summary:"Derived from demand, supply, regulation and competition."} as const;}

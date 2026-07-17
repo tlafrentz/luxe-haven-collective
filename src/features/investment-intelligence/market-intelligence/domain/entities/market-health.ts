@@ -1,0 +1,1 @@
+export interface MarketHealth{score:number;status:"excellent"|"good"|"fair"|"poor";summary:string;}

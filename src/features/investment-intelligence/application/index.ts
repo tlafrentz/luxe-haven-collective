@@ -8,6 +8,16 @@ export type {
 } from "./assess-investment-risks";
 
 export {
+  buildAcquisitionStrategy,
+  DEFAULT_ACQUISITION_STRATEGY_POLICY,
+} from "./build-acquisition-strategy";
+
+export type {
+  AcquisitionStrategyPolicy,
+  BuildAcquisitionStrategyInput,
+} from "./build-acquisition-strategy";
+
+export {
   buildInvestmentDecision,
 } from "./build-investment-decision";
 

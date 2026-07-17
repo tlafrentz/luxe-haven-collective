@@ -6,6 +6,7 @@ import {
 
 import {
   AcquisitionRecommendation,
+  AcquisitionType,
   ConfidenceLevel,
   EvidenceDirection,
   MarketTrend,
@@ -192,6 +193,8 @@ describe("buildInvestmentDecision", () => {
   it("builds a complete explainable investment decision", () => {
     const result =
       buildInvestmentDecision({
+        acquisitionType:
+          AcquisitionType.Purchase,
         property:
           createPropertyProfile(),
         market:
@@ -207,6 +210,10 @@ describe("buildInvestmentDecision", () => {
         comparableAnalysis:
           createComparableAnalysis(),
       });
+
+    expect(result.acquisitionType).toBe(
+      AcquisitionType.Purchase,
+    );
 
     expect(result.property.id).toBe(
       "property-1",
@@ -244,6 +251,8 @@ describe("buildInvestmentDecision", () => {
   it("produces a Pass recommendation when critical risks exist", () => {
     const result =
       buildInvestmentDecision({
+        acquisitionType:
+          AcquisitionType.Purchase,
         property:
           createPropertyProfile(),
         market:
@@ -290,6 +299,8 @@ describe("buildInvestmentDecision", () => {
   it("returns Wait when analysis confidence is weak", () => {
     const result =
       buildInvestmentDecision({
+        acquisitionType:
+          AcquisitionType.Purchase,
         property:
           createPropertyProfile(),
         market:
@@ -327,6 +338,8 @@ describe("buildInvestmentDecision", () => {
   it("supports custom policies across the complete decision pipeline", () => {
     const result =
       buildInvestmentDecision({
+        acquisitionType:
+          AcquisitionType.Purchase,
         property:
           createPropertyProfile(),
         market:
@@ -403,6 +416,8 @@ describe("buildInvestmentDecision", () => {
 
   it("is deterministic for identical analyzed inputs", () => {
     const input = {
+      acquisitionType:
+        AcquisitionType.Purchase,
       property:
         createPropertyProfile(),
       market:

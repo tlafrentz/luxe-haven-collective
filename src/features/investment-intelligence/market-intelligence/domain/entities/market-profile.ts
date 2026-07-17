@@ -1,0 +1,1 @@
+export interface MarketProfile{market:string;submarket?:string;state:string;}

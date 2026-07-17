@@ -52,7 +52,7 @@ describe("calculateAnnualDebtService", () => {
         loanTermYears: 30,
       }),
     ).toThrow(
-      "Down payment percentage must not exceed 100.",
+      "downPaymentPercentage cannot exceed 100.",
     );
   });
 
@@ -65,7 +65,7 @@ describe("calculateAnnualDebtService", () => {
         loanTermYears: 0,
       }),
     ).toThrow(
-      "Loan term must be greater than zero when financing is used.",
+      "loanTermYears must be a positive integer.",
     );
   });
 });

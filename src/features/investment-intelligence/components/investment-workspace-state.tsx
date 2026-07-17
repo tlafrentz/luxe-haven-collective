@@ -15,6 +15,7 @@ import type {
 } from "react";
 
 import {
+  AcquisitionType,
   MarketTrend,
   PropertyType,
 } from "../domain";
@@ -22,13 +23,24 @@ import {
 import type {
   ComparableProperty,
   InvestmentDecision,
+  RentalArbitrageInvestmentAnalysis,
 } from "../domain";
 
 import {
   buildInvestmentReport,
 } from "../services";
 
+import {
+  buildInvestmentWorkspaceReadiness,
+} from "./investment-workspace-readiness";
+
+import type {
+  DecisionReadinessGroup,
+} from "./investment-workspace-readiness";
+
 export type InvestmentWorkspaceValues = {
+  readonly acquisitionType: AcquisitionType;
+
   readonly address1: string;
   readonly city: string;
   readonly state: string;
@@ -47,6 +59,12 @@ export type InvestmentWorkspaceValues = {
   readonly interestRatePercentage: number;
   readonly loanTermYears: number;
 
+  readonly monthlyLease: number;
+  readonly securityDeposit: number;
+  readonly leaseTermMonths: number;
+  readonly startupCosts: number;
+  readonly utilitiesIncluded: boolean;
+
   readonly projectedAdr: number;
   readonly projectedOccupancyPercentage: number;
   readonly averageLengthOfStay: number;
@@ -62,28 +80,25 @@ export type InvestmentWorkspaceValues = {
   readonly capitalReservePercentage: number;
 };
 
-export type DecisionReadinessGroup = {
-  readonly id:
-    | "property"
-    | "financing"
-    | "revenue"
-    | "operating";
-  readonly label: string;
-  readonly isComplete: boolean;
-};
+export type WorkspaceInvestmentAnalysis =
+  | InvestmentDecision
+  | RentalArbitrageInvestmentAnalysis;
 
 type InvestmentWorkspaceState = {
   values: InvestmentWorkspaceValues;
   setValues: Dispatch<
     SetStateAction<InvestmentWorkspaceValues>
   >;
+  setAcquisitionType: (
+    acquisitionType: AcquisitionType,
+  ) => void;
 
   readinessGroups: readonly DecisionReadinessGroup[];
   completedReadinessCount: number;
   totalReadinessCount: number;
   isReadyForAnalysis: boolean;
 
-  decision: InvestmentDecision | null;
+  decision: WorkspaceInvestmentAnalysis | null;
   isAnalyzing: boolean;
   analysisError: string | null;
 
@@ -91,6 +106,9 @@ type InvestmentWorkspaceState = {
 };
 
 const DEFAULT_VALUES: InvestmentWorkspaceValues = {
+  acquisitionType:
+    AcquisitionType.Purchase,
+
   address1: "123 Main Street",
   city: "Mesa",
   state: "AZ",
@@ -108,6 +126,12 @@ const DEFAULT_VALUES: InvestmentWorkspaceValues = {
   downPaymentPercentage: 25,
   interestRatePercentage: 6.5,
   loanTermYears: 30,
+
+  monthlyLease: 2400,
+  securityDeposit: 2400,
+  leaseTermMonths: 12,
+  startupCosts: 5000,
+  utilitiesIncluded: false,
 
   projectedAdr: 200,
   projectedOccupancyPercentage: 75,
@@ -203,121 +227,6 @@ function createWorkspaceComparables(
   ];
 }
 
-function isPositiveNumber(
-  value: number,
-): boolean {
-  return Number.isFinite(value) && value > 0;
-}
-
-function isNonNegativeNumber(
-  value: number,
-): boolean {
-  return Number.isFinite(value) && value >= 0;
-}
-
-function isValidPercentage(
-  value: number,
-  allowZero = true,
-): boolean {
-  return (
-    Number.isFinite(value) &&
-    value >= (allowZero ? 0 : Number.EPSILON) &&
-    value <= 100
-  );
-}
-
-function buildReadinessGroups(
-  values: InvestmentWorkspaceValues,
-): readonly DecisionReadinessGroup[] {
-  return [
-    {
-      id: "property",
-      label: "Property details",
-      isComplete:
-        Boolean(values.address1.trim()) &&
-        Boolean(values.city.trim()) &&
-        Boolean(values.state.trim()) &&
-        Boolean(values.postalCode.trim()) &&
-        isPositiveNumber(
-          values.purchasePrice,
-        ) &&
-        isPositiveNumber(values.bedrooms) &&
-        isPositiveNumber(values.bathrooms) &&
-        isPositiveNumber(
-          values.squareFeet,
-        ),
-    },
-    {
-      id: "financing",
-      label: "Financing structure",
-      isComplete:
-        isValidPercentage(
-          values.downPaymentPercentage,
-          false,
-        ) &&
-        isPositiveNumber(
-          values.interestRatePercentage,
-        ) &&
-        isPositiveNumber(
-          values.loanTermYears,
-        ) &&
-        isNonNegativeNumber(
-          values.closingCosts,
-        ) &&
-        isNonNegativeNumber(
-          values.furnishingBudget,
-        ),
-    },
-    {
-      id: "revenue",
-      label: "Revenue assumptions",
-      isComplete:
-        isPositiveNumber(
-          values.projectedAdr,
-        ) &&
-        isValidPercentage(
-          values.projectedOccupancyPercentage,
-          false,
-        ) &&
-        isPositiveNumber(
-          values.averageLengthOfStay,
-        ),
-    },
-    {
-      id: "operating",
-      label: "Operating assumptions",
-      isComplete:
-        isValidPercentage(
-          values.managementFeePercentage,
-        ) &&
-        isNonNegativeNumber(
-          values.monthlyUtilities,
-        ) &&
-        isNonNegativeNumber(
-          values.annualInsurance,
-        ) &&
-        isNonNegativeNumber(
-          values.annualTaxes,
-        ) &&
-        isNonNegativeNumber(
-          values.annualCleaning,
-        ) &&
-        isNonNegativeNumber(
-          values.annualSoftware,
-        ) &&
-        isNonNegativeNumber(
-          values.annualSupplies,
-        ) &&
-        isValidPercentage(
-          values.maintenanceReservePercentage,
-        ) &&
-        isValidPercentage(
-          values.capitalReservePercentage,
-        ),
-    },
-  ];
-}
-
 export function InvestmentWorkspaceStateProvider({
   children,
 }: {
@@ -329,7 +238,7 @@ export function InvestmentWorkspaceStateProvider({
     );
 
   const [decision, setDecision] =
-    useState<InvestmentDecision | null>(
+    useState<WorkspaceInvestmentAnalysis | null>(
       null,
     );
 
@@ -339,10 +248,29 @@ export function InvestmentWorkspaceStateProvider({
   const [analysisError, setAnalysisError] =
     useState<string | null>(null);
 
+  const setAcquisitionType =
+    useCallback(
+      (
+        acquisitionType:
+          AcquisitionType,
+      ) => {
+        setValues((current) => ({
+          ...current,
+          acquisitionType,
+        }));
+
+        setDecision(null);
+        setAnalysisError(null);
+      },
+      [],
+    );
+
   const readinessGroups =
     useMemo(
       () =>
-        buildReadinessGroups(values),
+        buildInvestmentWorkspaceReadiness(
+          values,
+        ),
       [values],
     );
 
@@ -376,8 +304,107 @@ export function InvestmentWorkspaceStateProvider({
           window.setTimeout(resolve, 700),
         );
 
+        const sharedInput = {
+          revenue: {
+            projectedAdr:
+              values.projectedAdr,
+            projectedOccupancyPercentage:
+              values
+                .projectedOccupancyPercentage,
+            averageLengthOfStay:
+              values
+                .averageLengthOfStay,
+            confidencePercentage: 80,
+          },
+          market: {
+            name:
+              values.city || "Market",
+            submarket:
+              values.address1,
+            medianAdr: 180,
+            medianOccupancyPercentage:
+              70,
+            trend:
+              MarketTrend.Stable,
+          },
+          comparables:
+            createWorkspaceComparables(
+              values,
+            ),
+        } as const;
+
+        if (
+          values.acquisitionType ===
+          AcquisitionType.RentalArbitrage
+        ) {
+          const report =
+            buildInvestmentReport({
+              acquisitionType:
+                AcquisitionType.RentalArbitrage,
+              property: {
+                id: "workspace-opportunity",
+                address1:
+                  values.address1,
+                city: values.city,
+                state: values.state,
+                postalCode:
+                  values.postalCode,
+                furnishingBudget:
+                  values.furnishingBudget,
+                propertyType:
+                  values.propertyType,
+                bedrooms:
+                  values.bedrooms,
+                bathrooms:
+                  values.bathrooms,
+                squareFeet:
+                  values.squareFeet,
+              },
+              lease: {
+                monthlyLease:
+                  values.monthlyLease,
+                securityDeposit:
+                  values.securityDeposit,
+                leaseTermMonths:
+                  values.leaseTermMonths,
+                startupCosts:
+                  values.startupCosts,
+                utilitiesIncluded:
+                  values.utilitiesIncluded,
+              },
+              operating: {
+                managementFeePercentage:
+                  values
+                    .managementFeePercentage,
+                monthlyUtilities:
+                  values.monthlyUtilities,
+                annualInsurance:
+                  values.annualInsurance,
+                annualCleaning:
+                  values.annualCleaning,
+                annualSoftware:
+                  values.annualSoftware,
+                annualSupplies:
+                  values.annualSupplies,
+                maintenanceReservePercentage:
+                  values
+                    .maintenanceReservePercentage,
+                capitalReservePercentage:
+                  values
+                    .capitalReservePercentage,
+              },
+              ...sharedInput,
+            });
+
+          setDecision(report);
+
+          return;
+        }
+
         const report =
           buildInvestmentReport({
+            acquisitionType:
+              AcquisitionType.Purchase,
             property: {
               id: "workspace-opportunity",
               address1:
@@ -411,17 +438,6 @@ export function InvestmentWorkspaceStateProvider({
               loanTermYears:
                 values.loanTermYears,
             },
-            revenue: {
-              projectedAdr:
-                values.projectedAdr,
-              projectedOccupancyPercentage:
-                values
-                  .projectedOccupancyPercentage,
-              averageLengthOfStay:
-                values
-                  .averageLengthOfStay,
-              confidencePercentage: 80,
-            },
             operating: {
               managementFeePercentage:
                 values
@@ -445,21 +461,7 @@ export function InvestmentWorkspaceStateProvider({
                 values
                   .capitalReservePercentage,
             },
-            market: {
-              name:
-                values.city || "Market",
-              submarket:
-                values.address1,
-              medianAdr: 180,
-              medianOccupancyPercentage:
-                70,
-              trend:
-                MarketTrend.Stable,
-            },
-            comparables:
-              createWorkspaceComparables(
-                values,
-              ),
+            ...sharedInput,
           });
 
         setDecision(report);
@@ -484,6 +486,7 @@ export function InvestmentWorkspaceStateProvider({
       () => ({
         values,
         setValues,
+        setAcquisitionType,
         readinessGroups,
         completedReadinessCount,
         totalReadinessCount,
@@ -495,6 +498,7 @@ export function InvestmentWorkspaceStateProvider({
       }),
       [
         values,
+        setAcquisitionType,
         readinessGroups,
         completedReadinessCount,
         totalReadinessCount,
