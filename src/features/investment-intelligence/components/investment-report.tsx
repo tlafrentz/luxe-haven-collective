@@ -32,23 +32,23 @@ function isRentalArbitrageAnalysis(
 }
 
 export function InvestmentReport({
-  decision,
+  analysis,
 }: {
-  decision: InvestmentReportAnalysis;
+  analysis: InvestmentReportAnalysis;
 }) {
   if (
-    isRentalArbitrageAnalysis(decision)
+    isRentalArbitrageAnalysis(analysis)
   ) {
     return (
       <RentalArbitrageInvestmentReport
-        analysis={decision}
+        analysis={analysis}
       />
     );
   }
 
   return (
     <PurchaseInvestmentReport
-      decision={decision}
+      decision={analysis}
     />
   );
 }

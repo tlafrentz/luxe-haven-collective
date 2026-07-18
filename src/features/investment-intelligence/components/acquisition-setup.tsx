@@ -29,23 +29,23 @@ export function AcquisitionSetup() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-              Phase 1
+              Underwriting assumptions
             </p>
 
             <h2
               id="acquisition-setup-title"
               className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950"
             >
-              Acquisition setup
+              Build the operating case
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Everything below defines the opportunity and the operating case.
+              Define the property, capital structure, revenue assumptions, and operating plan used to evaluate this opportunity.
             </p>
           </div>
 
           <div className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 shadow-sm">
-            Edit mode
+            Editable assumptions
           </div>
         </div>
       </header>

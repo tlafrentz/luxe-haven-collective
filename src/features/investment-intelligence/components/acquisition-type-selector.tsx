@@ -14,7 +14,7 @@ const OPTIONS = [
     eyebrow: "Own the asset",
     title: "Purchase",
     description:
-      "Evaluate acquisition price, financing, operating performance, and long-term investment returns.",
+      "Analyze an acquisition using purchase price, financing, operating costs, and projected investment returns.",
   },
   {
     value:
@@ -22,7 +22,7 @@ const OPTIONS = [
     eyebrow: "Control the asset",
     title: "Rental arbitrage",
     description:
-      "Evaluate lease economics, startup capital, operating margin, and cash-on-cash performance.",
+      "Evaluate leasing, furnishing, and operating a property without purchasing the underlying asset.",
   },
 ] as const;
 
@@ -40,8 +40,8 @@ export function AcquisitionTypeSelector() {
 
       <p className="max-w-3xl text-sm leading-6 text-neutral-600">
         Choose how you intend to control the property. The selected strategy
-        determines the capital structure and underwriting model used by the
-        platform.
+        determines the capital structure, required assumptions, and
+        underwriting model used by the platform.
       </p>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -114,20 +114,6 @@ export function AcquisitionTypeSelector() {
                   >
                     {option.description}
                   </span>
-
-                  {option.value ===
-                  AcquisitionType.RentalArbitrage ? (
-                    <span
-                      className={[
-                        "mt-4 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
-                        isSelected
-                          ? "bg-white/10 text-white/80"
-                          : "bg-neutral-100 text-neutral-600",
-                      ].join(" ")}
-                    >
-                      Underwriting model coming next
-                    </span>
-                  ) : null}
                 </span>
               </div>
             </label>

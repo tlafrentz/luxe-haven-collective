@@ -98,11 +98,12 @@ type InvestmentWorkspaceState = {
   totalReadinessCount: number;
   isReadyForAnalysis: boolean;
 
-  decision: WorkspaceInvestmentAnalysis | null;
+  analysis: WorkspaceInvestmentAnalysis | null;
+  hasStaleAnalysis: boolean;
   isAnalyzing: boolean;
   analysisError: string | null;
 
-  generateInvestmentDecision: () => Promise<void>;
+  analyzeInvestment: () => Promise<void>;
 };
 
 const DEFAULT_VALUES: InvestmentWorkspaceValues = {
@@ -232,21 +233,36 @@ export function InvestmentWorkspaceStateProvider({
 }: {
   children: ReactNode;
 }) {
-  const [values, setValues] =
+  const [values, setWorkspaceValues] =
     useState<InvestmentWorkspaceValues>(
       DEFAULT_VALUES,
     );
 
-  const [decision, setDecision] =
+  const [analysis, setAnalysis] =
     useState<WorkspaceInvestmentAnalysis | null>(
       null,
     );
+
+  const [
+    isAnalysisStale,
+    setIsAnalysisStale,
+  ] = useState(false);
 
   const [isAnalyzing, setIsAnalyzing] =
     useState(false);
 
   const [analysisError, setAnalysisError] =
     useState<string | null>(null);
+
+  const setValues = useCallback<
+    Dispatch<
+      SetStateAction<InvestmentWorkspaceValues>
+    >
+  >((nextValues) => {
+    setWorkspaceValues(nextValues);
+    setIsAnalysisStale(true);
+    setAnalysisError(null);
+  }, []);
 
   const setAcquisitionType =
     useCallback(
@@ -258,11 +274,8 @@ export function InvestmentWorkspaceStateProvider({
           ...current,
           acquisitionType,
         }));
-
-        setDecision(null);
-        setAnalysisError(null);
       },
-      [],
+      [setValues],
     );
 
   const readinessGroups =
@@ -286,11 +299,15 @@ export function InvestmentWorkspaceStateProvider({
     completedReadinessCount ===
     totalReadinessCount;
 
-  const generateInvestmentDecision =
+  const hasStaleAnalysis =
+    analysis !== null &&
+    isAnalysisStale;
+
+  const analyzeInvestment =
     useCallback(async () => {
       if (!isReadyForAnalysis) {
         setAnalysisError(
-          "Complete all required acquisition assumptions before generating the decision.",
+          "Complete all required acquisition assumptions before analyzing the investment.",
         );
 
         return;
@@ -396,7 +413,8 @@ export function InvestmentWorkspaceStateProvider({
               ...sharedInput,
             });
 
-          setDecision(report);
+          setAnalysis(report);
+          setIsAnalysisStale(false);
 
           return;
         }
@@ -464,10 +482,9 @@ export function InvestmentWorkspaceStateProvider({
             ...sharedInput,
           });
 
-        setDecision(report);
+        setAnalysis(report);
+        setIsAnalysisStale(false);
       } catch (error) {
-        setDecision(null);
-
         setAnalysisError(
           error instanceof Error
             ? error.message
@@ -491,22 +508,25 @@ export function InvestmentWorkspaceStateProvider({
         completedReadinessCount,
         totalReadinessCount,
         isReadyForAnalysis,
-        decision,
+        analysis,
+        hasStaleAnalysis,
         isAnalyzing,
         analysisError,
-        generateInvestmentDecision,
+        analyzeInvestment,
       }),
       [
         values,
+        setValues,
         setAcquisitionType,
         readinessGroups,
         completedReadinessCount,
         totalReadinessCount,
         isReadyForAnalysis,
-        decision,
+        analysis,
+        hasStaleAnalysis,
         isAnalyzing,
         analysisError,
-        generateInvestmentDecision,
+        analyzeInvestment,
       ],
     );
 

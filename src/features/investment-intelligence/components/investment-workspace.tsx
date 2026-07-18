@@ -7,12 +7,12 @@ import {
 } from "./decision-readiness-card";
 
 import {
-  GenerateInvestmentDecisionCard,
-} from "./generate-investment-decision-card";
+  GenerateInvestmentAnalysisCard,
+} from "./generate-investment-analysis-card";
 
 import {
-  InvestmentDecisionPreview,
-} from "./investment-decision-preview";
+  InvestmentAnalysisResults,
+} from "./investment-analysis-results";
 
 import {
   InvestmentWorkspaceHeader,
@@ -26,6 +26,10 @@ import {
   InvestmentWorkspaceStateProvider,
 } from "./investment-workspace-state";
 
+import {
+  LiveInvestmentSummary,
+} from "./live-investment-summary";
+
 export function InvestmentWorkspace() {
   return (
     <InvestmentWorkspaceStateProvider>
@@ -37,45 +41,54 @@ export function InvestmentWorkspace() {
 
           <AcquisitionSetup />
 
-          <section className="space-y-6">
+          <LiveInvestmentSummary />
+
+          <section
+            id="analysis"
+            className="space-y-6 scroll-mt-6"
+          >
             <header className="border-b border-neutral-200 pb-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                Phase 2
+                Investment analysis
               </p>
 
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
-                Generate the decision
+                Analyze the investment
               </h2>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Confirm the opportunity is ready, then let the platform
-                build the complete acquisition case.
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">
+                Confirm the workspace is ready, then generate the complete
+                analysis across financial performance, market position,
+                risks, evidence, and acquisition strategy.
               </p>
             </header>
 
             <div className="grid gap-8 xl:grid-cols-[minmax(0,0.7fr)_minmax(0,1.5fr)]">
               <DecisionReadinessCard />
-              <GenerateInvestmentDecisionCard />
+              <GenerateInvestmentAnalysisCard />
             </div>
           </section>
 
-          <section className="space-y-6">
+          <section
+            id="results"
+            className="space-y-6 scroll-mt-6"
+          >
             <header className="border-b border-neutral-200 pb-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                Phase 3
+                Results
               </p>
 
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
-                Investment decision report
+                Explainable investment analysis
               </h2>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                The recommendation, supporting analysis, evidence, and
-                risks will appear below after evaluation.
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">
+                Review the recommendation, score, financial performance,
+                supporting evidence, risks, scenarios, and failure points.
               </p>
             </header>
 
-            <InvestmentDecisionPreview />
+            <InvestmentAnalysisResults />
           </section>
         </div>
       </main>

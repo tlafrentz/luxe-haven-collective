@@ -28,103 +28,155 @@ export function RevenueAssumptionsCard() {
   } = useInvestmentWorkspaceState();
 
   return (
-    <AcquisitionSectionCard
-      eyebrow="Revenue"
-      title="Model the revenue opportunity."
-      description="Define the ADR, occupancy, and stay assumptions used to forecast annual property revenue."
-      icon={
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-        >
-          <path d="M4 19V9" />
-          <path d="M10 19V5" />
-          <path d="M16 19v-7" />
-          <path d="M22 19V3" />
-          <path d="M3 19h20" />
-        </svg>
-      }
-    >
-      <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
-        <label>
-          <span className="text-xs font-medium text-neutral-500">
-            Projected ADR
-          </span>
+    <div id="revenue">
+      <AcquisitionSectionCard
+        eyebrow="Revenue model"
+        title="Build the top-line operating case."
+        description="Set the rate, occupancy, and stay assumptions used to project annual revenue and operating demand."
+        icon={
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+          >
+            <path d="M4 19V9" />
+            <path d="M10 19V5" />
+            <path d="M16 19v-7" />
+            <path d="M22 19V3" />
+            <path d="M2 19h22" />
+          </svg>
+        }
+      >
+        <div className="space-y-7">
+          <section
+            aria-labelledby="revenue-performance-heading"
+            className="space-y-4"
+          >
+            <div>
+              <h4
+                id="revenue-performance-heading"
+                className="text-sm font-semibold text-neutral-950"
+              >
+                Performance assumptions
+              </h4>
 
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={values.projectedAdr}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                projectedAdr:
-                  parseNumber(
-                    event.target.value,
-                  ),
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
+              <p className="mt-1 text-xs leading-5 text-neutral-500">
+                Use stabilized expectations rather than peak-season targets.
+              </p>
+            </div>
 
-        <label>
-          <span className="text-xs font-medium text-neutral-500">
-            Projected occupancy %
-          </span>
+            <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Average daily rate
+                </span>
 
-          <input
-            type="number"
-            min="0"
-            max="100"
-            step="0.5"
-            value={
-              values
-                .projectedOccupancyPercentage
-            }
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                projectedOccupancyPercentage:
-                  parseNumber(
-                    event.target.value,
-                  ),
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={values.projectedAdr}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      projectedAdr:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
 
-        <label className="sm:col-span-2">
-          <span className="text-xs font-medium text-neutral-500">
-            Average length of stay
-          </span>
+                <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
+                  Expected blended nightly rate before taxes and fees.
+                </span>
+              </label>
 
-          <input
-            type="number"
-            min="1"
-            step="0.5"
-            value={
-              values.averageLengthOfStay
-            }
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                averageLengthOfStay:
-                  parseNumber(
-                    event.target.value,
-                  ),
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
-      </div>
-    </AcquisitionSectionCard>
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Occupancy %
+                </span>
+
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={
+                    values
+                      .projectedOccupancyPercentage
+                  }
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      projectedOccupancyPercentage:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+
+                <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
+                  Expected share of available nights booked annually.
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section
+            aria-labelledby="revenue-stay-pattern-heading"
+            className="border-t border-neutral-200 pt-6"
+          >
+            <div>
+              <h4
+                id="revenue-stay-pattern-heading"
+                className="text-sm font-semibold text-neutral-950"
+              >
+                Stay pattern
+              </h4>
+
+              <p className="mt-1 text-xs leading-5 text-neutral-500">
+                Define the average reservation length used to estimate booking
+                frequency and cleaning turnover.
+              </p>
+            </div>
+
+            <label className="mt-4 block">
+              <span className="text-xs font-medium text-neutral-500">
+                Average length of stay
+              </span>
+
+              <input
+                type="number"
+                min="1"
+                step="0.5"
+                value={
+                  values.averageLengthOfStay
+                }
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    averageLengthOfStay:
+                      parseNumber(
+                        event.target.value,
+                      ),
+                  }))
+                }
+                className={INPUT_CLASS_NAME}
+              />
+
+              <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
+                Enter the expected number of nights per completed reservation.
+              </span>
+            </label>
+          </section>
+        </div>
+      </AcquisitionSectionCard>
+    </div>
   );
 }

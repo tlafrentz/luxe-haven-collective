@@ -39,18 +39,18 @@ export function FinancingCard() {
     <AcquisitionSectionCard
       eyebrow={
         isPurchase
-          ? "Financing"
+          ? "Capital structure"
           : "Lease structure"
       }
       title={
         isPurchase
-          ? "Model the capital structure."
+          ? "Model the acquisition capital."
           : "Model the lease commitment."
       }
       description={
         isPurchase
-          ? "Define how the acquisition will be financed and how much cash must be committed."
-          : "Define the recurring lease obligation and the upfront capital required to launch the property."
+          ? "Define the financing terms and upfront cash required to acquire and prepare the property."
+          : "Define the lease obligation and upfront cash required to control, furnish, and launch the property."
       }
       icon={
         <svg
@@ -70,267 +70,357 @@ export function FinancingCard() {
       }
     >
       {isPurchase ? (
-        <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
-          <label>
-            <span className="text-xs font-medium text-neutral-500">
-              Down payment %
-            </span>
+        <div className="space-y-7">
+          <section
+            aria-labelledby="purchase-financing-heading"
+            className="space-y-4"
+          >
+            <div>
+              <h4
+                id="purchase-financing-heading"
+                className="text-sm font-semibold text-neutral-950"
+              >
+                Financing terms
+              </h4>
 
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.5"
-              value={
-                values
-                  .downPaymentPercentage
-              }
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  downPaymentPercentage:
-                    parseNumber(
-                      event.target.value,
-                    ),
-                }))
-              }
-              className={INPUT_CLASS_NAME}
-            />
-          </label>
+              <p className="mt-1 text-xs leading-5 text-neutral-500">
+                Define the debt assumptions used to calculate payment and
+                leveraged returns.
+              </p>
+            </div>
 
-          <label>
-            <span className="text-xs font-medium text-neutral-500">
-              Interest rate %
-            </span>
+            <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Down payment %
+                </span>
 
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={
-                values
-                  .interestRatePercentage
-              }
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  interestRatePercentage:
-                    parseNumber(
-                      event.target.value,
-                    ),
-                }))
-              }
-              className={INPUT_CLASS_NAME}
-            />
-          </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={
+                    values
+                      .downPaymentPercentage
+                  }
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      downPaymentPercentage:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
 
-          <label>
-            <span className="text-xs font-medium text-neutral-500">
-              Loan term
-            </span>
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Interest rate %
+                </span>
 
-            <input
-              type="number"
-              min="1"
-              value={values.loanTermYears}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  loanTermYears:
-                    parseNumber(
-                      event.target.value,
-                    ),
-                }))
-              }
-              className={INPUT_CLASS_NAME}
-            />
-          </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={
+                    values
+                      .interestRatePercentage
+                  }
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      interestRatePercentage:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
 
-          <label>
-            <span className="text-xs font-medium text-neutral-500">
-              Closing costs
-            </span>
+              <label className="sm:col-span-2">
+                <span className="text-xs font-medium text-neutral-500">
+                  Loan term in years
+                </span>
 
-            <input
-              type="number"
-              min="0"
-              value={values.closingCosts}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  closingCosts:
-                    parseNumber(
-                      event.target.value,
-                    ),
-                }))
-              }
-              className={INPUT_CLASS_NAME}
-            />
-          </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={values.loanTermYears}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      loanTermYears:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
+            </div>
+          </section>
 
-          <label className="sm:col-span-2">
-            <span className="text-xs font-medium text-neutral-500">
-              Furnishing budget
-            </span>
+          <section
+            aria-labelledby="purchase-upfront-capital-heading"
+            className="border-t border-neutral-200 pt-6"
+          >
+            <div>
+              <h4
+                id="purchase-upfront-capital-heading"
+                className="text-sm font-semibold text-neutral-950"
+              >
+                Upfront capital
+              </h4>
 
-            <input
-              type="number"
-              min="0"
-              value={
-                values.furnishingBudget
-              }
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  furnishingBudget:
-                    parseNumber(
-                      event.target.value,
-                    ),
-                }))
-              }
-              className={INPUT_CLASS_NAME}
-            />
-          </label>
+              <p className="mt-1 text-xs leading-5 text-neutral-500">
+                Include transaction and setup costs required before operations
+                begin.
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-x-4 gap-y-5 sm:grid-cols-2">
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Closing costs
+                </span>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={values.closingCosts}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      closingCosts:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
+
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Furnishing budget
+                </span>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={
+                    values.furnishingBudget
+                  }
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      furnishingBudget:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
+            </div>
+          </section>
         </div>
       ) : (
-        <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
-          <label>
-            <span className="text-xs font-medium text-neutral-500">
-              Monthly lease
-            </span>
+        <div className="space-y-7">
+          <section
+            aria-labelledby="rental-lease-heading"
+            className="space-y-4"
+          >
+            <div>
+              <h4
+                id="rental-lease-heading"
+                className="text-sm font-semibold text-neutral-950"
+              >
+                Lease commitment
+              </h4>
 
-            <input
-              type="number"
-              min="0"
-              value={values.monthlyLease}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  monthlyLease:
-                    parseNumber(
-                      event.target.value,
-                    ),
-                }))
-              }
-              className={INPUT_CLASS_NAME}
-            />
-          </label>
+              <p className="mt-1 text-xs leading-5 text-neutral-500">
+                Define the recurring rent and lease terms used to measure
+                operating coverage.
+              </p>
+            </div>
 
-          <label>
-            <span className="text-xs font-medium text-neutral-500">
-              Security deposit
-            </span>
+            <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Monthly lease
+                </span>
 
-            <input
-              type="number"
-              min="0"
-              value={
-                values.securityDeposit
-              }
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  securityDeposit:
-                    parseNumber(
-                      event.target.value,
-                    ),
-                }))
-              }
-              className={INPUT_CLASS_NAME}
-            />
-          </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={values.monthlyLease}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      monthlyLease:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
 
-          <label>
-            <span className="text-xs font-medium text-neutral-500">
-              Lease term in months
-            </span>
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Lease term in months
+                </span>
 
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value={
-                values.leaseTermMonths
-              }
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  leaseTermMonths:
-                    parseNumber(
-                      event.target.value,
-                    ),
-                }))
-              }
-              className={INPUT_CLASS_NAME}
-            />
-          </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={
+                    values.leaseTermMonths
+                  }
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      leaseTermMonths:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
 
-          <label>
-            <span className="text-xs font-medium text-neutral-500">
-              Startup costs
-            </span>
+              <label className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={
+                    values.utilitiesIncluded
+                  }
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      utilitiesIncluded:
+                        event.target.checked,
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-neutral-300"
+                />
 
-            <input
-              type="number"
-              min="0"
-              value={values.startupCosts}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  startupCosts:
-                    parseNumber(
-                      event.target.value,
-                    ),
-                }))
-              }
-              className={INPUT_CLASS_NAME}
-            />
-          </label>
+                <span>
+                  <span className="block text-sm font-medium text-neutral-700">
+                    Utilities included in lease
+                  </span>
 
-          <label>
-            <span className="text-xs font-medium text-neutral-500">
-              Furnishing budget
-            </span>
+                  <span className="mt-0.5 block text-xs leading-5 text-neutral-500">
+                    Enable this when the landlord covers recurring utilities.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </section>
 
-            <input
-              type="number"
-              min="0"
-              value={
-                values.furnishingBudget
-              }
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  furnishingBudget:
-                    parseNumber(
-                      event.target.value,
-                    ),
-                }))
-              }
-              className={INPUT_CLASS_NAME}
-            />
-          </label>
+          <section
+            aria-labelledby="rental-upfront-capital-heading"
+            className="border-t border-neutral-200 pt-6"
+          >
+            <div>
+              <h4
+                id="rental-upfront-capital-heading"
+                className="text-sm font-semibold text-neutral-950"
+              >
+                Upfront capital
+              </h4>
 
-          <label className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 sm:mt-6">
-            <input
-              type="checkbox"
-              checked={
-                values.utilitiesIncluded
-              }
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  utilitiesIncluded:
-                    event.target.checked,
-                }))
-              }
-              className="h-4 w-4 rounded border-neutral-300"
-            />
+              <p className="mt-1 text-xs leading-5 text-neutral-500">
+                Include refundable deposits and all launch costs required
+                before the property can operate.
+              </p>
+            </div>
 
-            <span className="text-sm font-medium text-neutral-700">
-              Utilities included in lease
-            </span>
-          </label>
+            <div className="mt-4 grid gap-x-4 gap-y-5 sm:grid-cols-2">
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Security deposit
+                </span>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={
+                    values.securityDeposit
+                  }
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      securityDeposit:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
+
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Startup costs
+                </span>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={values.startupCosts}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      startupCosts:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
+
+              <label className="sm:col-span-2">
+                <span className="text-xs font-medium text-neutral-500">
+                  Furnishing budget
+                </span>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={
+                    values.furnishingBudget
+                  }
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      furnishingBudget:
+                        parseNumber(
+                          event.target.value,
+                        ),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
+            </div>
+          </section>
         </div>
       )}
     </AcquisitionSectionCard>

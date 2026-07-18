@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AcquisitionType,
   PropertyType,
 } from "../domain";
 
@@ -31,11 +32,15 @@ export function PropertyProfileCard() {
     setValues,
   } = useInvestmentWorkspaceState();
 
+  const isPurchase =
+    values.acquisitionType ===
+    AcquisitionType.Purchase;
+
   return (
     <AcquisitionSectionCard
       eyebrow="Property"
       title="Define the acquisition opportunity."
-      description="Capture the asset details and initial capital requirements that shape the investment case."
+      description="Capture the location, physical profile, and acquisition basis that shape the investment case."
       icon={
         <svg
           viewBox="0 0 24 24"
@@ -51,207 +56,270 @@ export function PropertyProfileCard() {
         </svg>
       }
     >
-      <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
-        <label className="sm:col-span-2">
-          <span className="text-xs font-medium text-neutral-500">
-            Street address
-          </span>
+      <div className="space-y-7">
+        <section
+          aria-labelledby="property-location-heading"
+          className="space-y-4"
+        >
+          <div>
+            <h4
+              id="property-location-heading"
+              className="text-sm font-semibold text-neutral-950"
+            >
+              Location
+            </h4>
 
-          <input
-            value={values.address1}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                address1:
-                  event.target.value,
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
+            <p className="mt-1 text-xs leading-5 text-neutral-500">
+              Identify the property and market being underwritten.
+            </p>
+          </div>
 
-        <label>
-          <span className="text-xs font-medium text-neutral-500">
-            City
-          </span>
+          <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+            <label className="sm:col-span-2">
+              <span className="text-xs font-medium text-neutral-500">
+                Street address
+              </span>
 
-          <input
-            value={values.city}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                city: event.target.value,
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
+              <input
+                value={values.address1}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    address1:
+                      event.target.value,
+                  }))
+                }
+                className={INPUT_CLASS_NAME}
+              />
+            </label>
 
-        <label>
-          <span className="text-xs font-medium text-neutral-500">
-            State
-          </span>
+            <label>
+              <span className="text-xs font-medium text-neutral-500">
+                City
+              </span>
 
-          <input
-            value={values.state}
-            maxLength={2}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                state:
-                  event.target.value
-                    .toUpperCase(),
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
+              <input
+                value={values.city}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    city: event.target.value,
+                  }))
+                }
+                className={INPUT_CLASS_NAME}
+              />
+            </label>
 
-        <label>
-          <span className="text-xs font-medium text-neutral-500">
-            Purchase price
-          </span>
+            <div className="grid grid-cols-2 gap-4">
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  State
+                </span>
 
-          <input
-            type="number"
-            min="0"
-            value={values.purchasePrice}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                purchasePrice:
-                  parseNumber(
-                    event.target.value,
-                  ),
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
+                <input
+                  value={values.state}
+                  maxLength={2}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      state:
+                        event.target.value
+                          .toUpperCase(),
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
 
-        <label>
-          <span className="text-xs font-medium text-neutral-500">
-            Property type
-          </span>
+              <label>
+                <span className="text-xs font-medium text-neutral-500">
+                  Postal code
+                </span>
 
-          <select
-            value={values.propertyType}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                propertyType:
-                  event.target
-                    .value as PropertyType,
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          >
-            {Object.values(
-              PropertyType,
-            ).map((propertyType) => (
-              <option
-                key={propertyType}
-                value={propertyType}
+                <input
+                  value={values.postalCode}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      postalCode:
+                        event.target.value,
+                    }))
+                  }
+                  className={INPUT_CLASS_NAME}
+                />
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section
+          aria-labelledby="property-specifications-heading"
+          className="border-t border-neutral-200 pt-6"
+        >
+          <div>
+            <h4
+              id="property-specifications-heading"
+              className="text-sm font-semibold text-neutral-950"
+            >
+              Property specifications
+            </h4>
+
+            <p className="mt-1 text-xs leading-5 text-neutral-500">
+              Define the physical characteristics used in the operating case.
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-x-4 gap-y-5 sm:grid-cols-2">
+            <label className="sm:col-span-2">
+              <span className="text-xs font-medium text-neutral-500">
+                Property type
+              </span>
+
+              <select
+                value={values.propertyType}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    propertyType:
+                      event.target
+                        .value as PropertyType,
+                  }))
+                }
+                className={INPUT_CLASS_NAME}
               >
-                {propertyType
-                  .split("-")
-                  .map(
-                    (word) =>
-                      word
-                        .charAt(0)
-                        .toUpperCase() +
-                      word.slice(1),
-                  )
-                  .join(" ")}
-              </option>
-            ))}
-          </select>
-        </label>
+                {Object.values(
+                  PropertyType,
+                ).map((propertyType) => (
+                  <option
+                    key={propertyType}
+                    value={propertyType}
+                  >
+                    {propertyType
+                      .split("-")
+                      .map(
+                        (word) =>
+                          word
+                            .charAt(0)
+                            .toUpperCase() +
+                          word.slice(1),
+                      )
+                      .join(" ")}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <label>
-          <span className="text-xs font-medium text-neutral-500">
-            Bedrooms
-          </span>
+            <label>
+              <span className="text-xs font-medium text-neutral-500">
+                Bedrooms
+              </span>
 
-          <input
-            type="number"
-            min="0"
-            value={values.bedrooms}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                bedrooms:
-                  parseNumber(
-                    event.target.value,
-                  ),
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
+              <input
+                type="number"
+                min="0"
+                value={values.bedrooms}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    bedrooms:
+                      parseNumber(
+                        event.target.value,
+                      ),
+                  }))
+                }
+                className={INPUT_CLASS_NAME}
+              />
+            </label>
 
-        <label>
-          <span className="text-xs font-medium text-neutral-500">
-            Bathrooms
-          </span>
+            <label>
+              <span className="text-xs font-medium text-neutral-500">
+                Bathrooms
+              </span>
 
-          <input
-            type="number"
-            min="0"
-            step="0.5"
-            value={values.bathrooms}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                bathrooms:
-                  parseNumber(
-                    event.target.value,
-                  ),
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={values.bathrooms}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    bathrooms:
+                      parseNumber(
+                        event.target.value,
+                      ),
+                  }))
+                }
+                className={INPUT_CLASS_NAME}
+              />
+            </label>
 
-        <label>
-          <span className="text-xs font-medium text-neutral-500">
-            Square feet
-          </span>
+            <label className="sm:col-span-2">
+              <span className="text-xs font-medium text-neutral-500">
+                Square feet
+              </span>
 
-          <input
-            type="number"
-            min="0"
-            value={values.squareFeet}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                squareFeet:
-                  parseNumber(
-                    event.target.value,
-                  ),
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
+              <input
+                type="number"
+                min="0"
+                value={values.squareFeet}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    squareFeet:
+                      parseNumber(
+                        event.target.value,
+                      ),
+                  }))
+                }
+                className={INPUT_CLASS_NAME}
+              />
+            </label>
+          </div>
+        </section>
 
-        <label>
-          <span className="text-xs font-medium text-neutral-500">
-            Postal code
-          </span>
+        {isPurchase ? (
+          <section
+            aria-labelledby="property-acquisition-heading"
+            className="border-t border-neutral-200 pt-6"
+          >
+            <div>
+              <h4
+                id="property-acquisition-heading"
+                className="text-sm font-semibold text-neutral-950"
+              >
+                Acquisition basis
+              </h4>
 
-          <input
-            value={values.postalCode}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                postalCode:
-                  event.target.value,
-              }))
-            }
-            className={INPUT_CLASS_NAME}
-          />
-        </label>
+              <p className="mt-1 text-xs leading-5 text-neutral-500">
+                Set the proposed purchase price used by the purchase
+                underwriting model.
+              </p>
+            </div>
+
+            <label className="mt-4 block">
+              <span className="text-xs font-medium text-neutral-500">
+                Purchase price
+              </span>
+
+              <input
+                type="number"
+                min="0"
+                value={values.purchasePrice}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    purchasePrice:
+                      parseNumber(
+                        event.target.value,
+                      ),
+                  }))
+                }
+                className={INPUT_CLASS_NAME}
+              />
+            </label>
+          </section>
+        ) : null}
       </div>
     </AcquisitionSectionCard>
   );

@@ -13,32 +13,64 @@ const ANALYSIS_STEPS = [
   "Generate acquisition recommendation",
 ] as const;
 
-export function GenerateInvestmentDecisionCard() {
+export function GenerateInvestmentAnalysisCard() {
   const {
+    analysis,
+    hasStaleAnalysis,
     isReadyForAnalysis,
     isAnalyzing,
     analysisError,
-    generateInvestmentDecision,
+    analyzeInvestment,
   } = useInvestmentWorkspaceState();
+
+  const hasCurrentAnalysis =
+    analysis !== null &&
+    !hasStaleAnalysis;
+
+  const buttonLabel = isAnalyzing
+    ? "Analyzing Opportunity…"
+    : hasStaleAnalysis
+      ? "Update Analysis"
+      : hasCurrentAnalysis
+        ? "Run Analysis Again"
+        : "Analyze Investment";
 
   return (
     <section className="overflow-hidden rounded-3xl border border-neutral-900 bg-neutral-950 text-white shadow-sm">
       <div className="grid gap-10 px-7 py-9 sm:px-9 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.7fr)] lg:items-center lg:px-12 lg:py-12">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-400">
-            Phase 2
+            Full investment analysis
           </p>
 
           <h2 className="mt-4 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
-            Generate the investment decision.
+            {hasStaleAnalysis
+              ? "Update the analysis with your latest assumptions."
+              : hasCurrentAnalysis
+                ? "Re-evaluate the investment opportunity."
+                : "Analyze the investment opportunity."}
           </h2>
 
           <p className="mt-4 max-w-2xl text-sm leading-6 text-neutral-300">
-            Investment Intelligence will synthesize the property,
-            financing structure, operating plan, market position,
-            financial performance, risks, and supporting evidence
-            into one explainable recommendation.
+            The live preview shows indicative financial performance as
+            assumptions change. The full analysis adds market position,
+            comparable evidence, risk assessment, confidence, investment
+            score, and an explainable acquisition recommendation.
           </p>
+
+          {hasStaleAnalysis ? (
+            <div className="mt-5 rounded-xl border border-amber-300/20 bg-amber-300/10 px-4 py-3">
+              <p className="text-sm font-medium text-amber-100">
+                Assumptions have changed since the displayed report was
+                generated.
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-amber-100/70">
+                The previous report remains visible for reference, but it no
+                longer reflects the current workspace inputs.
+              </p>
+            </div>
+          ) : null}
 
           <div className="mt-7">
             <button
@@ -48,34 +80,38 @@ export function GenerateInvestmentDecisionCard() {
                 isAnalyzing
               }
               onClick={() => {
-                void generateInvestmentDecision();
+                void analyzeInvestment();
               }}
               className="inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-neutral-950 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
             >
-              {isAnalyzing
-                ? "Analyzing Opportunity…"
-                : "Generate Investment Decision"}
+              {buttonLabel}
             </button>
 
             <p className="mt-3 text-xs leading-5 text-neutral-500">
-              The report will include recommendation, score,
-              confidence, financial performance, evidence, and risks.
+              Generates the recommendation, score, confidence, complete
+              financial performance, evidence, scenarios, and risks.
             </p>
 
             {analysisError ? (
-              <p
+              <div
                 role="alert"
-                className="mt-3 text-sm leading-6 text-rose-300"
+                className="mt-4 rounded-xl border border-rose-300/20 bg-rose-300/10 px-4 py-3"
               >
-                {analysisError}
-              </p>
+                <p className="text-sm font-medium text-rose-200">
+                  Analysis could not be completed.
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-rose-200/75">
+                  {analysisError}
+                </p>
+              </div>
             ) : null}
           </div>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">
-            Analysis sequence
+            Full analysis sequence
           </p>
 
           <ul className="mt-5 space-y-4">

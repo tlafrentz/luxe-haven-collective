@@ -10,14 +10,14 @@ const WORKSPACE_SECTIONS = [
     description: "Financing and assumptions",
   },
   {
-    id: "analysis",
-    label: "Analysis",
-    description: "Revenue, expenses, and market",
+    id: "revenue",
+    label: "Revenue",
+    description: "Performance assumptions",
   },
   {
-    id: "decision",
-    label: "Decision",
-    description: "Score, evidence, and risks",
+    id: "analysis",
+    label: "Analysis",
+    description: "Returns, evidence, and risks",
   },
 ] as const;
 
