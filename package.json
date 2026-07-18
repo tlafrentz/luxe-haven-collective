@@ -16,6 +16,7 @@
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
     "@tanstack/react-query": "latest",
+    "@vercel/analytics": "^2.0.1",
     "class-variance-authority": "latest",
     "clsx": "latest",
     "framer-motion": "latest",
