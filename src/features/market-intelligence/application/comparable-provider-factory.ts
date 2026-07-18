@@ -1,4 +1,5 @@
 import {
+  getProviderDisplayName,
   ProviderType,
 } from "../domain/enums/provider-type";
 
@@ -42,7 +43,7 @@ export class ComparableProviderFactory {
 
       default:
         throw new Error(
-          `Comparable provider "${providerType}" is not supported.`,
+          `Comparable provider "${getProviderDisplayName(providerType)}" is not supported.`,
         );
     }
   }

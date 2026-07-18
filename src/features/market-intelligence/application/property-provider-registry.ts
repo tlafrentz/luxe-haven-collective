@@ -3,6 +3,7 @@ import type {
 } from "./providers/property-provider";
 
 import {
+  getProviderDisplayName,
   ProviderType,
 } from "../domain/enums/provider-type";
 
@@ -41,7 +42,7 @@ export class PropertyProviderRegistry {
 
     if (!provider) {
       throw new Error(
-        `No property provider is registered for "${providerType}".`,
+        `No property provider is registered for "${getProviderDisplayName(providerType)}".`,
       );
     }
 

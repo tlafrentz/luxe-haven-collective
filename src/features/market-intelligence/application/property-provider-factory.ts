@@ -3,6 +3,7 @@ import type {
 } from "./providers/property-provider";
 
 import {
+  getProviderDisplayName,
   ProviderType,
 } from "../domain/enums/provider-type";
 
@@ -42,7 +43,7 @@ export class PropertyProviderFactory {
 
       default:
         throw new Error(
-          `Property provider "${providerType}" is not supported.`,
+          `Property provider "${getProviderDisplayName(providerType)}" is not supported.`,
         );
     }
   }

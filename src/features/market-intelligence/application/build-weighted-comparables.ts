@@ -1,6 +1,6 @@
 import type {
-  PropertyComparable,
-} from "../domain/entities/property-comparable";
+  ComparableProperty,
+} from "../domain/entities/comparable-property";
 
 import type {
   ComparableSubject,
@@ -25,15 +25,20 @@ import {
 export interface BuildWeightedComparablesInput {
   readonly subject:
     ComparableSubject;
+
   readonly comparables:
-    readonly PropertyComparable[];
+    readonly ComparableProperty[];
+
   readonly config?:
     ComparableSimilarityConfig;
-  readonly minimumSimilarity?: number;
+
+  readonly minimumSimilarity?:
+    number;
+
   readonly resolveBaseValue?:
     (
       comparable:
-        PropertyComparable,
+        ComparableProperty,
     ) =>
       number | undefined;
 }
@@ -80,9 +85,47 @@ export function buildWeightedComparables(
             ?.(
               comparable,
             ) ??
-          comparable
-            .estimatedValue
-            ?.amount,
+          resolveComparableBaseValue(
+            comparable,
+          ),
       }),
   );
+}
+
+function resolveComparableBaseValue(
+  comparable:
+    ComparableProperty,
+): number | undefined {
+  if (
+    comparable.estimatedValue !==
+    undefined
+  ) {
+    return comparable
+      .estimatedValue;
+  }
+
+  /**
+   * Temporary migration bridge for older test fixtures and provider objects
+   * that exposed a primitive `price` property.
+   *
+   * Remove after MI-6.4 moves all tests and providers to ComparableProperty.
+   */
+  const legacyPrice =
+    (
+      comparable as
+        ComparableProperty & {
+          readonly price?:
+            number;
+        }
+    ).price;
+
+  return (
+    legacyPrice !== undefined &&
+    Number.isFinite(
+      legacyPrice,
+    ) &&
+    legacyPrice >= 0
+  )
+    ? legacyPrice
+    : undefined;
 }

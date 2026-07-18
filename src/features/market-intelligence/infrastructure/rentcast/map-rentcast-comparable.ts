@@ -1,4 +1,4 @@
-import type {
+import {
   ComparableProperty,
 } from "../../domain/entities/comparable-property";
 
@@ -19,8 +19,11 @@ import type {
 } from "./rentcast-comparable-types";
 
 export function mapRentCastComparable(
-  record: RentCastComparableRecord,
-  retrievedAt: Date = new Date(),
+  record:
+    RentCastComparableRecord,
+  retrievedAt:
+    Date =
+      new Date(),
 ): ComparableProperty {
   const id =
     record.id?.trim();
@@ -29,7 +32,10 @@ export function mapRentCastComparable(
     record.formattedAddress
       ?.trim();
 
-  if (!id || !formattedAddress) {
+  if (
+    !id ||
+    !formattedAddress
+  ) {
     throw new Error(
       "RentCast returned a comparable without an id or formatted address.",
     );
@@ -40,12 +46,12 @@ export function mapRentCastComparable(
       record.correlation,
     );
 
-  return {
+  return new ComparableProperty({
     id,
     address:
       formattedAddress,
-    provider:
-      ProviderType.RentCast,
+    providerPropertyId:
+      id,
     propertyType:
       record.propertyType,
     bedrooms:
@@ -57,14 +63,14 @@ export function mapRentCastComparable(
         record.bathrooms,
       ),
     squareFeet:
-      normalizeNonNegativeNumber(
+      normalizePositiveNumber(
         record.squareFootage,
       ),
     yearBuilt:
       normalizeYear(
         record.yearBuilt,
       ),
-    price:
+    estimatedValue:
       normalizeNonNegativeNumber(
         record.price,
       ),
@@ -81,7 +87,9 @@ export function mapRentCastComparable(
         record.distance,
       ),
     correlation:
-      record.correlation,
+      normalizeFiniteNumber(
+        record.correlation,
+      ),
     listedDate:
       parseOptionalDate(
         record.listedDate,
@@ -105,7 +113,7 @@ export function mapRentCastComparable(
         "Mapped from a RentCast AVM comparable sale listing.",
         "v1",
       ),
-  } as unknown as ComparableProperty;
+  });
 }
 
 function normalizeConfidence(
@@ -130,13 +138,16 @@ function normalizeConfidence(
     0,
     Math.min(
       100,
-      Math.round(normalized),
+      Math.round(
+        normalized,
+      ),
     ),
   );
 }
 
 function normalizeNonNegativeNumber(
-  value: number | undefined,
+  value:
+    number | undefined,
 ): number | undefined {
   if (
     value === undefined ||
@@ -149,8 +160,38 @@ function normalizeNonNegativeNumber(
   return value;
 }
 
+function normalizePositiveNumber(
+  value:
+    number | undefined,
+): number | undefined {
+  if (
+    value === undefined ||
+    !Number.isFinite(value) ||
+    value <= 0
+  ) {
+    return undefined;
+  }
+
+  return value;
+}
+
+function normalizeFiniteNumber(
+  value:
+    number | undefined,
+): number | undefined {
+  if (
+    value === undefined ||
+    !Number.isFinite(value)
+  ) {
+    return undefined;
+  }
+
+  return value;
+}
+
 function normalizeCoordinate(
-  value: number | undefined,
+  value:
+    number | undefined,
 ): number | undefined {
   if (
     value === undefined ||
@@ -163,14 +204,17 @@ function normalizeCoordinate(
 }
 
 function normalizeYear(
-  value: number | undefined,
+  value:
+    number | undefined,
 ): number | undefined {
   if (
     value === undefined ||
     !Number.isInteger(value) ||
     value < 1600 ||
     value >
-      new Date().getFullYear() + 1
+      new Date()
+        .getFullYear() +
+        1
   ) {
     return undefined;
   }
@@ -179,7 +223,8 @@ function normalizeYear(
 }
 
 function parseOptionalDate(
-  value: string | undefined,
+  value:
+    string | undefined,
 ): Date | undefined {
   if (!value) {
     return undefined;
