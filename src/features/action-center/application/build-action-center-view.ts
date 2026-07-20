@@ -1,16 +1,6 @@
 import { Action } from "@/platform/actions";
-import type { Decision } from "@/platform/decisions";
-import type { EvidenceCollection } from "@/platform/evidence";
 import type { Outcome } from "@/platform/outcomes";
-import type { ActionCenterItem, ActionCenterRecord, ActionCenterStatus, ActionCenterView, ActionDecisionContext } from "../domain";
-
-export type PlatformActionCenterRecord = Readonly<{
-  action: Action;
-  outcome?: Outcome;
-  decision?: Decision<string>;
-  evidence?: EvidenceCollection;
-  decisionContext?: ActionDecisionContext;
-}>;
+import type { ActionCenterItem, ActionCenterRecord, ActionCenterStatus, ActionCenterView, ActionDecisionContext, PlatformActionCenterRecord } from "../domain";
 
 type NormalizedRecord = Readonly<{ item: ActionCenterItem; canonicalOutcome?: Outcome }>;
 
