@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   ArrowRight,
   BadgeDollarSign,
@@ -67,13 +69,11 @@ export function NextBestAction({
             </p>
 
             <h2 className="mt-3 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl">
-              {context?.outcomeTitle ??
-                action.title}
+              {context?.outcomeTitle ?? action.title}
             </h2>
 
             <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-300 sm:text-base">
-              {context?.whyNow ??
-                action.summary}
+              {context?.whyNow ?? action.summary}
             </p>
 
             {context &&
@@ -150,13 +150,13 @@ export function NextBestAction({
               </div>
             </div>
 
-            <button
-              type="button"
+            <Link
+              href={`/dashboard/actions/${action.id}`}
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2 focus:ring-offset-stone-950"
             >
-              Open action
+              Open workspace
               <ArrowRight className="h-4 w-4" />
-            </button>
+            </Link>
           </div>
         </div>
       </div>

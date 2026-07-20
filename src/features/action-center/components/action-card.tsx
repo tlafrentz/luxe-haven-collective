@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   ArrowRight,
   Building2,
@@ -77,13 +78,13 @@ export function ActionCard({
           </div>
         </div>
 
-        <button
-          type="button"
+        <Link
+          href={`/dashboard/actions/${action.id}`}
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-semibold text-stone-950 transition hover:border-stone-950 hover:bg-stone-950 hover:text-white"
         >
-          View action
+          Open workspace
           <ArrowRight className="h-4 w-4" />
-        </button>
+        </Link>
       </div>
     </article>
   );

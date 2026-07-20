@@ -530,3 +530,8 @@ explicit Platform v2 proposal.
 New feature work must use Platform v1. Existing feature work migrates toward
 Platform v1. Competing canonical models are frozen and may receive only the
 minimum compatibility changes required to complete migration safely.
+
+Presentation features consume canonical Platform domain objects or explicit
+Platform read models. Legacy compatibility contracts may support migration
+boundaries, but new feature development must not depend on compatibility-layer
+domain shapes.
