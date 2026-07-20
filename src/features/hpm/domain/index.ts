@@ -24,3 +24,4 @@ export type {
   HpmPerformanceReport,
   HpmPerformanceScope,
 } from "./hpm-performance-report";
+export type { HpmCanonicalInputs, HpmImprovementCycle, HpmImprovementCycleStatus, HpmLifecycleProjection, HpmOperatingHealth } from "./hpm-lifecycle-projection";

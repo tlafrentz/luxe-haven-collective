@@ -3,6 +3,7 @@ export * from "./enums";
 export * from "./investment-analysis";
 export * from "./investment-analysis-base";
 export * from "./investment-decision";
+export * from "./investment-platform-artifacts";
 export * from "./purchase-investment-analysis";
 export * from "./rental-arbitrage-investment-analysis";
 export * from "./value-objects";

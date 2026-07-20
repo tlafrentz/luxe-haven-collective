@@ -1,7 +1,7 @@
 import type {
   AnalyticsBooking,
   OccupancyDataPoint,
-} from "@/features/analytics";
+} from "./revenue-input";
 
 import type {
   OpportunityReport,
@@ -10,6 +10,7 @@ import type {
 import type {
   RevenueIntelligenceReport,
 } from "./revenue-intelligence-report";
+import type { RevenueReasoningArtifacts } from "./revenue-reasoning-artifacts";
 
 export type RevenueIntelligence = {
   report: RevenueIntelligenceReport;
@@ -17,4 +18,5 @@ export type RevenueIntelligence = {
   bookings: AnalyticsBooking[];
   occupancySeries: OccupancyDataPoint[];
   generatedAt: string;
+  reasoning?: RevenueReasoningArtifacts;
 };

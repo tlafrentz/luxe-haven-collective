@@ -2,6 +2,7 @@ import type {
   HospitableFinancialItem,
   HospitableReservation,
 } from "../types";
+import type { NormalizedInboundRecord, NormalizedReservationInput } from "../../domain";
 
 export type MappedBookingStatus =
   | "pending"
@@ -437,4 +438,51 @@ export function mapHospitableReservation({
       raw_payload: reservation,
     },
   };
+}
+
+export function normalizeHospitableReservation({
+  reservation,
+  localPropertyId,
+  retrievedAt = new Date(),
+  syncRunId,
+}: {
+  reservation: HospitableReservation;
+  localPropertyId: string;
+  retrievedAt?: Date;
+  syncRunId?: string;
+}): NormalizedInboundRecord<NormalizedReservationInput> {
+  const mapped = mapHospitableReservation({ reservation, localPropertyId, syncedAt: retrievedAt.toISOString() });
+  const booking = mapped.booking;
+  const effectiveAt = new Date(`${booking.check_in}T00:00:00.000Z`);
+  return Object.freeze({
+    value: Object.freeze({
+      externalId: booking.external_reservation_id,
+      propertyId: booking.property_id,
+      externalPropertyId: booking.external_property_id,
+      guestName: booking.guest_full_name,
+      checkIn: booking.check_in,
+      checkOut: booking.check_out,
+      guests: booking.guests,
+      nightlyRate: booking.nightly_rate,
+      cleaningFee: booking.cleaning_fee,
+      taxes: booking.taxes,
+      serviceFee: booking.service_fee,
+      totalAmount: booking.total_amount,
+      status: booking.status,
+      paymentStatus: booking.payment_status,
+      source: booking.source,
+      currency: booking.currency,
+    }),
+    provenance: Object.freeze({
+      provider: "hospitable",
+      externalRecordId: reservation.id,
+      retrievedAt,
+      effectiveAt,
+      operation: "GET /reservations/{id}",
+      normalizationVersion: "hospitable-reservation-v1",
+      ...(syncRunId ? { syncRunId } : {}),
+      propertyId: localPropertyId,
+      rawPayloadReference: `bookings:${reservation.id}:raw_payload`,
+    }),
+  });
 }

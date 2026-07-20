@@ -19,3 +19,5 @@ export type {
   IntegrationSyncRunStatus,
   SyncSummary,
 } from "./types";
+export * from "./application";
+export * from "./domain";

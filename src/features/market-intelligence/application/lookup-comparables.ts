@@ -17,6 +17,7 @@ import type {
 import {
   ComparableProviderRegistry,
 } from "./comparable-provider-registry";
+import { observeComparableProviderResult, type ObservedProviderResult } from "./providers/canonical-provider-observations";
 
 export interface LookupComparablesInput
 extends ComparableLookupRequest {
@@ -88,6 +89,10 @@ export class LookupComparables {
       limit:
         input.limit,
     });
+  }
+
+  async executeObserved(input: LookupComparablesInput): Promise<ObservedProviderResult<readonly ComparableProperty[]>> {
+    return observeComparableProviderResult(await this.execute(input));
   }
 }
 

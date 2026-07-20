@@ -24,6 +24,10 @@ export {
   buildPortfolioSnapshot,
   buildRevenueRiskSummary,
   getExecutiveIntelligence,
+  getExecutiveDashboardProjection,
+  buildExecutiveProjection,
+  normalizeExecutiveInputs,
+  ExecutiveAttentionPolicy,
 } from "./application";
 
 export type {
@@ -43,4 +47,11 @@ export type {
   PortfolioSnapshotMetric,
   RevenueRiskItem,
   RevenueRiskSummary as RevenueRiskSummaryData,
+  ExecutiveAttentionItem,
+  ExecutiveAttentionSource,
+  ExecutiveAttentionUrgency,
+  ExecutiveBriefingProjection,
+  ExecutiveHealthProjection,
+  ExecutiveProjection,
 } from "./domain";
+export type { ExecutivePlatformInputs, BuildExecutiveProjectionOptions, ExecutiveAttentionCandidate, ExecutiveAttentionWeights } from "./application";

@@ -125,3 +125,12 @@ export {
 export type {
   InvestmentScoringPolicy,
 } from "./investment-scoring-policy";
+
+export {
+  InvestmentObservationProvider,
+  investmentObservationProvider,
+} from "./providers";
+
+export * from "./mappers";
+export * from "./types";
+export * from "./adapters";

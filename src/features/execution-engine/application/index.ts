@@ -7,12 +7,10 @@ export type {
 } from "./accept-executive-priority";
 
 export {
-  COMPLETABLE_ACTION_STATUSES,
   completeAction,
 } from "./complete-action";
 
 export type {
-  CompletableActionStatus,
   CompleteActionInput,
 } from "./complete-action";
 
@@ -26,18 +24,22 @@ export type {
 
 export {
   measureAction,
+  measureActionWithOutcome,
 } from "./measure-action";
 
 export type {
   MeasureActionInput,
+  MeasureActionResult,
 } from "./measure-action";
 
+export * from "./mappers";
+
 export {
-  ARCHIVABLE_ACTION_STATUSES,
   archiveAction,
 } from "./archive-action";
 
+export { toExecutiveAction, toPlatformAction } from "./action-adapter";
+
 export type {
   ArchiveActionInput,
-  ArchivableActionStatus,
 } from "./archive-action";

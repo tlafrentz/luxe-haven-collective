@@ -1,45 +1,21 @@
-import type {
-  ActionStatus,
-  ExecutiveAction,
-} from "../domain";
-
-export const ARCHIVABLE_ACTION_STATUSES = [
-  "proposed",
-  "accepted",
-  "blocked",
-  "completed",
-  "measured",
-] as const satisfies readonly ActionStatus[];
-
-export type ArchivableActionStatus =
-  (typeof ARCHIVABLE_ACTION_STATUSES)[number];
+import type { ExecutiveAction } from "../domain";
+import { toExecutiveAction, toPlatformAction } from "./action-adapter";
 
 export type ArchiveActionInput = {
   action: ExecutiveAction;
   archivedAt: string;
 };
 
-function isArchivableStatus(
-  status: ActionStatus,
-): status is ArchivableActionStatus {
-  return ARCHIVABLE_ACTION_STATUSES.includes(
-    status as ArchivableActionStatus,
-  );
-}
-
 export function archiveAction({
   action,
   archivedAt,
 }: ArchiveActionInput): ExecutiveAction {
-  if (!isArchivableStatus(action.status)) {
-    throw new Error(
-      `Cannot archive action with status "${action.status}".`,
-    );
+  try {
+    return { ...toExecutiveAction(toPlatformAction(action).archive(new Date(archivedAt))), archivedAt };
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Cannot transition action")) {
+      throw new Error(`Cannot archive action with status "${action.status}".`);
+    }
+    throw error;
   }
-
-  return {
-    ...action,
-    status: "archived",
-    archivedAt,
-  };
 }

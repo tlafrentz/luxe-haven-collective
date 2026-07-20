@@ -1,5 +1,7 @@
 export {
   buildInitialHpmPerformance,
+  buildHpmLifecycleProjection,
+  HpmScorePolicy,
 } from "./application";
 
 export {
@@ -21,4 +23,10 @@ export type {
   HpmScoreContributor,
   HpmScoreContributorType,
   HpmScoreDirection,
+  HpmCanonicalInputs,
+  HpmImprovementCycle,
+  HpmImprovementCycleStatus,
+  HpmLifecycleProjection,
+  HpmOperatingHealth,
 } from "./domain";
+export type { BuildHpmLifecycleProjectionOptions, HpmScorePolicyResult } from "./application";

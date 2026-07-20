@@ -3,6 +3,7 @@ import { MarketObservation } from "./market-observation";
 import { MarketProfile } from "./market-profile";
 import { ConfidenceScore } from "../value-objects/confidence-score";
 
+/** @deprecated Compatibility projection; canonical analysis is Platform IntelligenceReport. */
 export class MarketIntelligenceReport {
   readonly market: MarketProfile;
   readonly observations: readonly MarketObservation[];

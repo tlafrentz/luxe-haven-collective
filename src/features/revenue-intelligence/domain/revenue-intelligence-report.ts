@@ -2,7 +2,7 @@ import type {
   AnalyticsDateRange,
   AnalyticsProperty,
   MetricTrend,
-} from "@/features/analytics";
+} from "./revenue-input";
 
 import type {
   PropertyPerformance,
@@ -28,4 +28,3 @@ export type RevenueIntelligenceReport = {
   dateRange: AnalyticsDateRange;
   previousDateRange: AnalyticsDateRange;
 };
-

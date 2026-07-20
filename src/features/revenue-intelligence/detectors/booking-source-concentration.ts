@@ -1,6 +1,6 @@
 import type {
   BookingSourceMetric,
-} from "@/features/analytics";
+} from "../domain/revenue-input";
 
 import type {
   OpportunityConfidence,

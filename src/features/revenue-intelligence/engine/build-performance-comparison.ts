@@ -1,6 +1,4 @@
-import {
-  calculateTrend,
-} from "@/features/analytics";
+import { revenueAnalyticsGateway } from "../adapters/analytics-input-adapter";
 
 import type {
   PerformanceComparison,
@@ -15,35 +13,35 @@ export function buildPerformanceComparison({
   previous: PropertyPerformance;
 }): PerformanceComparison {
   return {
-    grossRevenue: calculateTrend(
+    grossRevenue: revenueAnalyticsGateway.trend(
       current.revenue.grossRevenue,
       previous.revenue.grossRevenue,
     ),
-    roomRevenue: calculateTrend(
+    roomRevenue: revenueAnalyticsGateway.trend(
       current.revenue.roomRevenue,
       previous.revenue.roomRevenue,
     ),
-    occupancyRate: calculateTrend(
+    occupancyRate: revenueAnalyticsGateway.trend(
       current.occupancy.occupancyRate,
       previous.occupancy.occupancyRate,
     ),
-    averageDailyRate: calculateTrend(
+    averageDailyRate: revenueAnalyticsGateway.trend(
       current.revenue.averageDailyRate,
       previous.revenue.averageDailyRate,
     ),
-    revPar: calculateTrend(
+    revPar: revenueAnalyticsGateway.trend(
       current.revenue.revPar,
       previous.revenue.revPar,
     ),
-    averageLengthOfStay: calculateTrend(
+    averageLengthOfStay: revenueAnalyticsGateway.trend(
       current.bookings.averageLengthOfStay,
       previous.bookings.averageLengthOfStay,
     ),
-    averageBookingLeadTime: calculateTrend(
+    averageBookingLeadTime: revenueAnalyticsGateway.trend(
       current.bookings.averageBookingLeadTime,
       previous.bookings.averageBookingLeadTime,
     ),
-    cancellationRate: calculateTrend(
+    cancellationRate: revenueAnalyticsGateway.trend(
       current.bookings.cancellationRate,
       previous.bookings.cancellationRate,
     ),

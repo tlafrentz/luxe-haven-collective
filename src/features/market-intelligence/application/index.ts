@@ -5,3 +5,7 @@ export * from "./factories";
 export * from "./registries";
 export * from "./providers";
 export * from "./services";
+export * from "./mappers";
+export * from "./types";
+export { buildCanonicalMarketAnalysis, buildMarketAnalysisReport } from "./build-market-analysis-report";
+export type { BuildMarketAnalysisReportInput, CanonicalMarketAnalysis } from "./build-market-analysis-report";

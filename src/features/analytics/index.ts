@@ -5,6 +5,8 @@ export {
   calculateDashboardMetrics,
   calculateTrend,
   generatePerformanceInsights,
+  buildPerformanceSummaries,
+  buildAnalyticsMetricProjections,
   differenceInNights,
   formatCurrency,
   formatDate,
@@ -25,9 +27,15 @@ export {
   getLocalDateString,
   isTimestampOnLocalDate,
 } from "./lib";
+export { getAnalyticsDashboardProjection, projectOutcomeHistory, toPlatformObservations } from "./application";
 
 export type {
   AnalyticsBooking,
+  AnalyticsDashboardProjection,
+  AnalyticsMetricProjection,
+  AnalyticsMetricUnit,
+  AnalyticsOutcomeProjection,
+  AnalyticsPerformanceSummary,
   AnalyticsDateRange,
   AnalyticsProperty,
   AnalyticsQueryParams,

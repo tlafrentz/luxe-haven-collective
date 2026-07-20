@@ -8,6 +8,8 @@ import {
   useInvestmentWorkspaceState,
 } from "./investment-workspace-state";
 
+import { buildInvestmentWorkspaceView } from "../application/adapters";
+
 const ANALYSIS_OUTPUTS = [
   "Acquisition recommendation",
   "Investment score",
@@ -53,6 +55,8 @@ export function InvestmentAnalysisResults() {
   }
 
   if (analysis) {
+    const workspaceAnalysis = buildInvestmentWorkspaceView(analysis).projection;
+
     return (
       <div className="space-y-4">
         {hasStaleAnalysis ? (
@@ -115,7 +119,7 @@ export function InvestmentAnalysisResults() {
         ) : null}
 
         <InvestmentReport
-          analysis={analysis}
+          analysis={workspaceAnalysis}
         />
       </div>
     );

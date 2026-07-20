@@ -1,3 +1,4 @@
+/** @deprecated Compatibility vocabulary mapped to Platform Intelligence Trend direction. */
 export enum TrendDirection {
   StronglyPositive = "strongly-positive",
   Positive = "positive",

@@ -1,8 +1,8 @@
-import {
-  calculateDashboardMetrics,
-  type AnalyticsBooking,
-  type AnalyticsDateRange,
-} from "@/features/analytics";
+import type {
+  AnalyticsBooking,
+  AnalyticsDateRange,
+} from "../domain/revenue-input";
+import { revenueAnalyticsGateway } from "../adapters/analytics-input-adapter";
 
 import type {
   PerformanceScope,
@@ -51,7 +51,7 @@ export function calculatePropertyPerformance({
     propertyCount,
   });
 
-  const metrics = calculateDashboardMetrics({
+  const metrics = revenueAnalyticsGateway.dashboardMetrics({
     bookings,
     propertyCount: scope.propertyCount,
     dateRange,

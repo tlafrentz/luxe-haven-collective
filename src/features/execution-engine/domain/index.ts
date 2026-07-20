@@ -34,4 +34,7 @@ export type {
 export type {
   ExecutiveAction,
   ExecutiveActionSource,
-} from "./executive-action";
+} from "../compatibility";
+
+export { HOSPITALITY_ACTION_TYPES } from "./hospitality-action-types";
+export type { HospitalityActionType } from "./hospitality-action-types";

@@ -1,6 +1,6 @@
 import type {
   OccupancyDataPoint,
-} from "@/features/analytics";
+} from "../domain/revenue-input";
 
 import type {
   OpportunityConfidence,

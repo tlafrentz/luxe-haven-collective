@@ -3,7 +3,7 @@ import type {
   BookingSourceMetric,
   RevenueBreakdown,
   StayLengthBucket,
-} from "@/features/analytics";
+} from "./revenue-input";
 
 export type PerformanceScope =
   | {
@@ -54,4 +54,3 @@ export type PropertyPerformance = {
   bookings: BookingPerformance;
   bookingBehavior: BookingBehaviorPerformance;
 };
-

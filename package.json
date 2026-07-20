@@ -9,7 +9,12 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "migration:graph": "tsx scripts/platform-migration/cli.ts graph",
+    "migration:duplicates": "tsx scripts/platform-migration/cli.ts duplicates",
+    "migration:adoption": "tsx scripts/platform-migration/cli.ts adoption",
+    "migration:features": "tsx scripts/platform-migration/cli.ts features",
+    "migration:lint": "tsx scripts/platform-migration/cli.ts lint"
   },
   "dependencies": {
     "@hookform/resolvers": "latest",

@@ -1,5 +1,6 @@
 import { ConfidenceLevel } from "../enums/confidence-level";
 
+/** @deprecated Compatibility score used by legacy Market models; canonical artifact confidence uses Platform Scoring. */
 export class ConfidenceScore {
   readonly value: number;
 

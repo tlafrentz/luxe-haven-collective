@@ -72,6 +72,7 @@ function getRankScore(
   );
 }
 
+/** @deprecated Revenue DTO projector. Canonical prioritization uses ExecutiveAttentionPolicy. */
 export function buildExecutivePriorities(
   intelligence: RevenueIntelligence,
 ): ExecutivePriority[] {

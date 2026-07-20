@@ -1,6 +1,4 @@
-import type {
-  ActionStatus,
-} from "@/features/execution-engine";
+import type { ActionCenterStatus as ActionStatus } from "../domain";
 
 type ActionStatusBadgeProps = {
   status: ActionStatus;

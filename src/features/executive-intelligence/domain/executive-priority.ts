@@ -36,6 +36,7 @@ export type ExecutivePriorityImpact = {
   basis: string;
 };
 
+/** @deprecated PM-005 dashboard/Execution Engine compatibility projection. Use ExecutiveAttentionItem. */
 export type ExecutivePriority = {
   id: string;
   rank: number;

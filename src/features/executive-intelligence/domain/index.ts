@@ -34,3 +34,4 @@ export type {
   RevenueRiskItem,
   RevenueRiskSummary,
 } from "./revenue-risk";
+export type { ExecutiveAttentionItem, ExecutiveAttentionSource, ExecutiveAttentionUrgency, ExecutiveBriefingProjection, ExecutiveHealthProjection, ExecutiveProjection } from "./executive-projection";

@@ -1,5 +1,6 @@
 import { DataProvenance } from "../value-objects/data-provenance";
 
+/** @deprecated Compatibility/provider read model. Canonical records are Platform Observations. */
 export class MarketObservation {
   constructor(
     readonly type: string,

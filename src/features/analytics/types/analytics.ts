@@ -138,6 +138,57 @@ export type PerformanceInsight = {
   tone: InsightTone;
 };
 
+export type AnalyticsMetricUnit = "currency" | "percentage" | "count" | "days" | "currency-per-night";
+
+/** Factual metric boundary optimized for reporting and calculation. */
+export type AnalyticsMetricProjection = Readonly<{
+  metric: string;
+  label: string;
+  value: number;
+  unit: AnalyticsMetricUnit;
+  scope: Readonly<{ type: "property" | "portfolio"; id: string }>;
+  period: AnalyticsDateRange;
+  measuredAt: string;
+  calculationVersion: string;
+}>;
+
+export type AnalyticsPerformanceSummary = Readonly<{
+  id: string;
+  title: string;
+  description: string;
+  tone: "positive" | "negative" | "neutral" | "informational";
+}>;
+
+export type AnalyticsDashboardProjection = Readonly<{
+  generatedAt: string;
+  dateRange: AnalyticsDateRange;
+  previousDateRange: AnalyticsDateRange;
+  selectedProperty: AnalyticsProperty | null;
+  properties: readonly AnalyticsProperty[];
+  metrics: DashboardMetrics;
+  previousMetrics: DashboardMetrics;
+  comparison: DashboardComparison;
+  revenueSeries: readonly RevenueDataPoint[];
+  occupancySeries: readonly OccupancyDataPoint[];
+  bookings: readonly AnalyticsBooking[];
+  summaries: readonly AnalyticsPerformanceSummary[];
+  metricProjections: readonly AnalyticsMetricProjection[];
+}>;
+
+export type AnalyticsOutcomeProjection = Readonly<{
+  outcomeId: string;
+  title: string;
+  type: string;
+  status: string;
+  successful: boolean;
+  startedAt: string;
+  completedAt?: string;
+  durationMs?: number;
+  metrics: Readonly<Record<string, number>>;
+  actionIds: readonly string[];
+  decisionIds: readonly string[];
+}>;
+
 export type RevenueDataPoint = {
   date: string;
   revenue: number;

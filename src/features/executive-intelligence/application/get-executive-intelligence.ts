@@ -47,6 +47,7 @@ import {
   buildRevenueRiskSummary,
 } from "./build-revenue-risk-summary";
 
+/** @deprecated Compatibility provider for the pre-PM-005 dashboard report. */
 export async function getExecutiveIntelligence({
   propertyId,
   startDate,

@@ -32,6 +32,17 @@ export {
 } from "./engine";
 
 export {
+  REVENUE_OBSERVATION_CAPABILITY,
+  REVENUE_OBSERVATION_TYPES,
+  RevenueObservationProvider,
+  revenueObservationProvider,
+  toRevenueReasoningArtifacts,
+  decideRevenueRecommendation,
+  projectOpportunityStatus,
+  recordRevenueOutcome,
+} from "./application";
+
+export {
   OpportunityCard,
   OpportunityIntelligence,
   RevenueIntelligenceDashboard,
@@ -69,3 +80,6 @@ export type {
   RevenueOpportunityType,
   RevenuePerformance,
 } from "./types";
+
+export type { RevenueDecisionResult, RevenueRecommendationDisposition } from "./application";
+export type { RevenueReasoningArtifacts } from "./domain/revenue-reasoning-artifacts";

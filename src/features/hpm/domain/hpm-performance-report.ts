@@ -28,6 +28,7 @@ export type HpmDataCoverage = {
   coveragePercentage: number;
 };
 
+/** @deprecated Executive dashboard compatibility projection. Use HpmLifecycleProjection. */
 export type HpmPerformanceReport = {
   scope: HpmPerformanceScope;
   overall: HpmCompositeScore;

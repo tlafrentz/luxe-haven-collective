@@ -1,7 +1,7 @@
-import {
-  differenceInNights,
-  type AnalyticsBooking,
-} from "@/features/analytics";
+import type { AnalyticsBooking } from "../domain/revenue-input";
+import { revenueAnalyticsGateway } from "../adapters/analytics-input-adapter";
+
+const { differenceInNights } = revenueAnalyticsGateway;
 
 import type {
   OpportunityConfidence,

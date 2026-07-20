@@ -1,5 +1,10 @@
 export type {
   AnalyticsBooking,
+  AnalyticsDashboardProjection,
+  AnalyticsMetricProjection,
+  AnalyticsMetricUnit,
+  AnalyticsOutcomeProjection,
+  AnalyticsPerformanceSummary,
   AnalyticsDateRange,
   AnalyticsProperty,
   AnalyticsQueryParams,

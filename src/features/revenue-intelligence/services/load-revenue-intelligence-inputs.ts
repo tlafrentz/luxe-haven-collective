@@ -1,12 +1,10 @@
-import {
-  getAnalyticsBookings,
-  getAnalyticsProperties,
-  getPreviousDateRange,
-  type AnalyticsBooking,
-  type AnalyticsDateRange,
-  type AnalyticsProperty,
-  type AnalyticsQueryParams,
-} from "@/features/analytics";
+import type {
+  AnalyticsBooking,
+  AnalyticsDateRange,
+  AnalyticsProperty,
+  AnalyticsQueryParams,
+} from "../domain/revenue-input";
+import { revenueAnalyticsGateway } from "../adapters/analytics-input-adapter";
 
 export type RevenueIntelligenceInputs = {
   properties: AnalyticsProperty[];
@@ -43,7 +41,7 @@ export async function loadRevenueIntelligenceInputs({
   endDate,
 }: AnalyticsQueryParams): Promise<RevenueIntelligenceInputs> {
   const properties =
-    await getAnalyticsProperties();
+    await revenueAnalyticsGateway.loadProperties();
 
   const selectedProperty =
     resolveSelectedProperty({
@@ -65,17 +63,17 @@ export async function loadRevenueIntelligenceInputs({
   };
 
   const previousDateRange =
-    getPreviousDateRange(dateRange);
+    revenueAnalyticsGateway.previousDateRange(dateRange);
 
   const [
     currentBookings,
     previousBookings,
   ] = await Promise.all([
-    getAnalyticsBookings({
+    revenueAnalyticsGateway.loadBookings({
       propertyId: selectedPropertyId,
       ...dateRange,
     }),
-    getAnalyticsBookings({
+    revenueAnalyticsGateway.loadBookings({
       propertyId: selectedPropertyId,
       ...previousDateRange,
     }),

@@ -239,6 +239,7 @@ function createUnavailablePillar(
   };
 }
 
+/** @deprecated Revenue DTO compatibility scorer. Canonical HPM uses buildHpmLifecycleProjection. */
 export function buildInitialHpmPerformance({
   intelligence,
 }: BuildInitialHpmPerformanceParams): HpmPerformanceReport {

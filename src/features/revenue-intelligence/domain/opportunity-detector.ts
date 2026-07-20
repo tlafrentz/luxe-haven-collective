@@ -1,7 +1,7 @@
 import type {
   AnalyticsBooking,
   OccupancyDataPoint,
-} from "@/features/analytics";
+} from "./revenue-input";
 
 import type {
   PropertyPerformance,

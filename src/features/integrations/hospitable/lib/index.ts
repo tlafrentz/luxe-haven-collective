@@ -23,6 +23,7 @@ export {
 
 export {
   mapHospitableReservation,
+  normalizeHospitableReservation,
   type HospitableReservationMapping,
   type MappedBookingStatus,
   type MappedPaymentStatus,

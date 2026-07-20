@@ -1,16 +1,4 @@
-export type ActionMeasuredImpact = {
-  revenue?: number;
-  occupancy?: number;
-  costSavings?: number;
-  reviewScore?: number;
-};
+/** @deprecated Measured truth belongs to Platform Outcomes. */
+export type { ActionMeasuredImpact } from "../compatibility/action-measured-impact";
 
-export type ActionOutcome = {
-  summary: string;
-
-  successful: boolean;
-
-  measuredImpact?: ActionMeasuredImpact;
-
-  lessonsLearned?: string[];
-};
+export type { ActionOutcome } from "@/platform/actions";

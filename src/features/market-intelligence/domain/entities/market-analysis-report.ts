@@ -27,6 +27,7 @@ export interface MarketAnalysisReportInput {
   readonly generatedAt?: Date;
 }
 
+/** Market-owned read projection; canonical lifecycle artifacts are produced by mapMarketPlatformArtifacts. */
 export class MarketAnalysisReport {
   readonly analysis:
     ComparableAnalysis;

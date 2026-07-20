@@ -1,6 +1,6 @@
 import type {
   AnalyticsBooking,
-} from "@/features/analytics";
+} from "../domain/revenue-input";
 
 import type {
   OpportunityDetectionContext,

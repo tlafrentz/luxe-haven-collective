@@ -15,6 +15,8 @@ export {
 export {
   generatePerformanceInsights,
 } from "./insights";
+export { buildPerformanceSummaries } from "./performance-summaries";
+export { ANALYTICS_CALCULATION_VERSION, buildAnalyticsMetricProjections } from "./metric-projections";
 
 export {
   getAnalyticsBookings,

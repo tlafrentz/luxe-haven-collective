@@ -13,6 +13,7 @@ export interface MarketAnalysisEvidenceInput {
   readonly source?: string;
 }
 
+/** @deprecated Report projection. Canonical reasoning support is Platform Evidence. */
 export class MarketAnalysisEvidence {
   readonly type:
     MarketAnalysisEvidenceType;

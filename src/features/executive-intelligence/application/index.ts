@@ -33,3 +33,5 @@ export {
 export {
   getExecutiveIntelligence,
 } from "./get-executive-intelligence";
+export * from "./adapters";
+export { ExecutiveAttentionPolicy, DEFAULT_EXECUTIVE_ATTENTION_WEIGHTS, type ExecutiveAttentionCandidate, type ExecutiveAttentionWeights } from "./executive-attention-policy";

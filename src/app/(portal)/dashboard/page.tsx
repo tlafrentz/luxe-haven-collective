@@ -4,7 +4,7 @@ import {
 
 import {
   ExecutiveCommandCenter,
-  getExecutiveIntelligence,
+  getExecutiveDashboardProjection,
 } from "@/features/executive-intelligence";
 
 type OwnerDashboardPageProps = {
@@ -27,7 +27,7 @@ export default async function OwnerDashboardPage({
     });
 
   const report =
-    await getExecutiveIntelligence({
+    await getExecutiveDashboardProjection({
       propertyId:
         params.property ?? null,
       startDate: dateRange.startDate,

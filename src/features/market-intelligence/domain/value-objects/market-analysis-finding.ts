@@ -18,6 +18,7 @@ export interface MarketAnalysisFindingInput {
     MarketAnalysisFindingSeverity;
 }
 
+/** @deprecated Report projection. Canonical findings are Claims plus Evaluations. */
 export class MarketAnalysisFinding {
   readonly type:
     MarketAnalysisFindingType;

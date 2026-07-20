@@ -1,5 +1,8 @@
 // Application
 
+export { buildCanonicalMarketAnalysis, buildMarketAnalysisReport } from "./application";
+export type { BuildMarketAnalysisReportInput, CanonicalMarketAnalysis } from "./application";
+
 export {
   RentCastClient,
 } from "./infrastructure/rentcast/rentcast-client";
@@ -82,3 +85,28 @@ export * as Demand from "./demand";
 export * as Competition from "./competition";
 export * as Location from "./location";
 export * as Shared from "./shared";
+
+export {
+  MarketObservationProvider,
+  marketObservationProvider,
+} from "./application/providers/market-observation-provider";
+
+export {
+  mapComparableAnalysis,
+  mapMarketEvidence,
+  mapMarketFindings,
+  mapMarketSummary,
+  mapMarketValuation,
+  mapMarketPlatformArtifacts,
+  mapMarketAggregateIntelligence,
+} from "./application/mappers";
+
+export { observeComparableProviderResult, observePropertyProviderResult } from "./application/providers";
+export type { ObservedProviderResult } from "./application/providers";
+export type { MarketPlatformArtifacts } from "./domain/market-platform-artifacts";
+
+export {
+  MARKET_OBSERVATION_CAPABILITY,
+  MARKET_OBSERVATION_TYPES,
+  type MarketObservationType,
+} from "./application/types";

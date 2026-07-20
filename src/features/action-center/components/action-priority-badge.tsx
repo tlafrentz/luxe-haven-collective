@@ -1,6 +1,4 @@
-import type {
-  ActionPriority,
-} from "@/features/execution-engine";
+import type { ActionCenterPriority as ActionPriority } from "../domain";
 
 type ActionPriorityBadgeProps = {
   priority: ActionPriority;

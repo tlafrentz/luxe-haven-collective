@@ -31,6 +31,7 @@ import type {
   RevenueRiskSummary,
 } from "./revenue-risk";
 
+/** @deprecated PM-005 dashboard compatibility projection. Use ExecutiveProjection for canonical orchestration. */
 export type ExecutiveIntelligenceReport = {
   generatedAt: string;
   dateRange: AnalyticsDateRange;

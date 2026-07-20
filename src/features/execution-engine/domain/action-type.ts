@@ -1,13 +1,4 @@
-export const ACTION_TYPES = [
-  "pricing",
-  "operations",
-  "guest-experience",
-  "distribution",
-  "maintenance",
-  "finance",
-  "marketing",
-  "system",
-] as const;
+/** @deprecated Action types are feature-defined in the platform model. */
+export { HOSPITALITY_ACTION_TYPES as ACTION_TYPES } from "./hospitality-action-types";
 
-export type ActionType =
-  (typeof ACTION_TYPES)[number];
+export type { ActionType } from "@/platform/actions";

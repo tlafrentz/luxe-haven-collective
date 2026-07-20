@@ -1,7 +1,5 @@
-import {
-  buildDailyOccupancySeries,
-  type AnalyticsQueryParams,
-} from "@/features/analytics";
+import type { AnalyticsQueryParams } from "../domain/revenue-input";
+import { revenueAnalyticsGateway } from "../adapters/analytics-input-adapter";
 
 import type {
   RevenueIntelligence,
@@ -23,6 +21,8 @@ import {
 import {
   runOpportunityEngine,
 } from "./run-opportunity-engine";
+import { toRevenueReasoningArtifacts } from "../application/revenue-reasoning-adapter";
+import { projectRevenueOpportunityReport } from "../compatibility/revenue-opportunity-report-projector";
 
 export async function getRevenueIntelligence({
   propertyId,
@@ -58,7 +58,7 @@ export async function getRevenueIntelligence({
     });
 
   const occupancySeries =
-    buildDailyOccupancySeries({
+    revenueAnalyticsGateway.dailyOccupancy({
       bookings: inputs.currentBookings,
       dateRange: inputs.dateRange,
       propertyCount: inputs.propertyCount,
@@ -80,7 +80,7 @@ export async function getRevenueIntelligence({
       inputs.previousDateRange,
   };
 
-  const opportunityReport =
+  const detectedOpportunityReport =
     runOpportunityEngine({
       context: {
         performance: current,
@@ -90,6 +90,8 @@ export async function getRevenueIntelligence({
         detectedAt,
       },
     });
+  const reasoning = toRevenueReasoningArtifacts(detectedOpportunityReport);
+  const opportunityReport = projectRevenueOpportunityReport(detectedOpportunityReport, reasoning);
 
   return {
     report,
@@ -97,5 +99,6 @@ export async function getRevenueIntelligence({
     bookings: inputs.currentBookings,
     occupancySeries,
     generatedAt: detectedAt,
+    reasoning,
   };
 }

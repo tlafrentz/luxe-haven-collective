@@ -1,6 +1,6 @@
 import type {
   AnalyticsQueryParams,
-} from "@/features/analytics";
+} from "../domain/revenue-input";
 
 import type {
   RevenueIntelligenceReport,

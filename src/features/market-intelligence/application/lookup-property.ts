@@ -17,6 +17,7 @@ import type {
 import {
   PropertyProviderRegistry,
 } from "./property-provider-registry";
+import { observePropertyProviderResult, type ObservedProviderResult } from "./providers/canonical-provider-observations";
 
 export interface LookupPropertyInput {
   readonly address: string;
@@ -72,6 +73,10 @@ export class LookupProperty {
     return provider.getProperty({
       address,
     });
+  }
+
+  async executeObserved(input: LookupPropertyInput): Promise<ObservedProviderResult<PropertyRecord>> {
+    return observePropertyProviderResult(await this.execute(input));
   }
 
   private resolveProvider(

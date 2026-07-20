@@ -1,5 +1,4 @@
-import { Money } from "@/features/investment-intelligence/domain/value-objects";
-import { Percentage } from "@/features/investment-intelligence/domain/value-objects";
+import type { MarketMoney as Money, MarketPercentage as Percentage } from "../value-objects/market-metric-types";
 
 import { MarketObservation } from "./market-observation";
 import { ComparableProperty } from "./comparable-property";

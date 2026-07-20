@@ -1,3 +1,4 @@
+/** @deprecated Compatibility labels; canonical artifact confidence uses Platform Scoring. */
 export enum ConfidenceLevel {
   Unknown = "unknown",
 

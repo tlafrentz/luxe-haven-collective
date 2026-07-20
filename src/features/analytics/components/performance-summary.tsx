@@ -5,10 +5,10 @@ import {
   MinusCircle,
 } from "lucide-react";
 
-import type { PerformanceInsight } from "../types";
+import type { AnalyticsPerformanceSummary, PerformanceInsight } from "../types";
 
 type PerformanceSummaryProps = {
-  insights: PerformanceInsight[];
+  insights: readonly (PerformanceInsight | AnalyticsPerformanceSummary)[];
 };
 
 const toneStyles = {
@@ -18,6 +18,11 @@ const toneStyles = {
     iconWrapper: "bg-emerald-100 text-emerald-700",
   },
   warning: {
+    icon: AlertTriangle,
+    wrapper: "border-amber-200 bg-amber-50/60",
+    iconWrapper: "bg-amber-100 text-amber-700",
+  },
+  negative: {
     icon: AlertTriangle,
     wrapper: "border-amber-200 bg-amber-50/60",
     iconWrapper: "bg-amber-100 text-amber-700",

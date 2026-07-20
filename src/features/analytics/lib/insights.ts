@@ -17,6 +17,7 @@ function formatCurrency(value: number): string {
   }).format(Math.abs(value));
 }
 
+/** @deprecated Compatibility UI copy containing Revenue interpretation. Use buildPerformanceSummaries. */
 export function generatePerformanceInsights({
   metrics,
   comparison,

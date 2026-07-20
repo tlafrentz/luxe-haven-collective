@@ -118,7 +118,7 @@ describe("buildActionCenterView", () => {
     ).toEqual(["completed"]);
 
     expect(
-      result.recentlyLearned.map(
+      result.recentlyMeasured.map(
         (action) => action.id,
       ),
     ).toEqual(["measured"]);

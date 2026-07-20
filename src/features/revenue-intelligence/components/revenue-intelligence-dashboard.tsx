@@ -7,7 +7,7 @@ import {
   RevenueTrendChart,
   StatsGrid,
   buildDailyRevenueSeries,
-  generatePerformanceInsights,
+  buildPerformanceSummaries,
 } from "@/features/analytics";
 
 import type {
@@ -36,11 +36,10 @@ export function RevenueIntelligenceDashboard({
     analytics.properties.length > 0;
 
   const insights =
-    generatePerformanceInsights({
-      metrics: analytics.metrics,
-      comparison: analytics.comparison,
-      bookings: analytics.bookings,
-    });
+    buildPerformanceSummaries(
+      analytics.metrics,
+      analytics.comparison,
+    );
 
   const revenueSeries =
     buildDailyRevenueSeries({

@@ -21,6 +21,8 @@ import {
 import {
   buildMarketAnalysisSummary,
 } from "./build-market-analysis-summary";
+import { mapMarketPlatformArtifacts } from "./mappers/map-market-platform-artifacts";
+import type { MarketPlatformArtifacts } from "../domain/market-platform-artifacts";
 
 export interface BuildMarketAnalysisReportInput {
   readonly analysis:
@@ -28,6 +30,14 @@ export interface BuildMarketAnalysisReportInput {
   readonly valuation:
     MarketValuation;
   readonly generatedAt?: Date;
+}
+
+export type CanonicalMarketAnalysis = Readonly<{ report: MarketAnalysisReport; artifacts: MarketPlatformArtifacts }>;
+
+/** Primary Platform-native analysis path; report is retained as a read projection. */
+export function buildCanonicalMarketAnalysis(input: BuildMarketAnalysisReportInput): CanonicalMarketAnalysis {
+  const report = buildMarketAnalysisReport(input);
+  return { report, artifacts: mapMarketPlatformArtifacts(report) };
 }
 
 export function buildMarketAnalysisReport(

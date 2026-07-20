@@ -1,18 +1,5 @@
-import type {
-  ActionOutcome,
-  ActionStatus,
-  ExecutiveAction,
-} from "../domain";
-
-export const COMPLETABLE_ACTION_STATUSES = [
-  "accepted",
-  "scheduled",
-  "in-progress",
-  "blocked",
-] as const satisfies readonly ActionStatus[];
-
-export type CompletableActionStatus =
-  (typeof COMPLETABLE_ACTION_STATUSES)[number];
+import type { ActionOutcome, ExecutiveAction } from "../domain";
+import { toExecutiveAction, toPlatformAction } from "./action-adapter";
 
 export type CompleteActionInput = {
   action: ExecutiveAction;
@@ -20,40 +7,28 @@ export type CompleteActionInput = {
   outcome: ActionOutcome;
 };
 
-function isCompletableActionStatus(
-  status: ActionStatus,
-): status is CompletableActionStatus {
-  return COMPLETABLE_ACTION_STATUSES.some(
-    (completableStatus) =>
-      completableStatus === status,
-  );
-}
-
 export function completeAction({
   action,
   completedAt,
   outcome,
 }: CompleteActionInput): ExecutiveAction {
-  if (!isCompletableActionStatus(action.status)) {
-    throw new Error(
-      `Cannot complete action with status "${action.status}".`,
-    );
+  let completed: ExecutiveAction;
+  try {
+    completed = toExecutiveAction(toPlatformAction(action).complete(new Date(completedAt), outcome));
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Cannot transition action")) {
+      throw new Error(`Cannot complete action with status "${action.status}".`);
+    }
+    throw error;
   }
-
+  // Preserve the legacy DTO's explicit optional keys during migration.
   return {
-    ...action,
-    status: "completed",
+    ...completed,
     completedAt,
     outcome: {
-      ...outcome,
-      measuredImpact: outcome.measuredImpact
-        ? {
-            ...outcome.measuredImpact,
-          }
-        : undefined,
-      lessonsLearned: outcome.lessonsLearned
-        ? [...outcome.lessonsLearned]
-        : undefined,
+      ...completed.outcome!,
+      measuredImpact: completed.outcome?.measuredImpact,
+      lessonsLearned: completed.outcome?.lessonsLearned,
     },
   };
 }

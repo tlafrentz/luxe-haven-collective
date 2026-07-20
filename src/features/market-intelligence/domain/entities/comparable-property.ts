@@ -1,7 +1,4 @@
-import type {
-  Money,
-  Percentage,
-} from "@/features/investment-intelligence/domain/value-objects";
+import type { MarketMoney as Money, MarketPercentage as Percentage } from "../value-objects/market-metric-types";
 
 import type {
   DataProvenance,
