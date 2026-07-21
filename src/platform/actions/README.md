@@ -20,3 +20,13 @@ PF-009 Batch 2. It is not a canonical aggregate. New code uses
 
 See `docs/platform/platform-action-provider-domain-audit.md` for the canonical
 boundary and migration decisions.
+
+## Persistence
+
+The Batch 3 Supabase adapter persists aggregate state and append-oriented child
+records through transactional PostgreSQL functions. Reads are always scoped by
+workspace. Replacements compare the persisted version, require exactly one
+version increment, append history, and reject stale writers explicitly.
+
+The repository is an infrastructure adapter only. It does not perform lifecycle
+transitions or wire current feature consumers to the canonical Provider.
