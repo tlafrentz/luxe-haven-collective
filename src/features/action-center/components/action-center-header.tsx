@@ -15,7 +15,7 @@ export function ActionCenterHeader({
   summary,
 }: ActionCenterHeaderProps) {
   const activeCount =
-    summary.accepted +
+    summary.ready +
     summary.inProgress +
     summary.blocked;
 
