@@ -7,3 +7,6 @@ export * from "./action-commands";
 export * from "./action-provider";
 export * from "./action-queries";
 export * from "./action-repository";
+export * from "./default-platform-action-provider";
+export * from "./platform-action-provider-dependencies";
+export * from "./platform-action-provider-errors";
