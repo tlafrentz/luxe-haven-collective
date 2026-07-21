@@ -12,10 +12,15 @@ export async function sendEmail({ to, subject, html, replyTo }: SendEmailArgs) {
   const from = process.env.RESEND_FROM_EMAIL || "Luxe Haven Collective <onboarding@resend.dev>";
 
   if (!apiKey) {
-    console.warn("RESEND_API_KEY is not configured. Skipping email send.");
-    return { skipped: true };
+    throw new Error("Email delivery is not configured.");
   }
 
   const resend = new Resend(apiKey);
-  return resend.emails.send({ from, to, subject, html, replyTo });
+  const result = await resend.emails.send({ from, to, subject, html, replyTo });
+
+  if (result.error) {
+    throw new Error(`Email delivery failed: ${result.error.message}`);
+  }
+
+  return result.data;
 }

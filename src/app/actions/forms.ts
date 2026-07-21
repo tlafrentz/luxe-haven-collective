@@ -16,6 +16,7 @@ import {
 export type FormState = {
   ok: boolean;
   message: string;
+  downloadHref?: string;
   fieldErrors?: Record<string, string[]>;
 };
 
@@ -43,8 +44,6 @@ export async function submitContactInquiry(
   }
 
   const input = parsed.data;
-  const supabase = createAdminClient();
-
   const metadata = {
     preferred_date: input.preferredDate || null,
     appointment_location: input.appointmentLocation || null,
@@ -54,6 +53,8 @@ export async function submitContactInquiry(
   };
 
   try {
+    const supabase = createAdminClient();
+
     if (supabase) {
       const { error } = await supabase
         .from("contact_inquiries")
@@ -135,9 +136,9 @@ export async function submitLeadMagnet(
   }
 
   const input = parsed.data;
-  const supabase = createAdminClient();
-
   try {
+    const supabase = createAdminClient();
+
     if (supabase) {
       const { error } = await supabase
         .from("lead_magnet_downloads")
@@ -161,23 +162,39 @@ export async function submitLeadMagnet(
     const notificationTo = process.env.CONTACT_TO_EMAIL;
 
     if (notificationTo) {
-      await sendEmail({
-        to: notificationTo,
-        subject: "New Luxe Haven checklist download",
-        html: leadNotificationHtml(input),
-        replyTo: input.email,
-      });
+      try {
+        await sendEmail({
+          to: notificationTo,
+          subject: "New Luxe Haven checklist download",
+          html: leadNotificationHtml(input),
+          replyTo: input.email,
+        });
+      } catch (error) {
+        console.error("Lead notification email failed", error);
+      }
     }
 
-    await sendEmail({
-      to: input.email,
-      subject: "Your STR Revenue Readiness Checklist",
-      html: leadConfirmationHtml(input),
-    });
+    try {
+      await sendEmail({
+        to: input.email,
+        subject: "Your STR Revenue Readiness Checklist",
+        html: leadConfirmationHtml(input),
+      });
+    } catch (error) {
+      console.error("Lead checklist email failed", error);
+
+      return {
+        ok: true,
+        message:
+          "Your request was saved, but we could not send the email. You can open the checklist now.",
+        downloadHref: "/resources/str-revenue-readiness-checklist",
+      };
+    }
 
     return {
       ok: true,
       message: "Success — check your inbox for the checklist link.",
+      downloadHref: "/resources/str-revenue-readiness-checklist",
     };
   } catch (error) {
     console.error("Lead magnet submission failed", error);

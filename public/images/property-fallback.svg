@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title description">
+  <title id="title">Luxe Haven property image coming soon</title>
+  <desc id="description">A warm neutral illustration of a home beneath the sun.</desc>
+  <rect width="1200" height="900" fill="#eee9e1"/>
+  <circle cx="920" cy="190" r="92" fill="#c8a96b" opacity=".55"/>
+  <path d="M225 510 600 220l375 290v235H225Z" fill="#d8cbb9"/>
+  <path d="m155 530 445-345 445 345-57 74-388-300-388 300Z" fill="#2f2924"/>
+  <rect x="330" y="520" width="540" height="225" rx="8" fill="#f8f5ef"/>
+  <rect x="525" y="555" width="150" height="190" fill="#8c7059"/>
+  <rect x="380" y="570" width="100" height="100" fill="#b8ced1"/>
+  <rect x="720" y="570" width="100" height="100" fill="#b8ced1"/>
+  <text x="600" y="830" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" letter-spacing="7" fill="#62584f">IMAGE COMING SOON</text>
+</svg>
