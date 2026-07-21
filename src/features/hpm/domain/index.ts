@@ -8,20 +8,5 @@ export type {
   HpmPillar,
 } from "./hpm-pillar";
 
-export type {
-  HpmCompositeScore,
-  HpmHealthStatus,
-  HpmMeasurementStatus,
-  HpmPillarScore,
-  HpmScoreChange,
-  HpmScoreContributor,
-  HpmScoreContributorType,
-  HpmScoreDirection,
-} from "./hpm-score";
-
-export type {
-  HpmDataCoverage,
-  HpmPerformanceReport,
-  HpmPerformanceScope,
-} from "./hpm-performance-report";
+export type { HpmHealthStatus } from "./hpm-health-status";
 export type { HpmCanonicalInputs, HpmImprovementCycle, HpmImprovementCycleStatus, HpmLifecycleProjection, HpmOperatingHealth } from "./hpm-lifecycle-projection";

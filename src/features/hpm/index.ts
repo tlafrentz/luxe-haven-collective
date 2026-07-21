@@ -1,6 +1,7 @@
 export {
-  buildInitialHpmPerformance,
   buildHpmLifecycleProjection,
+  getCurrentHpmCanonicalInputs,
+  getCurrentHpmLifecycleProjection,
   HpmScorePolicy,
 } from "./application";
 
@@ -11,22 +12,21 @@ export {
 } from "./domain";
 
 export type {
-  HpmCompositeScore,
-  HpmDataCoverage,
   HpmHealthStatus,
-  HpmMeasurementStatus,
-  HpmPerformanceReport,
-  HpmPerformanceScope,
   HpmPillar,
-  HpmPillarScore,
-  HpmScoreChange,
-  HpmScoreContributor,
-  HpmScoreContributorType,
-  HpmScoreDirection,
   HpmCanonicalInputs,
   HpmImprovementCycle,
   HpmImprovementCycleStatus,
   HpmLifecycleProjection,
   HpmOperatingHealth,
 } from "./domain";
-export type { BuildHpmLifecycleProjectionOptions, HpmScorePolicyResult } from "./application";
+export type {
+  BuildHpmLifecycleProjectionOptions,
+  CurrentHpmCanonicalAssembly,
+  CurrentHpmCanonicalInputProviders,
+  CurrentHpmCanonicalInputQuery,
+  CurrentHpmLifecycleResult,
+  CurrentHpmQuery,
+  CurrentHpmSourceContext,
+  HpmScorePolicyResult,
+} from "./application";

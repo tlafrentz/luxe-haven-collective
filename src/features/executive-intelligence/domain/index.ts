@@ -1,37 +1,17 @@
+export type { ExecutiveAttentionItem, ExecutiveAttentionSource, ExecutiveAttentionUrgency } from "./executive-attention";
 export type {
-  ExecutiveBrief,
-  ExecutiveBriefTone,
-} from "./executive-brief";
-
-export type {
-  ExecutiveIntelligenceReport,
-} from "./executive-intelligence-report";
-
-export type {
-  ExecutivePriority,
-  ExecutivePriorityImpact,
-  ExecutivePriorityImpactType,
-  ExecutivePrioritySource,
-  ExecutivePriorityStatus,
-} from "./executive-priority";
-
-export type {
-  PortfolioChange,
-  PortfolioChangeTone,
-  PortfolioChangeType,
-} from "./portfolio-change";
-
-export type {
-  PortfolioHealth,
-} from "./portfolio-health";
-
-export type {
-  PortfolioSnapshot,
-  PortfolioSnapshotMetric,
-} from "./portfolio-snapshot";
-
-export type {
-  RevenueRiskItem,
-  RevenueRiskSummary,
-} from "./revenue-risk";
-export type { ExecutiveAttentionItem, ExecutiveAttentionSource, ExecutiveAttentionUrgency, ExecutiveBriefingProjection, ExecutiveHealthProjection, ExecutiveProjection } from "./executive-projection";
+  ExecutiveActionItem,
+  ExecutiveAttentionSummary,
+  ExecutiveDataGap,
+  ExecutiveDataQualitySummary,
+  ExecutiveDecisionItem,
+  ExecutiveDecisionSummary,
+  ExecutiveExecutionSummary,
+  ExecutiveHealthSummary,
+  ExecutiveIntelligenceView,
+  ExecutiveOutcomeItem,
+  ExecutiveOutcomeSummary,
+  ExecutivePerformanceSummary,
+  ExecutiveMetricTrend,
+  ExecutiveScopeSummary,
+} from "./executive-intelligence-view";

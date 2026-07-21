@@ -6,15 +6,16 @@ import {
 } from "lucide-react";
 
 import type {
-  ExecutiveBrief as ExecutiveBriefType,
+  ExecutiveIntelligenceView,
 } from "../domain";
 
 type ExecutiveBriefProps = {
-  brief: ExecutiveBriefType;
+  brief: ExecutiveIntelligenceView["briefing"];
+  healthStatus: ExecutiveIntelligenceView["health"]["status"];
 };
 
 const toneClasses: Record<
-  ExecutiveBriefType["tone"],
+  "positive" | "balanced" | "warning" | "critical",
   string
 > = {
   positive:
@@ -29,12 +30,16 @@ const toneClasses: Record<
 
 export function ExecutiveBrief({
   brief,
+  healthStatus,
 }: ExecutiveBriefProps) {
+  const tone = healthStatus === "critical" ? "critical"
+    : healthStatus === "watch" || healthStatus === "needs-attention" ? "warning"
+      : healthStatus === "healthy" || healthStatus === "excellent" ? "positive" : "balanced";
   return (
     <section
       className={[
         "overflow-hidden rounded-3xl border p-6 shadow-sm sm:p-8",
-        toneClasses[brief.tone],
+        toneClasses[tone],
       ].join(" ")}
     >
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50">

@@ -5,11 +5,11 @@ import {
 } from "lucide-react";
 
 import type {
-  MetricTrend,
-} from "@/features/analytics";
+  ExecutiveMetricTrend,
+} from "../domain";
 
 type MetricTrendProps = {
-  trend: MetricTrend | null;
+  trend: ExecutiveMetricTrend | null;
   suffix?: string;
 };
 

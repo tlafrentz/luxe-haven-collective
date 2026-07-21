@@ -5,11 +5,11 @@ import {
 } from "lucide-react";
 
 import type {
-  ExecutiveIntelligenceReport,
+  ExecutiveScopeSummary,
 } from "../domain";
 
 type ExecutiveCommandHeaderProps = {
-  report: ExecutiveIntelligenceReport;
+  scope: ExecutiveScopeSummary;
 };
 
 function formatDateRange(
@@ -31,15 +31,17 @@ function formatDateRange(
 }
 
 export function ExecutiveCommandHeader({
-  report,
+  scope,
 }: ExecutiveCommandHeaderProps) {
   const scopeLabel =
-    report.selectedProperty?.name ??
-    `${report.portfolioSnapshot.propertyCount} ${
-      report.portfolioSnapshot.propertyCount === 1
+    scope.selectedProperty?.name ??
+    (scope.propertyCount === null
+      ? "Scope unavailable"
+      : `${scope.propertyCount} ${
+      scope.propertyCount === 1
         ? "property"
         : "properties"
-    }`;
+    }`);
 
   return (
     <header className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
@@ -68,8 +70,8 @@ export function ExecutiveCommandHeader({
         <div className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 shadow-sm">
           <CalendarDays className="h-4 w-4 text-stone-400" />
           {formatDateRange(
-            report.dateRange.startDate,
-            report.dateRange.endDate,
+            scope.startDate,
+            scope.endDate,
           )}
         </div>
       </div>

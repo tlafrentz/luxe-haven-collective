@@ -16,20 +16,15 @@ import {
 } from "react";
 
 import type {
-  AnalyticsDateRange,
-  AnalyticsProperty,
-} from "@/features/analytics";
+  ExecutiveScopeSummary,
+} from "../domain";
 
 type ExecutiveScopeControlsProps = {
-  properties: AnalyticsProperty[];
-  selectedProperty: AnalyticsProperty | null;
-  dateRange: AnalyticsDateRange;
+  scope: ExecutiveScopeSummary;
 };
 
 export function ExecutiveScopeControls({
-  properties,
-  selectedProperty,
-  dateRange,
+  scope,
 }: ExecutiveScopeControlsProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,14 +34,14 @@ export function ExecutiveScopeControls({
 
   const [propertyId, setPropertyId] =
     useState(
-      selectedProperty?.id ?? "portfolio",
+      scope.selectedProperty?.id ?? "portfolio",
     );
 
   const [startDate, setStartDate] =
-    useState(dateRange.startDate);
+    useState(scope.startDate);
 
   const [endDate, setEndDate] =
-    useState(dateRange.endDate);
+    useState(scope.endDate);
 
   function applyFilters() {
     const params = new URLSearchParams();
@@ -113,7 +108,7 @@ export function ExecutiveScopeControls({
                 Entire portfolio
               </option>
 
-              {properties.map((property) => (
+              {scope.properties.map((property) => (
                 <option
                   key={property.id}
                   value={property.id}

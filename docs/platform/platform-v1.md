@@ -312,6 +312,30 @@ production policy, scoring, confidence, or automation.
 Migration proceeds through adapters and compatibility tests. Unrelated feature
 flows and UI are not rewritten merely to demonstrate Platform adoption.
 
+## Executive Intelligence adoption
+
+Executive Intelligence completed its Platform v1 adoption on 2026-07-20. Its production dependency direction is:
+
+```text
+Executive Dashboard
+        ↓
+ExecutiveIntelligenceView
+        ↓
+getExecutiveIntelligenceView()
+        ↓
+getCurrentHpmLifecycleProjection()
+        ↓
+getCurrentHpmCanonicalInputs()
+        ↓
+buildHpmLifecycleProjection()
+        ↓
+Canonical Platform collections and scoring
+```
+
+Executive owns presentation summaries and `ExecutiveAttentionPolicy`; it does not own lifecycle records, score mechanics, or feature copies of Platform concepts. Analytics metric Observations and Revenue reasoning artifacts are the currently connected production sources. Decision, Action, Outcome, Intelligence, Learning, and pillar-score providers remain unavailable and are reported as data-quality gaps rather than fabricated zeroes.
+
+The former Executive report, priority lifecycle, Revenue-specific HPM scorer, compatibility mapper, legacy builders, and Execution Engine reverse adapter have been removed. Repository architecture tests prevent their reintroduction and enforce that Platform does not import product features.
+
 ## Platform decision history
 
 These Architecture Decision Records preserve the reasons behind the Platform

@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 import type {
-  PortfolioSnapshot,
+  ExecutivePerformanceSummary,
 } from "../domain";
 
 import {
@@ -14,11 +14,11 @@ import {
 } from "./metric-trend";
 
 type PortfolioSnapshotGridProps = {
-  snapshot: PortfolioSnapshot;
+  performance: ExecutivePerformanceSummary;
 };
 
 export function PortfolioSnapshotGrid({
-  snapshot,
+  performance,
 }: PortfolioSnapshotGridProps) {
   const currency = new Intl.NumberFormat(
     "en-US",
@@ -33,31 +33,35 @@ export function PortfolioSnapshotGrid({
     {
       label: "Gross revenue",
       value: currency.format(
-        snapshot.grossRevenue.value,
+        performance.grossRevenue.value ?? 0,
       ),
-      trend: snapshot.grossRevenue.trend,
+      rawValue: performance.grossRevenue.value,
+      trend: performance.grossRevenue.trend,
       icon: CircleDollarSign,
     },
     {
       label: "Occupancy",
-      value: `${snapshot.occupancyRate.value.toFixed(
+      value: `${(performance.occupancyRate.value ?? 0).toFixed(
         1,
       )}%`,
-      trend: snapshot.occupancyRate.trend,
+      rawValue: performance.occupancyRate.value,
+      trend: performance.occupancyRate.trend,
       icon: Hotel,
     },
     {
       label: "Average daily rate",
       value: currency.format(
-        snapshot.averageDailyRate.value,
+        performance.averageDailyRate.value ?? 0,
       ),
-      trend: snapshot.averageDailyRate.trend,
+      rawValue: performance.averageDailyRate.value,
+      trend: performance.averageDailyRate.trend,
       icon: TrendingUp,
     },
     {
       label: "RevPAR",
-      value: currency.format(snapshot.revPar.value),
-      trend: snapshot.revPar.trend,
+      value: currency.format(performance.revPar.value ?? 0),
+      rawValue: performance.revPar.value,
+      trend: performance.revPar.trend,
       icon: TrendingUp,
     },
   ];
@@ -84,7 +88,7 @@ export function PortfolioSnapshotGrid({
               </div>
 
               <p className="mt-5 text-2xl font-semibold text-stone-950">
-                {metric.value}
+                {metric.rawValue === null ? "Unavailable" : metric.value}
               </p>
 
               <p className="mt-1 text-xs text-stone-500">
@@ -102,7 +106,7 @@ export function PortfolioSnapshotGrid({
           </p>
 
           <p className="mt-1 text-xl font-semibold">
-            {snapshot.totalBookings}
+            {performance.totalBookings ?? "Unavailable"}
           </p>
         </div>
 
@@ -113,7 +117,7 @@ export function PortfolioSnapshotGrid({
           </p>
 
           <p className="mt-1 text-xl font-semibold">
-            {snapshot.upcomingBookings}
+            {performance.upcomingBookings ?? "Unavailable"}
           </p>
         </div>
       </div>

@@ -5,7 +5,7 @@ import {
 } from "vitest";
 
 import {
-  createExecutiveAction,
+  createPlatformAction,
 } from "../test-support/factories";
 
 import {
@@ -16,31 +16,31 @@ describe("buildActionCenterView", () => {
   it("builds execution summary counts", () => {
     const result = buildActionCenterView([
       {
-        action: createExecutiveAction({
+        action: createPlatformAction({
           id: "accepted",
           status: "accepted",
         }),
       },
       {
-        action: createExecutiveAction({
+        action: createPlatformAction({
           id: "in-progress",
           status: "in-progress",
         }),
       },
       {
-        action: createExecutiveAction({
+        action: createPlatformAction({
           id: "blocked",
           status: "blocked",
         }),
       },
       {
-        action: createExecutiveAction({
+        action: createPlatformAction({
           id: "completed",
           status: "completed",
         }),
       },
       {
-        action: createExecutiveAction({
+        action: createPlatformAction({
           id: "measured",
           status: "measured",
         }),
@@ -60,10 +60,10 @@ describe("buildActionCenterView", () => {
   it("excludes archived actions", () => {
     const result = buildActionCenterView([
       {
-        action: createExecutiveAction(),
+        action: createPlatformAction(),
       },
       {
-        action: createExecutiveAction({
+        action: createPlatformAction({
           id: "archived",
           status: "archived",
         }),
@@ -82,25 +82,28 @@ describe("buildActionCenterView", () => {
   it("groups active, completed, and measured actions", () => {
     const result = buildActionCenterView([
       {
-        action: createExecutiveAction({
+        action: createPlatformAction({
           id: "active",
           status: "in-progress",
         }),
       },
       {
-        action: createExecutiveAction({
+        action: createPlatformAction({
           id: "completed",
           status: "completed",
           completedAt:
-            "2026-07-15T18:00:00.000Z",
+            new Date("2026-07-15T18:00:00.000Z"),
+          outcome: { summary: "Completed.", successful: true },
         }),
       },
       {
-        action: createExecutiveAction({
+        action: createPlatformAction({
           id: "measured",
           status: "measured",
+          completedAt: new Date("2026-07-15T18:00:00.000Z"),
           measuredAt:
-            "2026-07-22T18:00:00.000Z",
+            new Date("2026-07-22T18:00:00.000Z"),
+          outcome: { summary: "Measured.", successful: true, measuredImpact: { revenue: 1 } },
         }),
       },
     ]);
@@ -127,7 +130,7 @@ describe("buildActionCenterView", () => {
   it("maps ownership into the presentation model", () => {
     const result = buildActionCenterView([
       {
-        action: createExecutiveAction({
+        action: createPlatformAction({
           owner: {
             type: "team",
             id: "revenue-team",
@@ -145,7 +148,7 @@ describe("buildActionCenterView", () => {
   it("preserves decision context for the execution experience", () => {
     const result = buildActionCenterView([
       {
-        action: createExecutiveAction(),
+        action: createPlatformAction(),
         decisionContext: {
           outcomeTitle:
             "Recover missed weekend revenue",
@@ -200,7 +203,7 @@ describe("buildActionCenterView", () => {
 
     const result = buildActionCenterView([
       {
-        action: createExecutiveAction(),
+        action: createPlatformAction(),
         decisionContext: {
           outcomeTitle:
             "Recover missed weekend revenue",
