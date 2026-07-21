@@ -21,6 +21,7 @@ export default defineConfig({
       "src/**/*.test.ts",
       "src/**/*.spec.ts",
       "scripts/**/*.test.ts",
+      "tests/**/*.test.ts",
     ],
     clearMocks: true,
     restoreMocks: true,

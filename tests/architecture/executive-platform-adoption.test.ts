@@ -28,10 +28,8 @@ describe("Executive Platform adoption boundaries", () => {
     }
   });
 
-  it("keeps Execution Engine and Action Center independent of Executive contracts", () => {
-    const execution = content(join(process.cwd(), "src/features/execution-engine"));
+  it("keeps Action Center independent of Executive and the removed Execution Engine", () => {
     const actionCenter = content(join(process.cwd(), "src/features/action-center"));
-    expect(execution).not.toContain("features/executive-" + "intelligence");
     expect(actionCenter).not.toContain("features/executive-" + "intelligence");
     expect(actionCenter).not.toContain("features/execution-" + "engine");
   });
