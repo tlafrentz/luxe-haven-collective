@@ -36,7 +36,16 @@ export function toRevenueReasoningArtifacts(report: OpportunityReport): RevenueR
       rationale: [opportunity.summary, opportunity.impact?.basis ?? "Revenue detector policy criteria were satisfied."],
       priority: priority(opportunity.severity), category: opportunity.category, confidence, evaluationIds: [evaluation.id],
       evidenceIds: mappedEvidence.map((item) => item.id), claimIds: [claim.id], observationIds: mappedObservations.map((item) => item.id),
-      metadata: { opportunityId: opportunity.id, detectorId: opportunity.detectorId, proposedActionType: opportunity.action.type } }));
+      metadata: {
+        opportunityId: opportunity.id,
+        detectorId: opportunity.detectorId,
+        proposedActionType: opportunity.action.type,
+        detectedAt: opportunity.detectedAt,
+        ...(opportunity.impact?.type ? { impactType: opportunity.impact.type } : {}),
+        ...(opportunity.impact?.estimatedAmount !== undefined ? { estimatedAmount: opportunity.impact.estimatedAmount } : {}),
+        ...(opportunity.impact?.estimatedPercentage !== undefined ? { estimatedPercentage: opportunity.impact.estimatedPercentage } : {}),
+        ...(opportunity.impact?.currency ? { currency: opportunity.impact.currency } : {}),
+      } }));
   }
   return { observations: ObservationCollection.create(observations), evidence: EvidenceCollection.create(evidence), claims: ClaimCollection.create(claims),
     evaluations: EvaluationCollection.create(evaluations), recommendations: RecommendationCollection.create(recommendations) };
