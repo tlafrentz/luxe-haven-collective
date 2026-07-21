@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { SafeImage } from "@/components/shared/safe-image";
 
 export function HeroSection() {
   return (
@@ -76,7 +76,7 @@ export function HeroSection() {
 
           <div className="relative overflow-hidden rounded-[2.5rem] border border-border bg-card p-3 shadow-2xl shadow-black/10">
             <div className="relative h-[540px] w-full md:h-[620px]">
-              <Image
+              <SafeImage
                 src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1400&auto=format&fit=crop"
                 alt="Elevated living room representing Luxe Haven hospitality"
                 fill

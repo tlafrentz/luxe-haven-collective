@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
 import { CTASection } from "@/components/marketing/cta-section";
+import { SafeImage } from "@/components/shared/safe-image";
 import {
   getPublishedPropertyBySlug,
   propertyImage,
@@ -125,7 +125,7 @@ export default async function PropertyDetailPage({
         <section className="py-10">
           <div className="container-shell grid gap-4 md:grid-cols-[1.4fr_.6fr]">
             <div className="relative h-[520px] overflow-hidden rounded-[2.5rem]">
-              <Image
+              <SafeImage
                 src={gallery[0]}
                 alt={property.name}
                 fill
@@ -144,7 +144,7 @@ export default async function PropertyDetailPage({
                       key={image}
                       className="relative h-[252px] overflow-hidden rounded-[2rem]"
                     >
-                      <Image
+                      <SafeImage
                         src={image}
                         alt={`${property.name} gallery ${index + 1}`}
                         fill

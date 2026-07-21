@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 
+import { SafeImage } from "@/components/shared/safe-image";
 import { Card } from "@/components/ui/card";
 import { propertyImage } from "@/lib/properties";
 import type { Property } from "@/types/database";
@@ -14,7 +14,7 @@ export function PropertyCard({
     <Card className="group overflow-hidden">
       <Link href={`/stays/${property.slug}`}>
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          <Image
+          <SafeImage
             src={propertyImage(property)}
             alt={property.name}
             fill

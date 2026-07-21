@@ -6,6 +6,8 @@ import {
   NextResponse,
   type NextRequest,
 } from "next/server";
+import { isAdminRoute, isProtectedRoute } from "@/lib/auth/roles";
+import type { UserRole } from "@/types/database";
 
 export async function updateSession(
   request: NextRequest,
@@ -54,7 +56,31 @@ export async function updateSession(
    * It refreshes expired auth tokens and ensures the
    * resulting cookies are forwarded to Server Components.
    */
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const pathname = request.nextUrl.pathname;
+
+  if (isProtectedRoute(pathname) && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isAdminRoute(pathname)) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single<{ role: UserRole }>();
+
+    if (profile?.role !== "admin") {
+      return NextResponse.redirect(
+        new URL("/dashboard", request.url),
+      );
+    }
+  }
 
   return response;
 }

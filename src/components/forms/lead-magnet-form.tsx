@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { submitLeadMagnet, type FormState } from "@/app/actions/forms";
 import { SubmitButton } from "@/components/forms/submit-button";
 
@@ -46,6 +47,14 @@ export function LeadMagnetForm() {
       </label>
       <SubmitButton dark>Download Checklist</SubmitButton>
       {state.message ? <p className={state.ok ? "mt-4 text-sm font-medium text-green-200" : "mt-4 text-sm font-medium text-red-200"}>{state.message}</p> : null}
+      {state.ok && state.downloadHref ? (
+        <Link
+          href={state.downloadHref}
+          className="mt-4 inline-flex rounded-full border border-white/30 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+        >
+          Open the checklist
+        </Link>
+      ) : null}
       <p className="mt-4 text-xs text-primary-foreground/50">You’ll receive the checklist by email, and Luxe Haven may follow up with relevant STR insights.</p>
     </form>
   );
