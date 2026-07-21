@@ -1,5 +1,6 @@
 import type { ObservationValue } from "../../observations";
-import { Action, type ActionId } from "../domain";
+import { Action } from "../compatibility";
+import type { ActionId } from "../domain";
 import type { ActionPolicyResult } from "./action-policy";
 
 export type ActionBuilderInput = Readonly<{

@@ -1,0 +1,21 @@
+import type { ActionActor, ActionActorType, ActionId, ActionOutcomeId, ActionOwner, ActionOutcomeLinkType, ActionPriority, ActionVersion, PlatformActionSource, WorkspaceId } from "../domain";
+
+export type ActionCommandContext = Readonly<{ workspaceId: WorkspaceId; actionId: ActionId; expectedVersion: ActionVersion; actor: ActionActor; occurredAt: Date; reason?: string; commandId?: string; externalEventId?: string }>;
+export type CreateActionCommand = Readonly<{ actionId?: ActionId; workspaceId: WorkspaceId; title: string; description?: string; actionType?: string; priority: ActionPriority; owner: ActionOwner; sources: readonly PlatformActionSource[]; actor: ActionActor; occurredAt: Date; commandId?: string }>;
+export type CreateDraftActionCommand = CreateActionCommand;
+export type CreateCommittedActionCommand = CreateActionCommand;
+export type CommitActionCommand = ActionCommandContext;
+export type AssignActionCommand = ActionCommandContext & Readonly<{ assignmentId?: ActionId; assigneeType: ActionActorType; assigneeId?: string; queue?: string }>;
+export type ReleaseActionAssignmentCommand = ActionCommandContext;
+export type ClaimActionCommand = ActionCommandContext & Readonly<{ assigneeType: ActionActorType; assigneeId?: string }>;
+export type ScheduleActionCommand = ActionCommandContext & Readonly<{ scheduled?: Date; startAfter?: Date; due?: Date }>;
+export type MarkActionReadyCommand = ActionCommandContext;
+export type StartActionCommand = ActionCommandContext;
+export type BlockActionCommand = ActionCommandContext;
+export type UnblockActionCommand = ActionCommandContext & Readonly<{ resumeTo: "ready" | "in-progress" }>;
+export type CompleteActionCommand = ActionCommandContext;
+export type CancelActionCommand = ActionCommandContext;
+export type ArchiveActionCommand = ActionCommandContext;
+export type LinkActionOutcomeCommand = ActionCommandContext & Readonly<{ outcomeId: ActionOutcomeId; linkType: ActionOutcomeLinkType }>;
+export type ChangeActionPriorityCommand = ActionCommandContext & Readonly<{ priority: ActionPriority }>;
+export type ChangeActionOwnerCommand = ActionCommandContext & Readonly<{ owner: ActionOwner }>;

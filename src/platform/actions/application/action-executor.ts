@@ -1,7 +1,8 @@
 import type { DecisionCollection } from "../../decisions";
 import { ExecutionStatus, type Executor } from "../../execution";
 import type { ObservationValue } from "../../observations";
-import { ActionCollection, type ActionId } from "../domain";
+import { ActionCollection } from "../compatibility";
+import type { ActionId } from "../domain";
 import { ActionBuilder } from "./action-builder";
 import type { ActionPolicy } from "./action-policy";
 import { ActionPolicyRegistry } from "./action-policy-registry";

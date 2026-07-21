@@ -1,4 +1,4 @@
-import { ACTION_PRIORITY_RANK } from "@/platform/actions";
+import { ACTION_PRIORITY_RANK, mapLegacyActionPriorityToPlatformPriority } from "@/platform/actions";
 import { RECOMMENDATION_PRIORITY_RANK } from "@/platform/recommendations";
 import { HPM_PILLARS, type HpmLifecycleProjection } from "@/features/hpm";
 
@@ -59,7 +59,7 @@ export function buildExecutiveIntelligenceView(
   const actionItems = actions.map((value): ExecutiveActionItem => Object.freeze({
     id: value.id.value, title: value.title, summary: value.summary, priority: value.priority,
     status: value.status, owner: value.owner.displayName, decisionIds: Object.freeze(value.decisionIds.map((id) => id.value)),
-  })).sort((left, right) => ACTION_PRIORITY_RANK[right.priority] - ACTION_PRIORITY_RANK[left.priority] || left.id.localeCompare(right.id));
+  })).sort((left, right) => ACTION_PRIORITY_RANK[mapLegacyActionPriorityToPlatformPriority(right.priority)] - ACTION_PRIORITY_RANK[mapLegacyActionPriorityToPlatformPriority(left.priority)] || left.id.localeCompare(right.id));
   const openStatuses = new Set(["proposed", "accepted", "scheduled", "in-progress", "blocked"]);
   const overdue = actions.filter((value) => value.scheduledFor && value.scheduledFor < now && openStatuses.has(value.status)).length;
 

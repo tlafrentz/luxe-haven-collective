@@ -1,6 +1,6 @@
 import type {
   ActionOutcome,
-  ActionStatus,
+  LegacyActionStatus as ActionStatus,
   Action,
 } from "@/platform/actions";
 

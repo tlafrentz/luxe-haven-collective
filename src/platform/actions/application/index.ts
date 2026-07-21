@@ -3,3 +3,7 @@ export { ActionExecutor, type ActionExecutionInput } from "./action-executor";
 export { type ActionPolicy, type ActionPolicyContext, type ActionPolicyResult } from "./action-policy";
 export { ActionPolicyRegistry } from "./action-policy-registry";
 export { ActionSession, type ActionSessionInput } from "./action-session";
+export * from "./action-commands";
+export * from "./action-provider";
+export * from "./action-queries";
+export * from "./action-repository";

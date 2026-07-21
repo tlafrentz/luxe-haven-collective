@@ -1,9 +1,9 @@
 import type {
   ActionOutcome,
-  ActionPriority,
-  ActionStatus,
+  LegacyActionPriority as ActionPriority,
+  LegacyActionStatus as ActionStatus,
   ActionType,
-  ActionOwnerType,
+  LegacyActionOwnerType as ActionOwnerType,
 } from "@/platform/actions";
 
 import type {

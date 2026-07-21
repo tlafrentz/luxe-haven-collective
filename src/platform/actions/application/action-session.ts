@@ -1,6 +1,6 @@
 import { ExecutionStatus, type ExecutionDiagnostics, type ExecutionStatistics } from "../../execution";
 import type { ObservationValue } from "../../observations";
-import { ActionCollection } from "../domain";
+import { ActionCollection } from "../compatibility";
 
 export type ActionSessionInput = Readonly<{
   actions: ActionCollection;

@@ -1,1 +1,1 @@
-export type { ActionOwner } from "@/platform/actions";
+export type { LegacyActionOwner as ActionOwner } from "@/platform/actions";

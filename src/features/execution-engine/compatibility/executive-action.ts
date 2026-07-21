@@ -1,4 +1,4 @@
-import type { ActionOutcome, ActionOwner, ActionPriority, ActionStatus, ActionType } from "@/platform/actions";
+import type { ActionOutcome, ActionType, LegacyActionOwner as ActionOwner, LegacyActionPriority as ActionPriority, LegacyActionStatus as ActionStatus } from "@/platform/actions";
 
 export type ExecutiveActionSource = "revenue-intelligence" | "executive-intelligence" | "manual" | "automation" | "system";
 

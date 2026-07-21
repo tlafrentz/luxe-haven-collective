@@ -1,2 +1,2 @@
-export { ACTION_STATUSES } from "@/platform/actions";
-export type { ActionStatus } from "@/platform/actions";
+export { LEGACY_ACTION_STATUSES as ACTION_STATUSES } from "@/platform/actions";
+export type { LegacyActionStatus as ActionStatus } from "@/platform/actions";
