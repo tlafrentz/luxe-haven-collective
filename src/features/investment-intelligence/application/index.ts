@@ -148,6 +148,15 @@ export type {
 } from "./review-investment-learning-application";
 
 export {
+  buildInvestmentAppliedLearningContext,
+  InvestmentAppliedLearningContextError,
+} from "./build-investment-applied-learning-context";
+
+export type {
+  InvestmentAppliedLearningContextErrorCode,
+} from "./build-investment-applied-learning-context";
+
+export {
   runInvestmentAnalysis,
 } from "./run-investment-analysis";
 

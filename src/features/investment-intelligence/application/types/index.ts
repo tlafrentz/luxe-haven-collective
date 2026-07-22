@@ -60,7 +60,11 @@ export type {
 } from "./investment-learning-types";
 
 export type {
+  AppliedLearningReference,
+  BuildInvestmentAppliedLearningContextCommand,
   InvestmentAppliedLearningContext,
+  InvestmentAssumptionOverride,
+  InvestmentConstraint,
   InvestmentLearningApplication,
   InvestmentLearningApplicationDecisionOutcome,
   InvestmentLearningApplicationMode,
@@ -71,6 +75,7 @@ export type {
   InvestmentLearningAppliedValue,
   InvestmentLearningReview,
   InvestmentLearningReviewDisposition,
+  InvestmentRiskContext,
   LearningApplicationStatus,
   ReviewInvestmentLearningApplicationCommand,
 } from "./investment-learning-application-types";

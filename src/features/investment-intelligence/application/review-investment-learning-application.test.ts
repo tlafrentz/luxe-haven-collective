@@ -176,6 +176,7 @@ describe("reviewInvestmentLearningApplication", () => {
       sourceSubjectIds: ["property-1"],
       sourceOutcomeIds: ["outcome-learning-insurance"],
       sourceInvestmentRunIds: ["investment-run-1"],
+      sourceAcquisitionTypes: [AcquisitionType.Purchase],
     });
     expect(Object.isFrozen(result.application)).toBe(true);
     expect(input.proposal.status).toBe("proposed");

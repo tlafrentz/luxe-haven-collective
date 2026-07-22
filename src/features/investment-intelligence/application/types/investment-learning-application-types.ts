@@ -71,7 +71,9 @@ export type InvestmentLearningApplicationProposal = Readonly<{
   learningInsightIds: readonly string[];
   target: InvestmentLearningApplicationTarget;
   mode: InvestmentLearningApplicationMode;
+  previousValue?: InvestmentLearningAppliedValue;
   proposedValue?: InvestmentLearningAppliedValue;
+  riskSeverity?: "informational" | "material" | "blocking";
   rationale: string;
   evidenceSummary: string;
   limitations: readonly string[];
@@ -115,7 +117,9 @@ export type InvestmentLearningApplication = Readonly<{
   learningInsightIds: readonly string[];
   target: InvestmentLearningApplicationTarget;
   mode: InvestmentLearningApplicationMode;
+  previousValue?: InvestmentLearningAppliedValue;
   appliedValue?: InvestmentLearningAppliedValue;
+  riskSeverity?: "informational" | "material" | "blocking";
   rationale: string;
   limitations: readonly string[];
   approvedBy: InvestmentCommitmentActor;
@@ -125,6 +129,7 @@ export type InvestmentLearningApplication = Readonly<{
   sourceSubjectIds: readonly string[];
   sourceOutcomeIds: readonly string[];
   sourceInvestmentRunIds: readonly string[];
+  sourceAcquisitionTypes: readonly AcquisitionType[];
   supersedesApplicationId?: string;
 }>;
 
@@ -150,22 +155,49 @@ export type InvestmentLearningApplicationReviewResult = Readonly<{
   application?: InvestmentLearningApplication;
 }>;
 
-/** Future input contract. II-008A does not build or consume this context. */
+export type InvestmentAssumptionOverride = Readonly<{
+  assumptionKey: string;
+  operation: "replace" | "adjust";
+  previousValue?: InvestmentLearningAppliedValue;
+  appliedValue: InvestmentLearningAppliedValue;
+  applicationId: string;
+  rationale: string;
+}>;
+
+export type InvestmentConstraint = Readonly<{
+  key: string;
+  description: string;
+  applicationId: string;
+}>;
+
+export type InvestmentRiskContext = Readonly<{
+  key: string;
+  description: string;
+  severity: "informational" | "material" | "blocking";
+  applicationId: string;
+}>;
+
+export type AppliedLearningReference = Readonly<{
+  applicationId: string;
+  learningInsightIds: readonly string[];
+  outcomeIds: readonly string[];
+  investmentRunIds: readonly string[];
+  approvalDecisionId: string;
+}>;
+
 export type InvestmentAppliedLearningContext = Readonly<{
   applicationIds: readonly string[];
-  assumptionOverrides: readonly Readonly<{
-    subjectId: string;
-    assumptionKey: string;
-    value: number | string | boolean;
-    unit?: string;
-  }>[];
-  constraints: readonly Readonly<{
-    subjectId: string;
-    description: string;
-  }>[];
+  assumptionOverrides: readonly InvestmentAssumptionOverride[];
+  constraints: readonly InvestmentConstraint[];
   resolvedDataGaps: readonly string[];
-  riskContexts: readonly Readonly<{
-    subjectId: string;
-    description: string;
-  }>[];
+  persistentRisks: readonly InvestmentRiskContext[];
+  lineage: readonly AppliedLearningReference[];
+}>;
+
+export type BuildInvestmentAppliedLearningContextCommand = Readonly<{
+  subjectId: string;
+  acquisitionType: AcquisitionType;
+  marketId?: string;
+  applications: readonly InvestmentLearningApplication[];
+  analysisDate: Date;
 }>;

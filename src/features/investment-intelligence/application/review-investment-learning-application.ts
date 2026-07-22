@@ -142,6 +142,12 @@ function validateTargetAndMode(
   if (!valueRequired && proposedValue) {
     fail("INVESTMENT_LEARNING_APPLICATION_VALUE_NOT_ALLOWED", "This application mode does not accept a proposed value.");
   }
+  if (mode === "add-risk-context" && !command.proposal.riskSeverity) {
+    fail("INVESTMENT_LEARNING_APPLICATION_INVALID_PROPOSAL", "Persistent risk context requires an explicit severity.");
+  }
+  if (mode !== "add-risk-context" && command.proposal.riskSeverity) {
+    fail("INVESTMENT_LEARNING_APPLICATION_INVALID_PROPOSAL", "Risk severity is only valid for persistent risk context.");
+  }
   if (typeof proposedValue?.value === "number" && !Number.isFinite(proposedValue.value)) {
     fail("INVESTMENT_LEARNING_APPLICATION_VALUE_REQUIRED", "A numeric proposed value must be finite.");
   }
@@ -229,7 +235,9 @@ function buildApplication(
     learningInsightIds: Object.freeze(learnings.map(({ id }) => id.value)),
     target: Object.freeze({ ...command.proposal.target }),
     mode: command.proposal.mode,
+    ...(command.proposal.previousValue ? { previousValue: Object.freeze({ ...command.proposal.previousValue }) } : {}),
     ...(command.proposal.proposedValue ? { appliedValue: Object.freeze({ ...command.proposal.proposedValue }) } : {}),
+    ...(command.proposal.riskSeverity ? { riskSeverity: command.proposal.riskSeverity } : {}),
     rationale: command.rationale.trim(),
     limitations: Object.freeze(uniqueStrings(command.proposal.limitations)),
     approvedBy: actor(command.reviewer),
@@ -239,6 +247,7 @@ function buildApplication(
     sourceSubjectIds: Object.freeze(uniqueMetadata(learnings, "subjectId")),
     sourceOutcomeIds: Object.freeze(sourceOutcomeIds),
     sourceInvestmentRunIds: Object.freeze(uniqueMetadata(learnings, "investmentRunId")),
+    sourceAcquisitionTypes: Object.freeze(uniqueAcquisitionTypes(learnings)),
     ...(superseded ? { supersedesApplicationId: superseded.id } : {}),
   });
 }
@@ -326,6 +335,10 @@ function uniqueIdentifiers<T extends Identifier>(values: readonly T[]): readonly
 
 function uniqueMetadata(learnings: readonly LearningInsight[], key: string): readonly string[] {
   return uniqueStrings(learnings.map(({ metadata }) => String(metadata[key] ?? "")).filter(Boolean));
+}
+
+function uniqueAcquisitionTypes(learnings: readonly LearningInsight[]) {
+  return uniqueMetadata(learnings, "acquisitionType") as InvestmentLearningApplication["sourceAcquisitionTypes"];
 }
 
 function uniqueStrings(values: readonly string[]): readonly string[] {

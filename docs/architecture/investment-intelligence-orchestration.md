@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, II-006E with cross-route canonical Platform analysis, II-007A with canonical recommendation commitment, II-007B with canonical execution planning, II-007C with canonical Action outcome capture, II-007D with canonical Learning integration, and II-008A with governed Learning Application contracts. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
+II-006A current-state trace, updated through II-008B with canonical analysis, Platform lifecycle, Learning governance, and applied-Learning context boundaries. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -430,6 +430,58 @@ Run B
 
 Learning may influence future judgment, but it does not rewrite historical judgment. No II-008A path reruns analysis, changes an assumption, updates confidence or scoring, creates an Action, or allows Learning to approve itself.
 
+## II-008B Canonical Applied Learning Context
+
+The Applied Learning Context is the single canonical projection of approved Learning that may influence future Investment analyses. It is deterministic, immutable, lineage-preserving, and side-effect free. It never mutates historical artifacts or performs business calculations.
+
+`buildInvestmentAppliedLearningContext` accepts only an analysis subject, acquisition route, optional market, analysis date, and immutable Learning Application records. It does not receive Learning Insights, Outcomes, Decisions, or historical analyses because the approved application already contains the authorized target, use, and lineage. An optional market identifier is necessary to prove market applicability; absence never widens a market application.
+
+The builder validates application identity, dates, target structure, source lineage, and route lineage before selection. It then selects records that are:
+
+- in `approved` state;
+- effective on or before the analysis date;
+- unexpired at the analysis date, with expiration treated as an exclusive boundary;
+- not superseded either by status or by another supplied application's explicit supersession reference;
+- applicable to the same subject, route, and, where relevant, market.
+
+Inactive, future, expired, superseded, or out-of-scope records are historical inputs and are not projected. Malformed records fail with stable errors. II-008A creates no rejected or deferred application artifact—those dispositions create only a review Decision—so they cannot enter the applied context. An application needs an explicit `effectiveFrom` before consumption even though II-008A permits approval without one.
+
+Executable modes have one projection category:
+
+| Application mode | Applied context projection |
+| --- | --- |
+| `replace-assumption` | Assumption override with replace operation |
+| `adjust-assumption` | Assumption override with adjust operation |
+| `add-constraint` | Executable constraint |
+| `resolve-data-gap` | Resolved data-gap key |
+| `add-risk-context` | Persistent risk with explicit severity |
+| `calibration-candidate` | No Investment-run projection; reserved for calibration governance |
+| `policy-review-candidate` | No Investment-run projection; reserved for policy governance |
+
+The builder does not calculate an adjusted value. It preserves the approved value and operation so a later input adapter can apply the authorized semantics. It likewise does not infer risk severity or invent missing values.
+
+Explicit supersession removes the superseded application first. Remaining projections sharing a category and canonical key use the newest approval, followed by the more specific target. An unresolved tie is a conflict error; two competing values are never emitted. Every output collection and lineage list has stable key ordering, so input order cannot change the result.
+
+Each applied application contributes an `AppliedLearningReference` containing its application ID, approval Decision ID, Learning Insight IDs, Outcome IDs, and source Investment run IDs. Each projected item references its application ID. Future Run B can therefore trace its input to the authorized application and then to Learning, measured reality, execution, commitment, recommendation, and Run A without copying or mutating those artifacts.
+
+```mermaid
+flowchart LR
+  Applications[Immutable Learning Applications] --> Validate[Validate identity, dates, scope, route, lineage]
+  Validate --> Eligible[Approved + effective + unexpired + unsuperseded + applicable]
+  Eligible --> Resolve[Resolve supersession and conflicts]
+  Resolve --> Project[Project executable modes]
+  Project --> Context[Immutable InvestmentAppliedLearningContext]
+  Context -. future input adapter .-> RunB[Future Investment Run B]
+  Context --> Overrides[Assumption overrides]
+  Context --> Constraints[Constraints]
+  Context --> Gaps[Resolved data gaps]
+  Context --> Risks[Persistent risks]
+  Context --> Lineage[Applied Learning references]
+  Applications -. unchanged .-> History[Historical artifacts remain immutable]
+```
+
+II-008B does not call `runInvestmentAnalysis`, apply an override to underwriting, evaluate a constraint, change confidence or scores, or create Learning, Outcome, Decision, Recommendation, or Action artifacts. Connecting this context to an analysis command is a separate milestone.
+
 ## Proposed Follow-Up Batches
 
 1. Define and characterize a discriminated `InvestmentLifecycleResult` and `runInvestmentAnalysis` interface without changing formulas; make `buildInvestmentReport` a compatibility facade.
@@ -437,6 +489,6 @@ Learning may influence future judgment, but it does not rewrite historical judgm
 3. Reconcile the two purchase evidence/risk/confidence/recommendation pipelines with golden characterization tests, then select one policy path without formula changes in the same batch.
 4. Generalize Platform mapping and the observation provider over the shared lifecycle result, including rental-specific observations, explicit data-gap artifacts, deterministic run context, and upstream lineage.
 5. Connect the workspace to the canonical result and retain `calculateLiveInvestmentSummary` only as a clearly typed preview projection.
-6. Build an applied-Learning context from effective approved applications, preserve complete Run B-to-Run A lineage, and keep application consumption separate from review.
+6. Add an explicit input adapter that applies canonical context to a future run, with per-field authorization and Run B-to-Run A lineage; do not make the context builder perform underwriting.
 7. Wire commitment, planning, Outcome, and Learning persistence only when user workflow scope permits.
 8. Narrow public exports and deprecate compatibility/legacy report contracts after all callers migrate; remove paths only in a separately approved cleanup batch.
