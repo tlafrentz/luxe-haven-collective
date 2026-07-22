@@ -139,6 +139,15 @@ export type {
 } from "./derive-investment-learning";
 
 export {
+  InvestmentLearningApplicationError,
+  reviewInvestmentLearningApplication,
+} from "./review-investment-learning-application";
+
+export type {
+  InvestmentLearningApplicationErrorCode,
+} from "./review-investment-learning-application";
+
+export {
   runInvestmentAnalysis,
 } from "./run-investment-analysis";
 

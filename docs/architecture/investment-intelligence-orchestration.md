@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, II-006E with cross-route canonical Platform analysis, II-007A with canonical recommendation commitment, II-007B with canonical execution planning, II-007C with canonical Action outcome capture, and II-007D with canonical Learning integration. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
+II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, II-006E with cross-route canonical Platform analysis, II-007A with canonical recommendation commitment, II-007B with canonical execution planning, II-007C with canonical Action outcome capture, II-007D with canonical Learning integration, and II-008A with governed Learning Application contracts. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -372,6 +372,64 @@ flowchart LR
   Learning -. no historical mutation .-> History[Historical analysis remains immutable]
 ```
 
+## II-008A Learning Application Architecture and Contracts
+
+Learning records an interpretation. Learning Application records an authorized use of that interpretation. `reviewInvestmentLearningApplication` is the canonical governance boundary for an immutable Investment Learning Application proposal. It resolves the proposal's explicitly selected `LearningInsight` artifacts, validates lineage, target scope, application mode, value requirements, dates, conflicts, and supersession, and records the operator review as a canonical Platform `Decision`.
+
+### Architecture decision
+
+II-008A reuses the Platform Decision lifecycle for approve, reject, and defer rather than creating a parallel approval aggregate. The review Decision uses the Platform's `human-approved`, `rejected`, and `deferred` modes, retains source Recommendation/Evaluation/Claim/Evidence/Observation references where Learning lineage provides them, and records Learning, proposal, reviewer, proposer, and deriving-actor references as deterministic metadata.
+
+II-008A does **not** create a new Platform Recommendation for the application proposal. The current Platform Recommendation contract represents a system judgment produced from at least one completed Evaluation. A Learning Application proposal is a request to govern the use of an already-formed, immutable `LearningInsight`; manufacturing another Evaluation and Recommendation would duplicate that judgment and distort the Platform contract. If Platform later introduces a generic governance recommendation, this boundary may project proposals into it without changing the proposal or application contracts.
+
+Platform currently has no reusable approval, governance, override, effective-period, or application aggregate. The approved `InvestmentLearningApplication` is therefore a narrow immutable application-layer contract linked to the review Decision. Rejected and deferred reviews create a Decision and no active application. Approval creates exactly one application in `approved` state; it does not mean the application has affected an analysis.
+
+### Scope and lifecycle invariants
+
+- Subject-scoped Learning may control only the same subject's assumption or strategy. It cannot become market, policy, or calibration input.
+- Market, strategy, or assumption-policy candidates require Learning that was already derived with the corresponding broader scope and explicit justification.
+- `replace-assumption` and `adjust-assumption` require an explicit value. Constraint, data-gap, risk, calibration, and policy-review modes do not accept one.
+- Deriving, proposing, reviewing, and approving actor identities remain distinct. The reviewer becomes the approving actor only when the review disposition is approve.
+- One active application controls a target. A replacement must explicitly name an active application with the identical target; the new immutable version references the superseded application. Timestamp order never resolves conflicts implicitly.
+- Expiration must follow approval and any effective date. Expiration limits future use and never invalidates or mutates the historical Learning.
+- Approved applications are immutable. Changing target, mode, value, limitations, or effective period requires a new application version and explicit supersession.
+
+The lifecycle vocabulary reserves `proposed`, `approved`, `rejected`, `deferred`, `applied`, `expired`, and `superseded`. II-008A implements review through approval/rejection/deferral only. Applying, expiring, or superseding an existing record operationally requires later commands and persistence-aware concurrency checks.
+
+```mermaid
+flowchart LR
+  Outcome[Platform Outcome] --> Learning[Immutable LearningInsight]
+  Learning --> Proposal[Investment Learning Application Proposal]
+  Proposal --> Review[reviewInvestmentLearningApplication]
+  Review --> Decision{Platform Decision}
+  Decision -->|approved| Application[Approved immutable Learning Application]
+  Decision -->|rejected| Rejected[No active application]
+  Decision -->|deferred| Deferred[No active application]
+  Application -. future II-008B consumption .-> Context[Future Investment Applied Learning Context]
+  Context -. creates, never rewrites .-> RunB[Investment Run B]
+  Learning -. historical lineage remains .-> RunA[Investment Run A]
+```
+
+### Future consumption contract
+
+`InvestmentAppliedLearningContext` reserves the future input projection for application IDs, assumption overrides, constraints, resolved data gaps, and risk context. II-008A neither builds nor consumes that projection and does not alter `runInvestmentAnalysis` or `InvestmentLifecycleResult`.
+
+A later consumption boundary must accept only applications that are approved, effective, unexpired, unsuperseded, target-compatible, and conflict-free. The resulting Run B must retain the complete chain:
+
+```text
+Run B
+→ Learning Application
+→ Review Decision
+→ Learning Insight
+→ Outcome
+→ Action
+→ Investment Decision
+→ Recommendation
+→ Run A
+```
+
+Learning may influence future judgment, but it does not rewrite historical judgment. No II-008A path reruns analysis, changes an assumption, updates confidence or scoring, creates an Action, or allows Learning to approve itself.
+
 ## Proposed Follow-Up Batches
 
 1. Define and characterize a discriminated `InvestmentLifecycleResult` and `runInvestmentAnalysis` interface without changing formulas; make `buildInvestmentReport` a compatibility facade.
@@ -379,6 +437,6 @@ flowchart LR
 3. Reconcile the two purchase evidence/risk/confidence/recommendation pipelines with golden characterization tests, then select one policy path without formula changes in the same batch.
 4. Generalize Platform mapping and the observation provider over the shared lifecycle result, including rental-specific observations, explicit data-gap artifacts, deterministic run context, and upstream lineage.
 5. Connect the workspace to the canonical result and retain `calculateLiveInvestmentSummary` only as a clearly typed preview projection.
-6. Define an explicitly governed application boundary for reviewing and applying Learning suggestions to future analysis inputs or policies; never modify historical artifacts.
+6. Build an applied-Learning context from effective approved applications, preserve complete Run B-to-Run A lineage, and keep application consumption separate from review.
 7. Wire commitment, planning, Outcome, and Learning persistence only when user workflow scope permits.
 8. Narrow public exports and deprecate compatibility/legacy report contracts after all callers migrate; remove paths only in a separately approved cleanup batch.

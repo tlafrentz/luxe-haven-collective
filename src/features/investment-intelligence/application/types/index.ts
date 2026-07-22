@@ -58,3 +58,19 @@ export type {
   InvestmentPolicyImpact,
   InvestmentPolicyImpactTarget,
 } from "./investment-learning-types";
+
+export type {
+  InvestmentAppliedLearningContext,
+  InvestmentLearningApplication,
+  InvestmentLearningApplicationDecisionOutcome,
+  InvestmentLearningApplicationMode,
+  InvestmentLearningApplicationProposal,
+  InvestmentLearningApplicationReviewContext,
+  InvestmentLearningApplicationReviewResult,
+  InvestmentLearningApplicationTarget,
+  InvestmentLearningAppliedValue,
+  InvestmentLearningReview,
+  InvestmentLearningReviewDisposition,
+  LearningApplicationStatus,
+  ReviewInvestmentLearningApplicationCommand,
+} from "./investment-learning-application-types";
