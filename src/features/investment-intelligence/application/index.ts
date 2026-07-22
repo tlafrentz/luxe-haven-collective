@@ -103,6 +103,16 @@ export type {
 } from "./investment-decision-policies";
 
 export {
+  runInvestmentAnalysis,
+} from "./run-investment-analysis";
+
+export type {
+  RunInvestmentAnalysisCommand,
+  RunPurchaseInvestmentAnalysisCommand,
+  RunRentalArbitrageInvestmentAnalysisCommand,
+} from "./run-investment-analysis";
+
+export {
   DEFAULT_INVESTMENT_EVIDENCE_POLICY,
 } from "./investment-evidence-policy";
 

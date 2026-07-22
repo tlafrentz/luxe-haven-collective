@@ -8,16 +8,16 @@ import type {
 } from "../domain";
 
 import {
-  buildPurchaseInvestmentReport,
-} from "./build-purchase-investment-report";
+  runInvestmentAnalysis,
+} from "../application/run-investment-analysis";
+
+import type {
+  RunInvestmentAnalysisCommand,
+} from "../application/run-investment-analysis";
 
 import type {
   BuildPurchaseInvestmentReportInput,
 } from "./build-purchase-investment-report";
-
-import {
-  buildRentalArbitrageInvestmentReport,
-} from "./build-rental-arbitrage-investment-report";
 
 import type {
   BuildRentalArbitrageInvestmentReportInput,
@@ -40,16 +40,16 @@ export function buildInvestmentReport(
 ):
   | InvestmentDecision
   | RentalArbitrageInvestmentAnalysis {
-  if (
+  const command: RunInvestmentAnalysisCommand =
     input.acquisitionType ===
     AcquisitionType.RentalArbitrage
-  ) {
-    return buildRentalArbitrageInvestmentReport(
-      input,
-    );
-  }
+      ? input
+      : {
+          ...input,
+          acquisitionType:
+            AcquisitionType.Purchase,
+        };
 
-  return buildPurchaseInvestmentReport(
-    input,
-  );
+  return runInvestmentAnalysis(command)
+    .analysis;
 }

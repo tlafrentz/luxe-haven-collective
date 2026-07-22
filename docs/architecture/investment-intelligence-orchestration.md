@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace. This document describes the repository state on 2026-07-21; it does not designate every existing path as target architecture.
+II-006A current-state trace, updated by II-006B with the canonical application boundary. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -194,6 +194,14 @@ The new boundary should accept a discriminated raw underwriting command plus opt
 Human commitment (`Decision` and Actions) and measured execution (`Outcome` and Intelligence) should remain explicit downstream commands because they occur at different times and require user or operational input. The canonical analysis result must provide stable lineage IDs for those commands.
 
 `buildInvestmentReport` should initially remain as a compatibility facade delegating to the new service and returning its existing projection. `buildInvestmentDecision`, `evaluatePurchase`, and `evaluateRentalArbitrageDecision` should remain internal composable engines until follow-up characterization proves which duplicated purchase policies are retained. This preserves formulas and contracts while establishing one application owner.
+
+## II-006B Canonical Boundary
+
+`runInvestmentAnalysis` is now the canonical application entry point. It accepts a `RunInvestmentAnalysisCommand` whose acquisition type is explicit and required, dispatches to the existing purchase or rental-arbitrage route builder, and returns an `InvestmentLifecycleResult`.
+
+The lifecycle result is discriminated by acquisition type and wraps the existing authoritative route projection as `analysis`. Purchase narrows to `InvestmentDecision`; rental arbitrage narrows to `RentalArbitrageInvestmentAnalysis`. No future report, Platform, scenario, or data-gap fields have been added prematurely.
+
+`buildInvestmentReport` remains the compatibility facade. It preserves the legacy optional purchase discriminator, normalizes an omitted discriminator to purchase, calls `runInvestmentAnalysis`, and unwraps `result.analysis`. Existing callers therefore retain the same return types and runtime values while new application callers have one explicit orchestration contract.
 
 ```mermaid
 flowchart TD
