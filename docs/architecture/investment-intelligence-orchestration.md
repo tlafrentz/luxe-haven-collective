@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace, updated through II-008B with canonical analysis, Platform lifecycle, Learning governance, and applied-Learning context boundaries. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
+II-006A current-state trace, updated through II-008C with canonical analysis, Platform lifecycle, Learning governance, applied-Learning selection, and source-neutral analysis-context composition. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -482,6 +482,50 @@ flowchart LR
 
 II-008B does not call `runInvestmentAnalysis`, apply an override to underwriting, evaluate a constraint, change confidence or scores, or create Learning, Outcome, Decision, Recommendation, or Action artifacts. Connecting this context to an analysis command is a separate milestone.
 
+## II-008C Consume Applied Learning
+
+`buildInvestmentAnalysisContext` is the single composition boundary between today's route input and the approved knowledge selected by II-008B. It returns a source-neutral `InvestmentAnalysisContext` whose `input` is the existing discriminated `RunInvestmentAnalysisCommand`. A caller may pass that input directly to the unchanged `runInvestmentAnalysis` engine.
+
+The engine does not import or inspect Learning Applications, Learning Insights, Outcomes, approval state, expiration, supersession, or applied-Learning conflict rules. Those concerns end before context composition. The context builder likewise performs no underwriting, scoring, confidence evaluation, recommendation, or constraint interpretation. Its only numeric operation is the explicitly authorized merge for an `adjust-assumption` value.
+
+### Input provenance and precedence
+
+The existing purchase and rental route commands historically mix operator-entered values with prefilled values and do not preserve field provenance. Guessing would allow Learning to overwrite a current operator choice. II-008C therefore requires `userProvidedAssumptionKeys` at the composition boundary.
+
+For each canonical route assumption, precedence is:
+
+```text
+Explicit user value
+→ approved applied-Learning override
+→ materialized system default
+```
+
+An explicit user key always retains the current input value. Otherwise, a supported replace operation supplies the approved value and a supported numeric adjust operation applies the approved delta. Without either, the base input remains. Existing optional engine defaults—revenue confidence of 80 and stable market trend—are materialized in the canonical input so the evaluated assumptions are explicit and explainable. Unsupported route keys, incompatible types, invalid enum values, and nonnumeric adjustments fail rather than being guessed.
+
+The context records each canonical assumption's value and source as `user`, `applied-learning`, or `system-default`. Applied assumptions retain their application ID. This composition is an input mapping rule, not a financial formula.
+
+### Supporting context and lineage
+
+Constraints, resolved data gaps, and persistent risk context pass through without policy interpretation. Exact duplicates are removed, output is sorted by canonical key, and contradictory duplicate constraints or risks fail. No unresolved gap is invented or marked resolved.
+
+Every applied application ID must have exactly one `AppliedLearningReference`, and every projected override, constraint, or risk must reference an included application. The context preserves approval Decision, Learning Insight, Outcome, and source Investment-run lineage. The orchestrator retains this immutable context beside the lifecycle result so explainability can trace Run B back to its authorized knowledge; `runInvestmentAnalysis` does not reconstruct that lineage.
+
+```mermaid
+flowchart LR
+  Input[Current route input + user provenance] --> Compose[buildInvestmentAnalysisContext]
+  Applied[InvestmentAppliedLearningContext] --> Compose
+  Defaults[Canonical system defaults] --> Compose
+  Compose --> Canonical[Immutable InvestmentAnalysisContext]
+  Canonical --> EngineInput[Source-neutral canonical input]
+  Canonical --> Supporting[Constraints + resolved gaps + persistent risks]
+  Canonical --> Audit[Applied Learning lineage]
+  EngineInput --> Run[runInvestmentAnalysis]
+  Run --> Result[InvestmentLifecycleResult]
+  Audit -. retained beside result .-> Explain[Run B explainability]
+```
+
+The composition operation clones its inputs and returns deeply frozen output. It creates no Learning, Decision, Action, Outcome, Recommendation, or Platform artifact and mutates neither current input nor approved context.
+
 ## Proposed Follow-Up Batches
 
 1. Define and characterize a discriminated `InvestmentLifecycleResult` and `runInvestmentAnalysis` interface without changing formulas; make `buildInvestmentReport` a compatibility facade.
@@ -489,6 +533,6 @@ II-008B does not call `runInvestmentAnalysis`, apply an override to underwriting
 3. Reconcile the two purchase evidence/risk/confidence/recommendation pipelines with golden characterization tests, then select one policy path without formula changes in the same batch.
 4. Generalize Platform mapping and the observation provider over the shared lifecycle result, including rental-specific observations, explicit data-gap artifacts, deterministic run context, and upstream lineage.
 5. Connect the workspace to the canonical result and retain `calculateLiveInvestmentSummary` only as a clearly typed preview projection.
-6. Add an explicit input adapter that applies canonical context to a future run, with per-field authorization and Run B-to-Run A lineage; do not make the context builder perform underwriting.
+6. Introduce an orchestration envelope that stores `InvestmentAnalysisContext` lineage with Run B results and persistence without moving context eligibility or merge policy into the engine.
 7. Wire commitment, planning, Outcome, and Learning persistence only when user workflow scope permits.
 8. Narrow public exports and deprecate compatibility/legacy report contracts after all callers migrate; remove paths only in a separately approved cleanup batch.

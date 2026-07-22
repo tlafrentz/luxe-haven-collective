@@ -79,3 +79,12 @@ export type {
   LearningApplicationStatus,
   ReviewInvestmentLearningApplicationCommand,
 } from "./investment-learning-application-types";
+
+export type {
+  BuildInvestmentAnalysisContextCommand,
+  InvestmentAnalysisAssumption,
+  InvestmentAnalysisAssumptions,
+  InvestmentAnalysisAssumptionSource,
+  InvestmentAnalysisContext,
+  InvestmentAnalysisInput,
+} from "./investment-analysis-context-types";
