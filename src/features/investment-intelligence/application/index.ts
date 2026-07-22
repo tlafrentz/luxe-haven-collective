@@ -176,6 +176,11 @@ export type {
 } from "./build-investment-market-context";
 
 export {
+  InvestmentWorkspaceAnalysisError,
+  runInvestmentWorkspaceAnalysis,
+} from "./run-investment-workspace-analysis";
+
+export {
   runInvestmentAnalysis,
 } from "./run-investment-analysis";
 

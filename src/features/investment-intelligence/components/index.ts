@@ -22,6 +22,8 @@ export {
   InvestmentWorkspace,
 } from "./investment-workspace";
 
+export { InvestmentMarketEvidencePanel } from "./investment-market-evidence-panel";
+
 export {
   InvestmentWorkspaceHeader,
 } from "./investment-workspace-header";

@@ -29,6 +29,7 @@ import {
 import {
   LiveInvestmentSummary,
 } from "./live-investment-summary";
+import { InvestmentMarketEvidencePanel } from "./investment-market-evidence-panel";
 
 export function InvestmentWorkspace() {
   return (
@@ -40,6 +41,8 @@ export function InvestmentWorkspace() {
           <InvestmentWorkspaceNavigation />
 
           <AcquisitionSetup />
+
+          <InvestmentMarketEvidencePanel />
 
           <LiveInvestmentSummary />
 

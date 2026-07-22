@@ -103,3 +103,14 @@ export type {
   InvestmentMarketRiskProjection,
   InvestmentMarketValuationProjection,
 } from "./investment-market-context-types";
+
+export type {
+  InvestmentWorkspaceActionResult,
+  InvestmentWorkspaceAnalysisResult,
+  InvestmentWorkspaceErrorCode,
+  InvestmentWorkspaceLineage,
+  InvestmentWorkspaceRunContext,
+  InvestmentWorkspaceStage,
+  RunInvestmentWorkspaceAnalysisCommand,
+  RunInvestmentWorkspaceAnalysisDependencies,
+} from "./investment-workspace-types";

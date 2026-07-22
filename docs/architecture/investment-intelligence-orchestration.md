@@ -615,6 +615,14 @@ flowchart TD
 
 `runInvestmentAnalysis` remains independent of Market reports, Learning Applications, provider infrastructure, expiration, conflict resolution, and source precedence. Context assembly retains risks and gaps as supporting evidence; it does not silently turn them into score or confidence policy. Live React orchestration and replacement of the legacy STR-comparable workspace compatibility fixture remain RMI-007 responsibilities because RMI-005 does not supply authoritative STR performance evidence.
 
+## RMI-007 Live Workspace Composition
+
+The production workspace now submits structured address and route inputs to one authenticated server action. That action composes `resolveMarketProperty`, `runMarketAnalysis`, `buildInvestmentMarketContext`, `buildInvestmentAnalysisContext`, and `runInvestmentAnalysis`. React stores and renders the returned canonical artifacts; it no longer runs Investment policy or constructs synthetic comparables.
+
+The workspace preserves the full lifecycle result plus property resolution, Market report, Investment Market context, canonical analysis context, and workspace lineage. Purchase price and proposed lease are explicit deal terms. Market value and market rent are evidence. ADR and occupancy are explicitly operator supplied because current Market providers do not support STR performance.
+
+An absent STR comparable set now produces a deterministic very-low-confidence comparable analysis with an explicit unsupported-evidence limitation. This is the only analysis change required by live integration: it removes the prior architectural requirement to fabricate comparables while leaving non-empty comparable formulas unchanged.
+
 ## Proposed Follow-Up Batches
 
 1. Define and characterize a discriminated `InvestmentLifecycleResult` and `runInvestmentAnalysis` interface without changing formulas; make `buildInvestmentReport` a compatibility facade.

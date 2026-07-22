@@ -561,7 +561,52 @@ Market-resolved assumptions record the Market analysis ID, Market evidence IDs, 
 
 ### Workspace compatibility and RMI-007
 
-The current React workspace still requires legacy STR-shaped comparable input and prefilled market medians because `calculateComparableAnalysis` rejects an empty set. RMI-006 does not misrepresent RMI-005 long-term rental evidence as STR evidence and does not add a live provider call to React. That compatibility path is now the explicit remaining target for RMI-007, which will provide request lifecycle, unavailable/limited UI states, and source labels. There is no RentCast or Market infrastructure dependency in Investment.
+At the end of RMI-006, the React workspace still required legacy STR-shaped comparable input because `calculateComparableAnalysis` rejected an empty set. RMI-007 resolves that compatibility defect without misrepresenting RMI-005 long-term rental evidence as STR evidence. Provider calls remain server-side; there is no RentCast or Market infrastructure dependency in Investment application or presentation code.
+
+## RMI-007 Live Investment Workspace Integration
+
+The Investment Workspace is a presentation and orchestration consumer of canonical Market and Investment boundaries. It does not perform provider normalization, comparable qualification, valuation, assumption precedence, underwriting, or recommendation calculations. Market-derived values remain distinct from deal terms and STR assumptions, and all displayed values preserve their winning source.
+
+```mermaid
+flowchart TD
+  Client[Investment Workspace client] --> Action[Authenticated server action]
+  Action --> Resolve[resolveMarketProperty]
+  Resolve --> Report[runMarketAnalysis]
+  Report --> Project[buildInvestmentMarketContext]
+  Project --> Compose[buildInvestmentAnalysisContext]
+  Compose --> Analyze[runInvestmentAnalysis]
+  Analyze --> Result[Workspace analysis result]
+  Result --> Client
+```
+
+### Current-state consolidation
+
+| Workspace capability | Previous production source | Canonical source |
+| --- | --- | --- |
+| Subject property | User form with fixed workspace ID | Canonical property resolution |
+| Market value | Not available | Market report sale valuation |
+| Monthly market rent | Hidden lease/default semantics | Market report long-term-rent benchmark |
+| Comparables | Three synthetic STR records | Market report summary; STR set explicitly unavailable |
+| ADR and occupancy | Prefilled operator assumptions | Explicit operator assumptions |
+| Investment decision | Client-side direct analysis | Server-composed canonical lifecycle result |
+
+`runInvestmentWorkspaceAnalysis` is the one provider-neutral application orchestrator. The authenticated `analyzeInvestmentWorkspace` server action is the infrastructure composition root: it constructs RentCast providers from server-only configuration and sanitizes provider errors. Client modules receive canonical artifacts only; API keys, clients, raw DTOs, endpoints, payloads, and stack traces never cross the boundary.
+
+### Lifecycle, identity, and stale results
+
+The workspace state uses explicit setup, resolution, Market, Investment, decision-review, and error stages. Version one performs provider work in one server operation, so the UI truthfully reports combined property/Market progress instead of inventing percentages or endpoint-level stages. Each request receives server-generated resolution, Market-analysis, and workspace-run IDs. A monotonically increasing client request sequence prevents an older response from overwriting a newer address submission.
+
+Canonical property and Market artifacts remain attached to the active result. Editing form inputs marks the Investment result stale without mutating the property resolution or Market report. A changed address causes the next run to resolve and analyze the new subject. Durable caching and saved analyses remain RMI-008 work; no database state or synthetic fallback is introduced.
+
+### Evidence and source presentation
+
+The Market evidence panel shows the resolved address, sale value and range, monthly long-term rent and range, confidence, included-comparable counts, risks, data gaps, provider attribution, policy version, and analysis time. Purchase price is labeled user supplied and stays separate from estimated value. Proposed lease is labeled user supplied and stays separate from the rent benchmark; their displayed difference is a presentation projection, not a recommendation.
+
+ADR and occupancy carry an explicit unsupported notice: current Market Intelligence supplies no authoritative STR performance evidence. The engine now accepts an empty STR comparable collection as unavailable evidence with very-low confidence and an explicit limitation. It does not fabricate medians, advantages, ADR, occupancy, or revenue. Long-term rent is never converted into an STR metric.
+
+### Failure semantics
+
+Not-found, ambiguous, and unsupported resolution states stop before comparable acquisition. Provider rate limits and availability failures return safe retry-oriented messages while retaining client inputs. No failure path substitutes fixtures. Insufficient Market evidence remains a canonical report limitation; supported Investment analysis can still operate from explicit operator assumptions without claiming that Market estimates exist.
 
 ## Validation Record
 

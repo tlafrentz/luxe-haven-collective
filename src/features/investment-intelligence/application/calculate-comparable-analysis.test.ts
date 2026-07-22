@@ -68,6 +68,18 @@ function createRevenueProjection(
 }
 
 describe("calculateComparableAnalysis", () => {
+  it("represents unavailable STR comparables without fabricating evidence", () => {
+    const result = calculateComparableAnalysis({
+      comparables: [],
+      revenueProjection: createRevenueProjection(),
+    });
+    expect(result.comparables).toEqual([]);
+    expect(result.confidence).toBe(ConfidenceLevel.VeryLow);
+    expect(result.medianAverageDailyRate.amount).toBe(0);
+    expect(result.competitiveDisadvantages).toContain(
+      "No authoritative short-term-rental comparable evidence is available.",
+    );
+  });
   it("calculates median comparable performance and revenue upside", () => {
     const result =
       calculateComparableAnalysis({
@@ -260,18 +272,6 @@ describe("calculateComparableAnalysis", () => {
       );
     },
   );
-
-  it("rejects an empty comparable set", () => {
-    expect(() =>
-      calculateComparableAnalysis({
-        comparables: [],
-        revenueProjection:
-          createRevenueProjection(),
-      }),
-    ).toThrow(
-      "Comparable analysis requires at least one comparable property.",
-    );
-  });
 
   it("rejects invalid comparable occupancy", () => {
     expect(() =>

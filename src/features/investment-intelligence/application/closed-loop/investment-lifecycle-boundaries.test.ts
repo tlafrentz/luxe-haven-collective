@@ -79,6 +79,7 @@ describe("Investment lifecycle architecture boundaries", () => {
     expect(matches(FEATURE, /buildInvestmentAnalysisContext\(/))
       .toEqual([
         "src/features/investment-intelligence/application/build-investment-analysis-context.ts",
+        "src/features/investment-intelligence/application/run-investment-workspace-analysis.ts",
       ]);
   });
 

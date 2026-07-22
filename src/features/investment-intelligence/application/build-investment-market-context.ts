@@ -23,9 +23,10 @@ export function buildInvestmentMarketContext(
 ): InvestmentMarketContext {
   validateReport(report);
   const evidenceIds = new Set(report.evidence.map(({ id }) => id));
+  const evidenceCandidateIds = new Set(report.evidence.flatMap(({ candidateIds }) => candidateIds));
   const gapIds = new Set(report.dataGaps.map(({ id }) => id));
   for (const risk of report.risks) {
-    if (risk.evidenceIds.some((id) => !evidenceIds.has(id)) || risk.dataGapIds.some((id) => !gapIds.has(id))) {
+    if (risk.evidenceIds.some((id) => !evidenceIds.has(id) && !evidenceCandidateIds.has(id)) || risk.dataGapIds.some((id) => !gapIds.has(id))) {
       fail("INVESTMENT_MARKET_CONTEXT_INVALID_LINEAGE", "Market risk references must exist in the report.");
     }
   }
