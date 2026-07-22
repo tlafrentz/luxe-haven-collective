@@ -13,6 +13,18 @@ import { ProviderError, ProviderErrorCode } from "@/features/market-intelligence
 import { RentCastClient } from "@/features/market-intelligence/infrastructure/rentcast/rentcast-client";
 import { RentCastComparableProvider } from "@/features/market-intelligence/infrastructure/rentcast/rentcast-comparable-provider";
 import { RentCastPropertyProvider } from "@/features/market-intelligence/infrastructure/rentcast/rentcast-property-provider";
+import { getMarketIntelligenceConfig, MarketIntelligenceConfigurationError } from "@/features/market-intelligence/infrastructure/market-intelligence-config";
+import { investmentWorkspaceActionSchema } from "./investment-workspace-schema";
+import {
+  assertWorkspaceRateLimit,
+  buildCachedMarketProviders,
+  coalesceWorkspaceRequest,
+  fingerprint,
+  InvestmentWorkspaceRateLimitError,
+  recordWorkspaceOperation,
+  setWorkspaceHealthStatus,
+  updateWorkspaceHealth,
+} from "./investment-workspace-runtime";
 
 type InvestmentWorkspaceActionInput = Omit<RunInvestmentWorkspaceAnalysisCommand, "context"> & Readonly<{
   clientRequestId: string;
@@ -22,30 +34,63 @@ export async function analyzeInvestmentWorkspace(
   input: InvestmentWorkspaceActionInput,
 ): Promise<InvestmentWorkspaceActionResult> {
   const { user } = await requireRole(["admin", "owner"]);
+  const parsed = investmentWorkspaceActionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: { code: "INVALID_INPUT", message: "Review the workspace fields and try again.", retryable: false } };
+  }
+  let config;
+  try { config = getMarketIntelligenceConfig(); } catch (error) {
+    setWorkspaceHealthStatus("misconfigured");
+    return { ok: false, error: safeError(error) };
+  }
+  if (!config.providerEnabled) {
+    setWorkspaceHealthStatus("disabled");
+    return { ok: false, error: { code: "MARKET_PROVIDER_DISABLED", message: "Live Market analysis is currently disabled. Your assumptions were preserved.", retryable: false } };
+  }
+  try { assertWorkspaceRateLimit(user.id, config.rateLimitPerMinute); } catch (error) { return { ok: false, error: safeError(error) }; }
   const requestedAt = new Date();
   const runId = crypto.randomUUID();
+  const requestFingerprint = fingerprint({
+    actorId: user.id,
+    address: parsed.data.address,
+    investmentInput: parsed.data.investmentInput,
+    userProvidedAssumptionKeys: parsed.data.userProvidedAssumptionKeys,
+    marketRequest: parsed.data.marketRequest,
+  });
+  const startedAt = Date.now();
+  recordWorkspaceOperation("started", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType });
   try {
-    const client = new RentCastClient({ apiKey: process.env.RENTCAST_API_KEY ?? "" });
-    const result = await runInvestmentWorkspaceAnalysis({
-      address: input.address,
-      investmentInput: input.investmentInput,
-      userProvidedAssumptionKeys: input.userProvidedAssumptionKeys,
-      marketRequest: input.marketRequest,
-      appliedLearningContext: input.appliedLearningContext,
-      context: {
-        workspaceRunId: `workspace:${runId}`,
-        propertyResolutionId: `resolution:${runId}`,
-        marketAnalysisId: `market:${runId}`,
-        requestedAt,
-        requestedBy: user.id,
-      },
-    }, {
-      propertyProvider: new RentCastPropertyProvider({ client }),
-      comparableProvider: new RentCastComparableProvider({ client }),
+    const result = await coalesceWorkspaceRequest(requestFingerprint, async () => {
+      const client = new RentCastClient({ apiKey: config.rentCastApiKey ?? "", baseUrl: config.rentCastBaseUrl, timeoutMs: config.requestTimeoutMs });
+      const providers = buildCachedMarketProviders(
+        new RentCastPropertyProvider({ client }),
+        new RentCastComparableProvider({ client }),
+        { ttlMs: config.cacheTtlMs, retryCount: config.retryCount },
+      );
+      return runInvestmentWorkspaceAnalysis({
+        address: parsed.data.address,
+        investmentInput: parsed.data.investmentInput,
+        userProvidedAssumptionKeys: parsed.data.userProvidedAssumptionKeys,
+        marketRequest: parsed.data.marketRequest,
+        context: {
+          workspaceRunId: `workspace:${runId}`,
+          propertyResolutionId: `resolution:${runId}`,
+          marketAnalysisId: `market:${runId}`,
+          requestedAt,
+          requestedBy: user.id,
+        },
+      }, providers);
     });
+    const durationMs = Date.now() - startedAt;
+    updateWorkspaceHealth({ success: true, durationMs });
+    recordWorkspaceOperation("completed", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType, durationMs, reportStatus: result.marketReport.status, confidence: result.marketReport.confidence.level, saleComparableCount: result.marketReport.summary.saleComparableCount, rentalComparableCount: result.marketReport.summary.rentalComparableCount });
     return { ok: true, result };
   } catch (error) {
-    return { ok: false, error: safeError(error) };
+    const safe = safeError(error);
+    const durationMs = Date.now() - startedAt;
+    updateWorkspaceHealth({ success: false, durationMs, errorCode: safe.code });
+    recordWorkspaceOperation("failed", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType, durationMs, errorCode: safe.code });
+    return { ok: false, error: safe };
   }
 }
 
@@ -68,6 +113,8 @@ function safeError(error: unknown): Extract<InvestmentWorkspaceActionResult, { o
       retryable: error.retryable || rateLimited,
     };
   }
+  if (error instanceof InvestmentWorkspaceRateLimitError) return { code: "WORKSPACE_RATE_LIMITED", message: "Too many analyses were submitted. Wait a moment and try again.", retryable: true };
+  if (error instanceof MarketIntelligenceConfigurationError) return { code: "MARKET_PROVIDER_UNAVAILABLE", message: "Live Market analysis is not configured. Your assumptions were preserved.", retryable: false };
   return {
     code: "UNEXPECTED_ERROR",
     message: "The workspace analysis could not be completed. Your assumptions were preserved.",

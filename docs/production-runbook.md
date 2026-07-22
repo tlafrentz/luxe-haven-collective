@@ -159,6 +159,18 @@ git diff --check
 
 Verify:
 
+## Market-backed Investment Workspace
+
+Before promotion:
+
+1. Configure the documented Market variables in Preview and Production.
+2. Verify `GET /api/admin/integrations/market/health` as an administrator.
+3. Run the known-property, unit-property, invalid-address, and simulated-failure checks from the RMI readiness record.
+4. Confirm no address, financial input, provider payload, or secret appears in logs.
+5. Confirm the Server Action runs in the Node runtime with sufficient duration for bounded provider calls.
+
+If health is degraded, follow `docs/runbooks/market-provider-failures.md`. Rollback is documented in `docs/runbooks/investment-workspace-analysis.md`.
+
 - Preview
 - Production
 - Health endpoint

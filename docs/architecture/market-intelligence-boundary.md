@@ -608,6 +608,14 @@ ADR and occupancy carry an explicit unsupported notice: current Market Intellige
 
 Not-found, ambiguous, and unsupported resolution states stop before comparable acquisition. Provider rate limits and availability failures return safe retry-oriented messages while retaining client inputs. No failure path substitutes fixtures. Insufficient Market evidence remains a canonical report limitation; supported Investment analysis can still operate from explicit operator assumptions without claiming that Market estimates exist.
 
+## RMI-008 Production Hardening
+
+Production hardening adds operational control around the unchanged canonical pipeline. The authenticated server boundary authorizes owner/admin actors before parsing or provider construction, validates strict bounded payloads, reads one typed Market configuration, applies a per-actor rolling limit, coalesces exact in-flight submissions, and decorates provider-neutral ports with bounded retry and TTL caching.
+
+Caching occurs below Market orchestration. Resolution keys contain provider-neutral address input; comparable keys contain subject, purpose, criteria, provider semantics, and policy-relevant request facts. Purchase price, financing, ADR, and occupancy do not invalidate provider evidence. Only successful provider results enter the process-local cache, and structured cloning prevents cache consumers from sharing mutable state.
+
+Operational JSON events contain request/fingerprint identifiers, route, duration, report status, confidence, comparable counts, and safe errors. They exclude full address, financial inputs, raw payloads, credentials, and stacks. Admin health reads the in-process snapshot without issuing a provider call. These controls are intentionally process-local; distributed rate limiting, durable caching, analysis persistence, and product analytics require separately governed infrastructure.
+
 ## Validation Record
 
 - Repository and call-site audit: complete.
