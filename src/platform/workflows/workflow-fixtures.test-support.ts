@@ -1,4 +1,4 @@
-import { Action, ActionCollection, createActionId, type ActionStatus } from "../actions";
+import { Action, ActionCollection, createActionId, type LegacyActionStatus as ActionStatus } from "../actions";
 import { createWorkflowDefinitionId, createWorkflowStepId, WorkflowDefinition } from "./domain";
 
 export function actions(status: ActionStatus = "accepted"): ActionCollection {

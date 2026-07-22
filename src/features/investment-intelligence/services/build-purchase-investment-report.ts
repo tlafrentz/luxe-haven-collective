@@ -103,7 +103,11 @@ export function buildPurchaseInvestmentReport({
   market,
   comparables,
   policies,
-}: BuildPurchaseInvestmentReportInput): InvestmentDecision {
+}: BuildPurchaseInvestmentReportInput):
+  InvestmentDecision & {
+    readonly acquisitionType:
+      AcquisitionType.Purchase;
+  } {
   const revenueProjection =
     calculateRevenueProjection({
       projectedAdr:

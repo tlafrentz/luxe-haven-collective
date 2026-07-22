@@ -31,6 +31,7 @@ export interface LookupComparablesDependencies {
     ProviderType;
 }
 
+/** @deprecated Use acquireMarketComparables for factual, purpose-specific acquisition. */
 export class LookupComparables {
   private readonly registry:
     ComparableProviderRegistry;
@@ -96,6 +97,7 @@ export class LookupComparables {
   }
 }
 
+/** @deprecated Use acquireMarketComparables for factual, purpose-specific acquisition. */
 export async function lookupComparables(
   dependencies:
     LookupComparablesDependencies,

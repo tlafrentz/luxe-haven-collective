@@ -25,6 +25,11 @@ export const INVESTMENT_OBSERVATION_TYPES = {
       "investment.property.hoa",
   },
 
+  financing: {
+    downPaymentPercentage:
+      "investment.financing.down-payment-percentage",
+  },
+
   market: {
     medianAdr:
       "investment.market.median-adr",
@@ -38,6 +43,10 @@ export const INVESTMENT_OBSERVATION_TYPES = {
       "investment.market.demand-growth",
     seasonality:
       "investment.market.seasonality",
+    comparablePosition:
+      "investment.market.comparable-position",
+    comparableConfidence:
+      "investment.market.comparable-confidence",
   },
 
   revenue: {
@@ -101,6 +110,33 @@ export const INVESTMENT_OBSERVATION_TYPES = {
       "investment.financial.payback-period-months",
     leaseCoverageRatio:
       "investment.financial.lease-coverage-ratio",
+  },
+
+  rentalArbitrage: {
+    monthlyLease:
+      "investment.rental-arbitrage.monthly-lease",
+    securityDeposit:
+      "investment.rental-arbitrage.security-deposit",
+    startupCapital:
+      "investment.rental-arbitrage.startup-capital",
+    startupCosts:
+      "investment.rental-arbitrage.startup-costs",
+    annualLeaseExpense:
+      "investment.rental-arbitrage.annual-lease-expense",
+    monthlyOperatingMargin:
+      "investment.rental-arbitrage.monthly-operating-margin",
+    utilitiesIncluded:
+      "investment.rental-arbitrage.utilities-included",
+    failurePointStatus:
+      "investment.rental-arbitrage.failure-point-status",
+    maximumMonthlyLease:
+      "investment.rental-arbitrage.maximum-monthly-lease",
+    minimumOccupancy:
+      "investment.rental-arbitrage.minimum-occupancy",
+    stressOutcome:
+      "investment.rental-arbitrage.stress-outcome",
+    failedStressCount:
+      "investment.rental-arbitrage.failed-stress-count",
   },
 
   score: {

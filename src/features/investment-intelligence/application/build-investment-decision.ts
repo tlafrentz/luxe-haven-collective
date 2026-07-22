@@ -34,8 +34,12 @@ import type {
   InvestmentDecisionPolicies,
 } from "./investment-decision-policies";
 
-export type BuildInvestmentDecisionInput = {
-  readonly acquisitionType: AcquisitionType;
+export type BuildInvestmentDecisionInput<
+  TAcquisitionType extends AcquisitionType =
+    AcquisitionType,
+> = {
+  readonly acquisitionType:
+    TAcquisitionType;
 
   readonly property: PropertyProfile;
   readonly market: MarketSnapshot;
@@ -49,7 +53,9 @@ export type BuildInvestmentDecisionInput = {
   readonly policies?: InvestmentDecisionPolicies;
 };
 
-export function buildInvestmentDecision({
+export function buildInvestmentDecision<
+  TAcquisitionType extends AcquisitionType,
+>({
   acquisitionType,
   property,
   market,
@@ -59,7 +65,11 @@ export function buildInvestmentDecision({
   financialPerformance,
   comparableAnalysis,
   policies,
-}: BuildInvestmentDecisionInput): InvestmentDecision {
+}: BuildInvestmentDecisionInput<TAcquisitionType>):
+  InvestmentDecision & {
+    readonly acquisitionType:
+      TAcquisitionType;
+  } {
   const riskAssessment =
     assessInvestmentRisks({
       revenueProjection,

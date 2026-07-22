@@ -1,4 +1,4 @@
-import { ActionBuilder, createActionId, type Action, type ActionOwner } from "@/platform/actions";
+import { ActionBuilder, createActionId, type Action, type LegacyActionOwner as ActionOwner } from "@/platform/actions";
 import { Decision, DecisionMode } from "@/platform/decisions";
 import { Identifier } from "@/platform/kernel";
 import { createOutcomeId, emptyOutcomeLineage, Outcome } from "@/platform/outcomes";

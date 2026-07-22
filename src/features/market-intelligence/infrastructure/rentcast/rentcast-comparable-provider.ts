@@ -35,7 +35,10 @@ import {
 
 import type {
   RentCastValueEstimateResponse,
+  RentCastRentEstimateResponse,
 } from "./rentcast-comparable-types";
+import type { MarketComparableProvider } from "../../application/providers/market-comparable-provider";
+import { mapRentCastMarketComparable } from "./map-rentcast-market-comparable";
 
 export interface RentCastComparableProviderOptions {
   readonly client:
@@ -43,7 +46,7 @@ export interface RentCastComparableProviderOptions {
 }
 
 export class RentCastComparableProvider
-implements ComparableProvider {
+implements ComparableProvider, MarketComparableProvider {
   private readonly client:
     RentCastClient;
 
@@ -53,6 +56,32 @@ implements ComparableProvider {
   ) {
     this.client =
       options.client;
+  }
+
+  async acquireComparables(request: Parameters<MarketComparableProvider["acquireComparables"]>[0]): ReturnType<MarketComparableProvider["acquireComparables"]> {
+    try {
+      const retrievedAt = new Date();
+      const subject = request.subject;
+      const providerInput = {
+        address: subject.address.formatted,
+        latitude: subject.coordinates?.latitude,
+        longitude: subject.coordinates?.longitude,
+        propertyType: request.criteria.propertyTypes[0],
+        bedrooms: subject.characteristics.bedrooms,
+        bathrooms: subject.characteristics.bathrooms,
+        squareFootage: subject.characteristics.squareFeet,
+        radiusMiles: request.criteria.radiusMiles,
+        daysOld: Math.max(1, Math.ceil((retrievedAt.getTime() - request.criteria.occurredAfter.getTime()) / 86_400_000)),
+        compCount: request.criteria.limit,
+        lookupSubjectAttributes: true,
+      };
+      const response = request.purpose === "sale-valuation"
+        ? await this.client.requestValueEstimate<RentCastValueEstimateResponse>(providerInput)
+        : await this.client.requestLongTermRentEstimate<RentCastRentEstimateResponse>(providerInput);
+      if (!response || typeof response !== "object" || (response.comparables !== undefined && !Array.isArray(response.comparables))) throw new ProviderError({ provider: ProviderType.RentCast, code: ProviderErrorCode.InvalidResponse, message: "RentCast returned an invalid comparable collection." });
+      const records = response.comparables ?? [];
+      return providerSuccess({ provider: ProviderType.RentCast, purpose: request.purpose, retrievedAt, candidates: records.map((record, index) => mapRentCastMarketComparable(record, index + 1)) });
+    } catch (error) { return providerFailure(normalizeProviderError(error)); }
   }
 
   async getComparables(

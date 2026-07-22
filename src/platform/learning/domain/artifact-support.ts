@@ -4,7 +4,6 @@ import type { LearningExplainability } from "./learning-explainability";
 export type LearningArtifactBaseInput<TId> = Readonly<{ id: TId; title: string; summary: string; confidence: ConfidenceAssessment; explainability: LearningExplainability }>;
 export function validateBase<TId>(input: LearningArtifactBaseInput<TId>) {
   if (input.explainability.supportingOutcomeIds.length === 0) throw new TypeError("Learning supporting Outcomes cannot be empty.");
-  if (input.explainability.supportingIntelligenceIds.length === 0) throw new TypeError("Learning supporting Intelligence cannot be empty.");
   if (input.explainability.rationale.length === 0) throw new TypeError("Learning rationale cannot be empty.");
   const assumptions = strings(input.explainability.assumptions);
   if (assumptions.length === 0) throw new TypeError("Learning assumptions cannot be empty.");

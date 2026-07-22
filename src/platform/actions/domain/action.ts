@@ -1,217 +1,205 @@
-import type { Decision } from "../../decisions";
-import { EntityWithProps, Identifier } from "../../kernel";
-import type { ObservationValue } from "../../observations";
-import { createActionId, type ActionId } from "./action-id";
-import type { ActionOutcome } from "./action-outcome";
-import type { ActionOwner, ActionOwnerType } from "./action-owner";
+import { EntityWithProps } from "../../kernel";
+import { createActionActor, type ActionActor } from "./action-actor";
+import { createActionAssignment, createActionAssignmentId, isActiveAssignment, type PlatformActionAssignment } from "./action-assignment";
+import { ActionAlreadyArchived, ActionAlreadyAssigned, DuplicateActionSource, DuplicateOutcomeReference, InvalidActionTransition, InvalidActionVersion, MissingActionSource, NoActiveAssignment, InvalidAssignmentClaim, WorkspaceScopeViolation } from "./action-errors";
+import { createActionHistory, createActionHistoryId, type ActionHistoryId, type ActionHistoryOperation, type PlatformActionHistory } from "./action-history";
+import { createActionId, type ActionId, type WorkspaceId } from "./action-id";
+import { createActionOutcomeReference, type ActionOutcomeId, type ActionOutcomeLinkType, type PlatformActionOutcomeReference } from "./action-outcome-reference";
+import { createActionOwner, type ActionOwner } from "./action-owner";
 import { ACTION_PRIORITIES, type ActionPriority } from "./action-priority";
-import { ACTION_STATUSES, type ActionStatus } from "./action-status";
-import type { ActionType } from "./action-type";
+import { createActionSchedule, type PlatformActionSchedule } from "./action-schedule";
+import { actionSourceKey, createActionSource, type PlatformActionSource } from "./action-source";
+import { ACTION_STATUSES, ACTION_TRANSITIONS, type ActionStatus } from "./action-status";
+import { ActionVersion } from "./action-version";
 
-type ActionProps = Readonly<{
+export type PlatformActionProps = Readonly<{
+  id: ActionId;
+  workspaceId: WorkspaceId;
   title: string;
-  summary: string;
-  type: ActionType;
-  priority: ActionPriority;
+  description?: string;
+  actionType?: string;
   status: ActionStatus;
-  owner: ActionOwner;
-  decisionIdValues: readonly string[];
-  createdAt: Date;
-  acceptedAt?: Date;
-  scheduledFor?: Date;
-  startedAt?: Date;
-  completedAt?: Date;
-  measuredAt?: Date;
-  archivedAt?: Date;
-  outcome?: ActionOutcome;
-  metadata: Readonly<Record<string, ObservationValue>>;
-}>;
-
-export type ActionInput = Readonly<{
-  id?: ActionId;
-  title: string;
-  summary: string;
-  type: ActionType;
   priority: ActionPriority;
-  status?: ActionStatus;
   owner: ActionOwner;
-  decisionIds: readonly Identifier[];
+  assignments: readonly PlatformActionAssignment[];
+  schedule: PlatformActionSchedule;
+  sources: readonly PlatformActionSource[];
+  history: readonly PlatformActionHistory[];
+  outcomeReferences: readonly PlatformActionOutcomeReference[];
   createdAt: Date;
-  acceptedAt?: Date;
-  scheduledFor?: Date;
-  startedAt?: Date;
-  completedAt?: Date;
-  measuredAt?: Date;
-  archivedAt?: Date;
-  outcome?: ActionOutcome;
-  metadata?: Readonly<Record<string, ObservationValue>>;
+  createdBy: ActionActor;
+  updatedAt: Date;
+  version: ActionVersion;
 }>;
 
-export class Action extends EntityWithProps<ActionProps, ActionId> {
-  private constructor(id: ActionId, props: ActionProps) { super(id, props); }
+export type CreatePlatformActionInput = Readonly<{
+  id?: ActionId;
+  workspaceId: WorkspaceId;
+  title: string;
+  description?: string;
+  actionType?: string;
+  priority: ActionPriority;
+  owner: ActionOwner;
+  sources: readonly PlatformActionSource[];
+  createdAt: Date;
+  createdBy: ActionActor;
+  commandId?: string;
+  creationHistoryId?: ActionHistoryId;
+}>;
 
-  public static create(input: ActionInput): Action {
-    const status = input.status ?? "proposed";
-    const decisionIdValues = [...new Set(input.decisionIds.map((id) => id.value))];
-    if (!ACTION_STATUSES.includes(status)) throw new TypeError("Action status is invalid.");
-    if (!ACTION_PRIORITIES.includes(input.priority)) throw new TypeError("Action priority is invalid.");
-    const createdAt = date(input.createdAt, "Action creation date");
-    const acceptedAt = optionalDate(input.acceptedAt, "Action acceptance date");
-    const scheduledFor = optionalDate(input.scheduledFor, "Action schedule date");
-    const startedAt = optionalDate(input.startedAt, "Action start date");
-    const completedAt = optionalDate(input.completedAt, "Action completion date");
-    const measuredAt = optionalDate(input.measuredAt, "Action measurement date");
-    const archivedAt = optionalDate(input.archivedAt, "Action archive date");
-    if (completedAt && !input.outcome) throw new TypeError("A completed Action requires an outcome.");
+export type ActionMutationContext = Readonly<{ workspaceId: WorkspaceId; expectedVersion: ActionVersion; actor: ActionActor; occurredAt: Date; reason?: string; commandId?: string; externalEventId?: string }>;
+export type AssignActionInput = ActionMutationContext & Readonly<{ assignmentId?: ReturnType<typeof createActionAssignmentId>; assigneeType: PlatformActionAssignment["assigneeType"]; assigneeId?: string; queue?: string }>;
+export type ClaimActionInput = ActionMutationContext & Readonly<{ assigneeType: PlatformActionAssignment["assigneeType"]; assigneeId?: string }>;
+export type ScheduleActionInput = ActionMutationContext & Readonly<{ scheduled?: Date; startAfter?: Date; due?: Date }>;
+export type UnblockActionInput = ActionMutationContext & Readonly<{ resumeTo: "ready" | "in-progress" }>;
+export type LinkOutcomeInput = ActionMutationContext & Readonly<{ outcomeId: ActionOutcomeId; linkType: ActionOutcomeLinkType }>;
 
-    return new Action(input.id ?? createActionId(), {
-      title: text(input.title, "Action title"),
-      summary: text(input.summary, "Action summary"),
-      type: text(input.type, "Action type"),
-      priority: input.priority,
+type StoredActionProps = Omit<PlatformActionProps, "id">;
+
+export class PlatformAction extends EntityWithProps<StoredActionProps, ActionId> {
+  private constructor(input: PlatformActionProps) {
+    super(input.id, normalizeState(input));
+  }
+
+  public static createDraft(input: CreatePlatformActionInput): PlatformAction { return PlatformAction.create(input, "draft"); }
+  public static createCommitted(input: CreatePlatformActionInput): PlatformAction { return PlatformAction.create(input, "committed"); }
+  public static reconstitute(input: PlatformActionProps): PlatformAction { return new PlatformAction(validateReconstituted(input)); }
+
+  private static create(input: CreatePlatformActionInput, status: "draft" | "committed"): PlatformAction {
+    const id = input.id ?? createActionId();
+    const createdAt = validDate(input.createdAt, "Action creation date");
+    const version = ActionVersion.initial();
+    const actor = createActionActor(input.createdBy);
+    return new PlatformAction({
+      id,
+      workspaceId: input.workspaceId,
+      title: input.title,
+      ...(input.description ? { description: input.description } : {}),
+      ...(input.actionType ? { actionType: input.actionType } : {}),
       status,
-      owner: normalizeOwner(input.owner),
-      decisionIdValues: Object.freeze(decisionIdValues),
+      priority: input.priority,
+      owner: input.owner,
+      assignments: [],
+      schedule: { created: createdAt },
+      sources: input.sources,
+      history: [createActionHistory({ id: input.creationHistoryId ?? createActionHistoryId(), actionId: id, version, operation: "created", resultingStatus: status, occurredAt: createdAt, actor, ...(input.commandId ? { commandId: input.commandId } : {}) })],
+      outcomeReferences: [],
       createdAt,
-      ...(acceptedAt ? { acceptedAt } : {}),
-      ...(scheduledFor ? { scheduledFor } : {}),
-      ...(startedAt ? { startedAt } : {}),
-      ...(completedAt ? { completedAt } : {}),
-      ...(measuredAt ? { measuredAt } : {}),
-      ...(archivedAt ? { archivedAt } : {}),
-      ...(input.outcome ? { outcome: normalizeOutcome(input.outcome) } : {}),
-      metadata: Object.freeze({ ...input.metadata }),
+      createdBy: actor,
+      updatedAt: createdAt,
+      version,
     });
   }
 
+  public get workspaceId(): WorkspaceId { return this.props.workspaceId; }
   public get title(): string { return this.props.title; }
-  public get summary(): string { return this.props.summary; }
-  public get type(): ActionType { return this.props.type; }
-  public get priority(): ActionPriority { return this.props.priority; }
+  public get description(): string | undefined { return this.props.description; }
+  public get actionType(): string | undefined { return this.props.actionType; }
   public get status(): ActionStatus { return this.props.status; }
+  public get priority(): ActionPriority { return this.props.priority; }
   public get owner(): ActionOwner { return this.props.owner; }
-  public get decisionIds(): readonly Identifier[] {
-    return this.props.decisionIdValues.map((value) => Identifier.create(value));
-  }
+  public get assignments(): readonly PlatformActionAssignment[] { return this.props.assignments; }
+  public get activeAssignment(): PlatformActionAssignment | undefined { return this.props.assignments.find(isActiveAssignment); }
+  public get scheduleValue(): PlatformActionSchedule { return this.props.schedule; }
+  public get sources(): readonly PlatformActionSource[] { return this.props.sources; }
+  public get history(): readonly PlatformActionHistory[] { return this.props.history; }
+  public get outcomeReferences(): readonly PlatformActionOutcomeReference[] { return this.props.outcomeReferences; }
   public get createdAt(): Date { return new Date(this.props.createdAt); }
-  public get acceptedAt(): Date | undefined { return copy(this.props.acceptedAt); }
-  public get scheduledFor(): Date | undefined { return copy(this.props.scheduledFor); }
-  public get startedAt(): Date | undefined { return copy(this.props.startedAt); }
-  public get completedAt(): Date | undefined { return copy(this.props.completedAt); }
-  public get measuredAt(): Date | undefined { return copy(this.props.measuredAt); }
-  public get archivedAt(): Date | undefined { return copy(this.props.archivedAt); }
-  public get outcome(): ActionOutcome | undefined { return this.props.outcome; }
-  public get metadata(): Readonly<Record<string, ObservationValue>> { return this.props.metadata; }
-  public originatesFrom(decision: Decision<string> | Identifier): boolean {
-    const id = decision instanceof Identifier ? decision : decision.id;
-    return this.props.decisionIdValues.includes(id.value);
+  public get createdBy(): ActionActor { return this.props.createdBy; }
+  public get updatedAt(): Date { return new Date(this.props.updatedAt); }
+  public get version(): ActionVersion { return this.props.version; }
+
+  public commit(command: ActionMutationContext): PlatformAction { return this.transition("committed", "committed", command); }
+  public markReady(command: ActionMutationContext): PlatformAction { return this.transition("ready", "marked-ready", command); }
+  public start(command: ActionMutationContext): PlatformAction { return this.transition("in-progress", "started", command); }
+  public block(command: ActionMutationContext): PlatformAction { return this.transition("blocked", "blocked", command); }
+  public unblock(command: UnblockActionInput): PlatformAction { return this.transition(command.resumeTo, "unblocked", command); }
+  public cancel(command: ActionMutationContext): PlatformAction { return this.transition("cancelled", "cancelled", command); }
+  public archive(command: ActionMutationContext): PlatformAction {
+    if (this.status === "archived") throw new ActionAlreadyArchived();
+    return this.transition("archived", "archived", command);
+  }
+  public complete(command: ActionMutationContext): PlatformAction {
+    this.assertContext(command);
+    this.assertTransition("completed");
+    const at = validDate(command.occurredAt, "Action completion date");
+    return this.change("completed", command, { status: "completed", schedule: createActionSchedule({ ...this.scheduleValue, completed: at }) });
+  }
+  public changePriority(command: ActionMutationContext & Readonly<{ priority: ActionPriority }>): PlatformAction {
+    if (!ACTION_PRIORITIES.includes(command.priority)) throw new TypeError("Action priority is invalid.");
+    return this.change("priority-changed", command, { priority: command.priority });
+  }
+  public changeOwner(command: ActionMutationContext & Readonly<{ owner: ActionOwner }>): PlatformAction {
+    return this.change("owner-changed", command, { owner: createActionOwner(command.owner) });
+  }
+  public schedule(command: ScheduleActionInput): PlatformAction {
+    return this.change("scheduled", command, { schedule: createActionSchedule({ created: this.scheduleValue.created, scheduled: command.scheduled ?? command.occurredAt, ...(command.startAfter ? { startAfter: command.startAfter } : {}), ...(command.due ? { due: command.due } : {}), ...(this.scheduleValue.completed ? { completed: this.scheduleValue.completed } : {}) }) });
+  }
+  public assign(command: AssignActionInput): PlatformAction {
+    this.assertContext(command);
+    if (this.activeAssignment) throw new ActionAlreadyAssigned();
+    const queued = Boolean(command.queue);
+    const assignment = createActionAssignment({ id: command.assignmentId ?? createActionAssignmentId(), assigneeType: command.assigneeType, ...(command.assigneeId ? { assigneeId: command.assigneeId } : {}), ...(command.queue ? { queue: command.queue } : {}), status: queued ? "queued" : "assigned", assignedAt: command.occurredAt, assignedBy: command.actor });
+    return this.change("assigned", command, { assignments: [...this.assignments, assignment] });
+  }
+  public releaseAssignment(command: ActionMutationContext): PlatformAction {
+    this.assertContext(command);
+    const active = this.activeAssignment; if (!active) throw new NoActiveAssignment();
+    const assignments = this.assignments.map((value) => value.id.equals(active.id) ? createActionAssignment({ ...value, status: "released", releasedAt: command.occurredAt }) : value);
+    return this.change("assignment-released", command, { assignments });
+  }
+  public claim(command: ClaimActionInput): PlatformAction {
+    this.assertContext(command);
+    const active = this.activeAssignment; if (!active) throw new NoActiveAssignment();
+    if (active.status !== "queued" && active.status !== "assigned") throw new InvalidAssignmentClaim();
+    const assignee = createActionActor({ type: command.assigneeType, ...(command.assigneeId ? { id: command.assigneeId } : {}) });
+    const assignments = this.assignments.map((value) => value.id.equals(active.id) ? createActionAssignment({ ...value, assigneeType: assignee.type, ...(assignee.id ? { assigneeId: assignee.id } : {}), status: "claimed", claimedAt: command.occurredAt }) : value);
+    return this.change("claimed", command, { assignments });
+  }
+  public linkOutcome(command: LinkOutcomeInput): PlatformAction {
+    this.assertContext(command);
+    if (this.outcomeReferences.some((value) => value.outcomeId.equals(command.outcomeId))) throw new DuplicateOutcomeReference(command.outcomeId.value);
+    const reference = createActionOutcomeReference({ outcomeId: command.outcomeId, linkType: command.linkType, linkedAt: command.occurredAt, linkedBy: command.actor });
+    return this.change("outcome-linked", command, { outcomeReferences: [...this.outcomeReferences, reference] });
   }
 
-  public accept(acceptedAt: Date): Action {
-    return this.transition(["proposed"], "accepted", { acceptedAt });
+  private transition(status: ActionStatus, operation: ActionHistoryOperation, command: ActionMutationContext): PlatformAction {
+    this.assertContext(command); this.assertTransition(status); return this.change(operation, command, { status });
   }
-  public schedule(scheduledFor: Date): Action {
-    return this.transition(["accepted"], "scheduled", { scheduledFor });
+  private assertTransition(status: ActionStatus): void { if (!ACTION_TRANSITIONS[this.status].includes(status)) throw new InvalidActionTransition(this.status, status); }
+  private assertContext(command: ActionMutationContext): void {
+    if (!this.workspaceId.equals(command.workspaceId)) throw new WorkspaceScopeViolation();
+    if (!this.version.equals(command.expectedVersion)) throw new InvalidActionVersion(command.expectedVersion.value);
+    if (this.status === "archived") throw new ActionAlreadyArchived();
+    validDate(command.occurredAt, "Action operation date"); createActionActor(command.actor);
   }
-  public start(startedAt: Date): Action {
-    return this.transition(["accepted"], "in-progress", { startedAt });
+  private change(operation: ActionHistoryOperation, command: ActionMutationContext, changes: Partial<StoredActionProps>): PlatformAction {
+    this.assertContext(command);
+    const version = this.version.next(), occurredAt = validDate(command.occurredAt, "Action operation date"), resultingStatus = changes.status ?? this.status;
+    const history = createActionHistory({ id: createActionHistoryId(), actionId: this.id, version, operation, previousStatus: this.status, resultingStatus, occurredAt, actor: command.actor, ...(command.reason ? { reason: command.reason } : {}), ...(command.commandId ? { commandId: command.commandId } : {}), ...(command.externalEventId ? { externalEventId: command.externalEventId } : {}) });
+    return new PlatformAction({ ...this.snapshot(), ...changes, id: this.id, updatedAt: occurredAt, version, history: [...this.history, history] });
   }
-  public block(): Action {
-    return this.transition(["accepted", "scheduled", "in-progress"], "blocked");
-  }
-  public complete(completedAt: Date, outcome: ActionOutcome): Action {
-    return this.transition(["accepted", "scheduled", "in-progress", "blocked"], "completed", {
-      completedAt,
-      outcome,
-    });
-  }
-  public measure(
-    measuredAt: Date,
-    measurement: Pick<ActionOutcome, "measuredImpact" | "lessonsLearned">,
-  ): Action {
-    if (this.status !== "completed") this.invalidTransition("measured");
-    if (!this.outcome) throw new Error("Cannot measure an action without a completion outcome.");
-    const lessons = measurement.lessonsLearned?.map((value) => value.trim()).filter(Boolean) ?? [];
-    const impact = measurement.measuredImpact;
-    if (!impact && lessons.length === 0) {
-      throw new Error("Action measurement must include measured impact or lessons learned.");
-    }
-    return this.transition(["completed"], "measured", {
-      measuredAt,
-      outcome: {
-        ...this.outcome,
-        ...(this.outcome.measuredImpact || impact
-          ? { measuredImpact: { ...this.outcome.measuredImpact, ...impact } }
-          : {}),
-        lessonsLearned: [...(this.outcome.lessonsLearned ?? []), ...lessons],
-      },
-    });
-  }
-  public archive(archivedAt: Date): Action {
-    return this.transition(["proposed", "accepted", "blocked", "completed", "measured"], "archived", {
-      archivedAt,
-    });
-  }
-
-  private transition(
-    allowed: readonly ActionStatus[],
-    status: ActionStatus,
-    changes: Partial<ActionInput> = {},
-  ): Action {
-    if (!allowed.includes(this.status)) this.invalidTransition(status);
-    return Action.create({ ...this.toInput(), ...changes, status });
-  }
-  private invalidTransition(status: ActionStatus): never {
-    throw new Error(`Cannot transition action from "${this.status}" to "${status}".`);
-  }
-  private toInput(): ActionInput {
-    return {
-      id: this.id,
-      title: this.title,
-      summary: this.summary,
-      type: this.type,
-      priority: this.priority,
-      status: this.status,
-      owner: this.owner,
-      decisionIds: this.decisionIds,
-      createdAt: this.createdAt,
-      ...(this.acceptedAt ? { acceptedAt: this.acceptedAt } : {}),
-      ...(this.scheduledFor ? { scheduledFor: this.scheduledFor } : {}),
-      ...(this.startedAt ? { startedAt: this.startedAt } : {}),
-      ...(this.completedAt ? { completedAt: this.completedAt } : {}),
-      ...(this.measuredAt ? { measuredAt: this.measuredAt } : {}),
-      ...(this.archivedAt ? { archivedAt: this.archivedAt } : {}),
-      ...(this.outcome ? { outcome: this.outcome } : {}),
-      metadata: this.metadata,
-    };
-  }
+  private snapshot(): PlatformActionProps { return { id: this.id, workspaceId: this.workspaceId, title: this.title, ...(this.description ? { description: this.description } : {}), ...(this.actionType ? { actionType: this.actionType } : {}), status: this.status, priority: this.priority, owner: this.owner, assignments: this.assignments, schedule: this.scheduleValue, sources: this.sources, history: this.history, outcomeReferences: this.outcomeReferences, createdAt: this.createdAt, createdBy: this.createdBy, updatedAt: this.updatedAt, version: this.version }; }
 }
 
-function text(value: string, field: string): string {
-  const normalized = value.trim();
-  if (!normalized) throw new TypeError(`${field} cannot be empty.`);
-  return normalized;
+function normalizeState(input: PlatformActionProps): StoredActionProps {
+  if (!ACTION_STATUSES.includes(input.status)) throw new TypeError("Action status is invalid.");
+  if (!ACTION_PRIORITIES.includes(input.priority)) throw new TypeError("Action priority is invalid.");
+  const title = text(input.title, "Action title"), description = optionalText(input.description), actionType = optionalText(input.actionType);
+  const sources = input.sources.map(createActionSource); if (sources.length === 0) throw new MissingActionSource();
+  const keys = sources.map(actionSourceKey); if (new Set(keys).size !== keys.length) throw new DuplicateActionSource(keys.find((key, index) => keys.indexOf(key) !== index) ?? "unknown");
+  const assignments = input.assignments.map(createActionAssignment); if (assignments.filter(isActiveAssignment).length > 1) throw new ActionAlreadyAssigned();
+  const outcomes = input.outcomeReferences.map(createActionOutcomeReference), outcomeIds = outcomes.map((value) => value.outcomeId.value); if (new Set(outcomeIds).size !== outcomeIds.length) throw new DuplicateOutcomeReference(outcomeIds.find((id, index) => outcomeIds.indexOf(id) !== index) ?? "unknown");
+  return { workspaceId: input.workspaceId, title, ...(description ? { description } : {}), ...(actionType ? { actionType } : {}), status: input.status, priority: input.priority, owner: createActionOwner(input.owner), assignments, schedule: createActionSchedule(input.schedule), sources, history: input.history.map(createActionHistory), outcomeReferences: outcomes, createdAt: validDate(input.createdAt, "Action creation date"), createdBy: createActionActor(input.createdBy), updatedAt: validDate(input.updatedAt, "Action update date"), version: ActionVersion.create(input.version.value) };
 }
-function date(value: Date, field: string): Date {
-  const result = new Date(value);
-  if (Number.isNaN(result.getTime())) throw new TypeError(`${field} must be valid.`);
-  return result;
+function validateReconstituted(input: PlatformActionProps): PlatformActionProps {
+  if (input.history.length === 0) throw new TypeError("Reconstituted Actions require history.");
+  if (!input.history.at(-1)?.version.equals(input.version)) throw new InvalidActionVersion(input.version.value);
+  if (input.history.some((entry, index) => entry.version.value !== index + 1)) throw new InvalidActionVersion(input.version.value);
+  if (input.history.some((entry) => !entry.actionId.equals(input.id))) throw new TypeError("Action history must reference its aggregate.");
+  if (input.updatedAt < input.createdAt) throw new TypeError("Action update date cannot precede creation.");
+  return input;
 }
-function optionalDate(value: Date | undefined, field: string): Date | undefined {
-  return value ? date(value, field) : undefined;
-}
-function copy(value: Date | undefined): Date | undefined { return value ? new Date(value) : undefined; }
-function normalizeOwner(owner: ActionOwner): ActionOwner {
-  const types: readonly ActionOwnerType[] = ["user", "team", "automation", "system"];
-  if (!types.includes(owner.type)) throw new TypeError("Action owner type is invalid.");
-  return Object.freeze({ type: owner.type, id: text(owner.id, "Action owner ID"), displayName: text(owner.displayName, "Action owner display name") });
-}
-function normalizeOutcome(outcome: ActionOutcome): ActionOutcome {
-  return Object.freeze({
-    summary: text(outcome.summary, "Action outcome summary"),
-    successful: outcome.successful,
-    ...(outcome.measuredImpact ? { measuredImpact: Object.freeze({ ...outcome.measuredImpact }) } : {}),
-    ...(outcome.lessonsLearned ? { lessonsLearned: Object.freeze([...new Set(outcome.lessonsLearned.map((value) => value.trim()).filter(Boolean))]) } : {}),
-    ...(outcome.metadata ? { metadata: Object.freeze({ ...outcome.metadata }) } : {}),
-  });
-}
+function text(value: string, field: string): string { const result = value.trim(); if (!result) throw new TypeError(`${field} cannot be empty.`); return result; }
+function optionalText(value?: string): string | undefined { const result = value?.trim(); return result || undefined; }
+function validDate(value: Date, field: string): Date { const result = new Date(value); if (Number.isNaN(result.getTime())) throw new TypeError(`${field} must be valid.`); return result; }

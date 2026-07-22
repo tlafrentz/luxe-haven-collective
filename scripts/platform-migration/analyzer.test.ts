@@ -14,9 +14,9 @@ describe("platform migration analyzer", () => {
   it("reports platform adoption for every feature", () => {
     const report = adoptionReport(analysis);
     expect(report.map((value) => value.feature)).toEqual(analysis.features);
-    expect(report.find((value) => value.feature === "execution-engine")?.platformPackages).toContain("actions");
-    expect(report.find((value) => value.feature === "execution-engine")!.effectiveAdoptingFiles).toBeGreaterThanOrEqual(
-      report.find((value) => value.feature === "execution-engine")!.adoptingFiles,
+    expect(report.find((value) => value.feature === "action-center")?.platformPackages).toContain("actions");
+    expect(report.find((value) => value.feature === "action-center")!.effectiveAdoptingFiles).toBeGreaterThanOrEqual(
+      report.find((value) => value.feature === "action-center")!.adoptingFiles,
     );
   });
 

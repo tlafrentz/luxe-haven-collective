@@ -103,6 +103,94 @@ export type {
 } from "./investment-decision-policies";
 
 export {
+  commitInvestmentRecommendation,
+  InvestmentCommitmentError,
+} from "./commit-investment-recommendation";
+
+export type {
+  InvestmentCommitmentErrorCode,
+} from "./commit-investment-recommendation";
+
+export {
+  InvestmentExecutionError,
+  planInvestmentExecution,
+} from "./plan-investment-execution";
+
+export type {
+  InvestmentExecutionErrorCode,
+} from "./plan-investment-execution";
+
+export {
+  InvestmentOutcomeError,
+  recordInvestmentActionOutcome,
+} from "./record-investment-action-outcome";
+
+export type {
+  InvestmentOutcomeErrorCode,
+} from "./record-investment-action-outcome";
+
+export {
+  deriveInvestmentLearning,
+  InvestmentLearningError,
+} from "./derive-investment-learning";
+
+export type {
+  InvestmentLearningErrorCode,
+} from "./derive-investment-learning";
+
+export {
+  InvestmentLearningApplicationError,
+  reviewInvestmentLearningApplication,
+} from "./review-investment-learning-application";
+
+export type {
+  InvestmentLearningApplicationErrorCode,
+} from "./review-investment-learning-application";
+
+export {
+  buildInvestmentAppliedLearningContext,
+  InvestmentAppliedLearningContextError,
+} from "./build-investment-applied-learning-context";
+
+export type {
+  InvestmentAppliedLearningContextErrorCode,
+} from "./build-investment-applied-learning-context";
+
+export {
+  buildInvestmentAnalysisContext,
+  InvestmentAnalysisContextError,
+} from "./build-investment-analysis-context";
+
+export type {
+  InvestmentAnalysisContextErrorCode,
+} from "./build-investment-analysis-context";
+
+export {
+  assessInvestmentMarketEvidenceUsability,
+  buildInvestmentMarketContext,
+  InvestmentMarketContextError,
+} from "./build-investment-market-context";
+
+export type {
+  InvestmentMarketContextErrorCode,
+} from "./build-investment-market-context";
+
+export {
+  InvestmentWorkspaceAnalysisError,
+  runInvestmentWorkspaceAnalysis,
+} from "./run-investment-workspace-analysis";
+
+export {
+  runInvestmentAnalysis,
+} from "./run-investment-analysis";
+
+export type {
+  RunInvestmentAnalysisCommand,
+  RunPurchaseInvestmentAnalysisCommand,
+  RunRentalArbitrageInvestmentAnalysisCommand,
+} from "./run-investment-analysis";
+
+export {
   DEFAULT_INVESTMENT_EVIDENCE_POLICY,
 } from "./investment-evidence-policy";
 

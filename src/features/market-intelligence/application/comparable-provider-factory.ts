@@ -1,80 +1,17 @@
-import {
-  getProviderDisplayName,
-  ProviderType,
-} from "../domain/enums/provider-type";
-
-import {
-  RentCastClient,
-} from "../infrastructure/rentcast/rentcast-client";
-
-import {
-  RentCastComparableProvider,
-} from "../infrastructure/rentcast/rentcast-comparable-provider";
-
-import type {
-  ComparableProvider,
-} from "./providers/comparable-provider";
+import { getProviderDisplayName, type ProviderType } from "../domain/enums/provider-type";
+import type { ComparableProvider } from "./providers/comparable-provider";
 
 export interface ComparableProviderFactoryDependencies {
-  readonly rentCastApiKey?: string;
-  readonly rentCastBaseUrl?: string;
-  readonly rentCastTimeoutMs?: number;
-  readonly fetchImplementation?: typeof fetch;
+  readonly providers: Readonly<Partial<Record<ProviderType, () => ComparableProvider>>>;
 }
 
+/** Provider-neutral application factory. Concrete adapter construction belongs to Infrastructure. */
 export class ComparableProviderFactory {
-  private readonly dependencies:
-    ComparableProviderFactoryDependencies;
+  constructor(private readonly dependencies: ComparableProviderFactoryDependencies) {}
 
-  constructor(
-    dependencies:
-      ComparableProviderFactoryDependencies,
-  ) {
-    this.dependencies =
-      dependencies;
-  }
-
-  create(
-    providerType: ProviderType,
-  ): ComparableProvider {
-    switch (providerType) {
-      case ProviderType.RentCast:
-        return this.createRentCastProvider();
-
-      default:
-        throw new Error(
-          `Comparable provider "${getProviderDisplayName(providerType)}" is not supported.`,
-        );
-    }
-  }
-
-  private createRentCastProvider():
-    ComparableProvider {
-    const apiKey =
-      this.dependencies
-        .rentCastApiKey
-        ?.trim();
-
-    if (!apiKey) {
-      throw new Error(
-        "RENTCAST_API_KEY is required to create the RentCast comparable provider.",
-      );
-    }
-
-    return new RentCastComparableProvider({
-      client:
-        new RentCastClient({
-          apiKey,
-          baseUrl:
-            this.dependencies
-              .rentCastBaseUrl,
-          timeoutMs:
-            this.dependencies
-              .rentCastTimeoutMs,
-          fetchImplementation:
-            this.dependencies
-              .fetchImplementation,
-        }),
-    });
+  create(providerType: ProviderType): ComparableProvider {
+    const createProvider = this.dependencies.providers[providerType];
+    if (!createProvider) throw new Error(`Comparable provider "${getProviderDisplayName(providerType)}" is not supported.`);
+    return createProvider();
   }
 }

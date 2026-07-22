@@ -1,6 +1,7 @@
 import type { Decision, DecisionCollection } from "../../decisions";
 import type { ObservationValue } from "../../observations";
-import type { ActionOutcome, ActionOwner, ActionPriority, ActionStatus, ActionType } from "../domain";
+import type { ActionOutcome, LegacyActionOwner as ActionOwner, LegacyActionPriority as ActionPriority, LegacyActionStatus as ActionStatus } from "../compatibility";
+import type { ActionType } from "../domain";
 
 export type ActionPolicyContext = Readonly<{ decisions: DecisionCollection }>;
 export type ActionPolicyResult = Readonly<{

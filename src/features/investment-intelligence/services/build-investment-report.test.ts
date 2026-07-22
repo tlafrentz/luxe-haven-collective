@@ -19,6 +19,10 @@ import {
   buildInvestmentReport,
 } from "./build-investment-report";
 
+import {
+  runInvestmentAnalysis,
+} from "../application/run-investment-analysis";
+
 function usd(amount: number) {
   return {
     amount,
@@ -109,6 +113,106 @@ const commonInput = {
 } as const;
 
 describe("buildInvestmentReport", () => {
+  it("preserves the legacy purchase default through the canonical boundary", () => {
+    const input = {
+      property: {
+        id: "compatibility-purchase",
+        address1: "123 Main Street",
+        city: "Mesa",
+        state: "AZ",
+        postalCode: "85201",
+        purchasePrice: 425000,
+        closingCosts: 12000,
+        furnishingBudget: 25000,
+        propertyType:
+          PropertyType.Apartment,
+        bedrooms: 2,
+        bathrooms: 1,
+        squareFeet: 950,
+      },
+      financing: {
+        downPaymentPercentage: 25,
+        interestRatePercentage: 6.5,
+        loanTermYears: 30,
+      },
+      operating: {
+        managementFeePercentage: 10,
+        monthlyUtilities: 300,
+        annualInsurance: 1800,
+        annualTaxes: 4200,
+        annualCleaning: 7200,
+        annualSoftware: 1200,
+        annualSupplies: 1800,
+        maintenanceReservePercentage: 5,
+        capitalReservePercentage: 3,
+      },
+      ...commonInput,
+    } as const;
+
+    const legacy =
+      buildInvestmentReport(input);
+    const canonical =
+      runInvestmentAnalysis({
+        ...input,
+        acquisitionType:
+          AcquisitionType.Purchase,
+      });
+
+    expect(legacy.acquisitionType).toBe(
+      AcquisitionType.Purchase,
+    );
+    expect(legacy).toEqual(
+      canonical.analysis,
+    );
+  });
+
+  it("preserves the rental projection through the canonical boundary", () => {
+    const input = {
+      acquisitionType:
+        AcquisitionType.RentalArbitrage,
+      property: {
+        id: "compatibility-rental",
+        address1: "123 Main Street",
+        city: "Mesa",
+        state: "AZ",
+        postalCode: "85201",
+        furnishingBudget: 15000,
+        propertyType:
+          PropertyType.Apartment,
+        bedrooms: 2,
+        bathrooms: 1,
+        squareFeet: 950,
+      },
+      lease: {
+        monthlyLease: 2000,
+        securityDeposit: 2000,
+        leaseTermMonths: 12,
+        startupCosts: 3000,
+        utilitiesIncluded: false,
+      },
+      operating: {
+        managementFeePercentage: 10,
+        monthlyUtilities: 250,
+        annualInsurance: 1200,
+        annualCleaning: 6000,
+        annualSoftware: 600,
+        annualSupplies: 1200,
+        maintenanceReservePercentage: 3,
+        capitalReservePercentage: 2,
+      },
+      ...commonInput,
+    } as const;
+
+    const legacy =
+      buildInvestmentReport(input);
+    const canonical =
+      runInvestmentAnalysis(input);
+
+    expect(legacy).toEqual(
+      canonical.analysis,
+    );
+  });
+
   it("preserves the existing purchase pathway", () => {
     const result =
       buildInvestmentReport({

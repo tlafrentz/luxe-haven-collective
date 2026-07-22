@@ -1,4 +1,4 @@
-import type { ActionPriority, ActionStatus } from "@/platform/actions";
+import type { LegacyActionPriority as ActionPriority, LegacyActionStatus as ActionStatus } from "@/platform/actions";
 import type { RecommendationPriority } from "@/platform/recommendations";
 
 import type { ExecutiveAttentionItem } from "./executive-attention";

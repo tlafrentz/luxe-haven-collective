@@ -1,4 +1,4 @@
-import { ActionCollection, type ActionStatus } from "../../actions";
+import { ActionCollection, type LegacyActionStatus as ActionStatus } from "../../actions";
 import type { ObservationValue } from "../../observations";
 import {
   createWorkflowId,

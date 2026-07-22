@@ -66,6 +66,9 @@ export function RevenueAssumptionsCard() {
               <p className="mt-1 text-xs leading-5 text-neutral-500">
                 Use stabilized expectations rather than peak-season targets.
               </p>
+              <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                Real STR ADR and occupancy evidence are not yet available from the current Market Intelligence provider. These are operator-supplied assumptions, not Market-derived values.
+              </p>
             </div>
 
             <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
@@ -92,6 +95,7 @@ export function RevenueAssumptionsCard() {
 
                 <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
                   Expected blended nightly rate before taxes and fees.
+                  {" "}Source: User supplied.
                 </span>
               </label>
 
@@ -123,6 +127,7 @@ export function RevenueAssumptionsCard() {
 
                 <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
                   Expected share of available nights booked annually.
+                  {" "}Source: User supplied.
                 </span>
               </label>
             </div>

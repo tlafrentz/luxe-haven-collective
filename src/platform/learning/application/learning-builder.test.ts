@@ -28,4 +28,14 @@ describe("LearningBuilder", () => {
     expect(() => new LearningBuilder().build({ result: { ...base, confidence: confidence(), confidenceCalibrations: [{ title: "No samples", summary: "Invalid", estimatedConfidence: ConfidenceScore.create(80), observedAccuracy: ConfidenceScore.create(70), recommendedConfidence: ConfidenceScore.create(75), sampleSize: 0, supportingOutcomes: [outcome()], supportingIntelligence: [intelligenceReport()], assumptions: ["Test"], rationale: ["None"], confidence: confidence() }] } })).toThrow("sample size must be a positive integer");
     expect(() => new LearningBuilder().build({ result: base })).toThrow("report confidence is required");
   });
+  it("supports direct Outcome-derived insights without intermediate Intelligence", () => {
+    const source = outcome();
+    const report = new LearningBuilder().build({ result: {
+      reportingPeriod: { start: source.startedAt, end: source.completedAt! },
+      summary: "Outcome-derived learning.",
+      confidence: confidence(),
+      insights: [{ title: "Measured assumption", summary: "Reality refined the assumption.", type: "calibration", supportingOutcomes: [source], supportingIntelligence: [], assumptions: ["The original assumption was representative."], rationale: ["The completed work supplied direct evidence."], confidence: confidence() }],
+    } });
+    expect(report.insights[0].explainability.supportingIntelligenceIds).toEqual([]);
+  });
 });

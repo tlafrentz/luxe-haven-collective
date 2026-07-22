@@ -1,4 +1,3 @@
-import type { ActionCollection } from "@/platform/actions";
 import type { ClaimCollection } from "@/platform/claims";
 import type { Decision } from "@/platform/decisions";
 import type { EvaluationCollection } from "@/platform/evaluations";
@@ -10,6 +9,7 @@ import type { Recommendation, RecommendationCollection } from "@/platform/recomm
 import type { Score } from "@/platform/scoring";
 
 import type { InvestmentDecision } from "./investment-decision";
+import type { AcquisitionType } from "./enums";
 import type { RentalArbitrageInvestmentAnalysis } from "./rental-arbitrage-investment-analysis";
 
 export type InvestmentPlatformScores = Readonly<{
@@ -21,14 +21,44 @@ export type InvestmentPlatformScores = Readonly<{
   riskExposure: Score;
 }>;
 
+export type InvestmentDataGapSeverity =
+  | "informational"
+  | "material"
+  | "blocking";
+
+export type InvestmentDataGap = Readonly<{
+  code: string;
+  subject: string;
+  description: string;
+  severity: InvestmentDataGapSeverity;
+  sourceField?: string;
+}>;
+
+export type InvestmentPlatformLineage =
+  Readonly<{
+    runId: string;
+    marketObservationIds:
+      readonly string[];
+    revenueObservationIds:
+      readonly string[];
+    evidenceIds: readonly string[];
+    recommendationIds:
+      readonly string[];
+    intelligenceReportIds:
+      readonly string[];
+  }>;
+
 /** Canonical reasoning output. The legacy InvestmentDecision remains a read projection. */
 export type InvestmentPlatformAnalysis = Readonly<{
+  acquisitionType: AcquisitionType;
   observations: ObservationCollection;
   evidence: EvidenceCollection;
   claims: ClaimCollection;
   evaluations: EvaluationCollection;
   recommendations: RecommendationCollection;
   scores: InvestmentPlatformScores;
+  dataGaps: readonly InvestmentDataGap[];
+  lineage: InvestmentPlatformLineage;
 }>;
 
 export type InvestmentCommitmentOutcome = "accepted" | "rejected" | "deferred";
@@ -36,7 +66,6 @@ export type InvestmentCommitmentOutcome = "accepted" | "rejected" | "deferred";
 export type InvestmentCommitment = Readonly<{
   recommendation: Recommendation;
   decision: Decision<InvestmentCommitmentOutcome>;
-  actions: ActionCollection;
 }>;
 
 export type InvestmentMeasuredResult = Readonly<{
@@ -47,6 +76,5 @@ export type InvestmentMeasuredResult = Readonly<{
 /** Single boundary consumed by the Investment Workspace during migration. */
 export type InvestmentWorkspaceView = Readonly<{
   projection: InvestmentDecision | RentalArbitrageInvestmentAnalysis;
-  /** Rental-arbitrage remains a documented compatibility projection in PM-004. */
-  platform?: InvestmentPlatformAnalysis;
+  platform: InvestmentPlatformAnalysis;
 }>;

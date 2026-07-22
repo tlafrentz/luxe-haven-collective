@@ -4,115 +4,177 @@ import {
   it,
 } from "vitest";
 
-import type {
-  PurchaseInvestmentAnalysis,
+import {
+  AcquisitionType,
+  MarketTrend,
+  PropertyType,
 } from "../../domain";
+
+import {
+  runInvestmentAnalysis,
+} from "../run-investment-analysis";
 
 import {
   evaluatePurchase,
 } from "./evaluate-purchase";
 
-function usd(amount: number) {
-  return {
-    amount,
-    currency: "USD" as const,
-  };
+function createResult({
+  projectedAdr = 200,
+  projectedOccupancyPercentage = 75,
+}: {
+  projectedAdr?: number;
+  projectedOccupancyPercentage?: number;
+} = {}) {
+  return runInvestmentAnalysis({
+    acquisitionType:
+      AcquisitionType.Purchase,
+    property: {
+      id: "purchase-report",
+      address1: "123 Main Street",
+      city: "Mesa",
+      state: "AZ",
+      postalCode: "85201",
+      purchasePrice: 400000,
+      closingCosts: 12000,
+      furnishingBudget: 18000,
+      propertyType:
+        PropertyType.Apartment,
+      bedrooms: 2,
+      bathrooms: 1,
+      squareFeet: 950,
+    },
+    financing: {
+      downPaymentPercentage: 20,
+      interestRatePercentage: 6.5,
+      loanTermYears: 30,
+    },
+    revenue: {
+      projectedAdr,
+      projectedOccupancyPercentage,
+      averageLengthOfStay: 4,
+      confidencePercentage: 85,
+    },
+    operating: {
+      managementFeePercentage: 10,
+      monthlyUtilities: 250,
+      annualInsurance: 1500,
+      annualTaxes: 3500,
+      annualCleaning: 6000,
+      annualSoftware: 500,
+      annualSupplies: 1000,
+      maintenanceReservePercentage: 4,
+      capitalReservePercentage: 2,
+    },
+    market: {
+      name: "Mesa",
+      submarket: "Downtown Mesa",
+      medianAdr: 180,
+      medianOccupancyPercentage: 70,
+      trend: MarketTrend.Stable,
+    },
+    comparables: [
+      {
+        id: "comparable-1",
+        distanceMiles: 0.8,
+        bedrooms: 2,
+        bathrooms: 1,
+        averageDailyRate: {
+          amount: 180,
+          currency: "USD",
+        },
+        occupancy: { value: 70 },
+        rating: {
+          value: 4.8,
+          max: 5,
+        },
+        reviewCount: 120,
+        amenities: ["Kitchen"],
+      },
+      {
+        id: "comparable-2",
+        distanceMiles: 1.2,
+        bedrooms: 2,
+        bathrooms: 1,
+        averageDailyRate: {
+          amount: 190,
+          currency: "USD",
+        },
+        occupancy: { value: 72 },
+        rating: {
+          value: 4.7,
+          max: 5,
+        },
+        reviewCount: 85,
+        amenities: ["Workspace"],
+      },
+    ],
+  });
 }
 
-const analysis = {
-  property: {
-    purchasePrice: usd(400000),
-    closingCosts: usd(12000),
-    furnishingBudget: usd(18000),
-  },
-  assumptions: {
-    downPayment: { value: 20 },
-    interestRate: { value: 6.5 },
-    loanTermYears: 30,
-  },
-  revenueProjection: {
-    projectedAdr: usd(200),
-    projectedOccupancy: { value: 75 },
-    projectedMonthlyRevenue: usd(4562.5),
-    projectedAnnualRevenue: usd(54750),
-    confidence: { value: 85 },
-  },
-  expenseProjection: {
-    mortgage: usd(18000),
-    cleaning: usd(6000),
-    utilities: usd(3000),
-    insurance: usd(1500),
-    taxes: usd(3500),
-    management: usd(5000),
-    maintenance: usd(2000),
-    software: usd(500),
-    supplies: usd(1000),
-    capitalReserve: usd(2500),
-    totalOperatingExpenses: usd(25000),
-    confidence: { value: 80 },
-  },
-  financialPerformance: {
-    netOperatingIncome: usd(29750),
-    annualCashFlow: usd(11750),
-    capRate: { value: 7.44 },
-    cashOnCashReturn: { value: 11.75 },
-    debtServiceCoverageRatio: 1.65,
-    breakEvenOccupancy: { value: 58.9 },
-  },
-} as PurchaseInvestmentAnalysis;
-
 describe("evaluatePurchase", () => {
-  it("produces one complete explainable purchase decision", () => {
-    const result =
-      evaluatePurchase(analysis);
+  it("projects one report from the canonical purchase decision", () => {
+    const result = createResult();
 
-    expect(result.scenarios).toHaveLength(3);
-    expect(result.evidence.length)
-      .toBeGreaterThan(0);
-    expect(result.opportunities.length)
-      .toBeGreaterThan(0);
-    expect(result.confidence.score)
-      .toBeGreaterThan(0);
-    expect(result.thesis.headline)
-      .toContain("Positive economics");
+    if (
+      result.acquisitionType !==
+      AcquisitionType.Purchase
+    ) {
+      throw new Error(
+        "Expected purchase result.",
+      );
+    }
+
+    const report = evaluatePurchase(result);
+
+    expect(report.scenarios).toBe(
+      result.derivedAnalysis.scenarios,
+    );
+    expect(report.failurePoints).toBe(
+      result.derivedAnalysis.failurePoints,
+    );
     expect(
-      result.recommendation
-        .recommendation,
-    ).toBe("buy-with-conditions");
+      report.recommendation.recommendation,
+    ).toBe(
+      result.analysis.recommendation,
+    );
+    expect(report.confidence.level).toBe(
+      result.analysis.confidence,
+    );
+    expect(
+      report.risks.map(({ code }) => code),
+    ).toEqual(
+      result.analysis.risks.map(
+        ({ id }) => id,
+      ),
+    );
+    expect(report.evidence).toHaveLength(
+      result.analysis.supportingEvidence
+        .length,
+    );
   });
 
-  it("passes a purchase with negative base cash flow", () => {
-    const result = evaluatePurchase({
-      ...analysis,
-      financialPerformance: {
-        ...analysis.financialPerformance,
-        annualCashFlow: usd(-5000),
-        debtServiceCoverageRatio: 0.8,
-      },
-      revenueProjection: {
-        ...analysis.revenueProjection,
-        projectedAnnualRevenue:
-          usd(38000),
-      },
+  it("does not replace a canonical pass recommendation", () => {
+    const result = createResult({
+      projectedAdr: 160,
+      projectedOccupancyPercentage: 50,
     });
 
-    expect(
-      result.recommendation
-        .recommendation,
-    ).toBe("pass");
-  });
+    if (
+      result.acquisitionType !==
+      AcquisitionType.Purchase
+    ) {
+      throw new Error(
+        "Expected purchase result.",
+      );
+    }
 
-  it("keeps recommendation inputs visible in the report", () => {
-    const result =
-      evaluatePurchase(analysis);
+    const report = evaluatePurchase(result);
 
-    expect(result.failurePoints)
-      .toBeDefined();
     expect(
-      result.confidence.factors,
-    ).toHaveLength(4);
+      report.recommendation.recommendation,
+    ).toBe(result.analysis.recommendation);
     expect(
-      result.recommendation.nextActions,
-    ).toHaveLength(4);
+      report.confidence.factors,
+    ).toHaveLength(1);
   });
 });

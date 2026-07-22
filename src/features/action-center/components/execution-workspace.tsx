@@ -1,71 +1,14 @@
-import type {
-  ExecutionWorkspace as ExecutionWorkspaceView,
-} from "../domain";
+"use client";
+import Link from "next/link";
+import { useState, useTransition } from "react";
+import type { ActionCenterAction } from "../domain";
+import { mutateActionCenterAction, type ActionCenterMutationInput } from "@/app/actions/action-center";
+import { ActionPriorityBadge } from "./action-priority-badge";
+import { ActionStatusBadge } from "./action-status-badge";
 
-import {
-  ExecutionContext,
-} from "./execution-context";
-
-import {
-  ExecutionHeader,
-} from "./execution-header";
-
-import {
-  ExecutionLearning,
-} from "./execution-learning";
-
-import {
-  ExecutionMetadata,
-} from "./execution-metadata";
-
-import {
-  ExecutionPlan,
-} from "./execution-plan";
-
-import {
-  ExecutionTimeline,
-} from "./execution-timeline";
-
-type ExecutionWorkspacePageProps = {
-  workspace: ExecutionWorkspaceView;
-};
-
-export function ExecutionWorkspacePage({
-  workspace,
-}: ExecutionWorkspacePageProps) {
-  return (
-    <main className="px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-      <div className="mx-auto max-w-[1380px] space-y-8">
-        <ExecutionHeader
-          workspace={workspace}
-        />
-
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.65fr)]">
-          <div className="space-y-8">
-            <ExecutionContext
-              workspace={workspace}
-            />
-
-            <ExecutionTimeline
-              workspace={workspace}
-            />
-
-            <ExecutionLearning
-              workspace={workspace}
-            />
-          </div>
-
-          <aside className="space-y-6 xl:sticky xl:top-28 xl:self-start">
-            <ExecutionPlan
-              workspace={workspace}
-            />
-
-            <ExecutionMetadata
-              workspace={workspace}
-            />
-          </aside>
-        </div>
-      </div>
-    </main>
-  );
+const actionable = new Set(["commit", "mark-ready", "start", "block", "unblock", "complete", "cancel", "archive"]);
+export function ExecutionWorkspacePage({ action: initial }: { action: ActionCenterAction }) {
+  const [action, setAction] = useState(initial); const [message, setMessage] = useState(""); const [pending, startTransition] = useTransition();
+  function run(operation: ActionCenterMutationInput["operation"]) { startTransition(async () => { const result = await mutateActionCenterAction({ actionId: action.id, expectedVersion: action.version, operation }); if (result.ok) { setAction(result.action); setMessage(""); } else setMessage(result.message); }); }
+  return <main className="px-4 py-10"><div className="mx-auto max-w-4xl space-y-8"><Link href="/dashboard/actions" className="text-sm font-semibold text-stone-600">← Back to Action Center</Link><header><div className="flex gap-2"><ActionPriorityBadge priority={action.priority}/><ActionStatusBadge status={action.status}/><span className="text-xs text-stone-500">Version {action.version}</span></div><h1 className="mt-5 text-4xl font-semibold text-stone-950">{action.title}</h1>{action.description ? <p className="mt-4 text-stone-600">{action.description}</p> : null}</header><section className="rounded-3xl border bg-white p-6"><dl className="grid gap-4 sm:grid-cols-2"><div><dt className="text-xs text-stone-500">Owner</dt><dd>{action.owner.label}</dd></div><div><dt className="text-xs text-stone-500">Assignee</dt><dd>{action.assignee?.label ?? "Unassigned"}</dd></div><div><dt className="text-xs text-stone-500">Source</dt><dd>{action.sourceLabel}</dd></div><div><dt className="text-xs text-stone-500">Due</dt><dd>{action.dueAt ? new Date(action.dueAt).toLocaleString() : "Not scheduled"}{action.isOverdue ? " · Overdue" : ""}</dd></div></dl></section><section className="rounded-3xl bg-stone-950 p-6 text-white"><h2 className="font-semibold">Available actions</h2><div className="mt-4 flex flex-wrap gap-3">{action.availableCommands.filter((command): command is ActionCenterMutationInput["operation"] => actionable.has(command)).map((command) => <button key={command} disabled={pending} onClick={() => run(command)} className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-stone-950 disabled:opacity-50">{command.replace("-", " ")}</button>)}{!action.availableCommands.some((c) => actionable.has(c)) ? <p className="text-sm text-stone-400">No lifecycle commands available.</p> : null}</div>{message ? <p role="alert" className="mt-4 text-sm text-amber-300">{message}</p> : null}</section></div></main>;
 }

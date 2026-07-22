@@ -2,34 +2,24 @@
 
 export { buildCanonicalMarketAnalysis, buildMarketAnalysisReport } from "./application";
 export type { BuildMarketAnalysisReportInput, CanonicalMarketAnalysis } from "./application";
-
-export {
-  RentCastClient,
-} from "./infrastructure/rentcast/rentcast-client";
-
-export {
-  RentCastPropertyProvider,
-} from "./infrastructure/rentcast/rentcast-property-provider";
-
-export {
-  mapRentCastProperty,
-} from "./infrastructure/rentcast/map-rentcast-property";
-
+export { resolveMarketProperty } from "./application";
+export type { ResolveMarketPropertyCommand, ResolveMarketPropertyDependencies, MarketPropertyResolutionContext } from "./application";
 export type {
-  RentCastClientOptions,
-  RentCastPropertySearchInput,
-} from "./infrastructure/rentcast/rentcast-client";
-
-export type {
-  RentCastPropertyProviderOptions,
-} from "./infrastructure/rentcast/rentcast-property-provider";
-
-export type {
-  RentCastPropertyRecord,
-  RentCastPropertyResponse,
-  RentCastPropertyTax,
-  RentCastTaxAssessment,
-} from "./infrastructure/rentcast/rentcast-types";
+  MarketProperty, MarketPropertyDataGap, MarketPropertyLookupAddress,
+  MarketPropertyObservationProvenance, MarketPropertyResolutionCandidate,
+  MarketPropertyResolutionConfidence, MarketPropertyResolutionResult,
+  MarketPropertyResolutionStatus, MarketProviderReference, NormalizedMarketAddress,
+} from "./domain/property-resolution";
+export type { MarketPropertyResolutionProvider } from "./application/providers/market-property-resolution-provider";
+export { acquireMarketComparables } from "./application";
+export type { AcquireMarketComparablesDependencies } from "./application";
+export type { MarketComparableProvider } from "./application/providers/market-comparable-provider";
+export type { AcquireMarketComparablesCommand, MarketComparableAcquisitionResult, MarketComparableAcquisitionStatus, MarketComparableCandidate, MarketComparableDataGap, MarketComparablePurpose, MarketComparableSearchCriteria, MarketComparableSearchCriteriaInput, MarketListingStatus } from "./domain/comparable-acquisition";
+export { qualifyMarketComparables, buildDefaultMarketComparableQualificationPolicy } from "./application";
+export type { QualifyMarketComparablesCommand, MarketComparableQualificationResult, MarketComparableQualificationPolicy, QualifiedMarketComparable, ExcludedMarketComparable, UnresolvedMarketComparable } from "./domain/comparable-qualification";
+export { runMarketAnalysis, buildDefaultMarketAnalysisPolicies } from "./application";
+export type { RunMarketAnalysisDependencies } from "./application";
+export type { RunMarketAnalysisCommand, CanonicalMarketAnalysisReport as MarketAnalysisReport, MarketAnalysisPolicies, MarketSaleValuationAnalysis, MarketLongTermRentAnalysis, MarketAnalysisConfidence, MarketRisk, MarketAnalysisDataGap, MarketAnalysisSummary } from "./domain/canonical-market-analysis-report";
 
 export {
   PropertyRecord,

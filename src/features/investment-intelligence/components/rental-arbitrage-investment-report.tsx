@@ -3,20 +3,8 @@ import {
 } from "../domain";
 
 import type {
-  RentalArbitrageInvestmentAnalysis,
+  RentalArbitrageInvestmentLifecycleResult,
 } from "../domain";
-
-import {
-  buildRentalArbitrageScenarios,
-} from "../application/build-rental-arbitrage-scenarios";
-
-import {
-  calculateRentalArbitrageFailurePoints,
-} from "../application/calculate-rental-arbitrage-failure-points";
-
-import {
-  buildRentalArbitrageStressTests,
-} from "../application/build-rental-arbitrage-stress-tests";
 
 import {
   InvestmentScenarioAnalysis,
@@ -77,10 +65,13 @@ function MetricCard({
 }
 
 export function RentalArbitrageInvestmentReport({
-  analysis,
+  result,
 }: {
-  analysis: RentalArbitrageInvestmentAnalysis;
+  result:
+    RentalArbitrageInvestmentLifecycleResult;
 }) {
+  const analysis = result.analysis;
+
   const positiveEvidence =
     analysis.supportingEvidence.filter(
       ({ direction }) =>
@@ -96,19 +87,13 @@ export function RentalArbitrageInvestmentReport({
     );
 
   const scenarios =
-    buildRentalArbitrageScenarios(
-      analysis,
-    );
+    result.derivedAnalysis.scenarios;
 
   const failurePoints =
-    calculateRentalArbitrageFailurePoints(
-      analysis,
-    );
+    result.derivedAnalysis.failurePoints;
 
   const stressSummary =
-    buildRentalArbitrageStressTests(
-      analysis,
-    );
+    result.derivedAnalysis.stressTests;
 
   return (
     <div className="space-y-8">

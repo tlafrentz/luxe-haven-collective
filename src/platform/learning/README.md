@@ -1,12 +1,12 @@
 # Learning Platform (PF-014)
 
 Learning is the canonical platform feedback capability. It evaluates immutable
-Intelligence and Outcome history and produces explainable improvement proposals.
+Outcome history, with Intelligence when available, and produces explainable improvement proposals.
 It never mutates source history, applies a proposal, updates a model, or changes
 production behavior.
 
 ```text
-Decisions → Actions → Automations → Outcomes → Intelligence → Learning
+Decisions → Actions → Automations → Outcomes → [Intelligence] → Learning
 ```
 
 ## Learning artifacts
@@ -32,11 +32,13 @@ queries, and artifact-count aggregation without performing learning.
 
 ## Explainability and traceability
 
-Every artifact must reference actual supporting Outcomes and actual supporting
-Intelligence reports. It must also provide explicit assumptions, rationale, and
-canonical confidence. `LearningBuilder` derives and deduplicates identifiers and
-merges the complete operational lineage from both sources. Learning policies do
-not supply duplicate trace identifiers.
+Every artifact must reference actual supporting Outcomes. Intelligence reports
+are retained when an interpretation stage exists, but direct Outcome-derived
+learning may leave that reference set empty. Every artifact must also provide
+explicit assumptions, rationale, and canonical confidence. `LearningBuilder`
+derives and deduplicates identifiers and merges the complete operational lineage
+from the available sources. Learning policies do not supply duplicate trace
+identifiers.
 
 Report confidence may be assigned explicitly by a policy. Otherwise, the
 builder conservatively inherits the least-confident artifact score. Empty

@@ -5,8 +5,9 @@ import {
 } from "vitest";
 
 import {
-  createInvestmentDecision,
-} from "../__tests__/fixtures/investment-decision.fixture";
+  createPurchaseLifecycleResult,
+  createRentalLifecycleResult,
+} from "../__tests__/fixtures/investment-lifecycle.fixture";
 
 import {
   INVESTMENT_OBSERVATION_CAPABILITY,
@@ -17,139 +18,112 @@ import {
   InvestmentObservationProvider,
 } from "./investment-observation-provider";
 
+const context = {
+  runId: "investment-run-fixed",
+  observedAt:
+    new Date("2026-07-19T17:00:00Z"),
+  recordedAt:
+    new Date("2026-07-19T18:00:00Z"),
+} as const;
+
 describe(
   "InvestmentObservationProvider",
   () => {
-    it(
-      "combines the complete investment observation set",
-      () => {
-        const recordedAt =
-          new Date(
-            "2026-07-19T18:00:00.000Z",
-          );
+    it("preserves the purchase observation set and adds comparable context", () => {
+      const provider =
+        new InvestmentObservationProvider();
+      const observations = provider.build(
+        createPurchaseLifecycleResult(),
+        context,
+      );
 
-        const provider =
-          new InvestmentObservationProvider(
-            () => recordedAt,
-          );
+      expect(provider.capability).toBe(
+        INVESTMENT_OBSERVATION_CAPABILITY,
+      );
+      expect(observations.size)
+        .toBeGreaterThanOrEqual(46);
+      expect(
+        observations.ofType(
+          INVESTMENT_OBSERVATION_TYPES
+            .strategy.targetOfferPrice,
+        ).size,
+      ).toBe(1);
+      expect(
+        observations.ofType(
+          INVESTMENT_OBSERVATION_TYPES.market
+            .comparableConfidence,
+        ).size,
+      ).toBe(1);
+      expect(
+        observations.toArray().every(
+          (observation, index) =>
+            observation.id.value ===
+              `${context.runId}-observation-${index + 1}` &&
+            observation.observedAt.getTime() ===
+              context.observedAt.getTime() &&
+            observation.recordedAt.getTime() ===
+              context.recordedAt.getTime(),
+        ),
+      ).toBe(true);
+    });
 
-        const observations =
-          provider.build(
-            createInvestmentDecision(),
-          );
+    it("emits shared and lease-specific rental observations deterministically", () => {
+      const provider =
+        new InvestmentObservationProvider();
+      const result =
+        createRentalLifecycleResult();
+      const first = provider.build(
+        result,
+        context,
+      );
+      const second = provider.build(
+        result,
+        context,
+      );
 
-        expect(provider.capability).toBe(
-          INVESTMENT_OBSERVATION_CAPABILITY,
-        );
+      expect(first).toEqual(second);
+      expect(
+        first.ofType(
+          INVESTMENT_OBSERVATION_TYPES.revenue
+            .projectedAnnualRevenue,
+        ).size,
+      ).toBe(1);
+      expect(
+        first.ofType(
+          INVESTMENT_OBSERVATION_TYPES
+            .rentalArbitrage.monthlyLease,
+        ).size,
+      ).toBe(1);
+      expect(
+        first.ofType(
+          INVESTMENT_OBSERVATION_TYPES
+            .rentalArbitrage.stressOutcome,
+        ).size,
+      ).toBe(1);
+      expect(
+        first.ofType(
+          INVESTMENT_OBSERVATION_TYPES.score
+            .overall,
+        ).size,
+      ).toBe(1);
+    });
 
-        expect(observations.size).toBe(45);
+    it("rejects invalid run timestamps", () => {
+      const provider =
+        new InvestmentObservationProvider();
 
-        expect(
-          observations
-            .ofType(
-              INVESTMENT_OBSERVATION_TYPES
-                .risk.item,
-            )
-            .size,
-        ).toBe(1);
-
-        expect(
-          observations
-            .ofType(
-              INVESTMENT_OBSERVATION_TYPES
-                .evidence.item,
-            )
-            .size,
-        ).toBe(1);
-
-        expect(
-          observations
-            .ofType(
-              INVESTMENT_OBSERVATION_TYPES
-                .summary.executive,
-            )
-            .size,
-        ).toBe(1);
-
-        expect(
-          observations.toArray().every(
-            (observation) =>
-              observation.recordedAt
-                .getTime() ===
-              recordedAt.getTime(),
-          ),
-        ).toBe(true);
-      },
-    );
-
-    it(
-      "keeps the summary when risks and evidence are absent",
-      () => {
-        const input =
-          createInvestmentDecision();
-
-        const provider =
-          new InvestmentObservationProvider(
-            () =>
-              new Date(
-                "2026-07-19T18:00:00.000Z",
-              ),
-          );
-
-        const observations =
-          provider.build({
-            ...input,
-            risks: [],
-            supportingEvidence: [],
-          });
-
-        expect(observations.size).toBe(43);
-
-        expect(
-          observations
-            .ofType(
-              INVESTMENT_OBSERVATION_TYPES
-                .risk.item,
-            )
-            .size,
-        ).toBe(0);
-
-        expect(
-          observations
-            .ofType(
-              INVESTMENT_OBSERVATION_TYPES
-                .evidence.item,
-            )
-            .size,
-        ).toBe(0);
-
-        expect(
-          observations
-            .ofType(
-              INVESTMENT_OBSERVATION_TYPES
-                .summary.executive,
-            )
-            .size,
-        ).toBe(1);
-      },
-    );
-
-    it(
-      "rejects an invalid observation clock",
-      () => {
-        const provider =
-          new InvestmentObservationProvider(
-            () => new Date("invalid"),
-          );
-
-        expect(() =>
-          provider.build(
-            createInvestmentDecision(),
-          ),
-        ).toThrow(
-          "Investment observation clock must return a valid date.",
-        );
-      },
-    );
+      expect(() =>
+        provider.build(
+          createPurchaseLifecycleResult(),
+          {
+            ...context,
+            observedAt:
+              new Date("invalid"),
+          },
+        ),
+      ).toThrow(
+        "Investment Platform artifact date must be valid.",
+      );
+    });
   },
 );

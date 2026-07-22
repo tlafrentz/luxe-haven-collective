@@ -1,41 +1,12 @@
-import {
-  notFound,
-} from "next/navigation";
+import { notFound } from "next/navigation";
+import { ExecutionWorkspacePage, ProviderActionCenterReader } from "@/features/action-center";
+import { createPlatformActionProvider, getActionCenterRequestContext } from "@/app/actions/action-center-runtime";
 
-import {
-  ACTION_CENTER_RECORDS,
-  ExecutionWorkspacePage,
-  buildExecutionWorkspace,
-  findActionCenterRecord,
-} from "@/features/action-center";
-
-type ActionWorkspacePageProps = {
-  params: Promise<{
-    id: string;
-  }>;
-};
-
-export default async function ActionWorkspacePage({
-  params,
-}: ActionWorkspacePageProps) {
+export default async function ActionWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
-  const record =
-    findActionCenterRecord(
-      ACTION_CENTER_RECORDS,
-      id,
-    );
-
-  if (!record) {
-    notFound();
-  }
-
-  const workspace =
-    buildExecutionWorkspace(record);
-
-  return (
-    <ExecutionWorkspacePage
-      workspace={workspace}
-    />
-  );
+  const context = await getActionCenterRequestContext();
+  if (!context.ok) notFound();
+  const action = await new ProviderActionCenterReader(createPlatformActionProvider(context.client)).loadAction({ workspaceId: context.workspaceId, actionId: id, viewer: context.viewer });
+  if (!action) notFound();
+  return <ExecutionWorkspacePage action={action} />;
 }

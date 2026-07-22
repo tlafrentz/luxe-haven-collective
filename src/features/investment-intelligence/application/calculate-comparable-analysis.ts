@@ -88,9 +88,18 @@ export function calculateComparableAnalysis({
   availableNights = 365,
 }: CalculateComparableAnalysisInput): ComparableAnalysis {
   if (comparables.length === 0) {
-    throw new Error(
-      "Comparable analysis requires at least one comparable property.",
-    );
+    return {
+      comparables: [],
+      medianAverageDailyRate: { amount: 0, currency: "USD" },
+      medianOccupancy: { value: 0 },
+      marketPositionScore: { value: 0, max: 100 },
+      projectedRevenueUpside: { amount: 0, currency: "USD" },
+      competitiveAdvantages: [],
+      competitiveDisadvantages: [
+        "No authoritative short-term-rental comparable evidence is available.",
+      ],
+      confidence: ConfidenceLevel.VeryLow,
+    };
   }
 
   assertMoney(

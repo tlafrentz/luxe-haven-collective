@@ -317,6 +317,7 @@ export function PropertyProfileCard() {
                 }
                 className={INPUT_CLASS_NAME}
               />
+              <span className="mt-1.5 block text-xs text-neutral-500">Source: User supplied. Market value is shown separately.</span>
             </label>
           </section>
         ) : null}
