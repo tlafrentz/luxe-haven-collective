@@ -2,7 +2,7 @@ import { EntityWithProps } from "../../kernel";
 import { createActionActor, type ActionActor } from "./action-actor";
 import { createActionAssignment, createActionAssignmentId, isActiveAssignment, type PlatformActionAssignment } from "./action-assignment";
 import { ActionAlreadyArchived, ActionAlreadyAssigned, DuplicateActionSource, DuplicateOutcomeReference, InvalidActionTransition, InvalidActionVersion, MissingActionSource, NoActiveAssignment, InvalidAssignmentClaim, WorkspaceScopeViolation } from "./action-errors";
-import { createActionHistory, createActionHistoryId, type ActionHistoryOperation, type PlatformActionHistory } from "./action-history";
+import { createActionHistory, createActionHistoryId, type ActionHistoryId, type ActionHistoryOperation, type PlatformActionHistory } from "./action-history";
 import { createActionId, type ActionId, type WorkspaceId } from "./action-id";
 import { createActionOutcomeReference, type ActionOutcomeId, type ActionOutcomeLinkType, type PlatformActionOutcomeReference } from "./action-outcome-reference";
 import { createActionOwner, type ActionOwner } from "./action-owner";
@@ -44,6 +44,7 @@ export type CreatePlatformActionInput = Readonly<{
   createdAt: Date;
   createdBy: ActionActor;
   commandId?: string;
+  creationHistoryId?: ActionHistoryId;
 }>;
 
 export type ActionMutationContext = Readonly<{ workspaceId: WorkspaceId; expectedVersion: ActionVersion; actor: ActionActor; occurredAt: Date; reason?: string; commandId?: string; externalEventId?: string }>;
@@ -81,7 +82,7 @@ export class PlatformAction extends EntityWithProps<StoredActionProps, ActionId>
       assignments: [],
       schedule: { created: createdAt },
       sources: input.sources,
-      history: [createActionHistory({ id: createActionHistoryId(), actionId: id, version, operation: "created", resultingStatus: status, occurredAt: createdAt, actor, ...(input.commandId ? { commandId: input.commandId } : {}) })],
+      history: [createActionHistory({ id: input.creationHistoryId ?? createActionHistoryId(), actionId: id, version, operation: "created", resultingStatus: status, occurredAt: createdAt, actor, ...(input.commandId ? { commandId: input.commandId } : {}) })],
       outcomeReferences: [],
       createdAt,
       createdBy: actor,

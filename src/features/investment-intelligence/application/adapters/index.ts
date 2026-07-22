@@ -7,4 +7,8 @@ export { recordInvestmentOutcome, type RecordInvestmentOutcomeInput } from "./in
 export { buildInvestmentWorkspaceView } from "./investment-workspace-adapter";
 export { mapInvestmentPlatformAnalysis } from "./map-investment-platform-analysis";
 export { buildInvestmentDataGaps } from "./build-investment-data-gaps";
+export {
+  mapInvestmentExecutionPlanToActions,
+  type InvestmentExecutionLineage,
+} from "./map-investment-execution-plan-to-actions";
 export { createInvestmentPlatformRunContext, normalizeInvestmentPlatformRunContext, type InvestmentInputSourceQuality, type InvestmentPlatformRunContext } from "./investment-platform-run-context";

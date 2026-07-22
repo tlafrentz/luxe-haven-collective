@@ -112,6 +112,15 @@ export type {
 } from "./commit-investment-recommendation";
 
 export {
+  InvestmentExecutionError,
+  planInvestmentExecution,
+} from "./plan-investment-execution";
+
+export type {
+  InvestmentExecutionErrorCode,
+} from "./plan-investment-execution";
+
+export {
   runInvestmentAnalysis,
 } from "./run-investment-analysis";
 

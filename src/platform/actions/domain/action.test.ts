@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createOutcomeId } from "../../outcomes";
 import { PlatformAction, type ActionMutationContext } from "./action";
 import { createActionAssignmentId } from "./action-assignment";
+import { createActionHistoryId } from "./action-history";
 import { PlatformActionCollection } from "./action-collection";
 import { ActionAlreadyAssigned, DuplicateActionSource, DuplicateOutcomeReference, InvalidActionSchedule, InvalidActionTransition, InvalidActionVersion, MissingActionSource } from "./action-errors";
 import { createActionId, createWorkspaceId } from "./action-id";
@@ -26,6 +27,10 @@ describe("PlatformAction creation and identity", () => {
   it("creates valid draft and committed Actions with mandatory scope and provenance", () => {
     const first = draft(), second = PlatformAction.createCommitted({ workspaceId, title: "Publish plan", priority: "high", owner: { type: "system", id: "planner" }, sources: [{ type: "decision", sourceId: "decision-1", recordedAt: createdAt, recordedBy: actor }], createdAt, createdBy: actor });
     expect(first.status).toBe("draft"); expect(second.status).toBe("committed"); expect(first.version.value).toBe(1); expect(first.history).toHaveLength(1); expect(first.workspaceId).toBe(workspaceId); expect(first.createdBy).toEqual(actor);
+  });
+  it("accepts a deterministic creation-history ID", () => {
+    const value = draft({ creationHistoryId: createActionHistoryId("history-action-1-created") });
+    expect(value.history[0].id.value).toBe("history-action-1-created");
   });
   it("rejects missing and duplicate sources", () => {
     expect(() => draft({ sources: [] })).toThrow(MissingActionSource);

@@ -24,3 +24,12 @@ export type {
   InvestmentCommitmentResponse,
   InvestmentCommitmentResult,
 } from "./investment-commitment-types";
+
+export type {
+  InvestmentExecutionCategory,
+  InvestmentExecutionIntent,
+  InvestmentExecutionPlan,
+  InvestmentExecutionPlanningContext,
+  InvestmentExecutionPriority,
+  PlanInvestmentExecutionCommand,
+} from "./investment-execution-types";

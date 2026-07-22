@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, II-006E with cross-route canonical Platform analysis, and II-007A with canonical recommendation commitment. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
+II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, II-006E with cross-route canonical Platform analysis, II-007A with canonical recommendation commitment, and II-007B with canonical execution planning. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -284,7 +284,36 @@ flowchart TD
   Validate --> Match{Route, subject, run, and lineage match?}
   Match -->|No| Error[Stable commitment error]
   Match -->|Yes| Decision[One Platform Decision]
-  Decision -. future II-007B .-> Execution[Execution plan and Actions]
+  Decision --> Execution[planInvestmentExecution]
+```
+
+## II-007B Investment Execution Planning
+
+An accepted Investment Platform Decision may now be transformed into an `InvestmentExecutionPlan` through `planInvestmentExecution`. Commitment and planning remain separate commands: II-007A records whether the operator accepts the Recommendation, while II-007B defines the work authorized by an accepted Decision. Rejected, deferred, unrelated, mismatched, or superseded Decisions fail with stable application error codes and produce no plan.
+
+Investment Intelligence owns route-specific `InvestmentExecutionIntent` policy. Purchase planning responds to market and regulation gaps, financing and material risks, property diligence, cost validation, failure points, final underwriting thresholds, and acquisition preparation. Rental-arbitrage planning responds to landlord permission, lease restrictions and economics, regulation and utilities gaps, comparable quality, setup capital, insurance, failure points, stress performance, lease execution, and launch readiness. Required work is distinguished from optional preparation, and dependencies use stable intent keys validated for missing references, duplication, self-reference, and cycles.
+
+`mapInvestmentExecutionPlanToActions` is the sole Investment adapter that imports and constructs `PlatformAction` aggregates. It maps each intent to a deterministic draft Action with a caller-supplied Action ID, fixed timestamp, and deterministic creation-history ID. Draft is intentional: accepting the Investment Recommendation authorizes planning, but assignments, schedules, readiness, and execution have not yet been approved. Actions are not committed, assigned, marked ready, started, or completed by the planner.
+
+The Platform Action model does not currently contain dependencies or arbitrary metadata. Dependencies and their source risk/data-gap references therefore remain authoritative in the execution plan. Each Action preserves its Decision, Recommendation, execution-plan, Platform-run, and subject/acquisition lineage through canonical Action sources; the planning actor is preserved as creator. The only Platform change is optional creation-history ID injection, with the existing random default retained for all other callers.
+
+A Decision authorizes execution. An Execution Plan defines the required work. A Platform Action represents that work operationally.
+
+```mermaid
+flowchart TD
+  Lifecycle[InvestmentLifecycleResult] --> Planner[planInvestmentExecution]
+  Platform[InvestmentPlatformAnalysis] --> Planner
+  Decision[Accepted Platform Decision] --> Planner
+  Planner --> Validate{Decision and lineage valid?}
+  Validate -->|No| Error[Stable execution-planning error]
+  Validate -->|Yes| Policy{Acquisition route}
+  Policy --> Purchase[Purchase execution policy]
+  Policy --> Rental[Rental-arbitrage execution policy]
+  Purchase --> Intents[Ordered execution intents + dependencies]
+  Rental --> Intents
+  Intents --> Adapter[mapInvestmentExecutionPlanToActions]
+  Adapter --> Actions[Deterministic draft Platform Actions]
+  Actions -. later workflow .-> Operations[Assign / schedule / commit / start / complete]
 ```
 
 ## Proposed Follow-Up Batches
@@ -294,6 +323,5 @@ flowchart TD
 3. Reconcile the two purchase evidence/risk/confidence/recommendation pipelines with golden characterization tests, then select one policy path without formula changes in the same batch.
 4. Generalize Platform mapping and the observation provider over the shared lifecycle result, including rental-specific observations, explicit data-gap artifacts, deterministic run context, and upstream lineage.
 5. Connect the workspace to the canonical result and retain `calculateLiveInvestmentSummary` only as a clearly typed preview projection.
-6. Build an explicit execution-planning command from an accepted Decision; create and assign Actions only in that II-007B boundary.
-7. Generalize measured-outcome commands to route-safe lifecycle contracts, then wire commitment and outcome persistence only when user workflow scope permits.
-8. Narrow public exports and deprecate compatibility/legacy report contracts after all callers migrate; remove paths only in a separately approved cleanup batch.
+6. Generalize measured-outcome commands to route-safe lifecycle contracts, then wire commitment, planning, and outcome persistence only when user workflow scope permits.
+7. Narrow public exports and deprecate compatibility/legacy report contracts after all callers migrate; remove paths only in a separately approved cleanup batch.
