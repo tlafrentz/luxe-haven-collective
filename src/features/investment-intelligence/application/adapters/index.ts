@@ -15,4 +15,7 @@ export {
   mapInvestmentFindingToOutcome,
   type InvestmentOutcomeLineage,
 } from "./map-investment-finding-to-outcome";
+export {
+  mapInvestmentLearningToPlatform,
+} from "./map-investment-learning-to-platform";
 export { createInvestmentPlatformRunContext, normalizeInvestmentPlatformRunContext, type InvestmentInputSourceQuality, type InvestmentPlatformRunContext } from "./investment-platform-run-context";

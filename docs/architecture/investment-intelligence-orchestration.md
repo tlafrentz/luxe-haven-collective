@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, II-006E with cross-route canonical Platform analysis, II-007A with canonical recommendation commitment, II-007B with canonical execution planning, and II-007C with canonical Action outcome capture. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
+II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, II-006E with cross-route canonical Platform analysis, II-007A with canonical recommendation commitment, II-007B with canonical execution planning, II-007C with canonical Action outcome capture, and II-007D with canonical Learning integration. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -343,6 +343,35 @@ flowchart TD
   Outcome -. later II-007D .-> Learning[Canonical Learning]
 ```
 
+## II-007D Investment Learning Integration
+
+Canonical Investment Outcomes may now be interpreted into durable Platform Learning through `deriveInvestmentLearning`. Outcomes represent measured or observed reality. Learning represents the Platform's retained interpretation of that reality. Learning may influence future judgment, but it does not rewrite historical judgment.
+
+The command accepts one or more Outcomes plus the prior lifecycle result, Platform analysis, Decision, and execution-plan ID needed to validate shared subject, route, run, Recommendation, Decision, and plan lineage. Mixed or duplicate Outcome batches fail with stable errors. Outcome and Action IDs remain in canonical explainability lineage; plan, run, subject, route, source actor, and deriving actor provenance remain structured Learning metadata.
+
+Investment interpretation first produces semantic `InvestmentLearningCandidate` values. Candidates distinguish confirmed, contradicted, refined, and unresolved knowledge; declare scope; preserve assumption and Recommendation references; and carry confidence-impact and policy-impact suggestions. They do not contain revised confidence scores, changed policy thresholds, or replacement Recommendations. Semantically equivalent candidates are merged by stable keys and retain every supporting Outcome and Action reference.
+
+Quantitative comparison uses a narrow initial tolerance policy. General assumptions are confirmed within 5% absolute variance, refined through 20%, and contradicted above 20%. Revenue-sensitive rent, ADR, and occupancy assumptions use stricter 3% and 10% boundaries. Measurements without an assumed value refine the model rather than falsely confirming or contradicting it. Qualitative interpretation is driven by the explicit Outcome disposition and execution intent: favorable confirms, unfavorable contradicts, neutral refines, and inconclusive remains unresolved.
+
+Learning scope defaults to the individual investment subject. Market, strategy, or assumption-policy scope requires an explicit caller-supplied target and justification; one property-level Outcome is never generalized automatically. Confirmed findings normally suggest a minor confidence increase and no policy change. Contradictions suggest review and a moderate or major confidence decrease; regulatory prohibition, permission failures, or greater-than-50% numeric variance are major. Unresolved findings suggest no confidence increase. All implications require later governance before application.
+
+`mapInvestmentLearningToPlatform` is the sole Investment adapter that constructs canonical `LearningInsight` artifacts. The Platform Learning contract now permits direct Outcome-backed explainability when no intermediate Intelligence report exists and exposes immutable insight metadata for deterministic derivation and lineage. Existing Intelligence-backed Learning remains supported. II-007D creates no Decision, Recommendation, Action, Outcome, Intelligence, scoring change, confidence mutation, policy mutation, or analysis rerun.
+
+```mermaid
+flowchart LR
+  See[See: Observations and Evidence] --> Understand[Understand: Analysis and Recommendation]
+  Understand --> Decide[Decide: Platform Decision]
+  Decide --> Execute[Execute: Plan and Actions]
+  Execute --> Reality[Outcomes: measured reality]
+  Reality --> Derive[deriveInvestmentLearning]
+  Prior[Historical lifecycle and judgment context] --> Derive
+  Derive --> Candidates[Confirmed / contradicted / refined / unresolved candidates]
+  Candidates --> Adapter[mapInvestmentLearningToPlatform]
+  Adapter --> Learning[Canonical Platform Learning]
+  Learning -. governed future use .-> Future[Future judgment]
+  Learning -. no historical mutation .-> History[Historical analysis remains immutable]
+```
+
 ## Proposed Follow-Up Batches
 
 1. Define and characterize a discriminated `InvestmentLifecycleResult` and `runInvestmentAnalysis` interface without changing formulas; make `buildInvestmentReport` a compatibility facade.
@@ -350,6 +379,6 @@ flowchart TD
 3. Reconcile the two purchase evidence/risk/confidence/recommendation pipelines with golden characterization tests, then select one policy path without formula changes in the same batch.
 4. Generalize Platform mapping and the observation provider over the shared lifecycle result, including rental-specific observations, explicit data-gap artifacts, deterministic run context, and upstream lineage.
 5. Connect the workspace to the canonical result and retain `calculateLiveInvestmentSummary` only as a clearly typed preview projection.
-6. Convert measured Investment Outcomes into canonical Learning without changing the recorded Outcome or automatically rerunning analysis.
+6. Define an explicitly governed application boundary for reviewing and applying Learning suggestions to future analysis inputs or policies; never modify historical artifacts.
 7. Wire commitment, planning, Outcome, and Learning persistence only when user workflow scope permits.
 8. Narrow public exports and deprecate compatibility/legacy report contracts after all callers migrate; remove paths only in a separately approved cleanup batch.

@@ -130,6 +130,15 @@ export type {
 } from "./record-investment-action-outcome";
 
 export {
+  deriveInvestmentLearning,
+  InvestmentLearningError,
+} from "./derive-investment-learning";
+
+export type {
+  InvestmentLearningErrorCode,
+} from "./derive-investment-learning";
+
+export {
   runInvestmentAnalysis,
 } from "./run-investment-analysis";
 

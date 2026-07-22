@@ -45,3 +45,16 @@ export type {
   InvestmentOutcomeMeasurementUnit,
   RecordInvestmentActionOutcomeCommand,
 } from "./investment-outcome-types";
+
+export type {
+  DeriveInvestmentLearningCommand,
+  InvestmentConfidenceImpact,
+  InvestmentLearningCandidate,
+  InvestmentLearningContext,
+  InvestmentLearningKind,
+  InvestmentLearningPriorContext,
+  InvestmentLearningResult,
+  InvestmentLearningScope,
+  InvestmentPolicyImpact,
+  InvestmentPolicyImpactTarget,
+} from "./investment-learning-types";

@@ -21,7 +21,6 @@ export class LearningBuilder {
 }
 function explainability(result: { supportingOutcomes: readonly import("../../outcomes").Outcome[]; supportingIntelligence: readonly import("../../intelligence").IntelligenceReport[]; assumptions?: readonly string[]; rationale: readonly string[] }): LearningExplainability {
   if (result.supportingOutcomes.length === 0) throw new TypeError("Learning supporting Outcomes cannot be empty.");
-  if (result.supportingIntelligence.length === 0) throw new TypeError("Learning supporting Intelligence cannot be empty.");
   const outcomeLineage = result.supportingOutcomes.map((value) => value.lineage);
   const intelligenceLineage = result.supportingIntelligence.flatMap((report) => report.artifacts.map((artifact) => artifact.explainability.lineage));
   return Object.freeze({ supportingOutcomeIds: unique(result.supportingOutcomes.map((value) => value.id)), supportingIntelligenceIds: unique(result.supportingIntelligence.map((value) => value.id)),
