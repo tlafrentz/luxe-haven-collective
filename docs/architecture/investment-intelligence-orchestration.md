@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace, updated by II-006B with the canonical application boundary and II-006C with canonical derived-analysis ownership. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
+II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, and II-006D with one authoritative purchase decision policy. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -210,6 +210,28 @@ The lifecycle result is discriminated by acquisition type and wraps the existing
 The workspace now stores `InvestmentLifecycleResult` and calls the canonical boundary with an explicit acquisition type. `InvestmentReport` narrows that lifecycle result and passes it to the route report. The rental report renders the supplied scenarios, failure points, and stress tests; it no longer invokes application calculators during React rendering. The purchase report receives its derived analysis at the report boundary without adding new visible sections.
 
 `buildInvestmentReport` continues to unwrap only `result.analysis`, so its return contract and default-to-purchase behavior remain unchanged. `calculateLiveInvestmentSummary` remains a separate, non-authoritative preview calculator.
+
+## II-006D Purchase Decision Policy
+
+The `buildInvestmentDecision` policy path remains the authoritative purchase evaluator. It preserves the active workspace behavior, emits the canonical `InvestmentRisk`, `SupportingEvidence`, `InvestmentScore`, confidence, recommendation, and acquisition-strategy models, supports injected policy thresholds, and is the source understood by current Platform adapters. `buildPurchaseInvestmentReport` continues to perform financial assembly and invokes that evaluator exactly once; `runInvestmentAnalysis` composes that route result with canonical scenarios and failure points.
+
+The disconnected `evaluatePurchase` path is now projection-only. It accepts a completed `PurchaseInvestmentLifecycleResult`, reuses its scenarios and failure points by reference, maps canonical risks and evidence into the legacy report vocabulary, projects canonical confidence and recommendation without applying decision thresholds, and retains thesis/opportunity display assembly. Its former risk, evidence, confidence, and recommendation builders remain as unexported compatibility/characterization code for now; they have no production caller and no longer own a decision.
+
+| Concern | `buildInvestmentDecision` path | Former `evaluatePurchase` path |
+| --- | --- | --- |
+| Risk inputs | Revenue, purchase financial performance, comparables, market, injectable risk policy | Financial performance plus downside scenarios and purchase/ADR/occupancy failure margins |
+| Risk vocabulary | Canonical `InvestmentRisk`: ID, probability, `RiskSeverity`, optional financial impact and mitigation | Report-only `PurchaseDecisionRisk`: code, finding, impact, mitigation, string severity |
+| Evidence model | Canonical typed/directional `SupportingEvidence`, including risk-derived cautions and source/confidence | Fixed six-item positive/negative report checklist based on financials, downside and failure margins |
+| Score dimensions | Overall, revenue potential, financial strength, market strength, competitive position, risk exposure | No investment score |
+| Score thresholds | Weighted policy targets in `InvestmentScoringPolicy` | None |
+| Confidence inputs | Revenue confidence, comparable confidence, canonical evidence confidence | Revenue and expense confidence, downside cash flow, ADR/occupancy failure margins |
+| Recommendation vocabulary | Canonical `AcquisitionRecommendation` | Equivalent string values in `PurchaseInvestmentRecommendation` |
+| Scenario influence | None; scenarios describe the completed decision | Downside cash flow could change recommendation and confidence |
+| Failure-point influence | Break-even occupancy participates through canonical financial risk/score; derived failure points do not re-decide | Occupancy, ADR and supported-price margins could change risks, confidence and recommendation |
+| Platform compatibility | Direct source for observations, evidence, scores, claims, evaluations and recommendation | Requires report adapter; lacks canonical score/evidence/risk models |
+| Active callers | Purchase route builder, workspace through `runInvestmentAnalysis`, Platform adapters | No production caller; now a lifecycle-to-report projection |
+
+Golden characterization covers strong, marginal, weak, negative-cash-flow, high-leverage, low-occupancy, and weak-comparable-confidence purchases. It records both historical policy outputs rather than averaging or merging them. The matrix confirms material divergence: the former report policy upgrades the strong case, downgrades high leverage, upgrades weak-comparable confidence, uses different risk identifiers, and has no score. Selecting the active canonical policy therefore minimizes production behavior change and preserves Platform compatibility while eliminating duplicate decision ownership.
 
 ```mermaid
 flowchart TD
