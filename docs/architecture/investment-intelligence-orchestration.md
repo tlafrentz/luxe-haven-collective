@@ -585,6 +585,36 @@ Release validation on 2026-07-21 includes 24 focused II-008D tests and 254 passi
 
 Investment Platform Lifecycle v1 is ready for a release tag after merge and CI confirmation. No tag is created by II-008D. Deferred release work includes persistence, UI/API workflows, automatic rerun scheduling, approved policy/calibration application, portfolio aggregation, and real provider data.
 
+## RMI-006 Market Intelligence Consumption
+
+Investment owns the single adapter from `MarketAnalysisReport` to `InvestmentMarketContext`. The adapter projects supported sale valuation, long-term rent, confidence, risks, data gaps, evidence references, and Market lineage. It never calls a provider, recalculates a Market conclusion, or creates an Investment recommendation.
+
+Canonical context composition now applies this precedence:
+
+```text
+Explicit user value
+  > Approved applied Learning
+  > Usable canonical Market evidence
+  > Investment system default
+```
+
+Every Market-resolved assumption records `marketAnalysisId`, Market evidence IDs, and confidence. Purchase price remains distinct from Market value. A proposed lease remains authoritative when explicitly supplied; Market monthly rent is a benchmark and may fill only an unmarked/default lease input. Market monthly rent never becomes ADR, occupancy, or STR revenue. Sale value never becomes purchase price.
+
+```mermaid
+flowchart TD
+  Report[Canonical MarketAnalysisReport] --> Project[buildInvestmentMarketContext]
+  Project --> Market[InvestmentMarketContext]
+  User[User input + explicit-key provenance] --> Compose[buildInvestmentAnalysisContext]
+  Learning[InvestmentAppliedLearningContext] --> Compose
+  Market --> Compose
+  Defaults[Investment defaults] --> Compose
+  Compose --> EngineInput[Source-neutral route input]
+  Compose --> Audit[Market + Learning lineage and supporting context]
+  EngineInput --> Run[runInvestmentAnalysis]
+```
+
+`runInvestmentAnalysis` remains independent of Market reports, Learning Applications, provider infrastructure, expiration, conflict resolution, and source precedence. Context assembly retains risks and gaps as supporting evidence; it does not silently turn them into score or confidence policy. Live React orchestration and replacement of the legacy STR-comparable workspace compatibility fixture remain RMI-007 responsibilities because RMI-005 does not supply authoritative STR performance evidence.
+
 ## Proposed Follow-Up Batches
 
 1. Define and characterize a discriminated `InvestmentLifecycleResult` and `runInvestmentAnalysis` interface without changing formulas; make `buildInvestmentReport` a compatibility facade.

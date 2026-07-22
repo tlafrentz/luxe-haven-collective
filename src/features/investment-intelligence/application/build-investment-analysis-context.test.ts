@@ -24,7 +24,50 @@ import type {
 import type {
   InvestmentAppliedLearningContext,
   InvestmentAssumptionOverride,
+  InvestmentMarketContext,
 } from "./types";
+
+function marketContext(options: {
+  subjectId?: string;
+  saleValue?: number;
+  monthlyRent?: number;
+  saleUsable?: boolean;
+  rentUsable?: boolean;
+} = {}): InvestmentMarketContext {
+  const saleValue = options.saleValue ?? 425000;
+  const monthlyRent = options.monthlyRent ?? 2300;
+  return {
+    marketAnalysisId: "market-analysis-1",
+    subjectId: options.subjectId ?? "property-1",
+    status: "available",
+    saleValuation: {
+      status: options.saleUsable === false ? "insufficient" : "estimated",
+      ...(options.saleUsable === false ? {} : { estimatedValue: saleValue, valueRange: { lower: saleValue - 20000, upper: saleValue + 20000 } }),
+      comparableCount: 4,
+      confidenceScore: 85,
+      source: "market-analysis",
+    },
+    longTermRent: {
+      status: options.rentUsable === false ? "insufficient" : "estimated",
+      ...(options.rentUsable === false ? {} : { estimatedMonthlyRent: monthlyRent, rentRange: { lower: monthlyRent - 150, upper: monthlyRent + 150 } }),
+      comparableCount: 3,
+      confidenceScore: 75,
+      source: "market-analysis",
+    },
+    confidence: { score: 80, level: "high", reasons: [] },
+    risks: [],
+    dataGaps: [],
+    evidence: [{ evidenceId: "market-evidence-1", type: "qualified-comparables", description: "Qualified Market evidence.", candidateIds: ["candidate-1"] }],
+    lineage: {
+      marketAnalysisId: "market-analysis-1",
+      propertyResolutionId: "resolution-1",
+      policyVersion: "market-v1",
+      observationIds: ["market-observation-1"],
+      evidenceIds: ["market-evidence-1"],
+    },
+    analyzedAt: new Date("2026-07-21T12:00:00.000Z"),
+  };
+}
 
 function purchaseInput(): RunInvestmentAnalysisCommand {
   return {
@@ -199,6 +242,64 @@ function errorCode(run: () => unknown): string | undefined {
 
 describe("buildInvestmentAnalysisContext", () => {
   describe("assumption precedence", () => {
+    it("applies Market above a legacy/default rental lease while preserving a distinct benchmark", () => {
+      const result = buildInvestmentAnalysisContext({
+        input: rentalInput(),
+        userProvidedAssumptionKeys: [],
+        marketContext: marketContext({ monthlyRent: 2300 }),
+      });
+      expect(result.input.acquisitionType).toBe(AcquisitionType.RentalArbitrage);
+      if (result.input.acquisitionType === AcquisitionType.RentalArbitrage) {
+        expect(result.input.lease.monthlyLease).toBe(2300);
+      }
+      expect(result.assumptions).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: "monthly-lease", value: 2300, source: "market" }),
+        expect.objectContaining({ key: "market-monthly-rent-estimate", value: 2300, source: "market" }),
+      ]));
+    });
+
+    it("enforces User over Learning over Market over Default", () => {
+      const market = marketContext({ monthlyRent: 2300 });
+      const user = buildInvestmentAnalysisContext({
+        input: rentalInput(), userProvidedAssumptionKeys: ["monthly-lease"], marketContext: market,
+        appliedLearning: appliedLearning({ overrides: [override("monthly-lease", 2475)] }),
+      });
+      const learned = buildInvestmentAnalysisContext({
+        input: rentalInput(), userProvidedAssumptionKeys: [], marketContext: market,
+        appliedLearning: appliedLearning({ overrides: [override("monthly-lease", 2475)] }),
+      });
+      expect(user.assumptions.find(({ key }) => key === "monthly-lease")).toMatchObject({ value: 2200, source: "user" });
+      expect(learned.assumptions.find(({ key }) => key === "monthly-lease")).toMatchObject({ value: 2475, source: "applied-learning" });
+    });
+
+    it("keeps purchase price separate while exposing Market value with source lineage", () => {
+      const result = buildInvestmentAnalysisContext({
+        input: purchaseInput(), userProvidedAssumptionKeys: ["purchase-price"], marketContext: marketContext({ saleValue: 450000 }),
+      });
+      expect(result.input.acquisitionType).toBe(AcquisitionType.Purchase);
+      if (result.input.acquisitionType === AcquisitionType.Purchase) {
+        expect(result.input.property.purchasePrice).toBe(425000);
+      }
+      expect(result.assumptions.find(({ key }) => key === "market-value")).toMatchObject({
+        value: 450000, source: "market", marketAnalysisId: "market-analysis-1", marketEvidenceIds: ["market-evidence-1"],
+      });
+      expect(result.input.revenue.projectedAdr).toBe(200);
+      expect(result.input.revenue.projectedOccupancyPercentage).toBe(75);
+    });
+
+    it("ignores unusable Market estimates and rejects a mismatched subject", () => {
+      const unusable = buildInvestmentAnalysisContext({
+        input: rentalInput(), userProvidedAssumptionKeys: [], marketContext: marketContext({ rentUsable: false }),
+      });
+      expect(unusable.input.acquisitionType).toBe(AcquisitionType.RentalArbitrage);
+      if (unusable.input.acquisitionType === AcquisitionType.RentalArbitrage) expect(unusable.input.lease.monthlyLease).toBe(2200);
+      expect(unusable.assumptions.find(({ key }) => key === "monthly-lease")?.source).toBe("system-default");
+      expect(unusable.assumptions.some(({ key }) => key === "market-monthly-rent-estimate")).toBe(false);
+      expect(errorCode(() => buildInvestmentAnalysisContext({
+        input: purchaseInput(), userProvidedAssumptionKeys: [], marketContext: marketContext({ subjectId: "property-2" }),
+      }))).toBe("INVESTMENT_ANALYSIS_CONTEXT_LINEAGE_MISMATCH");
+    });
+
     it("keeps an explicit user value ahead of approved Learning", () => {
       const result = buildInvestmentAnalysisContext({
         input: purchaseInput(),
@@ -377,14 +478,19 @@ describe("buildInvestmentAnalysisContext", () => {
     it("does not mutate user input or Applied Learning and returns a deeply frozen context", () => {
       const input = purchaseInput();
       const learning = appliedLearning({ overrides: [override("annual-insurance-premium", 4800)] });
+      const market = marketContext();
       const inputBefore = structuredClone(input);
       const learningBefore = structuredClone(learning);
-      const result = buildInvestmentAnalysisContext({ input, userProvidedAssumptionKeys: [], appliedLearning: learning });
+      const marketBefore = structuredClone(market);
+      const result = buildInvestmentAnalysisContext({ input, userProvidedAssumptionKeys: [], appliedLearning: learning, marketContext: market });
       expect(input).toEqual(inputBefore);
       expect(learning).toEqual(learningBefore);
+      expect(market).toEqual(marketBefore);
+      expect(Object.isFrozen(market)).toBe(false);
       expect(Object.isFrozen(result)).toBe(true);
       expect(Object.isFrozen(result.input.operating)).toBe(true);
       expect(Object.isFrozen(result.lineage[0])).toBe(true);
+      expect(Object.isFrozen(result.marketContext)).toBe(true);
     });
 
     it("produces canonical input that the unchanged analysis engine consumes", () => {

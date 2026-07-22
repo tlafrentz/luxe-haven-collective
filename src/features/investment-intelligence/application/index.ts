@@ -166,6 +166,16 @@ export type {
 } from "./build-investment-analysis-context";
 
 export {
+  assessInvestmentMarketEvidenceUsability,
+  buildInvestmentMarketContext,
+  InvestmentMarketContextError,
+} from "./build-investment-market-context";
+
+export type {
+  InvestmentMarketContextErrorCode,
+} from "./build-investment-market-context";
+
+export {
   runInvestmentAnalysis,
 } from "./run-investment-analysis";
 

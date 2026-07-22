@@ -18,6 +18,9 @@ import type {
   InvestmentConstraint,
   InvestmentRiskContext,
 } from "./types/investment-learning-application-types";
+import {
+  assessInvestmentMarketEvidenceUsability,
+} from "./build-investment-market-context";
 
 export type InvestmentAnalysisContextErrorCode =
   | "INVESTMENT_ANALYSIS_CONTEXT_DUPLICATE_USER_KEY"
@@ -88,6 +91,13 @@ export function buildInvestmentAnalysisContext(
   const userKeys = validateUserKeys(command.userProvidedAssumptionKeys, definitions);
   const appliedLearning = command.appliedLearning;
   validateAppliedLineage(appliedLearning);
+  const marketContext = command.marketContext;
+  if (marketContext && marketContext.subjectId !== command.input.property.id) {
+    fail("INVESTMENT_ANALYSIS_CONTEXT_LINEAGE_MISMATCH", "Market context subject must match the Investment subject.");
+  }
+  const marketUsability = marketContext
+    ? assessInvestmentMarketEvidenceUsability(marketContext)
+    : undefined;
 
   let input = cloneInput(command.input);
   const assumptions = new Map<string, InvestmentAnalysisAssumption>();
@@ -106,6 +116,39 @@ export function buildInvestmentAnalysisContext(
       value: current,
       source: userKeys.has(key) ? "user" : "system-default",
     });
+  }
+
+  if (marketContext?.saleValuation?.estimatedValue !== undefined && marketUsability?.saleValuation !== "unusable") {
+    assumptions.set("market-value", {
+      key: "market-value",
+      value: marketContext.saleValuation.estimatedValue,
+      source: "market",
+      marketAnalysisId: marketContext.marketAnalysisId,
+      marketEvidenceIds: marketContext.lineage.evidenceIds,
+      confidenceScore: marketContext.saleValuation.confidenceScore,
+    });
+  }
+
+  if (marketContext?.longTermRent?.estimatedMonthlyRent !== undefined && marketUsability?.longTermRent !== "unusable") {
+    assumptions.set("market-monthly-rent-estimate", {
+      key: "market-monthly-rent-estimate",
+      value: marketContext.longTermRent.estimatedMonthlyRent,
+      source: "market",
+      marketAnalysisId: marketContext.marketAnalysisId,
+      marketEvidenceIds: marketContext.lineage.evidenceIds,
+      confidenceScore: marketContext.longTermRent.confidenceScore,
+    });
+    if (command.input.acquisitionType === AcquisitionType.RentalArbitrage && !userKeys.has("monthly-lease")) {
+      input = writePath(input, RENTAL_ASSUMPTIONS["monthly-lease"].path, marketContext.longTermRent.estimatedMonthlyRent);
+      assumptions.set("monthly-lease", {
+        key: "monthly-lease",
+        value: marketContext.longTermRent.estimatedMonthlyRent,
+        source: "market",
+        marketAnalysisId: marketContext.marketAnalysisId,
+        marketEvidenceIds: marketContext.lineage.evidenceIds,
+        confidenceScore: marketContext.longTermRent.confidenceScore,
+      });
+    }
   }
 
   for (const override of appliedLearning?.assumptionOverrides ?? []) {
@@ -135,6 +178,8 @@ export function buildInvestmentAnalysisContext(
     lineage: [...(appliedLearning?.lineage ?? [])]
       .map(cloneReference)
       .sort((first, second) => first.applicationId.localeCompare(second.applicationId)),
+    ...(marketContext ? { marketContext: structuredClone(marketContext) } : {}),
+    ...(marketUsability ? { marketEvidenceUsability: marketUsability } : {}),
   });
 }
 

@@ -523,6 +523,46 @@ Property-resolution, acquisition, qualification, valuation, and rent-analysis ga
 
 Lineage closes each estimate through qualification ID, acquisition ID, included candidate IDs, provider references carried by those candidates, and the property-resolution ID. The old `buildCanonicalMarketAnalysis` and `buildMarketAnalysisReport` functions are deprecated compatibility projections for the disconnected legacy valuation graph. They are not alternative end-to-end runners. RMI-006 must consume this report through one Investment-owned adapter rather than recombining subordinate Market artifacts.
 
+## RMI-006 Investment Consumption Boundary
+
+Investment Intelligence consumes Market Intelligence through one Investment-owned adapter that projects the canonical Market Analysis Report into Investment market context. The adapter preserves Market estimates, confidence, risks, data gaps, evidence, and lineage without recalculating Market conclusions. Explicit user input takes precedence over approved Learning, approved Learning takes precedence over Market evidence, and Market evidence takes precedence over Investment defaults.
+
+```mermaid
+flowchart LR
+  Report[MarketAnalysisReport] --> Adapter[buildInvestmentMarketContext]
+  Adapter --> MarketContext[InvestmentMarketContext]
+  User[Explicit user input] --> Compose[buildInvestmentAnalysisContext]
+  Learning[Approved applied Learning] --> Compose
+  MarketContext --> Compose
+  Defaults[Investment defaults] --> Compose
+  Compose --> Input[Canonical Investment input]
+  Compose --> Explain[Market evidence + risks + gaps + lineage]
+  Input --> Engine[runInvestmentAnalysis]
+```
+
+### Projection, usability, and route semantics
+
+`buildInvestmentMarketContext(report)` is the sole production Market-to-Investment transformation. It imports only the Market capability's public report contract. Sale value and range, long-term monthly rent and range, section comparable counts, Market confidence, risks, data gaps, evidence references, analysis timestamp, policy version, and resolution/acquisition/qualification lineage are copied into Investment-owned terminology. Insufficient and unsupported estimates remain absent.
+
+`assessInvestmentMarketEvidenceUsability` classifies each supported section as usable, usable with caution, or unusable. Missing estimates, insufficient or unsupported sections, and blocking section gaps are unusable. Limited or sub-60-confidence evidence remains visible with caution rather than being erased.
+
+Purchase price remains a deal term and is never replaced by sale valuation. Market sale value is contextual underwriting evidence. Long-term rent is retained as a distinct market benchmark. For rental arbitrage, it may fill only an unmarked legacy/default lease assumption; an explicit lease term or approved Learning wins. No Market field produces ADR, occupancy, STR revenue, cleaning expense, financing, score, or recommendation.
+
+### Precedence and source lineage
+
+The canonical composition order is:
+
+1. explicit current user value;
+2. approved applied Learning;
+3. usable canonical Market evidence;
+4. Investment system default.
+
+Market-resolved assumptions record the Market analysis ID, Market evidence IDs, and section confidence. The complete `InvestmentMarketContext` remains beside the canonical engine input so downstream observations and explainability can trace Market-derived context back through the report, qualification, acquisition, and property resolution. The deterministic analysis engine does not inspect Market providers or subordinate Market artifacts.
+
+### Workspace compatibility and RMI-007
+
+The current React workspace still requires legacy STR-shaped comparable input and prefilled market medians because `calculateComparableAnalysis` rejects an empty set. RMI-006 does not misrepresent RMI-005 long-term rental evidence as STR evidence and does not add a live provider call to React. That compatibility path is now the explicit remaining target for RMI-007, which will provide request lifecycle, unavailable/limited UI states, and source labels. There is no RentCast or Market infrastructure dependency in Investment.
+
 ## Validation Record
 
 - Repository and call-site audit: complete.

@@ -88,3 +88,18 @@ export type {
   InvestmentAnalysisContext,
   InvestmentAnalysisInput,
 } from "./investment-analysis-context-types";
+
+export type {
+  BuildInvestmentMarketContextInput,
+  InvestmentMarketConfidenceProjection,
+  InvestmentMarketContext,
+  InvestmentMarketContextLineage,
+  InvestmentMarketContextStatus,
+  InvestmentMarketDataGapProjection,
+  InvestmentMarketEvidenceReference,
+  InvestmentMarketEvidenceUsability,
+  InvestmentMarketEvidenceUsabilityLevel,
+  InvestmentMarketRentProjection,
+  InvestmentMarketRiskProjection,
+  InvestmentMarketValuationProjection,
+} from "./investment-market-context-types";
