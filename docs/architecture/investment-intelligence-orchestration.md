@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, and II-006E with cross-route canonical Platform analysis. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
+II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, II-006E with cross-route canonical Platform analysis, and II-007A with canonical recommendation commitment. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -256,12 +256,35 @@ flowchart TD
   Result --> Report[Pure user-report projection]
   Result --> Platform[Observations / Evidence / Claims / Evaluations / Scores / Recommendation]
   Result --> Gaps[Data gaps + source lineage]
-  Platform --> Commit[Explicit commit command]
-  Commit --> Decision[Decision + Actions]
+  Platform --> Commit[commitInvestmentRecommendation]
+  Commit --> Decision[Platform Decision only]
   Decision --> Measure[Explicit outcome command]
   Measure --> Outcome[Outcome + Intelligence]
   Compat[buildInvestmentReport compatibility facade] --> Orchestrator
   Preview[Live preview calculator] -. non-authoritative .-> Command
+```
+
+## II-007A Canonical Investment Commitment
+
+Investment analysis and Platform projection stop at Recommendation. `commitInvestmentRecommendation` is the sole canonical application boundary that converts an explicit operator response into a Platform Decision. A Recommendation expresses Platform judgment; a Decision records operator commitment.
+
+The command requires the canonical `InvestmentLifecycleResult`, its corresponding `InvestmentPlatformAnalysis`, an explicitly selected recommendation ID, an `accept`, `reject`, or `defer` response, operator identity, and a deterministic Decision ID and timestamp. It validates acquisition route, investment subject, Platform run, recommendation cardinality, and Investment Intelligence provenance before constructing the Decision. It supports purchase and rental arbitrage without consulting purchase strategy or other execution-planning fields.
+
+The Decision directly references the selected Recommendation and the Evaluation, Claim, Evidence, and Observation IDs already carried by that Recommendation. Its context and metadata preserve the Platform run, property subject, acquisition route, operator identity, response, and authoritative score. Operator rationale is recorded separately as human rationale rather than being added to algorithmic Investment Evidence.
+
+The prior `investment-commitment-adapter` selected the first Recommendation, defaulted to the current clock, supported purchase only, and created diligence Actions from purchase acquisition priorities. It is now a compatibility export of the canonical service; there is one Decision-construction implementation and no Action creation in commitment. There are currently no non-test production callers, so no implicit compatibility behavior was retained. Outcome recording remains a separate downstream adapter and execution planning belongs to II-007B.
+
+```mermaid
+flowchart TD
+  Lifecycle[InvestmentLifecycleResult] --> Validate[commitInvestmentRecommendation]
+  Platform[InvestmentPlatformAnalysis] --> Validate
+  Selection[Explicit recommendation ID] --> Validate
+  Operator[Actor + accept / reject / defer + rationale] --> Validate
+  Context[Deterministic Decision ID + timestamp] --> Validate
+  Validate --> Match{Route, subject, run, and lineage match?}
+  Match -->|No| Error[Stable commitment error]
+  Match -->|Yes| Decision[One Platform Decision]
+  Decision -. future II-007B .-> Execution[Execution plan and Actions]
 ```
 
 ## Proposed Follow-Up Batches
@@ -271,5 +294,6 @@ flowchart TD
 3. Reconcile the two purchase evidence/risk/confidence/recommendation pipelines with golden characterization tests, then select one policy path without formula changes in the same batch.
 4. Generalize Platform mapping and the observation provider over the shared lifecycle result, including rental-specific observations, explicit data-gap artifacts, deterministic run context, and upstream lineage.
 5. Connect the workspace to the canonical result and retain `calculateLiveInvestmentSummary` only as a clearly typed preview projection.
-6. Generalize commitment and outcome commands to route-safe lifecycle contracts, then wire them only when persistence and user workflow scope permit.
-7. Narrow public exports and deprecate compatibility/legacy report contracts after all callers migrate; remove paths only in a separately approved cleanup batch.
+6. Build an explicit execution-planning command from an accepted Decision; create and assign Actions only in that II-007B boundary.
+7. Generalize measured-outcome commands to route-safe lifecycle contracts, then wire commitment and outcome persistence only when user workflow scope permits.
+8. Narrow public exports and deprecate compatibility/legacy report contracts after all callers migrate; remove paths only in a separately approved cleanup batch.

@@ -1,4 +1,7 @@
-export { commitInvestmentRecommendation, type CommitInvestmentRecommendationInput } from "./investment-commitment-adapter";
+export {
+  commitInvestmentRecommendation,
+  type CommitInvestmentRecommendationInput,
+} from "./investment-commitment-adapter";
 export { normalizeInvestmentUpstream, type CanonicalInvestmentUpstream, type InvestmentUpstreamInputs, type NormalizedInvestmentUpstream } from "./investment-upstream-adapter";
 export { recordInvestmentOutcome, type RecordInvestmentOutcomeInput } from "./investment-outcome-adapter";
 export { buildInvestmentWorkspaceView } from "./investment-workspace-adapter";

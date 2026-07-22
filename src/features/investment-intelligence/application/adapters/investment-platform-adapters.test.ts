@@ -18,12 +18,6 @@ import {
 } from "../types/investment-observation-types";
 
 import {
-  commitInvestmentRecommendation,
-} from "./investment-commitment-adapter";
-import {
-  recordInvestmentOutcome,
-} from "./investment-outcome-adapter";
-import {
   buildInvestmentWorkspaceView,
 } from "./investment-workspace-adapter";
 import {
@@ -198,86 +192,4 @@ describe("Investment Platform adapters", () => {
     );
   });
 
-  it("does not create Actions until a purchase recommendation is accepted", () => {
-    const result =
-      createPurchaseLifecycleResult();
-    const analysis =
-      mapInvestmentPlatformAnalysis(
-        result,
-        context,
-      );
-    const rejected =
-      commitInvestmentRecommendation({
-        projection: result.analysis,
-        analysis,
-        outcome: "rejected",
-      });
-    const accepted =
-      commitInvestmentRecommendation({
-        projection: result.analysis,
-        analysis,
-        outcome: "accepted",
-      });
-
-    expect(rejected.actions.size).toBe(0);
-    expect(accepted.actions.size).toBe(
-      result.analysis.strategy
-        .firstNinetyDayPriorities.length,
-    );
-  });
-
-  it("keeps measured purchase Outcomes downstream", () => {
-    const result =
-      createPurchaseLifecycleResult();
-    const analysis =
-      mapInvestmentPlatformAnalysis(
-        result,
-        context,
-      );
-    const commitment =
-      commitInvestmentRecommendation({
-        projection: result.analysis,
-        analysis,
-        outcome: "accepted",
-        decidedAt:
-          new Date("2026-01-01T00:00:00Z"),
-      });
-    const action = commitment.actions
-      .toArray()[0]
-      .accept(
-        new Date("2026-01-02T00:00:00Z"),
-      )
-      .start(
-        new Date("2026-01-03T00:00:00Z"),
-      )
-      .complete(
-        new Date("2026-01-04T00:00:00Z"),
-        {
-          summary:
-            "Diligence completed.",
-          successful: true,
-        },
-      );
-    const measured =
-      recordInvestmentOutcome({
-        projection: result.analysis,
-        analysis,
-        commitment,
-        completedAction: action,
-        successful: true,
-        startedAt:
-          new Date("2026-01-03T00:00:00Z"),
-        completedAt:
-          new Date("2026-01-04T00:00:00Z"),
-      });
-
-    expect(
-      measured.outcome.traces(action.id),
-    ).toBe(true);
-    expect(
-      measured.outcome.traces(
-        commitment.decision.id,
-      ),
-    ).toBe(true);
-  });
 });

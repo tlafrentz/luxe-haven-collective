@@ -15,3 +15,12 @@ export {
   INVESTMENT_OBSERVATION_TYPES,
   type InvestmentObservationType,
 } from "./investment-observation-types";
+
+export type {
+  CommitInvestmentRecommendationCommand,
+  InvestmentCommitmentActor,
+  InvestmentCommitmentContext,
+  InvestmentCommitmentDecisionOutcome,
+  InvestmentCommitmentResponse,
+  InvestmentCommitmentResult,
+} from "./investment-commitment-types";

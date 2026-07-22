@@ -103,6 +103,15 @@ export type {
 } from "./investment-decision-policies";
 
 export {
+  commitInvestmentRecommendation,
+  InvestmentCommitmentError,
+} from "./commit-investment-recommendation";
+
+export type {
+  InvestmentCommitmentErrorCode,
+} from "./commit-investment-recommendation";
+
+export {
   runInvestmentAnalysis,
 } from "./run-investment-analysis";
 

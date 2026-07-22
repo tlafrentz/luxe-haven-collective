@@ -1,4 +1,3 @@
-import type { ActionCollection } from "@/platform/actions";
 import type { ClaimCollection } from "@/platform/claims";
 import type { Decision } from "@/platform/decisions";
 import type { EvaluationCollection } from "@/platform/evaluations";
@@ -67,7 +66,6 @@ export type InvestmentCommitmentOutcome = "accepted" | "rejected" | "deferred";
 export type InvestmentCommitment = Readonly<{
   recommendation: Recommendation;
   decision: Decision<InvestmentCommitmentOutcome>;
-  actions: ActionCollection;
 }>;
 
 export type InvestmentMeasuredResult = Readonly<{
