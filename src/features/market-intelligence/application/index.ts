@@ -20,3 +20,6 @@ export { qualifyMarketComparables } from "./qualify-market-comparables";
 export { buildDefaultMarketComparableQualificationPolicy } from "./market-comparable-qualification-policy";
 export { assessMarketComparableEligibility } from "./assess-market-comparable-eligibility";
 export { calculateMarketComparableSimilarity } from "./calculate-market-comparable-similarity";
+export { runMarketAnalysis } from "./run-market-analysis";
+export type { RunMarketAnalysisDependencies } from "./run-market-analysis";
+export { buildDefaultMarketAnalysisPolicies } from "./market-analysis-policies";

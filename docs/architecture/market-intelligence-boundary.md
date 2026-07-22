@@ -480,6 +480,49 @@ Raw weight combines similarity, outlier treatment, and evidence completeness. Pr
 
 Coverage is `insufficient` below three included comparables, `limited` from three through four, and `sufficient` at five or more under the default policy. This is comparable-set sufficiency, not full Market confidence. Included ordering is normalized weight, similarity, distance, and canonical ID. Excluded and unresolved ordering uses stage/reason and canonical ID. RMI-005 owns final valuation, rent estimation, and report confidence.
 
+## RMI-005 Real Market Analysis Report
+
+Real Market Analysis is the canonical orchestration boundary for converting a resolved property and provider-backed comparable evidence into an explainable Market Analysis Report. Market Intelligence owns property resolution, comparable acquisition, comparable qualification, valuation, long-term rent estimation, confidence, risks, data gaps, and evidence lineage. It does not own STR-performance projections, underwriting, financing, acquisition recommendations, or execution decisions.
+
+```mermaid
+flowchart TD
+  Resolution[Resolved Market property] --> Run[runMarketAnalysis]
+  Run --> SaleAcquire[Acquire sale comparables]
+  Run --> RentAcquire[Acquire long-term rental comparables]
+  SaleAcquire --> SaleQualify[Qualify sale comparables]
+  RentAcquire --> RentQualify[Qualify rental comparables]
+  SaleQualify --> SaleEstimate[Weighted sale estimate + range]
+  RentQualify --> RentEstimate[Weighted monthly-rent estimate + range]
+  SaleEstimate --> Report[Canonical MarketAnalysisReport]
+  RentEstimate --> Report
+  Report --> Confidence[Confidence]
+  Report --> Limits[Risks + data gaps]
+  Report --> Reasoning[Observations + evidence]
+  Report --> RMI006[RMI-006 Investment projection]
+```
+
+### Supported analysis and status
+
+`runMarketAnalysis(command, dependencies)` is the sole public end-to-end Market runner. Its command contains a resolved property result, explicitly enabled sale and/or long-term-rent requests, immutable policies, and deterministic analysis context. A provider-neutral comparable dependency is injected at the composition root. The runner invokes `acquireMarketComparables` and `qualifyMarketComparables`; it does not reconstruct those policies.
+
+Sale valuation and long-term market rent are supported. No-analysis requests return `unsupported` without a provider call. A report is `complete` only when every requested section has a sufficient estimate, `partial` when at least one policy-authorized estimate is limited, and `insufficient` when no requested estimate can be supported. Provider failures remain coded errors. STR ADR, occupancy, and revenue do not exist in the report contract.
+
+### Estimation and confidence
+
+Both sections preserve the characterized weighted-comparable-mean calculation and consume RMI-004 normalized weights directly. The default range is the 25th–75th percentile of included factual values, expanded when necessary to contain the weighted estimate. Sale inputs are listing/sale prices; rental inputs are monthly long-term rents. Unit estimates divide the resulting estimate by known subject square footage. No second weighting model is calculated.
+
+One-comparable limited estimation is explicitly authorized by the version-one estimation policy (`minimumEstimateComparables: 1`); raising that threshold produces `insufficient` and no value. All estimates and ranges must be finite and non-negative, and the estimate remains within its stated range.
+
+Section confidence retains the characterized formula: comparable coverage contributes 30 points, average similarity 45, and estimate dispersion 25. Confidence therefore measures evidence support rather than whether a value is attractive. Report confidence averages requested section assessments. The full policy version is preserved as `market-analysis-v1` lineage.
+
+### Risks, gaps, reasoning, and lineage
+
+The report derives deterministic Market-only risks for insufficient/limited coverage, low similarity, stale evidence, high dispersion, concentrated weight, and incomplete subject facts. Duplicate risks merge their evidence and gap references. Investment financing, return, and acquisition risks are excluded.
+
+Property-resolution, acquisition, qualification, valuation, and rent-analysis gaps are projected with stable IDs, source stage, and affected section. Source artifacts are cloned before the returned report is deeply frozen. Observations expose the subject and supported estimates; evidence references the exact qualified candidate IDs. Summary fields are projections of canonical section results rather than an independent calculation.
+
+Lineage closes each estimate through qualification ID, acquisition ID, included candidate IDs, provider references carried by those candidates, and the property-resolution ID. The old `buildCanonicalMarketAnalysis` and `buildMarketAnalysisReport` functions are deprecated compatibility projections for the disconnected legacy valuation graph. They are not alternative end-to-end runners. RMI-006 must consume this report through one Investment-owned adapter rather than recombining subordinate Market artifacts.
+
 ## Validation Record
 
 - Repository and call-site audit: complete.

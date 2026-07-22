@@ -17,6 +17,9 @@ export type { MarketComparableProvider } from "./application/providers/market-co
 export type { AcquireMarketComparablesCommand, MarketComparableAcquisitionResult, MarketComparableAcquisitionStatus, MarketComparableCandidate, MarketComparableDataGap, MarketComparablePurpose, MarketComparableSearchCriteria, MarketComparableSearchCriteriaInput, MarketListingStatus } from "./domain/comparable-acquisition";
 export { qualifyMarketComparables, buildDefaultMarketComparableQualificationPolicy } from "./application";
 export type { QualifyMarketComparablesCommand, MarketComparableQualificationResult, MarketComparableQualificationPolicy, QualifiedMarketComparable, ExcludedMarketComparable, UnresolvedMarketComparable } from "./domain/comparable-qualification";
+export { runMarketAnalysis, buildDefaultMarketAnalysisPolicies } from "./application";
+export type { RunMarketAnalysisDependencies } from "./application";
+export type { RunMarketAnalysisCommand, CanonicalMarketAnalysisReport as MarketAnalysisReport, MarketAnalysisPolicies, MarketSaleValuationAnalysis, MarketLongTermRentAnalysis, MarketAnalysisConfidence, MarketRisk, MarketAnalysisDataGap, MarketAnalysisSummary } from "./domain/canonical-market-analysis-report";
 
 export {
   PropertyRecord,

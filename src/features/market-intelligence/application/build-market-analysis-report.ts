@@ -35,11 +35,13 @@ export interface BuildMarketAnalysisReportInput {
 export type CanonicalMarketAnalysis = Readonly<{ report: MarketAnalysisReport; artifacts: MarketPlatformArtifacts }>;
 
 /** Primary Platform-native analysis path; report is retained as a read projection. */
+/** @deprecated Use runMarketAnalysis for provider-backed canonical orchestration. */
 export function buildCanonicalMarketAnalysis(input: BuildMarketAnalysisReportInput): CanonicalMarketAnalysis {
   const report = buildMarketAnalysisReport(input);
   return { report, artifacts: mapMarketPlatformArtifacts(report) };
 }
 
+/** @deprecated Compatibility projection for the legacy valuation graph. Use runMarketAnalysis. */
 export function buildMarketAnalysisReport(
   input:
     BuildMarketAnalysisReportInput,
