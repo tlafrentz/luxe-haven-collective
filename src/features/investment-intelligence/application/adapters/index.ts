@@ -3,3 +3,5 @@ export { normalizeInvestmentUpstream, type CanonicalInvestmentUpstream, type Inv
 export { recordInvestmentOutcome, type RecordInvestmentOutcomeInput } from "./investment-outcome-adapter";
 export { buildInvestmentWorkspaceView } from "./investment-workspace-adapter";
 export { mapInvestmentPlatformAnalysis } from "./map-investment-platform-analysis";
+export { buildInvestmentDataGaps } from "./build-investment-data-gaps";
+export { createInvestmentPlatformRunContext, normalizeInvestmentPlatformRunContext, type InvestmentInputSourceQuality, type InvestmentPlatformRunContext } from "./investment-platform-run-context";

@@ -1,14 +1,18 @@
-import { AcquisitionType } from "../../domain";
-import type { InvestmentDecision, InvestmentWorkspaceView, RentalArbitrageInvestmentAnalysis } from "../../domain";
+import type { InvestmentLifecycleResult, InvestmentWorkspaceView } from "../../domain";
+import { createInvestmentPlatformRunContext, type InvestmentPlatformRunContext } from "./investment-platform-run-context";
 import { mapInvestmentPlatformAnalysis } from "./map-investment-platform-analysis";
 
-/** The sole canonical-to-UI projection boundary for purchase underwriting. */
+/** The sole canonical-to-UI projection boundary for Investment underwriting. */
 export function buildInvestmentWorkspaceView(
-  projection: InvestmentDecision | RentalArbitrageInvestmentAnalysis,
-  now?: Date,
+  result: InvestmentLifecycleResult,
+  context: InvestmentPlatformRunContext = createInvestmentPlatformRunContext(),
 ): InvestmentWorkspaceView {
-  if (projection.acquisitionType === AcquisitionType.RentalArbitrage) {
-    return Object.freeze({ projection });
-  }
-  return Object.freeze({ projection, platform: mapInvestmentPlatformAnalysis(projection, now) });
+  return Object.freeze({
+    projection: result.analysis,
+    platform:
+      mapInvestmentPlatformAnalysis(
+        result,
+        context,
+      ),
+  });
 }

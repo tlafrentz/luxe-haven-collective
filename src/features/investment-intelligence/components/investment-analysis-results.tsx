@@ -56,7 +56,7 @@ export function InvestmentAnalysisResults() {
 
   if (analysis) {
     buildInvestmentWorkspaceView(
-      analysis.analysis,
+      analysis,
     );
 
     return (

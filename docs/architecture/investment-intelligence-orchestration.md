@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, and II-006D with one authoritative purchase decision policy. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
+II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, and II-006E with cross-route canonical Platform analysis. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -232,6 +232,16 @@ The disconnected `evaluatePurchase` path is now projection-only. It accepts a co
 | Active callers | Purchase route builder, workspace through `runInvestmentAnalysis`, Platform adapters | No production caller; now a lifecycle-to-report projection |
 
 Golden characterization covers strong, marginal, weak, negative-cash-flow, high-leverage, low-occupancy, and weak-comparable-confidence purchases. It records both historical policy outputs rather than averaging or merging them. The matrix confirms material divergence: the former report policy upgrades the strong case, downgrades high leverage, upgrades weak-comparable confidence, uses different risk identifiers, and has no score. Selecting the active canonical policy therefore minimizes production behavior change and preserves Platform compatibility while eliminating duplicate decision ownership.
+
+## II-006E Canonical Platform Analysis
+
+`mapInvestmentPlatformAnalysis` now accepts `InvestmentLifecycleResult` and exhaustively maps purchase and rental-arbitrage routes into one `InvestmentPlatformAnalysis`. Both routes emit canonical Observations, Evidence, Claims, Evaluations, the six authoritative Platform Scores, and exactly one primary Recommendation. Purchase retains its established observation/evidence/strategy semantics. Rental adds lease economics, operating margin, lease coverage, failure-point, and stress-summary observations; its canonical supporting evidence and stress summary feed Platform Evidence without recalculation or competing recommendations.
+
+`InvestmentPlatformRunContext` supplies a stable run ID, observed/recorded timestamps, optional canonical upstream artifacts, and explicit source-quality declarations. Observation, Evidence, Claim, Evaluation, and Recommendation IDs are derived from the run identity, making repeated mapping deterministic for a fixed lifecycle result and context. `InvestmentPlatformLineage` records market/revenue observation IDs, upstream Evidence and Recommendation IDs, and Intelligence report IDs only when supplied. Generated artifact metadata carries the run ID and the upstream references supported by each Platform contract.
+
+Because the Platform has no approved general data-gap domain primitive, `InvestmentDataGap` remains a narrowly scoped Investment projection alongside—rather than inside—Platform Evidence. Gaps distinguish missing/substituted evidence from poor economics: absent upstream artifacts, synthetic or unverified comparables, weak comparable confidence, missing regulation sources, and unverified rental utilities responsibility can be reported explicitly. Negative cash flow or a weak score remains a business result, not a data gap.
+
+`buildInvestmentWorkspaceView` now accepts the lifecycle result and returns `{ projection, platform }` for both acquisition routes. React still renders only the projection/lifecycle report data; Platform artifacts are available at the migration boundary without changing visible behavior. Purchase-only commitment and outcome adapters remain unchanged and downstream.
 
 ```mermaid
 flowchart TD
