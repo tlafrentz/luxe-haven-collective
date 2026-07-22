@@ -526,6 +526,65 @@ flowchart LR
 
 The composition operation clones its inputs and returns deeply frozen output. It creates no Learning, Decision, Action, Outcome, Recommendation, or Platform artifact and mutates neither current input nor approved context.
 
+## II-008D Closed-Loop Validation and Release Readiness
+
+Investment Intelligence uses a closed, governed improvement lifecycle. Historical Outcomes may produce Learning Insights, but only explicitly approved Learning Applications can enter the canonical Applied Learning Context. Future analyses consume that context through `buildInvestmentAnalysisContext`, while `runInvestmentAnalysis` remains independent of Learning governance and historical artifacts remain immutable.
+
+The deterministic release-validation fixture composes public boundaries rather than constructing domain artifacts directly:
+
+```mermaid
+flowchart TD
+  RunA[runInvestmentAnalysis: Run A] --> PlatformA[mapInvestmentPlatformAnalysis]
+  PlatformA --> Recommend[Canonical Recommendation]
+  Recommend --> Commit[commitInvestmentRecommendation]
+  Commit --> Plan[planInvestmentExecution]
+  Plan --> Draft[Draft Platform Action]
+  Draft --> Complete[Canonical Action lifecycle completion]
+  Complete --> Outcome[recordInvestmentActionOutcome]
+  Outcome --> Learn[deriveInvestmentLearning]
+  Learn --> Review[reviewInvestmentLearningApplication]
+  Review --> Approved[Approved Learning Application]
+  Approved --> Select[buildInvestmentAppliedLearningContext]
+  Select --> Compose[buildInvestmentAnalysisContext]
+  Compose --> RunB[runInvestmentAnalysis: Run B]
+  RunB --> PlatformB[Distinct deterministic Platform Run B]
+  Compose --> Trace[Application → Learning → Outcome → Action → Decision → Recommendation → Run A]
+```
+
+### Validated route characterizations
+
+- Purchase Run A assumes $2,400 annual insurance. Completed insurance diligence records a $4,800 actual, derives contradicted subject Learning, obtains explicit approval for a subject-only replacement, and produces Run B with $4,800 insurance.
+- Rental-arbitrage Run A assumes $300 monthly utilities. Completed utilities diligence records a $475 actual, follows the same governed path, and produces route-safe Run B input with $475 monthly utilities.
+- Both routes create a distinct deterministic Platform Run B identity and timestamp. The financial lifecycle result itself remains clock- and ID-free; Platform mapping owns run identity.
+- Explicit current user input wins over approved Learning. Approved Learning wins over unmarked legacy/prefilled values. Without either, canonical confidence and market-trend defaults are materialized.
+- Constraints, resolved gaps, and persistent risks survive composition without changing score, confidence, or recommendation policy.
+
+### Integrity and architecture validation
+
+The closed-loop suite captures the original input and every historical artifact before Run B and verifies the same stable serialization afterward. Run A, Platform analysis, Recommendation, commitment Decision, execution plan, draft and completed Action versions, Outcome, Learning Insight, and approved application remain unchanged. Application approval is authorization, not a mutable usage counter.
+
+A dedicated lineage assertion reconciles subject, acquisition route, Platform run, Recommendation, Decision, plan, Action, Outcome, Learning, approval Decision, application, applied reference, and analysis-context IDs. No unrelated Run ID appears in the applied lineage.
+
+Automated architecture inspection verifies:
+
+- `runInvestmentAnalysis` contains no Learning, Learning Application, Applied Learning, Outcome, or governance dependency;
+- Platform production modules do not import Investment feature code;
+- one Investment adapter constructs Platform Actions, one constructs Outcomes, and one constructs Learning Insights;
+- governance review, applicable-context selection, and analysis-context composition remain separate boundaries;
+- Outcome capture does not derive Learning, Learning derivation does not approve applications, and application review does not select context or rerun analysis.
+
+### Lifecycle v1 non-goals
+
+The validated v1 lifecycle does not automatically approve Learning, widen subject evidence into global policy, mutate Platform policies, recalibrate confidence, rerun analysis, persist lifecycle artifacts, or alter historical results. Applying constraints and persistent risks to future scoring remains deliberately deferred; II-008C transports them without inventing policy.
+
+### Release-readiness record
+
+II-006 through II-008 now establish and validate canonical analysis, derived analysis, purchase policy, cross-route Platform projection, operator commitment, execution planning, Outcome capture, Learning derivation, Learning governance, applicable-context selection, and source-neutral reanalysis composition.
+
+Release validation on 2026-07-21 includes 24 focused II-008D tests and 254 passing tests across 38 affected Investment and Platform lifecycle files. Purchase and rental closed loops, governance exclusions, precedence, immutability, deterministic replay, lineage closure, and dependency direction are covered. Lint, typecheck, production build, and diff validation are required alongside those suites.
+
+Investment Platform Lifecycle v1 is ready for a release tag after merge and CI confirmation. No tag is created by II-008D. Deferred release work includes persistence, UI/API workflows, automatic rerun scheduling, approved policy/calibration application, portfolio aggregation, and real provider data.
+
 ## Proposed Follow-Up Batches
 
 1. Define and characterize a discriminated `InvestmentLifecycleResult` and `runInvestmentAnalysis` interface without changing formulas; make `buildInvestmentReport` a compatibility facade.
