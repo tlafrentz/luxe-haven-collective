@@ -11,4 +11,8 @@ export {
   mapInvestmentExecutionPlanToActions,
   type InvestmentExecutionLineage,
 } from "./map-investment-execution-plan-to-actions";
+export {
+  mapInvestmentFindingToOutcome,
+  type InvestmentOutcomeLineage,
+} from "./map-investment-finding-to-outcome";
 export { createInvestmentPlatformRunContext, normalizeInvestmentPlatformRunContext, type InvestmentInputSourceQuality, type InvestmentPlatformRunContext } from "./investment-platform-run-context";

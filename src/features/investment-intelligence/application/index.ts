@@ -121,6 +121,15 @@ export type {
 } from "./plan-investment-execution";
 
 export {
+  InvestmentOutcomeError,
+  recordInvestmentActionOutcome,
+} from "./record-investment-action-outcome";
+
+export type {
+  InvestmentOutcomeErrorCode,
+} from "./record-investment-action-outcome";
+
+export {
   runInvestmentAnalysis,
 } from "./run-investment-analysis";
 

@@ -88,6 +88,14 @@ export function mapInvestmentExecutionPlanToActions(
           recordedBy: actionActor,
         },
         {
+          type: "automation",
+          sourceId: intent.key,
+          capability:
+            "investment-execution-intent",
+          recordedAt: context.plannedAt,
+          recordedBy: actionActor,
+        },
+        {
           type: "api",
           sourceId:
             lineage.investmentRunId,

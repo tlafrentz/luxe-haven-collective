@@ -33,3 +33,15 @@ export type {
   InvestmentExecutionPriority,
   PlanInvestmentExecutionCommand,
 } from "./investment-execution-types";
+
+export type {
+  InvestmentActionOutcomeResult,
+  InvestmentOutcomeCaptureContext,
+  InvestmentOutcomeDisposition,
+  InvestmentOutcomeFinding,
+  InvestmentOutcomeFindingSource,
+  InvestmentOutcomeMeasurement,
+  InvestmentOutcomeMeasurementPeriod,
+  InvestmentOutcomeMeasurementUnit,
+  RecordInvestmentActionOutcomeCommand,
+} from "./investment-outcome-types";

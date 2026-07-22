@@ -106,6 +106,7 @@ describe("mapInvestmentExecutionPlanToActions", () => {
         "recommendation-1",
       ],
       ["automation", "plan-1"],
+      ["automation", "verify-regulations"],
       ["api", "investment-run-1"],
       ["manual", "property-1"],
     ]);

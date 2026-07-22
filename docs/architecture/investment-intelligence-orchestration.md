@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, II-006E with cross-route canonical Platform analysis, II-007A with canonical recommendation commitment, and II-007B with canonical execution planning. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
+II-006A current-state trace, updated by II-006B with the canonical application boundary, II-006C with canonical derived-analysis ownership, II-006D with one authoritative purchase decision policy, II-006E with cross-route canonical Platform analysis, II-007A with canonical recommendation commitment, II-007B with canonical execution planning, and II-007C with canonical Action outcome capture. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -316,6 +316,33 @@ flowchart TD
   Actions -. later workflow .-> Operations[Assign / schedule / commit / start / complete]
 ```
 
+## II-007C Investment Outcome Capture
+
+A completed Investment Platform Action may now produce one canonical Platform Outcome through `recordInvestmentActionOutcome`. Action completion records that work was performed. The explicitly supplied Outcome disposition records what that completed work revealed. Completion describes execution state; Outcome describes business reality.
+
+The command accepts the completed Action, its Investment Platform analysis and Decision, an explicit finding, actor identity, and deterministic Outcome identity and recording time. The Action carries Decision, Recommendation, execution-plan, Platform-run, subject, acquisition-route, and intent sources. The Platform analysis and Decision are required because the Action intentionally does not duplicate the complete Evaluation, Claim, Evidence, and Observation graph; the selected Recommendation supplies those transitive reasoning references to the Outcome.
+
+`InvestmentOutcomeFinding` supports favorable, unfavorable, neutral, and inconclusive dispositions plus qualitative details, source references, assumption references, evidence references, and typed measurements. Actual and assumed values remain separate. When an assumed value is supplied, variance is derived deterministically and recorded alongside both values; capture never updates underwriting assumptions or reruns analysis.
+
+The canonical Platform Outcome uses `status: completed` and `successful: true` to record that the completed work was measured successfully. Business impact remains independently represented by the finding disposition, so an inspection, quote, or regulatory review can be operationally complete and economically unfavorable. One primary result is allowed per Action once an Outcome reference is linked; linking remains a separate Platform Action operation and this command does not mutate the Action.
+
+The former purchase-only `recordInvestmentOutcome` adapter inferred success/failure, mixed projected metrics with actuals, and created an `IntelligenceReport`. It had no production callers and is now a compatibility export of the canonical outcome command. There is one Investment Outcome-construction path, supporting both acquisition routes, and it creates no Intelligence/Learning, Decision, Action, or follow-up work.
+
+```mermaid
+flowchart TD
+  Decision[Accepted Platform Decision] --> Plan[Investment Execution Plan]
+  Plan --> Action[Draft Platform Action]
+  Action --> Lifecycle[Platform Action lifecycle]
+  Lifecycle --> Completed[Completed Action]
+  Completed --> Capture[recordInvestmentActionOutcome]
+  Platform[InvestmentPlatformAnalysis] --> Capture
+  Finding[Explicit finding + measurements + disposition] --> Capture
+  Capture --> Validate{Completion and lineage valid?}
+  Validate -->|No| Error[Stable outcome-capture error]
+  Validate -->|Yes| Outcome[One canonical Platform Outcome]
+  Outcome -. later II-007D .-> Learning[Canonical Learning]
+```
+
 ## Proposed Follow-Up Batches
 
 1. Define and characterize a discriminated `InvestmentLifecycleResult` and `runInvestmentAnalysis` interface without changing formulas; make `buildInvestmentReport` a compatibility facade.
@@ -323,5 +350,6 @@ flowchart TD
 3. Reconcile the two purchase evidence/risk/confidence/recommendation pipelines with golden characterization tests, then select one policy path without formula changes in the same batch.
 4. Generalize Platform mapping and the observation provider over the shared lifecycle result, including rental-specific observations, explicit data-gap artifacts, deterministic run context, and upstream lineage.
 5. Connect the workspace to the canonical result and retain `calculateLiveInvestmentSummary` only as a clearly typed preview projection.
-6. Generalize measured-outcome commands to route-safe lifecycle contracts, then wire commitment, planning, and outcome persistence only when user workflow scope permits.
-7. Narrow public exports and deprecate compatibility/legacy report contracts after all callers migrate; remove paths only in a separately approved cleanup batch.
+6. Convert measured Investment Outcomes into canonical Learning without changing the recorded Outcome or automatically rerunning analysis.
+7. Wire commitment, planning, Outcome, and Learning persistence only when user workflow scope permits.
+8. Narrow public exports and deprecate compatibility/legacy report contracts after all callers migrate; remove paths only in a separately approved cleanup batch.
