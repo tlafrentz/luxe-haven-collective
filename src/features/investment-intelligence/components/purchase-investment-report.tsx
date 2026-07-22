@@ -3,7 +3,7 @@ import {
 } from "../domain";
 
 import type {
-  InvestmentDecision,
+  PurchaseInvestmentLifecycleResult,
 } from "../domain";
 
 function formatCurrency(
@@ -53,10 +53,13 @@ function MetricCard({
 }
 
 export function PurchaseInvestmentReport({
-  decision,
+  result,
 }: {
-  decision: InvestmentDecision;
+  result:
+    PurchaseInvestmentLifecycleResult;
 }) {
+  const decision = result.analysis;
+
   const positiveEvidence =
     decision.supportingEvidence.filter(
       ({ direction }) =>

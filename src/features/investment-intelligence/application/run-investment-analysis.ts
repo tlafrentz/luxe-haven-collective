@@ -22,6 +22,26 @@ import type {
   BuildRentalArbitrageInvestmentReportInput,
 } from "../services/build-rental-arbitrage-investment-report";
 
+import {
+  buildPurchaseScenarios,
+} from "./build-purchase-scenarios";
+
+import {
+  buildRentalArbitrageScenarios,
+} from "./build-rental-arbitrage-scenarios";
+
+import {
+  buildRentalArbitrageStressTests,
+} from "./build-rental-arbitrage-stress-tests";
+
+import {
+  calculatePurchaseFailurePoints,
+} from "./calculate-purchase-failure-points";
+
+import {
+  calculateRentalArbitrageFailurePoints,
+} from "./calculate-rental-arbitrage-failure-points";
+
 export type RunPurchaseInvestmentAnalysisCommand =
   Readonly<
     Omit<
@@ -47,25 +67,55 @@ export function runInvestmentAnalysis(
   command: RunInvestmentAnalysisCommand,
 ): InvestmentLifecycleResult {
   switch (command.acquisitionType) {
-    case AcquisitionType.Purchase:
+    case AcquisitionType.Purchase: {
+      const analysis =
+        buildPurchaseInvestmentReport(
+          command,
+        );
+
       return {
         acquisitionType:
           AcquisitionType.Purchase,
-        analysis:
-          buildPurchaseInvestmentReport(
-            command,
-          ),
+        analysis,
+        derivedAnalysis: {
+          scenarios:
+            buildPurchaseScenarios(
+              analysis,
+            ),
+          failurePoints:
+            calculatePurchaseFailurePoints(
+              analysis,
+            ),
+        },
       };
+    }
 
-    case AcquisitionType.RentalArbitrage:
+    case AcquisitionType.RentalArbitrage: {
+      const analysis =
+        buildRentalArbitrageInvestmentReport(
+          command,
+        );
+
       return {
         acquisitionType:
           AcquisitionType.RentalArbitrage,
-        analysis:
-          buildRentalArbitrageInvestmentReport(
-            command,
-          ),
+        analysis,
+        derivedAnalysis: {
+          scenarios:
+            buildRentalArbitrageScenarios(
+              analysis,
+            ),
+          failurePoints:
+            calculateRentalArbitrageFailurePoints(
+              analysis,
+            ),
+          stressTests:
+            buildRentalArbitrageStressTests(
+              analysis,
+            ),
+        },
       };
+    }
 
     default:
       return assertNever(command);

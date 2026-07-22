@@ -3,8 +3,7 @@ import {
 } from "../domain";
 
 import type {
-  InvestmentDecision,
-  RentalArbitrageInvestmentAnalysis,
+  InvestmentLifecycleResult,
 } from "../domain";
 
 import {
@@ -15,40 +14,25 @@ import {
   RentalArbitrageInvestmentReport,
 } from "./rental-arbitrage-investment-report";
 
-export type InvestmentReportAnalysis =
-  | InvestmentDecision
-  | RentalArbitrageInvestmentAnalysis;
-
-function isRentalArbitrageAnalysis(
-  analysis: InvestmentReportAnalysis,
-): analysis is RentalArbitrageInvestmentAnalysis {
-  return (
-    analysis.acquisitionType ===
-      AcquisitionType.RentalArbitrage &&
-    "lease" in analysis.expenseProjection &&
-    "leaseCoverageRatio" in
-      analysis.financialPerformance
-  );
-}
-
 export function InvestmentReport({
-  analysis,
+  result,
 }: {
-  analysis: InvestmentReportAnalysis;
+  result: InvestmentLifecycleResult;
 }) {
   if (
-    isRentalArbitrageAnalysis(analysis)
+    result.acquisitionType ===
+    AcquisitionType.RentalArbitrage
   ) {
     return (
       <RentalArbitrageInvestmentReport
-        analysis={analysis}
+        result={result}
       />
     );
   }
 
   return (
     <PurchaseInvestmentReport
-      decision={analysis}
+      result={result}
     />
   );
 }

@@ -22,13 +22,12 @@ import {
 
 import type {
   ComparableProperty,
-  InvestmentDecision,
-  RentalArbitrageInvestmentAnalysis,
+  InvestmentLifecycleResult,
 } from "../domain";
 
 import {
-  buildInvestmentReport,
-} from "../services";
+  runInvestmentAnalysis,
+} from "../application";
 
 import {
   buildInvestmentWorkspaceReadiness,
@@ -81,8 +80,7 @@ export type InvestmentWorkspaceValues = {
 };
 
 export type WorkspaceInvestmentAnalysis =
-  | InvestmentDecision
-  | RentalArbitrageInvestmentAnalysis;
+  InvestmentLifecycleResult;
 
 type InvestmentWorkspaceState = {
   values: InvestmentWorkspaceValues;
@@ -355,7 +353,7 @@ export function InvestmentWorkspaceStateProvider({
           AcquisitionType.RentalArbitrage
         ) {
           const report =
-            buildInvestmentReport({
+            runInvestmentAnalysis({
               acquisitionType:
                 AcquisitionType.RentalArbitrage,
               property: {
@@ -420,7 +418,7 @@ export function InvestmentWorkspaceStateProvider({
         }
 
         const report =
-          buildInvestmentReport({
+          runInvestmentAnalysis({
             acquisitionType:
               AcquisitionType.Purchase,
             property: {

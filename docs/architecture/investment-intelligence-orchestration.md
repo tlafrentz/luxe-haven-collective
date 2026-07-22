@@ -2,7 +2,7 @@
 
 ## Status
 
-II-006A current-state trace, updated by II-006B with the canonical application boundary. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
+II-006A current-state trace, updated by II-006B with the canonical application boundary and II-006C with canonical derived-analysis ownership. The current-state findings describe the repository as traced on 2026-07-21 and remain as historical evidence; they do not designate every existing path as target architecture.
 
 ## Purpose
 
@@ -202,6 +202,14 @@ Human commitment (`Decision` and Actions) and measured execution (`Outcome` and 
 The lifecycle result is discriminated by acquisition type and wraps the existing authoritative route projection as `analysis`. Purchase narrows to `InvestmentDecision`; rental arbitrage narrows to `RentalArbitrageInvestmentAnalysis`. No future report, Platform, scenario, or data-gap fields have been added prematurely.
 
 `buildInvestmentReport` remains the compatibility facade. It preserves the legacy optional purchase discriminator, normalizes an omitted discriminator to purchase, calls `runInvestmentAnalysis`, and unwraps `result.analysis`. Existing callers therefore retain the same return types and runtime values while new application callers have one explicit orchestration contract.
+
+## II-006C Canonical Derived Analysis
+
+`runInvestmentAnalysis` now calculates route-derived analysis from the completed authoritative route projection and returns it under the route-specific `derivedAnalysis` contract. Purchase results contain purchase scenarios and failure points. Rental-arbitrage results contain rental scenarios, failure points, and the complete stress-test summary.
+
+The workspace now stores `InvestmentLifecycleResult` and calls the canonical boundary with an explicit acquisition type. `InvestmentReport` narrows that lifecycle result and passes it to the route report. The rental report renders the supplied scenarios, failure points, and stress tests; it no longer invokes application calculators during React rendering. The purchase report receives its derived analysis at the report boundary without adding new visible sections.
+
+`buildInvestmentReport` continues to unwrap only `result.analysis`, so its return contract and default-to-purchase behavior remain unchanged. `calculateLiveInvestmentSummary` remains a separate, non-authoritative preview calculator.
 
 ```mermaid
 flowchart TD

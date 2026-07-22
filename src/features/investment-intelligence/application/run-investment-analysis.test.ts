@@ -23,6 +23,26 @@ import {
   runInvestmentAnalysis,
 } from "./run-investment-analysis";
 
+import {
+  buildPurchaseScenarios,
+} from "./build-purchase-scenarios";
+
+import {
+  buildRentalArbitrageScenarios,
+} from "./build-rental-arbitrage-scenarios";
+
+import {
+  buildRentalArbitrageStressTests,
+} from "./build-rental-arbitrage-stress-tests";
+
+import {
+  calculatePurchaseFailurePoints,
+} from "./calculate-purchase-failure-points";
+
+import {
+  calculateRentalArbitrageFailurePoints,
+} from "./calculate-rental-arbitrage-failure-points";
+
 import type {
   RunInvestmentAnalysisCommand,
 } from "./run-investment-analysis";
@@ -205,6 +225,47 @@ describe("runInvestmentAnalysis", () => {
       expect(
         result.analysis.strategy,
       ).toBeDefined();
+      expect(
+        result.derivedAnalysis.scenarios,
+      ).toEqual(
+        buildPurchaseScenarios(
+          result.analysis,
+        ),
+      );
+      expect(
+        result.derivedAnalysis.scenarios.map(
+          ({ label }) => label,
+        ),
+      ).toEqual([
+        "Downside",
+        "Base",
+        "Upside",
+      ]);
+
+      const baseScenario =
+        result.derivedAnalysis.scenarios.find(
+          ({ type }) => type === "base",
+        );
+
+      expect(
+        baseScenario?.annualRevenue,
+      ).toEqual(
+        result.analysis.revenueProjection
+          .projectedAnnualRevenue,
+      );
+      expect(
+        baseScenario?.annualCashFlow,
+      ).toEqual(
+        result.analysis.financialPerformance
+          .annualCashFlow,
+      );
+      expect(
+        result.derivedAnalysis.failurePoints,
+      ).toEqual(
+        calculatePurchaseFailurePoints(
+          result.analysis,
+        ),
+      );
     }
   });
 
@@ -267,6 +328,59 @@ describe("runInvestmentAnalysis", () => {
         result.analysis.financialPerformance
           .leaseCoverageRatio,
       ).toBeDefined();
+      expect(
+        result.derivedAnalysis.scenarios,
+      ).toEqual(
+        buildRentalArbitrageScenarios(
+          result.analysis,
+        ),
+      );
+      expect(
+        result.derivedAnalysis.scenarios.map(
+          ({ label }) => label,
+        ),
+      ).toEqual([
+        "Downside",
+        "Base",
+        "Upside",
+      ]);
+
+      const baseScenario =
+        result.derivedAnalysis.scenarios.find(
+          ({ type }) => type === "base",
+        );
+
+      expect(
+        baseScenario
+          ?.projectedAnnualRevenue,
+      ).toEqual(
+        result.analysis.revenueProjection
+          .projectedAnnualRevenue,
+      );
+      expect(
+        baseScenario?.annualCashFlow,
+      ).toEqual(
+        result.analysis.financialPerformance
+          .annualCashFlow,
+      );
+      expect(
+        result.derivedAnalysis.failurePoints,
+      ).toEqual(
+        calculateRentalArbitrageFailurePoints(
+          result.analysis,
+        ),
+      );
+      expect(
+        result.derivedAnalysis.stressTests,
+      ).toEqual(
+        buildRentalArbitrageStressTests(
+          result.analysis,
+        ),
+      );
+      expect(
+        result.derivedAnalysis.stressTests
+          .tests,
+      ).toHaveLength(7);
     }
   });
 
@@ -289,12 +403,21 @@ describe("runInvestmentAnalysis", () => {
         expect(
           result.analysis.strategy,
         ).toBeDefined();
+        expect(
+          result.derivedAnalysis
+            .failurePoints
+            .resilienceStatus,
+        ).toBeDefined();
       } else {
         expect(
           result.analysis
             .financialPerformance
             .leaseCoverageRatio,
         ).toBeGreaterThan(0);
+        expect(
+          result.derivedAnalysis
+            .stressTests.tests,
+        ).toHaveLength(7);
       }
     }
   });

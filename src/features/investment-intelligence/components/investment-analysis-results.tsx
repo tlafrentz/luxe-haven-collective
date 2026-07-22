@@ -55,7 +55,9 @@ export function InvestmentAnalysisResults() {
   }
 
   if (analysis) {
-    const workspaceAnalysis = buildInvestmentWorkspaceView(analysis).projection;
+    buildInvestmentWorkspaceView(
+      analysis.analysis,
+    );
 
     return (
       <div className="space-y-4">
@@ -119,7 +121,7 @@ export function InvestmentAnalysisResults() {
         ) : null}
 
         <InvestmentReport
-          analysis={workspaceAnalysis}
+          result={analysis}
         />
       </div>
     );
