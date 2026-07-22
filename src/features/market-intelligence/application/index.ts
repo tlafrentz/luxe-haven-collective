@@ -9,3 +9,7 @@ export * from "./mappers";
 export * from "./types";
 export { buildCanonicalMarketAnalysis, buildMarketAnalysisReport } from "./build-market-analysis-report";
 export type { BuildMarketAnalysisReportInput, CanonicalMarketAnalysis } from "./build-market-analysis-report";
+export { resolveMarketProperty } from "./resolve-market-property";
+export type { ResolveMarketPropertyCommand, ResolveMarketPropertyDependencies, MarketPropertyResolutionContext } from "./resolve-market-property";
+export { normalizeMarketAddress, normalizeProviderAddress } from "./normalize-market-address";
+export { resolveMarketPropertyCandidates } from "./resolve-market-property-candidates";

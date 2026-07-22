@@ -2,34 +2,15 @@
 
 export { buildCanonicalMarketAnalysis, buildMarketAnalysisReport } from "./application";
 export type { BuildMarketAnalysisReportInput, CanonicalMarketAnalysis } from "./application";
-
-export {
-  RentCastClient,
-} from "./infrastructure/rentcast/rentcast-client";
-
-export {
-  RentCastPropertyProvider,
-} from "./infrastructure/rentcast/rentcast-property-provider";
-
-export {
-  mapRentCastProperty,
-} from "./infrastructure/rentcast/map-rentcast-property";
-
+export { resolveMarketProperty } from "./application";
+export type { ResolveMarketPropertyCommand, ResolveMarketPropertyDependencies, MarketPropertyResolutionContext } from "./application";
 export type {
-  RentCastClientOptions,
-  RentCastPropertySearchInput,
-} from "./infrastructure/rentcast/rentcast-client";
-
-export type {
-  RentCastPropertyProviderOptions,
-} from "./infrastructure/rentcast/rentcast-property-provider";
-
-export type {
-  RentCastPropertyRecord,
-  RentCastPropertyResponse,
-  RentCastPropertyTax,
-  RentCastTaxAssessment,
-} from "./infrastructure/rentcast/rentcast-types";
+  MarketProperty, MarketPropertyDataGap, MarketPropertyLookupAddress,
+  MarketPropertyObservationProvenance, MarketPropertyResolutionCandidate,
+  MarketPropertyResolutionConfidence, MarketPropertyResolutionResult,
+  MarketPropertyResolutionStatus, MarketProviderReference, NormalizedMarketAddress,
+} from "./domain/property-resolution";
+export type { MarketPropertyResolutionProvider } from "./application/providers/market-property-resolution-provider";
 
 export {
   PropertyRecord,

@@ -55,9 +55,11 @@ export class RentCastClient {
     const apiKey = options.apiKey.trim();
 
     if (!apiKey) {
-      throw new Error(
-        "RentCast API key is required.",
-      );
+      throw new ProviderError({
+        provider: ProviderType.RentCast,
+        code: ProviderErrorCode.NotConfigured,
+        message: "RentCast API key is required.",
+      });
     }
 
     this.apiKey = apiKey;

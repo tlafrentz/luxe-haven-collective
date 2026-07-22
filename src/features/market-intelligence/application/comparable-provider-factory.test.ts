@@ -1,83 +1,19 @@
-import {
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { ProviderType } from "../domain/enums/provider-type";
+import type { ComparableProvider } from "./providers/comparable-provider";
+import { ComparableProviderFactory } from "./comparable-provider-factory";
 
-import {
-  ProviderType,
-} from "../domain/enums/provider-type";
+describe("ComparableProviderFactory", () => {
+  it("constructs a registered provider without importing its infrastructure adapter", () => {
+    const provider = {} as ComparableProvider;
+    const create = vi.fn(() => provider);
+    const factory = new ComparableProviderFactory({ providers: { [ProviderType.RentCast]: create } });
+    expect(factory.create(ProviderType.RentCast)).toBe(provider);
+    expect(create).toHaveBeenCalledOnce();
+  });
 
-import {
-  RentCastComparableProvider,
-} from "../infrastructure/rentcast/rentcast-comparable-provider";
-
-import {
-  ComparableProviderFactory,
-} from "./comparable-provider-factory";
-
-describe(
-  "ComparableProviderFactory",
-  () => {
-    it(
-      "creates a RentCast comparable provider",
-      () => {
-        const factory =
-          new ComparableProviderFactory({
-            rentCastApiKey:
-              "test-api-key",
-            fetchImplementation:
-              vi.fn<typeof fetch>(),
-          });
-
-        expect(
-          factory.create(
-            ProviderType.RentCast,
-          ),
-        ).toBeInstanceOf(
-          RentCastComparableProvider,
-        );
-      },
-    );
-
-    it(
-      "requires a RentCast API key",
-      () => {
-        const factory =
-          new ComparableProviderFactory({
-            rentCastApiKey: " ",
-          });
-
-        expect(
-          () =>
-            factory.create(
-              ProviderType.RentCast,
-            ),
-        ).toThrow(
-          "RENTCAST_API_KEY is required",
-        );
-      },
-    );
-
-    it(
-      "rejects unsupported providers",
-      () => {
-        const factory =
-          new ComparableProviderFactory({
-            rentCastApiKey:
-              "test-api-key",
-          });
-
-        expect(
-          () =>
-            factory.create(
-              ProviderType.AirDna,
-            ),
-        ).toThrow(
-          'Comparable provider "AirDNA" is not supported.',
-        );
-      },
-    );
-  },
-);
+  it("rejects an unsupported provider", () => {
+    const factory = new ComparableProviderFactory({ providers: {} });
+    expect(() => factory.create(ProviderType.MLS)).toThrow('Comparable provider "MLS" is not supported.');
+  });
+});

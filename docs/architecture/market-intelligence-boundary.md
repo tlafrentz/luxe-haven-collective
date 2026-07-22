@@ -359,6 +359,46 @@ flowchart TD
 6. **RMI-003 — Single Investment adapter:** implement `adaptMarketAnalysisToInvestmentInput`, replace workspace market placeholders, and prove operator-input precedence and route-safe mappings.
 7. **Later providers:** add STR performance first for ADR/occupancy evidence, then MLS/Regrid/Zillow adapters behind the unchanged ports and runner.
 
+## RMI-002 Real Property Resolution
+
+Real Property Resolution is the single canonical boundary for establishing the Market subject property. Provider-specific requests and responses terminate in Infrastructure. The boundary resolves identity and supported characteristics only; it performs no comparable analysis, valuation, underwriting, or Investment projection.
+
+```mermaid
+flowchart TD
+  Address[Structured user address] --> Resolve[resolveMarketProperty]
+  Resolve --> Normalize[Canonical address normalization]
+  Normalize --> Port[MarketPropertyResolutionProvider]
+  Port --> RentCast[RentCast infrastructure adapter]
+  RentCast --> Candidates[Provider-neutral candidates]
+  Candidates --> Policy[Deterministic resolution policy]
+  Policy --> Result[MarketPropertyResolutionResult]
+  Result --> Resolved[resolved]
+  Result --> Ambiguous[ambiguous]
+  Result --> NotFound[not-found]
+  Result --> Unsupported[unsupported]
+```
+
+### Canonical API
+
+`resolveMarketProperty(command, dependencies)` accepts a structured, provider-neutral address plus deterministic resolution identity and time. Its injected `MarketPropertyResolutionProvider` returns neutral candidates. The result contains a Market-owned property ID, generic provider references, normalized address, narrow resolution confidence, alternatives, explicit property data gaps, and provenance.
+
+The existing `lookupProperty` service remains a compatibility path for current tests and callers. It delegates to a registry and returns the provider's first property record, so it is not an ambiguity-safe boundary and must not be used by future Market orchestration. The candidate resolution policy is owned only by `resolveMarketProperty`.
+
+### Resolution semantics
+
+- `resolved`: exactly one candidate matches all critical normalized address fields and any supplied unit.
+- `ambiguous`: multiple candidates have equal eligible match quality; provider ordering is never used as a tie-breaker.
+- `not-found`: the provider returned no candidates or none met the critical address policy.
+- `unsupported`: identity resolved, but the returned property type is outside the residential Market scope.
+
+Address normalization trims values, standardizes supported state names, reduces ZIP+4 to its comparison ZIP, and normalizes common street suffixes. Unit identity, directionals, numbered street names, city, state, and postal code remain material. The original request, normalized representation, and provider address remain separately auditable.
+
+A legitimate empty provider response is `not-found`. Authentication, authorization, rate limiting, timeout, invalid response, and availability failures remain coded `ProviderError` failures and are propagated; they are never converted to `not-found`.
+
+Missing property type, bedrooms, bathrooms, square footage, year built, coordinates, unit resolution, or provider timestamp produces an explicit coded gap. No optional fact is fabricated. Provider identifiers are retained only as generic provider references; the canonical property ID is owned by the resolution run.
+
+The RentCast adapter now exposes all returned records through the neutral candidate port instead of applying its legacy `limit: 1` selection. Raw RentCast DTOs and concrete infrastructure exports have been removed from the Market capability root. Transport configuration and live verification remain infrastructure/composition-root responsibilities. RMI-003 may consume the resolved property to acquire real comparables; it must not reopen property identity selection.
+
 ## Validation Record
 
 - Repository and call-site audit: complete.

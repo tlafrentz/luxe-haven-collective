@@ -32,6 +32,7 @@ export interface LookupPropertyDependencies {
     ProviderType;
 }
 
+/** @deprecated Use resolveMarketProperty for ambiguity-safe subject resolution. */
 export class LookupProperty {
   private readonly registry:
     PropertyProviderRegistry;
@@ -91,6 +92,7 @@ export class LookupProperty {
   }
 }
 
+/** @deprecated Use resolveMarketProperty for ambiguity-safe subject resolution. */
 export async function lookupProperty(
   dependencies:
     LookupPropertyDependencies,

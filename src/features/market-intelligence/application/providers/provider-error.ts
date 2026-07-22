@@ -3,6 +3,7 @@ import type {
 } from "../../domain/enums/provider-type";
 
 export enum ProviderErrorCode {
+  NotConfigured = "not-configured",
   InvalidRequest = "invalid-request",
   AuthenticationFailed = "authentication-failed",
   AccessDenied = "access-denied",
