@@ -438,6 +438,48 @@ A valid empty provider array produces `empty`. Authentication, rate limiting, ti
 
 No candidate contains similarity, weight, inclusion, outlier, or valuation contribution. RMI-004 owns those judgments and consumes this acquisition result as factual input. Live provider verification was not part of automated validation and should be performed only with configured credentials and available quota.
 
+## RMI-004 Comparable Qualification and Weighting
+
+Comparable Qualification and Weighting is the canonical Market Intelligence boundary for converting acquired provider-backed candidates into an explainable analytical comparable set. It determines eligibility, similarity, outlier treatment, and relative analytical influence. It performs no provider acquisition, final valuation, revenue projection, Market report assembly, or Investment projection.
+
+```mermaid
+flowchart TD
+  Acquisition[MarketComparableAcquisitionResult] --> Qualify[qualifyMarketComparables]
+  Qualify --> Eligibility[Purpose-specific eligibility]
+  Eligibility --> Included0[Eligible]
+  Eligibility --> Excluded[Excluded with reasons]
+  Eligibility --> Unresolved[Unresolved with gaps]
+  Included0 --> Similarity[Supported-dimension similarity]
+  Similarity --> Outliers[Median-deviation outlier policy]
+  Outliers --> Hard[Hard outlier exclusion]
+  Outliers --> Weight[Raw analytical weight]
+  Weight --> Normalize[Normalized weights total 1]
+  Normalize --> Set[Qualified comparable set]
+  Set --> RMI005[RMI-005 valuation and analysis]
+```
+
+### Canonical policy and public API
+
+`qualifyMarketComparables(command)` is pure and synchronous. It accepts a Market subject, the canonical acquisition result, an explicit policy, and deterministic qualification context. `buildDefaultMarketComparableQualificationPolicy` materializes the version-one sale or long-term-rent policy. The result separates included, excluded, and unresolved candidates and snapshots the policy and acquisition lineage.
+
+The default policy retains the mature legacy comparison thresholds where applicable: five-mile maximum distance, 50 percent square-footage variance, two-bedroom and 1.5-bathroom hard variance limits, and a 40-year similarity horizon. Sale evidence uses a 365-day recency window and requires price; long-term rental evidence uses 270 days and requires monthly rent. Both remain purpose-specific and cannot mix. STR performance remains unsupported.
+
+The legacy `calculateComparableSimilarity`, `buildWeightedComparables`, `normalizeComparableWeights`, and `detectComparableOutliers` functions remain compatibility policies for the valuation graph. They are not canonical acquisition-result orchestration: the legacy similarity policy assigns neutral values to missing dimensions and has no unresolved state. New production composition must enter through `qualifyMarketComparables`.
+
+### Eligibility and missing evidence
+
+Hard exclusion is limited to analytically disqualifying facts: unsupported property type, excessive distance or age, missing purpose-required price/rent, and characteristic variance beyond the explicit policy. Missing property type, required coordinates/date, or subject-comparable square footage produces `unresolved` when the policy cannot decide safely. Candidate gaps remain attached and are rolled up without silently discarding evidence.
+
+Similarity evaluates distance, square footage, bedrooms, bathrooms, year built, property type, and recency. Missing dimensions are omitted, listed explicitly, and supported component weights are re-normalized; no fabricated neutral or perfect component is introduced. Scores remain on a deterministic 0–100 scale.
+
+### Outliers, weights, and sufficiency
+
+Outlier assessment runs only over eligible candidates and uses purpose-specific unit value: sale/listing price per square foot or monthly rent per square foot. Fewer than three supported observations produce `insufficient-sample` and no statistical exclusion. The version-one median-deviation bands are above 35 percent for a soft outlier and above 60 percent for a hard outlier. Soft outliers remain eligible with a 0.5 weight multiplier; hard outliers move to the excluded collection.
+
+Raw weight combines similarity, outlier treatment, and evidence completeness. Provider rank and array order never affect analytical influence. Included weights are normalized to exactly one within six-decimal precision; a single comparable receives one and an empty set receives none.
+
+Coverage is `insufficient` below three included comparables, `limited` from three through four, and `sufficient` at five or more under the default policy. This is comparable-set sufficiency, not full Market confidence. Included ordering is normalized weight, similarity, distance, and canonical ID. Excluded and unresolved ordering uses stage/reason and canonical ID. RMI-005 owns final valuation, rent estimation, and report confidence.
+
 ## Validation Record
 
 - Repository and call-site audit: complete.

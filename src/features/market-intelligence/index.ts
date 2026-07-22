@@ -15,6 +15,8 @@ export { acquireMarketComparables } from "./application";
 export type { AcquireMarketComparablesDependencies } from "./application";
 export type { MarketComparableProvider } from "./application/providers/market-comparable-provider";
 export type { AcquireMarketComparablesCommand, MarketComparableAcquisitionResult, MarketComparableAcquisitionStatus, MarketComparableCandidate, MarketComparableDataGap, MarketComparablePurpose, MarketComparableSearchCriteria, MarketComparableSearchCriteriaInput, MarketListingStatus } from "./domain/comparable-acquisition";
+export { qualifyMarketComparables, buildDefaultMarketComparableQualificationPolicy } from "./application";
+export type { QualifyMarketComparablesCommand, MarketComparableQualificationResult, MarketComparableQualificationPolicy, QualifiedMarketComparable, ExcludedMarketComparable, UnresolvedMarketComparable } from "./domain/comparable-qualification";
 
 export {
   PropertyRecord,
