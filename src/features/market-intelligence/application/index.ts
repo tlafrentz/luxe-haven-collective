@@ -13,3 +13,6 @@ export { resolveMarketProperty } from "./resolve-market-property";
 export type { ResolveMarketPropertyCommand, ResolveMarketPropertyDependencies, MarketPropertyResolutionContext } from "./resolve-market-property";
 export { normalizeMarketAddress, normalizeProviderAddress } from "./normalize-market-address";
 export { resolveMarketPropertyCandidates } from "./resolve-market-property-candidates";
+export { acquireMarketComparables } from "./acquire-market-comparables";
+export type { AcquireMarketComparablesDependencies } from "./acquire-market-comparables";
+export { buildMarketComparableSearchCriteria } from "./build-market-comparable-search-criteria";

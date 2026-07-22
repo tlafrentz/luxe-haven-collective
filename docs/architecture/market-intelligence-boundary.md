@@ -399,6 +399,45 @@ Missing property type, bedrooms, bathrooms, square footage, year built, coordina
 
 The RentCast adapter now exposes all returned records through the neutral candidate port instead of applying its legacy `limit: 1` selection. Raw RentCast DTOs and concrete infrastructure exports have been removed from the Market capability root. Transport configuration and live verification remain infrastructure/composition-root responsibilities. RMI-003 may consume the resolved property to acquire real comparables; it must not reopen property identity selection.
 
+## RMI-003 Real Comparable Acquisition
+
+Real Comparable Acquisition is the canonical boundary for discovering and normalizing provider-backed comparable candidates. Acquisition preserves factual provider evidence, search criteria, data gaps, and provenance. It does not determine comparable eligibility, similarity, weighting, outliers, valuation, revenue, or Investment assumptions.
+
+```mermaid
+flowchart TD
+  Subject[Resolved MarketProperty] --> Acquire[acquireMarketComparables]
+  Acquire --> Criteria[Canonical criteria policy]
+  Criteria --> Port[MarketComparableProvider]
+  Port --> Sale[RentCast sale AVM]
+  Port --> Rent[RentCast long-term rent AVM]
+  Sale --> Candidates[Neutral provider candidates]
+  Rent --> Candidates
+  Candidates --> Identity[Canonical identity + deduplication]
+  Identity --> Exclusion[Subject exclusion]
+  Exclusion --> Result[MarketComparableAcquisitionResult]
+  Result --> RMI004[RMI-004 qualification and weighting]
+```
+
+### Supported purposes and public API
+
+`acquireMarketComparables(command, dependencies)` accepts the resolved Market property, an explicit purpose, optional criteria, and deterministic acquisition context. `sale-valuation` uses RentCast's `/avm/value` comparable listings. `long-term-rent` uses `/avm/rent/long-term` and treats provider `price` as monthly rent. `short-term-rental-performance` returns `unsupported` without calling a provider because neither endpoint supplies authoritative ADR or occupancy evidence.
+
+The injected `MarketComparableProvider` is provider-neutral. Provider DTOs, endpoint paths, query translation, and concrete adapters remain in Infrastructure. The capability root exports only the canonical command, result, candidate, service, and provider port. The old `lookupComparables` API is deprecated compatibility behavior: it returns valuation-shaped `ComparableProperty` objects and must not be used for new acquisition flows.
+
+### Search, identity, and ordering policy
+
+Criteria precedence is explicit input, then subject-derived ranges, then stable defaults. Version-one defaults are a five-mile radius, 15 results, a one-year lookback, subject property type, bedrooms and bathrooms within one, and square footage within 20 percent or 250 square feet. The provider-neutral safe limits are 25 miles and 25 AVM comparables. Every materialized criterion is retained in the result even when a provider endpoint cannot enforce a filter directly.
+
+Candidate IDs derive from provider, external ID, and purpose; array position is never identity. Duplicate provider/external-ID/purpose records consolidate deterministically, retain all provenance entries, and emit a conflict gap when prices disagree. Cross-provider address-only merging is deferred until parcel identity can be proven.
+
+The subject is excluded by matching provider reference or exact normalized address, including unit identity. Geographic proximity alone never excludes a candidate. Canonical ordering is distance ascending, listing recency descending, normalized display address, canonical ID, then source rank. Provider rank is retained only as provenance.
+
+### Empty, errors, gaps, and deferred qualification
+
+A valid empty provider array produces `empty`. Authentication, rate limiting, timeout, invalid response, and availability failures remain coded provider errors. Representable partial candidates are preserved with explicit gaps for property type, bedrooms, bathrooms, square footage, coordinates, price/rent, date, listing status, or retrieval timestamp. An unrepresentable record missing provider identity or address fails as an invalid provider response instead of disappearing silently.
+
+No candidate contains similarity, weight, inclusion, outlier, or valuation contribution. RMI-004 owns those judgments and consumes this acquisition result as factual input. Live provider verification was not part of automated validation and should be performed only with configured credentials and available quota.
+
 ## Validation Record
 
 - Repository and call-site audit: complete.

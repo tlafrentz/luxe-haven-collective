@@ -11,6 +11,10 @@ export type {
   MarketPropertyResolutionStatus, MarketProviderReference, NormalizedMarketAddress,
 } from "./domain/property-resolution";
 export type { MarketPropertyResolutionProvider } from "./application/providers/market-property-resolution-provider";
+export { acquireMarketComparables } from "./application";
+export type { AcquireMarketComparablesDependencies } from "./application";
+export type { MarketComparableProvider } from "./application/providers/market-comparable-provider";
+export type { AcquireMarketComparablesCommand, MarketComparableAcquisitionResult, MarketComparableAcquisitionStatus, MarketComparableCandidate, MarketComparableDataGap, MarketComparablePurpose, MarketComparableSearchCriteria, MarketComparableSearchCriteriaInput, MarketListingStatus } from "./domain/comparable-acquisition";
 
 export {
   PropertyRecord,

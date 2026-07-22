@@ -1,6 +1,10 @@
 export interface RentCastComparableRecord {
   readonly id?: string;
   readonly formattedAddress?: string;
+  readonly addressLine1?: string;
+  readonly city?: string;
+  readonly state?: string;
+  readonly zipCode?: string;
   readonly latitude?: number;
   readonly longitude?: number;
   readonly propertyType?: string;
@@ -10,6 +14,7 @@ export interface RentCastComparableRecord {
   readonly yearBuilt?: number;
   readonly price?: number;
   readonly listingType?: string;
+  readonly status?: string;
   readonly listedDate?: string;
   readonly removedDate?: string;
   readonly daysOnMarket?: number;
@@ -25,4 +30,11 @@ export interface RentCastValueEstimateResponse {
   readonly longitude?: number;
   readonly comparables?:
     readonly RentCastComparableRecord[];
+}
+
+export interface RentCastRentEstimateResponse {
+  readonly rent?: number;
+  readonly rentRangeLow?: number;
+  readonly rentRangeHigh?: number;
+  readonly comparables?: readonly RentCastComparableRecord[];
 }

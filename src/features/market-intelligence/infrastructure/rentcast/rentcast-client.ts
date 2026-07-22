@@ -227,6 +227,30 @@ export class RentCastClient {
     return this.request<T>(url);
   }
 
+  async requestLongTermRentEstimate<T>(input: RentCastValueEstimateInput): Promise<T> {
+    return this.requestEstimate<T>(input, "/avm/rent/long-term");
+  }
+
+  private async requestEstimate<T>(input: RentCastValueEstimateInput, path: string): Promise<T> {
+    const address = input.address?.trim();
+    if (!address && (input.latitude === undefined || input.longitude === undefined)) {
+      throw new ProviderError({ provider: ProviderType.RentCast, code: ProviderErrorCode.InvalidRequest, message: "A property address or latitude and longitude are required." });
+    }
+    const url = new URL(`${this.baseUrl}${path}`);
+    setOptionalSearchParameter(url, "address", address);
+    setOptionalSearchParameter(url, "latitude", input.latitude);
+    setOptionalSearchParameter(url, "longitude", input.longitude);
+    setOptionalSearchParameter(url, "propertyType", input.propertyType);
+    setOptionalSearchParameter(url, "bedrooms", input.bedrooms);
+    setOptionalSearchParameter(url, "bathrooms", input.bathrooms);
+    setOptionalSearchParameter(url, "squareFootage", input.squareFootage);
+    setOptionalSearchParameter(url, "maxRadius", input.radiusMiles);
+    setOptionalSearchParameter(url, "daysOld", input.daysOld);
+    setOptionalSearchParameter(url, "compCount", input.compCount);
+    setOptionalSearchParameter(url, "lookupSubjectAttributes", input.lookupSubjectAttributes);
+    return this.request<T>(url);
+  }
+
   private async request<T>(
     url: URL,
   ): Promise<T> {
