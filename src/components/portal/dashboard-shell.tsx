@@ -36,6 +36,16 @@ const navigationItems: NavigationItem[] = [
     abbreviation: "AC",
   },
   {
+    label: "Investment Analysis",
+    href: "/dashboard/investments",
+    abbreviation: "IA",
+  },
+  {
+    label: "Portfolio",
+    href: "/dashboard/investments/portfolio",
+    abbreviation: "PF",
+  },
+  {
     label: "Properties",
     abbreviation: "PR",
     comingSoon: true,
@@ -66,6 +76,10 @@ function isNavigationItemActive(
   }
 
   if (href === "/dashboard") {
+    return pathname === href
+  }
+
+  if (href === "/dashboard/investments") {
     return pathname === href
   }
 
@@ -228,6 +242,20 @@ function Sidebar({
   )
 }
 function getPageDetails(pathname: string) {
+  if (pathname.startsWith("/dashboard/investments/portfolio")) {
+    return {
+      eyebrow: "Acquisition pipeline",
+      title: "Investment Portfolio",
+    }
+  }
+
+  if (pathname.startsWith("/dashboard/investments")) {
+    return {
+      eyebrow: "Acquisition intelligence",
+      title: "Investment Analysis",
+    }
+  }
+
   if (pathname.startsWith("/dashboard/actions")) {
     return {
       eyebrow: "Execution workspace",
