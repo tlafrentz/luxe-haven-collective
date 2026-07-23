@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-import { DashboardShell } from "@/components/portal/dashboard-shell"
+import { ClientWorkspaceShell } from "@/components/platform-shell"
 import { requireUser } from "@/lib/auth/session"
 
 type DashboardLayoutProps = {
@@ -10,7 +10,8 @@ type DashboardLayoutProps = {
 export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
-  await requireUser()
+  const { profile } = await requireUser()
 
-  return <DashboardShell>{children}</DashboardShell>
+  // ClientWorkspaceShell replaces the legacy DashboardShell while preserving the route-group contract.
+  return <ClientWorkspaceShell role={profile?.role}>{children}</ClientWorkspaceShell>
 }

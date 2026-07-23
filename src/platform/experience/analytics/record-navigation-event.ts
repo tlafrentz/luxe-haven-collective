@@ -1,0 +1,2 @@
+export type PlatformNavigationEvent = "platform_navigation_item_selected" | "platform_navigation_group_expanded" | "platform_navigation_collapsed" | "platform_mobile_navigation_opened" | "platform_legacy_route_redirected" | "platform_coming_soon_interest" | "platform_navigation_denied";
+export function recordPlatformNavigationEvent(event: PlatformNavigationEvent, details: Readonly<Record<string, string | boolean | undefined>> = {}) { if (typeof window === "undefined") return; window.dispatchEvent(new CustomEvent(event, { detail: { event, ...details } })); }

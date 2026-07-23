@@ -1,0 +1,22 @@
+import type { CapabilityId } from "../capabilities";
+export type HpmStage = "home" | "observe" | "understand" | "decide" | "execute" | "learn";
+export type BusinessWorkspaceId = "properties" | "investments" | "bookings" | "messages" | "reports";
+export type BreadcrumbPolicy = "home" | "investment" | "action" | "admin" | "static";
+export type PlatformRouteDefinition = Readonly<{ id: string; pathPattern: string; experience: "client-workspace" | "operations-console"; hpmStage?: HpmStage; businessWorkspace?: BusinessWorkspaceId; navigationItemId?: string; requiredCapabilities?: readonly CapabilityId[]; breadcrumbPolicy: BreadcrumbPolicy }>;
+export const platformRouteDefinitions: readonly PlatformRouteDefinition[] = [
+  { id: "home", pathPattern: "/dashboard", experience: "client-workspace", hpmStage: "home", navigationItemId: "home", breadcrumbPolicy: "home" },
+  { id: "investment-analysis", pathPattern: "/dashboard/investments", experience: "client-workspace", hpmStage: "decide", businessWorkspace: "investments", navigationItemId: "investment-analysis", requiredCapabilities: ["view_investment_workspace"], breadcrumbPolicy: "investment" },
+  { id: "investment-portfolio", pathPattern: "/dashboard/investments/portfolio", experience: "client-workspace", hpmStage: "decide", businessWorkspace: "investments", navigationItemId: "investment-portfolio", requiredCapabilities: ["view_investment_opportunities"], breadcrumbPolicy: "investment" },
+  { id: "investment-opportunity", pathPattern: "/dashboard/investments/portfolio/[id]", experience: "client-workspace", hpmStage: "decide", businessWorkspace: "investments", navigationItemId: "investment-portfolio", requiredCapabilities: ["view_investment_opportunities"], breadcrumbPolicy: "investment" },
+  { id: "investment-analysis-history", pathPattern: "/dashboard/investments/portfolio/[id]/analyses/[analysisId]", experience: "client-workspace", hpmStage: "decide", businessWorkspace: "investments", navigationItemId: "investment-portfolio", requiredCapabilities: ["view_investment_opportunities"], breadcrumbPolicy: "investment" },
+  { id: "investment-comparison", pathPattern: "/dashboard/investments/portfolio/compare", experience: "client-workspace", hpmStage: "decide", businessWorkspace: "investments", navigationItemId: "investment-portfolio", requiredCapabilities: ["compare_investment_opportunities"], breadcrumbPolicy: "investment" },
+  { id: "action-center", pathPattern: "/dashboard/actions", experience: "client-workspace", hpmStage: "execute", navigationItemId: "execute-actions", requiredCapabilities: ["view_actions"], breadcrumbPolicy: "action" },
+  { id: "action-detail", pathPattern: "/dashboard/actions/[id]", experience: "client-workspace", hpmStage: "execute", navigationItemId: "execute-actions", requiredCapabilities: ["view_actions"], breadcrumbPolicy: "action" },
+  { id: "properties", pathPattern: "/properties", experience: "client-workspace", businessWorkspace: "properties", navigationItemId: "properties", requiredCapabilities: ["view_properties"], breadcrumbPolicy: "static" },
+  { id: "bookings", pathPattern: "/bookings", experience: "client-workspace", businessWorkspace: "bookings", navigationItemId: "bookings", requiredCapabilities: ["view_observations"], breadcrumbPolicy: "static" },
+  { id: "messages", pathPattern: "/messages", experience: "client-workspace", businessWorkspace: "messages", navigationItemId: "messages", requiredCapabilities: ["view_actions"], breadcrumbPolicy: "static" },
+  { id: "workspace-settings", pathPattern: "/dashboard/settings", experience: "client-workspace", navigationItemId: "workspace-settings", requiredCapabilities: ["manage_workspace"], breadcrumbPolicy: "static" },
+  { id: "admin", pathPattern: "/admin", experience: "operations-console", navigationItemId: "operations-dashboard", requiredCapabilities: ["view_internal_operations"], breadcrumbPolicy: "admin" },
+  { id: "admin-properties", pathPattern: "/admin/properties", experience: "operations-console", navigationItemId: "operations-properties", requiredCapabilities: ["view_internal_operations"], breadcrumbPolicy: "admin" },
+  { id: "admin-integrations", pathPattern: "/admin/integrations", experience: "operations-console", navigationItemId: "platform-integrations", requiredCapabilities: ["view_integrations"], breadcrumbPolicy: "admin" },
+];
