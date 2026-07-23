@@ -50,6 +50,18 @@ describe("Investment Opportunity detail workspace architecture", () => {
     expect(commercial).not.toMatch(/projectedCoC|cashOnCash|netOperatingIncome/);
   });
 
+  it("submits reviewed offers only through the typed command boundary", () => {
+    const review = read("src/features/investment-opportunity/components/acquisition-offer-review.tsx");
+    expect(review).toContain("submitAcquisitionOfferAction");
+    expect(review).toContain("expectedPipelineVersion");
+    expect(review).toContain("crypto.randomUUID()");
+    expect(review).toContain("router.refresh()");
+    expect(review).toContain('result?.status === "conflict"');
+    expect(review).toContain('result?.status === "blocked"');
+    expect(review).toContain('result?.status === "unavailable"');
+    expect(review).not.toMatch(/Repository|Supabase|createClient|aggregate|window\.confirm|confirm\(/);
+  });
+
   it("provides progressive loading and a safe route error boundary", () => {
     const loading = read("src/app/(dashboard)/dashboard/investments/opportunities/[id]/loading.tsx");
     const error = read("src/app/(dashboard)/dashboard/investments/opportunities/[id]/error.tsx");

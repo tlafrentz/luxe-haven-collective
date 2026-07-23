@@ -9,6 +9,7 @@ import type {
   InvestmentOpportunityWorkspaceSummary,
 } from "../acquisition-workspace";
 import { AcquisitionPrimaryAction } from "./acquisition-primary-action";
+import { OfferReviewWorkspace } from "./acquisition-offer-review";
 
 type CommercialState = "empty" | "draft" | "submitted" | "countered" | "accepted" | "contracted" | "rejected" | "expired" | "withdrawn";
 type CommercialHealth = "healthy" | "attention" | "expired" | "blocked";
@@ -57,7 +58,9 @@ export function AcquisitionCommercialWorkspace({
           <CommercialGuidanceCard guidance={guidance} />
         </div>
         <OfferHistoryCard commercial={commercial} />
-        {primaryAction ? <AcquisitionPrimaryAction action={primaryAction} opportunity={opportunity} analysis={analysis} /> : null}
+        {primaryAction?.type === "submit-offer" && commercial.currentOffer
+          ? <OfferReviewWorkspace offer={commercial.currentOffer} analysis={analysis} alignment={commercial.analysisAlignment} action={primaryAction} />
+          : primaryAction ? <AcquisitionPrimaryAction action={primaryAction} opportunity={opportunity} analysis={analysis} /> : null}
       </>}
   </section>;
 }
