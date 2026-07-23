@@ -1,0 +1,4 @@
+import type { InvestmentOpportunityRoute } from "@/features/investment-opportunity/domain";
+import type { AcquisitionContingencyType } from "./acquisition-contingency";
+export const ACQUISITION_CONTINGENCY_TYPES: readonly AcquisitionContingencyType[] = ["inspection", "financing", "appraisal", "title-review", "hoa-review", "insurance", "seller-disclosure", "landlord-authorization", "str-operating-permission", "regulatory-eligibility", "lease-review", "utility-terms", "possession", "other"];
+export function isAcquisitionContingencyTypeApplicable(route: InvestmentOpportunityRoute, type: AcquisitionContingencyType): boolean { if (["financing", "appraisal", "title-review", "hoa-review", "seller-disclosure"].includes(type)) return route === "purchase"; if (["landlord-authorization", "str-operating-permission", "lease-review", "utility-terms", "possession"].includes(type)) return route === "rental-arbitrage"; return true; }

@@ -7,6 +7,8 @@ export type AcquisitionCommandId = Identifier<`acquisition-command-${string}`>;
 export type AcquisitionOfferId = Identifier<`acquisition-offer-${string}`>;
 export type AcquisitionContractId = Identifier<`acquisition-contract-${string}`>;
 export type CounterpartyResponseId = Identifier<`counterparty-response-${string}`>;
+export type AcquisitionContingencyId = Identifier<`acquisition-contingency-${string}`>;
+export type DueDiligenceItemId = Identifier<`due-diligence-item-${string}`>;
 
 function createId<T extends string>(value: string | undefined, prefix: string, code: import("./errors").AcquisitionErrorCode): Identifier<T> {
   const candidate = value ?? `${prefix}${crypto.randomUUID()}`;
@@ -20,3 +22,5 @@ export const createAcquisitionCommandId = (value?: string): AcquisitionCommandId
 export const createAcquisitionOfferId = (value?: string): AcquisitionOfferId => createId(value, "acquisition-offer-", "INVALID_ACQUISITION_OFFER_ID");
 export const createAcquisitionContractId = (value?: string): AcquisitionContractId => createId(value, "acquisition-contract-", "INVALID_ACQUISITION_CONTRACT_ID");
 export const createCounterpartyResponseId = (value?: string): CounterpartyResponseId => createId(value, "counterparty-response-", "INVALID_COUNTERPARTY_RESPONSE_ID");
+export const createAcquisitionContingencyId = (value?: string): AcquisitionContingencyId => createId(value, "acquisition-contingency-", "INVALID_ACQUISITION_COMMAND_ID");
+export const createDueDiligenceItemId = (value?: string): DueDiligenceItemId => createId(value, "due-diligence-item-", "INVALID_ACQUISITION_COMMAND_ID");

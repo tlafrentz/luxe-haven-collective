@@ -17,3 +17,8 @@ export * from "./acquisition-pipeline";
 export * from "./offers";
 export * from "./contracts";
 export * from "./projections";
+export * from "./requirements";
+export * from "./contingencies";
+export * from "./due-diligence";
+export * from "./templates";
+export * from "./closing";
