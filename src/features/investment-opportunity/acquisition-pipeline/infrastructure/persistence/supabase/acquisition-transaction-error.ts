@@ -1,0 +1,2 @@
+export type AcquisitionTransactionErrorCode = "ACQUISITION_PIPELINE_VERSION_CONFLICT" | "ACQUISITION_OPPORTUNITY_VERSION_CONFLICT" | "ACQUISITION_PIPELINE_ALREADY_EXISTS" | "ACQUISITION_COMMAND_ID_REUSED" | "ACQUISITION_DEPENDENCY_UNAVAILABLE" | "ACQUISITION_TRANSACTION_FAILED";
+export class AcquisitionTransactionError extends Error { public constructor(public readonly code: AcquisitionTransactionErrorCode, message = code, options?: ErrorOptions) { super(message, options); this.name = "AcquisitionTransactionError"; } }

@@ -10,7 +10,7 @@ export interface AcquisitionActionStateReader { getActionStates(input: Readonly<
 export interface AcquisitionEvidenceStateReader { getEvidenceStates(input: Readonly<{ ownerId: OpportunityOwnerId; evidenceIds: readonly import("@/platform/evidence").EvidenceId[] }>): Promise<readonly Readonly<{ evidenceId: import("@/platform/evidence").EvidenceId; exists: boolean; available: boolean }>[]>; }
 export interface AcquisitionClock { now(): Date; }
 export interface AcquisitionCommandReceipt { commandId: AcquisitionCommandId; ownerId: OpportunityOwnerId; commandType: string; aggregateId?: AcquisitionPipelineId; completedAt: Date; result: unknown; }
-export interface AcquisitionCommandReceiptRepository { find(commandId: AcquisitionCommandId, ownerId: OpportunityOwnerId): Promise<AcquisitionCommandReceipt | null>; save(receipt: AcquisitionCommandReceipt): Promise<void>; }
+export interface AcquisitionCommandReceiptRepository { find(commandId: AcquisitionCommandId, ownerId: OpportunityOwnerId): Promise<AcquisitionCommandReceipt | null>; save(receipt: AcquisitionCommandReceipt & { requestFingerprint?: string }): Promise<void>; }
 export interface AcquisitionTransactionalContext { acquisitionPipelines: AcquisitionPipelineRepository; investmentOpportunities: Pick<InvestmentOpportunityRepository,"findById"|"save">; commandReceipts: AcquisitionCommandReceiptRepository; }
 export interface AcquisitionUnitOfWork { execute<T>(operation: (context: AcquisitionTransactionalContext) => Promise<T>): Promise<T>; }
 export interface AcquisitionEventPublisher { publish(events: readonly unknown[]): Promise<void>; }
