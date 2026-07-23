@@ -28,9 +28,11 @@ describe("IA-002B.2.1 current acquisition route characterization", () => {
     "/dashboard/investments/portfolio/one/analyses/two",
   ])("%s remains owned by Decide", path => expect(resolveWorkspaceForPath(path)).toBe("decide"));
 
-  it("freezes compatibility aliases as route-module aliases, not redirects", () => {
+  it("keeps portfolio and historical compatibility aliases while the canonical detail owns the workspace", () => {
     expect(route("src/app/(dashboard)/dashboard/investments/opportunities/page.tsx")).toContain('export { default } from "../portfolio/page"');
-    expect(route("src/app/(dashboard)/dashboard/investments/opportunities/[id]/page.tsx")).toContain('export { default } from "../../portfolio/[id]/page"');
+    expect(route("src/app/(dashboard)/dashboard/investments/opportunities/[id]/page.tsx")).toContain("getAcquisitionWorkspaceRequestContext");
+    expect(route("src/app/(dashboard)/dashboard/investments/opportunities/[id]/page.tsx")).not.toContain('export { default } from "../../portfolio/[id]/page"');
+    expect(route("src/app/(dashboard)/dashboard/investments/portfolio/[id]/page.tsx")).toContain("loadOpportunityDetail");
     expect(route("src/app/(dashboard)/dashboard/investments/opportunities/[id]/analyses/[analysisId]/page.tsx")).toContain('export { default } from "../../../../portfolio/[id]/analyses/[analysisId]/page"');
   });
 
