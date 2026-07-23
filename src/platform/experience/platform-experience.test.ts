@@ -1,12 +1,53 @@
 import { describe, expect, it } from "vitest";
-import { clientWorkspaceNavigation, matchesNavigationRoute, operationsConsoleNavigation, platformRouteDefinitions, resolveNavigation, resolveUserCapabilities, buildPlatformBreadcrumbs } from "./index";
+import { buildPlatformBreadcrumbs, clientWorkspaceNavigation, matchesNavigationRoute, operationsConsoleNavigation, platformRouteDefinitions, resolveNavigation, resolveUserCapabilities, resolveWorkspaceForPath } from "./index";
 
-function flatten(items: readonly { id: string; children?: readonly { id: string; children?: readonly { id: string }[] }[] }[]): { id: string; children?: readonly { id: string }[] }[] { return items.flatMap(item => [{ id: item.id, children: item.children?.flatMap(child => [{ id: child.id }, ...(child.children ?? [])]) }, ...(item.children ? flatten(item.children) : [])]); }
-describe("platform experience architecture", () => {
-  it("keeps client and operations configurations distinct with unique IDs", () => { const client = flatten(clientWorkspaceNavigation), operations = flatten(operationsConsoleNavigation); expect(new Set(client.map(item => item.id)).size).toBe(client.length); expect(new Set(operations.map(item => item.id)).size).toBe(operations.length); expect(client.every(item => !item.id.startsWith("operations-") && !item.id.startsWith("platform-") && !item.id.startsWith("admin-"))).toBe(true); expect(operations.every(item => !item.id.startsWith("investment-") && !item.id.startsWith("decide-"))).toBe(true); });
-  it("represents required destinations and explicit availability", () => { const ids = flatten(clientWorkspaceNavigation).map(item => item.id); expect(ids).toEqual(expect.arrayContaining(["decide", "investment-analysis", "investment-portfolio", "execute-actions", "properties", "business-investments", "workspace-settings"])); expect(clientWorkspaceNavigation.find(item => item.id === "learn")?.availability).toBe("coming-soon"); expect(operationsConsoleNavigation.find(item => item.id === "platform-integrations")?.experience).toBe("operations-console"); });
-  it.each([["/dashboard/investments/portfolio/abc/analyses/xyz", "prefix", "/dashboard/investments/portfolio"], ["/dashboard/investments/portfolio/compare?ids=abc", "prefix", "/dashboard/investments/portfolio"], ["/dashboard/actions/abc", "prefix", "/dashboard/actions"], ["/dashboard", "exact", "/dashboard"]] as const)("matches %s without false prefixes", (path, type, href) => expect(matchesNavigationRoute(path, { type, [type === "exact" ? "href" : "prefix"]: href } as never)).toBe(true));
-  it("filters operations from external capabilities", () => { const owner = resolveNavigation(operationsConsoleNavigation, resolveUserCapabilities({ authenticated: true, role: "owner" })); expect(owner).toHaveLength(0); const admin = resolveNavigation(operationsConsoleNavigation, resolveUserCapabilities({ authenticated: true, role: "admin" })); expect(admin.some(item => item.id === "platform-integrations")).toBe(true); });
-  it("aligns route definitions with investment and action context", () => { expect(platformRouteDefinitions.find(route => route.id === "investment-analysis")).toMatchObject({ hpmStage: "decide", businessWorkspace: "investments" }); expect(platformRouteDefinitions.find(route => route.id === "action-detail")).toMatchObject({ hpmStage: "execute" }); });
-  it("builds navigable breadcrumbs with a non-linked current page", () => { const crumbs = buildPlatformBreadcrumbs({ stage: "Decide", workspace: "Investments", parentHref: "/dashboard/investments", currentLabel: "Analysis 3" }); expect(crumbs.map(item => item.label)).toEqual(["Home", "Decide", "Investments", "Analysis 3"]); expect(crumbs.at(-1)?.current).toBe(true); expect(crumbs.at(-1)?.href).toBeUndefined(); });
+describe("workspace-driven platform experience", () => {
+  it("defines five flat lifecycle workspaces in canonical order", () => {
+    const lifecycle = clientWorkspaceNavigation.filter(item => item.group === "hpm");
+    expect(lifecycle.map(item => item.lifecycleStage)).toEqual(["observe", "understand", "decide", "execute", "learn"]);
+    expect(lifecycle.map(item => item.workspaceLabel)).toEqual(["Revenue Intelligence", "Executive Intelligence", "Investment Intelligence", "Action Center", "Outcomes"]);
+    expect(lifecycle.every(item => !("children" in item))).toBe(true);
+    expect(new Set(lifecycle.map(item => item.href).filter(Boolean)).size).toBe(lifecycle.filter(item => item.href).length);
+  });
+
+  it("keeps business, service, operations, and infrastructure concepts separate", () => {
+    expect(clientWorkspaceNavigation.some(item => item.group === "business" && item.id === "properties")).toBe(true);
+    expect(clientWorkspaceNavigation.some(item => item.group === "services" && item.id === "guidebook-studio")).toBe(true);
+    expect(operationsConsoleNavigation.some(item => item.group === "operations" && item.id === "operations-customers")).toBe(true);
+    expect(operationsConsoleNavigation.some(item => item.group === "infrastructure" && item.id === "platform-integrations")).toBe(true);
+    expect(operationsConsoleNavigation.some(item => item.id === "operations-organizations")).toBe(false);
+  });
+
+  it.each([
+    ["/dashboard/investments", "decide"],
+    ["/dashboard/investments/new", "decide"],
+    ["/dashboard/investments/opportunities/abc", "decide"],
+    ["/dashboard/investments/portfolio/abc/analyses/xyz", "decide"],
+    ["/dashboard/insights", "observe"],
+    ["/dashboard/actions/abc", "execute"],
+  ] as const)("resolves %s to %s", (path, workspace) => expect(resolveWorkspaceForPath(path)).toBe(workspace));
+
+  it("does not resolve unrelated routes to an HPM workspace", () => {
+    expect(resolveWorkspaceForPath("/dashboard")).toBeUndefined();
+    expect(resolveWorkspaceForPath("/properties")).toBeUndefined();
+    expect(matchesNavigationRoute("/dashboard/investments-old", { type: "prefix", prefix: "/dashboard/investments" })).toBe(false);
+  });
+
+  it("filters internal operations from external roles", () => {
+    expect(resolveNavigation(operationsConsoleNavigation, resolveUserCapabilities({ authenticated: true, role: "owner" }))).toHaveLength(0);
+    expect(resolveNavigation(operationsConsoleNavigation, resolveUserCapabilities({ authenticated: true, role: "admin" })).some(item => item.id === "platform-integrations")).toBe(true);
+  });
+
+  it("owns canonical and legacy investment routes from Decide", () => {
+    const investmentRoutes = platformRouteDefinitions.filter(route => route.pathPattern.startsWith("/dashboard/investments"));
+    expect(investmentRoutes.length).toBeGreaterThan(5);
+    expect(investmentRoutes.every(route => route.hpmStage === "decide" && route.navigationItemId === "decide")).toBe(true);
+  });
+
+  it("builds consistent Investment Intelligence breadcrumbs", () => {
+    const crumbs = buildPlatformBreadcrumbs({ stage: "Decide", workspace: "Investment Intelligence", parentHref: "/dashboard/investments", currentLabel: "New Analysis" });
+    expect(crumbs.map(item => item.label)).toEqual(["Home", "Decide", "Investment Intelligence", "New Analysis"]);
+    expect(crumbs.at(-1)?.current).toBe(true);
+    expect(crumbs.at(-1)?.href).toBeUndefined();
+  });
 });
