@@ -1,0 +1,3 @@
+import type { AcquisitionProductionConfig } from "./acquisition-production-config";
+export interface AcquisitionHealthProbe { probe(): Promise<void>; }
+export async function checkAcquisitionPersistenceHealth(config: AcquisitionProductionConfig, probe: AcquisitionHealthProbe): Promise<Readonly<{ status: "healthy"; environment: string; migrationVersion: string }>> { if (!config.supabaseUrl) throw new Error("Acquisition Supabase configuration is invalid."); await probe.probe(); return Object.freeze({ status: "healthy", environment: config.environment, migrationVersion: config.migrationVersion }); }

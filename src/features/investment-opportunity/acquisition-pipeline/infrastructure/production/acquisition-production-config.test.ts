@@ -1,0 +1,3 @@
+import { describe, expect, it } from "vitest";
+import { readAcquisitionProductionConfig } from "./acquisition-production-config";
+describe("acquisition production configuration", () => { it("fails fast when Supabase configuration is missing", () => { expect(() => readAcquisitionProductionConfig({})).toThrowError(); }); it("reads environment and migration metadata", () => { const value = readAcquisitionProductionConfig({ NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co", NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon", NODE_ENV: "test", ACQUISITION_MIGRATION_VERSION: "20260724110000" }); expect(value.environment).toBe("test"); expect(value.migrationVersion).toBe("20260724110000"); }); });
