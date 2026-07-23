@@ -1,0 +1,1 @@
+export default function ComparisonLoading(){return <main className="mx-auto max-w-[1600px] animate-pulse space-y-6 px-4 py-10"><div className="h-28 rounded-2xl bg-stone-200"/><div className="grid grid-cols-3 gap-4">{Array.from({length:3},(_,i)=><div key={i} className="h-96 rounded-2xl bg-stone-200"/>)}</div><div className="h-80 rounded-2xl bg-stone-200"/></main>}

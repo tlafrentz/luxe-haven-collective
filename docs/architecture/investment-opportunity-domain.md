@@ -43,7 +43,7 @@ InvestmentLifecycleResult
 
 ## Deferred scope
 
-IA-001B owns portfolio UI and foundational filtering. IA-001C owns Analyzer integration, user-authored notes, workflow controls, reanalysis, and timeline/history presentation. IA-001D owns comparison, ranking, and metric-oriented persistence. Offer management, tasks, documents, CRM, messaging, MLS synchronization, photos, and collaboration remain outside this capability.
+IA-001B owns portfolio UI and foundational filtering. IA-001C owns Analyzer integration, user-authored notes, workflow controls, reanalysis, and timeline/history presentation. IA-001D owns comparison and explainable ranking projections. Offer management, tasks, documents, CRM, messaging, MLS synchronization, photos, and collaboration remain outside this capability.
 
 ## IA-001C workflow integration
 
@@ -56,3 +56,13 @@ Reanalysis restores route, durable property identity, and only prior user-source
 Workflow mutations are authenticated server actions over the IA-001A application commands. They derive owner and actor from the session, require aggregate version and command ID, map stable feature errors to safe UI results, and revalidate portfolio/detail/history routes. Allowed status transitions are projected from the domain transition policy rather than duplicated in the UI.
 
 Notes use a separate owner-scoped repository and `investment_opportunity_notes` table. `add_investment_opportunity_note` atomically locks the parent, validates its expected version and archive state, inserts the plain-text note, appends a body-free `note-added` activity fact, updates `updated_at`, and advances the aggregate version. Historical analysis pages read saved JSON snapshots only and never invoke analysis providers.
+
+## IA-001D comparison engine
+
+Comparison is an application projection over two to four owner-scoped opportunities and their current immutable snapshots. Candidates must share a route, be active, have a current analysis, and use snapshot schema `1`. Missing records are reported through the same non-disclosing accessibility reason whether absent or owned by another account. Cross-route ranking remains deliberately unsupported.
+
+The projection keeps deal terms, Market estimates, values, sources, overrides, analysis dates, risks, evidence counts, and data gaps distinct. It identifies presentation-level extrema without modifying or reinterpreting the canonical recommendation. Analyses older than 90 days receive a visible staleness warning.
+
+Ranking policy `1` publishes these weights: canonical Investment Score 35%, confidence 15%, cash-on-cash return 20%, annual cash flow 10%, capital efficiency 10%, risk burden 5%, and data completeness 5%. Comparative factors are normalized only within the selected set and combined with the Platform scoring primitives. The result is explicitly a portfolio decision aid, not a new Investment recommendation. Stable opportunity IDs break otherwise equal ranks deterministically. Shortlist eligibility is projected from the domain status-transition policy, while the authenticated mutation command remains authoritative.
+
+Selection is URL-backed through repeated `id` parameters on `/dashboard/investments/portfolio/compare`, allowing refresh-safe and linkable comparisons. No comparison rows or derived ranks are persisted, and IA-001D adds no migration.

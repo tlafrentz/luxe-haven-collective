@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { PortfolioWorkspace } from "../components";
+import { describe, expect, it, vi } from "vitest";
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+import { PortfolioWorkspace } from "../components/portfolio-workspace";
 
 const metrics = { evaluating: 0, researching: 0, shortlisted: 0, underContract: 0, acquired: 0 };
 describe("Portfolio workspace presentation", () => {

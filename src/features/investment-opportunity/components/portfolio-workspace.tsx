@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import type { PortfolioWorkspaceFilter, PortfolioWorkspaceView } from "../application";
 import type { InvestmentOpportunityRoute, OpportunityStatus } from "../domain";
 import { InvestmentSectionNavigation } from "./investment-section-navigation";
+import { OpportunityComparisonSelector } from "./opportunity-comparison-selector";
 
 const statuses: readonly Readonly<{ value: OpportunityStatus; label: string }>[] = [{ value: "evaluating", label: "Evaluating" }, { value: "researching", label: "Researching" }, { value: "shortlisted", label: "Shortlisted" }, { value: "offer-submitted", label: "Offer Submitted" }, { value: "under-contract", label: "Under Contract" }, { value: "acquired", label: "Acquired" }, { value: "rejected", label: "Rejected" }];
 const metricLabels = { evaluating: "Evaluating", researching: "Researching", shortlisted: "Shortlisted", underContract: "Under Contract", acquired: "Acquired" } as const;
@@ -12,6 +13,7 @@ export function PortfolioWorkspace({ view, filter }: { view: PortfolioWorkspaceV
     <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">Investment portfolio</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl">Manage every acquisition opportunity.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">Track evaluated deals from initial research through acquisition without losing their analysis history.</p></div><InvestmentSectionNavigation active="portfolio" /></header>
     <section aria-label="Portfolio metrics" className="grid grid-cols-2 gap-3 md:grid-cols-5">{Object.entries(metricLabels).map(([key, label]) => <Card key={key} className="p-4"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</p><p className="mt-2 text-2xl font-semibold text-stone-950">{view.metrics[key as keyof typeof view.metrics]}</p></Card>)}</section>
     <PortfolioFilters filter={filter} />
+    <OpportunityComparisonSelector opportunities={view.opportunities} />
     {view.empty ? <PortfolioEmptyState filtered={Boolean(filter.search || filter.route || filter.statuses?.length || filter.includeArchived)} /> : <section aria-label="Opportunities" className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{view.opportunities.map(opportunity => <OpportunityCard key={opportunity.id} opportunity={opportunity} />)}</section>}
     {view.nextCursor ? <div className="flex justify-center"><Link href={portfolioHref(filter, view.nextCursor)} className="rounded-full border border-stone-300 bg-white px-5 py-2.5 text-sm font-semibold text-stone-800 shadow-sm hover:border-stone-400">Next page</Link></div> : null}
   </main>;
