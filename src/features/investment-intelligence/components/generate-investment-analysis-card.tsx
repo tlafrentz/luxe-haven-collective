@@ -5,12 +5,10 @@ import {
 } from "./investment-workspace-state";
 
 const ANALYSIS_STEPS = [
-  "Build revenue projection",
-  "Estimate operating expenses",
-  "Evaluate financial performance",
-  "Compare market position",
-  "Assess investment risks",
-  "Generate acquisition recommendation",
+  "Validate normalized assumptions",
+  "Resolve the subject property",
+  "Analyze current Market evidence",
+  "Build the Investment decision",
 ] as const;
 
 export function GenerateInvestmentAnalysisCard() {
@@ -28,15 +26,15 @@ export function GenerateInvestmentAnalysisCard() {
     !hasStaleAnalysis;
 
   const buttonLabel = isAnalyzing
-    ? "Analyzing Opportunity…"
+    ? "Running Full Analysis…"
     : hasStaleAnalysis
-      ? "Update Analysis"
+      ? "Run Updated Analysis"
       : hasCurrentAnalysis
-        ? "Run Analysis Again"
-        : "Analyze Investment";
+        ? "Run Full Analysis Again"
+        : "Run Full Investment Analysis";
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-neutral-900 bg-neutral-950 text-white shadow-sm">
+    <section aria-live="polite" aria-busy={isAnalyzing} className="overflow-hidden rounded-3xl border border-neutral-900 bg-neutral-950 text-white shadow-sm">
       <div className="grid gap-10 px-7 py-9 sm:px-9 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.7fr)] lg:items-center lg:px-12 lg:py-12">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-400">
@@ -61,8 +59,7 @@ export function GenerateInvestmentAnalysisCard() {
           {hasStaleAnalysis ? (
             <div className="mt-5 rounded-xl border border-amber-300/20 bg-amber-300/10 px-4 py-3">
               <p className="text-sm font-medium text-amber-100">
-                Assumptions have changed since the displayed report was
-                generated.
+                Assumptions changed. Run the full analysis again to refresh the recommendation.
               </p>
 
               <p className="mt-1 text-xs leading-5 text-amber-100/70">
@@ -104,6 +101,7 @@ export function GenerateInvestmentAnalysisCard() {
                 <p className="mt-1 text-xs leading-5 text-rose-200/75">
                   {analysisError}
                 </p>
+                <p className="mt-2 text-xs font-medium text-rose-100">Your route and assumptions were preserved. Review the inputs or retry the full analysis.</p>
               </div>
             ) : null}
           </div>

@@ -12,18 +12,12 @@ import {
   useInvestmentWorkspaceState,
 } from "./investment-workspace-state";
 
+import { INVESTMENT_NUMERIC_ASSUMPTION_POLICIES } from "../application/assumptions";
+import { InvestmentNumericInput } from "./investment-numeric-input";
+import { AssumptionFieldGuidance } from "./assumption-field-guidance";
+
 const INPUT_CLASS_NAME =
   "mt-1.5 w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-semibold text-neutral-950 outline-none transition focus:border-neutral-400 focus:bg-white focus:ring-2 focus:ring-neutral-200";
-
-function parseNumber(
-  value: string,
-): number {
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed)
-    ? parsed
-    : 0;
-}
 
 export function OperatingPlanCard() {
   const {
@@ -96,26 +90,8 @@ export function OperatingPlanCard() {
                   Management fee %
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.5"
-                  value={
-                    values
-                      .managementFeePercentage
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      managementFeePercentage:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.managementFeePercentage} onCommit={(value) => setValues((current) => ({ ...current, managementFeePercentage: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.managementFeePercentage} label="managementFeePercentage" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="managementFeePercentage" />
               </label>
 
               <label>
@@ -123,33 +99,8 @@ export function OperatingPlanCard() {
                   Utilities per month
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={
-                    values.monthlyUtilities
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      monthlyUtilities:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  disabled={
-                    !isPurchase &&
-                    values.utilitiesIncluded
-                  }
-                  className={[
-                    INPUT_CLASS_NAME,
-                    !isPurchase &&
-                    values.utilitiesIncluded
-                      ? "cursor-not-allowed opacity-50"
-                      : "",
-                  ].join(" ")}
-                />
+                <InvestmentNumericInput value={values.monthlyUtilities} onCommit={(value) => setValues((current) => ({ ...current, monthlyUtilities: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.monthlyUtilities} label="monthlyUtilities" disabled={!isPurchase && values.utilitiesIncluded} className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="monthlyUtilities" />
 
                 {!isPurchase &&
                 values.utilitiesIncluded ? (
@@ -164,23 +115,7 @@ export function OperatingPlanCard() {
                   Insurance per year
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={
-                    values.annualInsurance
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      annualInsurance:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.annualInsurance} onCommit={(value) => setValues((current) => ({ ...current, annualInsurance: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.annualInsurance} label="annualInsurance" className={INPUT_CLASS_NAME} />
               </label>
 
               {isPurchase ? (
@@ -189,21 +124,7 @@ export function OperatingPlanCard() {
                     Property taxes per year
                   </span>
 
-                  <input
-                    type="number"
-                    min="0"
-                    value={values.annualTaxes}
-                    onChange={(event) =>
-                      setValues((current) => ({
-                        ...current,
-                        annualTaxes:
-                          parseNumber(
-                            event.target.value,
-                          ),
-                      }))
-                    }
-                    className={INPUT_CLASS_NAME}
-                  />
+                  <InvestmentNumericInput value={values.annualTaxes} onCommit={(value) => setValues((current) => ({ ...current, annualTaxes: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.annualTaxes} label="annualTaxes" className={INPUT_CLASS_NAME} />
                 </label>
               ) : null}
 
@@ -212,21 +133,8 @@ export function OperatingPlanCard() {
                   Cleaning per year
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={values.annualCleaning}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      annualCleaning:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.annualCleaning} onCommit={(value) => setValues((current) => ({ ...current, annualCleaning: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.annualCleaning} label="annualCleaning" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="annualCleaning" />
               </label>
 
               <label>
@@ -234,21 +142,7 @@ export function OperatingPlanCard() {
                   Software per year
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={values.annualSoftware}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      annualSoftware:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.annualSoftware} onCommit={(value) => setValues((current) => ({ ...current, annualSoftware: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.annualSoftware} label="annualSoftware" className={INPUT_CLASS_NAME} />
               </label>
 
               <label className="sm:col-span-2">
@@ -256,21 +150,7 @@ export function OperatingPlanCard() {
                   Supplies per year
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={values.annualSupplies}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      annualSupplies:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.annualSupplies} onCommit={(value) => setValues((current) => ({ ...current, annualSupplies: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.annualSupplies} label="annualSupplies" className={INPUT_CLASS_NAME} />
               </label>
             </div>
           </section>
@@ -299,26 +179,7 @@ export function OperatingPlanCard() {
                   Maintenance reserve %
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.5"
-                  value={
-                    values
-                      .maintenanceReservePercentage
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      maintenanceReservePercentage:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.maintenanceReservePercentage} onCommit={(value) => setValues((current) => ({ ...current, maintenanceReservePercentage: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.maintenanceReservePercentage} label="maintenanceReservePercentage" className={INPUT_CLASS_NAME} />
               </label>
 
               <label>
@@ -326,26 +187,7 @@ export function OperatingPlanCard() {
                   Capital reserve %
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.5"
-                  value={
-                    values
-                      .capitalReservePercentage
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      capitalReservePercentage:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.capitalReservePercentage} onCommit={(value) => setValues((current) => ({ ...current, capitalReservePercentage: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.capitalReservePercentage} label="capitalReservePercentage" className={INPUT_CLASS_NAME} />
               </label>
             </div>
           </section>

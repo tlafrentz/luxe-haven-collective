@@ -122,7 +122,7 @@ function safeError(error: unknown): Extract<InvestmentWorkspaceActionResult, { o
     };
   }
   if (error instanceof InvestmentWorkspaceRateLimitError) return { code: "WORKSPACE_RATE_LIMITED", message: "Too many analyses were submitted. Wait a moment and try again.", retryable: true };
-  if (error instanceof MarketIntelligenceConfigurationError) return { code: "MARKET_PROVIDER_UNAVAILABLE", message: "Live Market analysis is not configured. Your assumptions were preserved.", retryable: false };
+  if (error instanceof MarketIntelligenceConfigurationError) return { code: "MARKET_PROVIDER_UNAVAILABLE", message: "Current Market evidence is unavailable, so the full decision analysis cannot be completed. Your assumptions were preserved.", retryable: false };
   return {
     code: "UNEXPECTED_ERROR",
     message: "The workspace analysis could not be completed. Your assumptions were preserved.",

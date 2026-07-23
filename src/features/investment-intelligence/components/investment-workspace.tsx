@@ -55,11 +55,11 @@ export function InvestmentWorkspace({ resultsActions, initialValues, contextNoti
           >
             <header className="border-b border-neutral-200 pb-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                Investment analysis
+                Full analysis readiness
               </p>
 
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
-                Analyze the investment
+                Run Full Investment Analysis
               </h2>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">
@@ -81,11 +81,11 @@ export function InvestmentWorkspace({ resultsActions, initialValues, contextNoti
           >
             <header className="border-b border-neutral-200 pb-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                Results
+                Canonical result
               </p>
 
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
-                Explainable investment analysis
+                Full Investment Decision Analysis
               </h2>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">

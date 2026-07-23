@@ -13,18 +13,12 @@ import {
   useInvestmentWorkspaceState,
 } from "./investment-workspace-state";
 
+import { INVESTMENT_NUMERIC_ASSUMPTION_POLICIES } from "../application/assumptions";
+import { InvestmentNumericInput } from "./investment-numeric-input";
+import { AssumptionFieldGuidance } from "./assumption-field-guidance";
+
 const INPUT_CLASS_NAME =
   "mt-1.5 w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-semibold text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 focus:bg-white focus:ring-2 focus:ring-neutral-200";
-
-function parseNumber(
-  value: string,
-): number {
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed)
-    ? parsed
-    : 0;
-}
 
 export function PropertyProfileCard() {
   const {
@@ -214,21 +208,7 @@ export function PropertyProfileCard() {
                 Bedrooms
               </span>
 
-              <input
-                type="number"
-                min="0"
-                value={values.bedrooms}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    bedrooms:
-                      parseNumber(
-                        event.target.value,
-                      ),
-                  }))
-                }
-                className={INPUT_CLASS_NAME}
-              />
+              <InvestmentNumericInput value={values.bedrooms} onCommit={(value) => setValues((current) => ({ ...current, bedrooms: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.bedrooms} label="bedrooms" className={INPUT_CLASS_NAME} />
             </label>
 
             <label>
@@ -236,22 +216,7 @@ export function PropertyProfileCard() {
                 Bathrooms
               </span>
 
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={values.bathrooms}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    bathrooms:
-                      parseNumber(
-                        event.target.value,
-                      ),
-                  }))
-                }
-                className={INPUT_CLASS_NAME}
-              />
+              <InvestmentNumericInput value={values.bathrooms} onCommit={(value) => setValues((current) => ({ ...current, bathrooms: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.bathrooms} label="bathrooms" className={INPUT_CLASS_NAME} />
             </label>
 
             <label className="sm:col-span-2">
@@ -259,21 +224,7 @@ export function PropertyProfileCard() {
                 Square feet
               </span>
 
-              <input
-                type="number"
-                min="0"
-                value={values.squareFeet}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    squareFeet:
-                      parseNumber(
-                        event.target.value,
-                      ),
-                  }))
-                }
-                className={INPUT_CLASS_NAME}
-              />
+              <InvestmentNumericInput value={values.squareFeet} onCommit={(value) => setValues((current) => ({ ...current, squareFeet: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.squareFeet} label="squareFeet" className={INPUT_CLASS_NAME} />
             </label>
           </div>
         </section>
@@ -302,21 +253,8 @@ export function PropertyProfileCard() {
                 Purchase price
               </span>
 
-              <input
-                type="number"
-                min="0"
-                value={values.purchasePrice}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    purchasePrice:
-                      parseNumber(
-                        event.target.value,
-                      ),
-                  }))
-                }
-                className={INPUT_CLASS_NAME}
-              />
+              <InvestmentNumericInput value={values.purchasePrice} onCommit={(value) => setValues((current) => ({ ...current, purchasePrice: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.purchasePrice} label="purchasePrice" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="purchasePrice" />
               <span className="mt-1.5 block text-xs text-neutral-500">Source: User supplied. Market value is shown separately.</span>
             </label>
           </section>

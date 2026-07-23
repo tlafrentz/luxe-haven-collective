@@ -30,10 +30,13 @@ export function AcquisitionTypeSelector() {
   const {
     values,
     setAcquisitionType,
+    pendingStrategyTransition,
+    confirmStrategyTransition,
+    cancelStrategyTransition,
   } = useInvestmentWorkspaceState();
 
   return (
-    <fieldset className="space-y-3">
+    <><fieldset className="space-y-3">
       <legend className="text-sm font-semibold text-neutral-950">
         Acquisition strategy
       </legend>
@@ -120,6 +123,6 @@ export function AcquisitionTypeSelector() {
           );
         })}
       </div>
-    </fieldset>
+    </fieldset>{pendingStrategyTransition ? <div role="dialog" aria-modal="true" aria-labelledby="strategy-switch-title" className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/60 p-4"><div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><h2 id="strategy-switch-title" className="text-xl font-semibold text-neutral-950">Switch investment strategy?</h2><p className="mt-3 text-sm leading-6 text-neutral-600">Your property details will be preserved. {pendingStrategyTransition.from === AcquisitionType.Purchase ? "Purchase" : "Rental-arbitrage"}-specific assumptions, route-dependent operating assumptions, current preview context, completed analysis, and save token will be cleared.</p><p className="mt-2 text-sm font-medium text-neutral-800">Switch to {pendingStrategyTransition.to === AcquisitionType.Purchase ? "Purchase" : "Rental Arbitrage"}?</p><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={cancelStrategyTransition} className="min-h-11 rounded-xl border border-neutral-200 px-5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Cancel</button><button type="button" onClick={confirmStrategyTransition} autoFocus className="min-h-11 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Switch strategy</button></div></div></div> : null}</>
   );
 }

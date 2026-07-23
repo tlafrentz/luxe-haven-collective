@@ -3,6 +3,7 @@
 import {
   useInvestmentWorkspaceState,
 } from "./investment-workspace-state";
+import { buildInvestmentAnalysisReadiness } from "../application/readiness";
 
 export function DecisionReadinessCard() {
   const {
@@ -10,7 +11,13 @@ export function DecisionReadinessCard() {
     completedReadinessCount,
     totalReadinessCount,
     isReadyForAnalysis,
+    values,
+    isAnalyzing,
+    analysis,
+    hasStaleAnalysis,
+    analysisError,
   } = useInvestmentWorkspaceState();
+  const readiness = buildInvestmentAnalysisReadiness(values, { running: isAnalyzing, complete: analysis !== null && !hasStaleAnalysis, stale: hasStaleAnalysis, failed: Boolean(analysisError) });
 
   const completionPercentage =
     totalReadinessCount === 0
@@ -108,6 +115,7 @@ export function DecisionReadinessCard() {
           ),
         )}
       </ul>
+      {readiness.fullAnalysis.blockers.length ? <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="text-sm font-semibold text-amber-950">Complete the required assumptions to run the full analysis.</p><ul className="mt-2 space-y-1 text-sm text-amber-900/80">{readiness.fullAnalysis.blockers.map(issue => <li key={issue.code}><a href={`#${issue.fieldId ?? "property"}`} className="underline underline-offset-2">{issue.title}</a> — {issue.description}</li>)}</ul></div> : <p role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-900">Ready to run the full Investment decision analysis.</p>}
     </section>
   );
 }

@@ -8,18 +8,12 @@ import {
   useInvestmentWorkspaceState,
 } from "./investment-workspace-state";
 
+import { INVESTMENT_NUMERIC_ASSUMPTION_POLICIES } from "../application/assumptions";
+import { InvestmentNumericInput } from "./investment-numeric-input";
+import { AssumptionFieldGuidance } from "./assumption-field-guidance";
+
 const INPUT_CLASS_NAME =
   "mt-1.5 w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-semibold text-neutral-950 outline-none transition focus:border-neutral-400 focus:bg-white focus:ring-2 focus:ring-neutral-200";
-
-function parseNumber(
-  value: string,
-): number {
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed)
-    ? parsed
-    : 0;
-}
 
 export function RevenueAssumptionsCard() {
   const {
@@ -77,21 +71,8 @@ export function RevenueAssumptionsCard() {
                   Average daily rate
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={values.projectedAdr}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      projectedAdr:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.projectedAdr} onCommit={(value) => setValues((current) => ({ ...current, projectedAdr: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.projectedAdr} label="projectedAdr" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="projectedAdr" />
 
                 <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
                   Expected blended nightly rate before taxes and fees.
@@ -104,26 +85,8 @@ export function RevenueAssumptionsCard() {
                   Occupancy %
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.5"
-                  value={
-                    values
-                      .projectedOccupancyPercentage
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      projectedOccupancyPercentage:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.projectedOccupancyPercentage} onCommit={(value) => setValues((current) => ({ ...current, projectedOccupancyPercentage: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.projectedOccupancyPercentage} label="projectedOccupancyPercentage" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="projectedOccupancyPercentage" />
 
                 <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
                   Expected share of available nights booked annually.
@@ -156,24 +119,7 @@ export function RevenueAssumptionsCard() {
                 Average length of stay
               </span>
 
-              <input
-                type="number"
-                min="1"
-                step="0.5"
-                value={
-                  values.averageLengthOfStay
-                }
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    averageLengthOfStay:
-                      parseNumber(
-                        event.target.value,
-                      ),
-                  }))
-                }
-                className={INPUT_CLASS_NAME}
-              />
+              <InvestmentNumericInput value={values.averageLengthOfStay} onCommit={(value) => setValues((current) => ({ ...current, averageLengthOfStay: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.averageLengthOfStay} label="averageLengthOfStay" className={INPUT_CLASS_NAME} />
 
               <span className="mt-1.5 block text-xs leading-5 text-neutral-500">
                 Enter the expected number of nights per completed reservation.

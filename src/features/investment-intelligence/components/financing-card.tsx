@@ -12,18 +12,12 @@ import {
   useInvestmentWorkspaceState,
 } from "./investment-workspace-state";
 
+import { INVESTMENT_NUMERIC_ASSUMPTION_POLICIES } from "../application/assumptions";
+import { InvestmentNumericInput } from "./investment-numeric-input";
+import { AssumptionFieldGuidance } from "./assumption-field-guidance";
+
 const INPUT_CLASS_NAME =
   "mt-1.5 w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-semibold text-neutral-950 outline-none transition focus:border-neutral-400 focus:bg-white focus:ring-2 focus:ring-neutral-200";
-
-function parseNumber(
-  value: string,
-): number {
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed)
-    ? parsed
-    : 0;
-}
 
 export function FinancingCard() {
   const {
@@ -95,26 +89,8 @@ export function FinancingCard() {
                   Down payment %
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.5"
-                  value={
-                    values
-                      .downPaymentPercentage
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      downPaymentPercentage:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.downPaymentPercentage} onCommit={(value) => setValues((current) => ({ ...current, downPaymentPercentage: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.downPaymentPercentage} label="downPaymentPercentage" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="downPaymentPercentage" />
               </label>
 
               <label>
@@ -122,25 +98,8 @@ export function FinancingCard() {
                   Interest rate %
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={
-                    values
-                      .interestRatePercentage
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      interestRatePercentage:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.interestRatePercentage} onCommit={(value) => setValues((current) => ({ ...current, interestRatePercentage: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.interestRatePercentage} label="interestRatePercentage" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="interestRatePercentage" />
               </label>
 
               <label className="sm:col-span-2">
@@ -148,21 +107,8 @@ export function FinancingCard() {
                   Loan term in years
                 </span>
 
-                <input
-                  type="number"
-                  min="1"
-                  value={values.loanTermYears}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      loanTermYears:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.loanTermYears} onCommit={(value) => setValues((current) => ({ ...current, loanTermYears: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.loanTermYears} label="loanTermYears" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="loanTermYears" />
               </label>
             </div>
           </section>
@@ -191,21 +137,8 @@ export function FinancingCard() {
                   Closing costs
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={values.closingCosts}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      closingCosts:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.closingCosts} onCommit={(value) => setValues((current) => ({ ...current, closingCosts: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.closingCosts} label="closingCosts" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="closingCosts" />
               </label>
 
               <label>
@@ -213,23 +146,8 @@ export function FinancingCard() {
                   Furnishing budget
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={
-                    values.furnishingBudget
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      furnishingBudget:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.furnishingBudget} onCommit={(value) => setValues((current) => ({ ...current, furnishingBudget: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.furnishingBudget} label="furnishingBudget" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="furnishingBudget" />
               </label>
             </div>
           </section>
@@ -260,21 +178,8 @@ export function FinancingCard() {
                   Monthly lease
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={values.monthlyLease}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      monthlyLease:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.monthlyLease} onCommit={(value) => setValues((current) => ({ ...current, monthlyLease: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.monthlyLease} label="monthlyLease" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="monthlyLease" />
                 <span className="mt-1.5 block text-xs text-neutral-500">Source: User supplied. Market rent is shown separately.</span>
               </label>
 
@@ -283,24 +188,8 @@ export function FinancingCard() {
                   Lease term in months
                 </span>
 
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={
-                    values.leaseTermMonths
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      leaseTermMonths:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.leaseTermMonths} onCommit={(value) => setValues((current) => ({ ...current, leaseTermMonths: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.leaseTermMonths} label="leaseTermMonths" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="leaseTermMonths" />
               </label>
 
               <label className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 sm:col-span-2">
@@ -356,23 +245,8 @@ export function FinancingCard() {
                   Security deposit
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={
-                    values.securityDeposit
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      securityDeposit:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.securityDeposit} onCommit={(value) => setValues((current) => ({ ...current, securityDeposit: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.securityDeposit} label="securityDeposit" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="securityDeposit" />
               </label>
 
               <label>
@@ -380,21 +254,8 @@ export function FinancingCard() {
                   Startup costs
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={values.startupCosts}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      startupCosts:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.startupCosts} onCommit={(value) => setValues((current) => ({ ...current, startupCosts: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.startupCosts} label="startupCosts" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="startupCosts" />
               </label>
 
               <label className="sm:col-span-2">
@@ -402,23 +263,8 @@ export function FinancingCard() {
                   Furnishing budget
                 </span>
 
-                <input
-                  type="number"
-                  min="0"
-                  value={
-                    values.furnishingBudget
-                  }
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      furnishingBudget:
-                        parseNumber(
-                          event.target.value,
-                        ),
-                    }))
-                  }
-                  className={INPUT_CLASS_NAME}
-                />
+                <InvestmentNumericInput value={values.furnishingBudget} onCommit={(value) => setValues((current) => ({ ...current, furnishingBudget: value }))} policy={INVESTMENT_NUMERIC_ASSUMPTION_POLICIES.furnishingBudget} label="furnishingBudget" className={INPUT_CLASS_NAME} />
+<AssumptionFieldGuidance id="furnishingBudget" />
               </label>
             </div>
           </section>

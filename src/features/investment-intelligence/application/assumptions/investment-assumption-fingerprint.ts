@@ -1,0 +1,4 @@
+import type { InvestmentWorkspaceReadinessValues } from "../readiness";
+
+const MATERIAL_KEYS = ["acquisitionType", "address1", "city", "state", "postalCode", "propertyType", "bedrooms", "bathrooms", "squareFeet", "purchasePrice", "closingCosts", "furnishingBudget", "downPaymentPercentage", "interestRatePercentage", "loanTermYears", "monthlyLease", "securityDeposit", "leaseTermMonths", "startupCosts", "utilitiesIncluded", "projectedAdr", "projectedOccupancyPercentage", "averageLengthOfStay", "managementFeePercentage", "monthlyUtilities", "annualInsurance", "annualTaxes", "annualCleaning", "annualSoftware", "annualSupplies", "maintenanceReservePercentage", "capitalReservePercentage"] as const;
+export function buildInvestmentAssumptionFingerprint(values: InvestmentWorkspaceReadinessValues): string { return JSON.stringify(MATERIAL_KEYS.map(key => [key, typeof values[key] === "string" ? values[key].trim() : values[key]])); }

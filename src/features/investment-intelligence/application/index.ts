@@ -2,6 +2,11 @@ export {
   assessInvestmentRisks,
 } from "./assess-investment-risks";
 
+export * from "./assumptions";
+export * from "./readiness";
+export * from "./preview";
+export * from "./strategy-transition";
+
 export type {
   AssessInvestmentRisksInput,
   AssessInvestmentRisksResult,

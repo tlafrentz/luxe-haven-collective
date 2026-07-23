@@ -1,0 +1,11 @@
+import { AcquisitionType } from "../../domain";
+import type { InvestmentWorkspaceReadinessValues } from "../readiness";
+
+export type StrategyTransitionPlan = Readonly<{ from: AcquisitionType; to: AcquisitionType; requiresConfirmation: boolean; discardedFields: readonly string[]; preservedFields: readonly string[] }>;
+const shared = ["address1", "city", "state", "postalCode", "propertyType", "bedrooms", "bathrooms", "squareFeet"] as const;
+const purchase = ["purchasePrice", "closingCosts", "downPaymentPercentage", "interestRatePercentage", "loanTermYears", "annualTaxes"] as const;
+const rental = ["monthlyLease", "securityDeposit", "leaseTermMonths", "startupCosts", "utilitiesIncluded"] as const;
+const routeOperating = ["furnishingBudget", "projectedAdr", "projectedOccupancyPercentage", "averageLengthOfStay", "managementFeePercentage", "monthlyUtilities", "annualInsurance", "annualCleaning", "annualSoftware", "annualSupplies", "maintenanceReservePercentage", "capitalReservePercentage"] as const;
+export function hasEditedRouteSpecificAssumptions(values: InvestmentWorkspaceReadinessValues, defaults: InvestmentWorkspaceReadinessValues): boolean { const keys = values.acquisitionType === AcquisitionType.Purchase ? [...purchase, ...routeOperating] : [...rental, ...routeOperating]; return keys.some(key => values[key] !== defaults[key]); }
+export function buildStrategyTransitionPlan(values: InvestmentWorkspaceReadinessValues, to: AcquisitionType, defaults: InvestmentWorkspaceReadinessValues, hasCurrentResult = false): StrategyTransitionPlan { const discardedFields = values.acquisitionType === AcquisitionType.Purchase ? [...purchase, ...routeOperating] : [...rental, ...routeOperating]; return Object.freeze({ from: values.acquisitionType, to, requiresConfirmation: hasCurrentResult || hasEditedRouteSpecificAssumptions(values, defaults), discardedFields: Object.freeze(discardedFields), preservedFields: Object.freeze([...shared]) }); }
+export function applyStrategyTransition(values: InvestmentWorkspaceReadinessValues, to: AcquisitionType, defaults: InvestmentWorkspaceReadinessValues): InvestmentWorkspaceReadinessValues { const next = { ...defaults, acquisitionType: to }; for (const key of shared) (next as Record<string, unknown>)[key] = values[key]; return next; }

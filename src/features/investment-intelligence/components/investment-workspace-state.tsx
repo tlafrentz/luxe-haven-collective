@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 import { analyzeInvestmentWorkspace } from "@/app/actions/investment-workspace";
@@ -9,6 +9,7 @@ import type { MarketAnalysisReport, MarketPropertyResolutionResult } from "@/fea
 import { AcquisitionType, MarketTrend, PropertyType } from "../domain";
 import type { InvestmentLifecycleResult } from "../domain";
 import type { InvestmentAnalysisContext, InvestmentMarketContext, InvestmentWorkspaceStage, RunInvestmentAnalysisCommand } from "../application";
+import { applyStrategyTransition, buildStrategyTransitionPlan, type StrategyTransitionPlan } from "../application";
 import { buildInvestmentWorkspaceReadiness } from "./investment-workspace-readiness";
 import type { DecisionReadinessGroup } from "./investment-workspace-readiness";
 
@@ -31,6 +32,9 @@ type InvestmentWorkspaceState = Readonly<{
   values: InvestmentWorkspaceValues;
   setValues: Dispatch<SetStateAction<InvestmentWorkspaceValues>>;
   setAcquisitionType: (acquisitionType: AcquisitionType) => void;
+  pendingStrategyTransition: StrategyTransitionPlan | null;
+  confirmStrategyTransition: () => void;
+  cancelStrategyTransition: () => void;
   readinessGroups: readonly DecisionReadinessGroup[];
   completedReadinessCount: number;
   totalReadinessCount: number;
@@ -50,7 +54,7 @@ type InvestmentWorkspaceState = Readonly<{
   analyzeInvestment: () => Promise<void>;
 }>;
 
-const DEFAULT_VALUES: InvestmentWorkspaceValues = {
+export const DEFAULT_INVESTMENT_WORKSPACE_VALUES: InvestmentWorkspaceValues = {
   acquisitionType: AcquisitionType.Purchase,
   address1: "", city: "", state: "", postalCode: "",
   purchasePrice: 425000, closingCosts: 12000, furnishingBudget: 25000,
@@ -66,7 +70,7 @@ const DEFAULT_VALUES: InvestmentWorkspaceValues = {
 const InvestmentWorkspaceContext = createContext<InvestmentWorkspaceState | null>(null);
 
 export function InvestmentWorkspaceStateProvider({ children, initialValues }: { children: ReactNode; initialValues?: Partial<InvestmentWorkspaceValues> }) {
-  const [values, setWorkspaceValues] = useState<InvestmentWorkspaceValues>({ ...DEFAULT_VALUES, ...initialValues });
+  const [values, setWorkspaceValues] = useState<InvestmentWorkspaceValues>({ ...DEFAULT_INVESTMENT_WORKSPACE_VALUES, ...initialValues });
   const [result, setResult] = useState<Extract<Awaited<ReturnType<typeof analyzeInvestmentWorkspace>>, { ok: true }>["result"] | null>(null);
   const [analysisSaveToken, setAnalysisSaveToken] = useState<string | null>(null);
   const [analyzedAt, setAnalyzedAt] = useState<Date | null>(null);
@@ -74,19 +78,48 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
   const [isAnalysisStale, setIsAnalysisStale] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [propertyAlternatives, setPropertyAlternatives] = useState<MarketPropertyResolutionResult["alternatives"]>([]);
+  const [pendingStrategyTransition, setPendingStrategyTransition] = useState<StrategyTransitionPlan | null>(null);
   const requestSequence = useRef(0);
+  useEffect(() => {
+    const restoreRouteFromHistory = () => {
+      const route = new URL(window.location.href).searchParams.get("strategy");
+      if (route !== AcquisitionType.Purchase && route !== AcquisitionType.RentalArbitrage) return;
+      setWorkspaceValues(current => current.acquisitionType === route ? current : applyStrategyTransition(current, route, DEFAULT_INVESTMENT_WORKSPACE_VALUES) as InvestmentWorkspaceValues);
+      requestSequence.current += 1; setResult(null); setAnalysisSaveToken(null); setAnalyzedAt(null); setIsAnalysisStale(false); setAnalysisError(null); setPropertyAlternatives([]); setStage("setup"); setPendingStrategyTransition(null);
+    };
+    window.addEventListener("popstate", restoreRouteFromHistory);
+    return () => window.removeEventListener("popstate", restoreRouteFromHistory);
+  }, []);
 
   const setValues = useCallback<Dispatch<SetStateAction<InvestmentWorkspaceValues>>>((next) => {
     requestSequence.current += 1;
     setWorkspaceValues(next);
     setIsAnalysisStale(true);
+    setAnalysisSaveToken(null);
     setAnalysisError(null);
     setPropertyAlternatives([]);
     setStage("setup");
   }, []);
   const setAcquisitionType = useCallback((acquisitionType: AcquisitionType) => {
-    setValues((current) => ({ ...current, acquisitionType }));
-  }, [setValues]);
+    if (acquisitionType === values.acquisitionType) return;
+    const plan = buildStrategyTransitionPlan(values, acquisitionType, DEFAULT_INVESTMENT_WORKSPACE_VALUES, result !== null);
+    if (plan.requiresConfirmation) setPendingStrategyTransition(plan);
+    else {
+      requestSequence.current += 1;
+      setWorkspaceValues(applyStrategyTransition(values, acquisitionType, DEFAULT_INVESTMENT_WORKSPACE_VALUES) as InvestmentWorkspaceValues);
+      setResult(null); setAnalysisSaveToken(null); setAnalyzedAt(null); setIsAnalysisStale(false); setAnalysisError(null); setStage("setup");
+      window.history.pushState({}, "", `/dashboard/investments?strategy=${acquisitionType}`);
+    }
+  }, [values, result]);
+  const confirmStrategyTransition = useCallback(() => {
+    if (!pendingStrategyTransition) return;
+    requestSequence.current += 1;
+    setWorkspaceValues(applyStrategyTransition(values, pendingStrategyTransition.to, DEFAULT_INVESTMENT_WORKSPACE_VALUES) as InvestmentWorkspaceValues);
+    setResult(null); setAnalysisSaveToken(null); setAnalyzedAt(null); setIsAnalysisStale(false); setAnalysisError(null); setPropertyAlternatives([]); setStage("setup");
+    window.history.pushState({}, "", `/dashboard/investments?strategy=${pendingStrategyTransition.to}`);
+    setPendingStrategyTransition(null);
+  }, [pendingStrategyTransition, values]);
+  const cancelStrategyTransition = useCallback(() => setPendingStrategyTransition(null), []);
   const readinessGroups = useMemo(() => buildInvestmentWorkspaceReadiness(values), [values]);
   const completedReadinessCount = readinessGroups.filter(({ isComplete }) => isComplete).length;
   const totalReadinessCount = readinessGroups.length;
@@ -125,7 +158,7 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
   }, [isReadyForAnalysis, values]);
 
   const contextValue = useMemo<InvestmentWorkspaceState>(() => ({
-    values, setValues, setAcquisitionType, readinessGroups, completedReadinessCount, totalReadinessCount,
+    values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount,
     isReadyForAnalysis, stage,
     propertyResolution: result?.propertyResolution ?? null,
     propertyAlternatives,
@@ -138,7 +171,7 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
     hasStaleAnalysis: result !== null && isAnalysisStale,
     isAnalyzing: stage === "resolving-property" || stage === "running-market-analysis" || stage === "running-investment-analysis",
     analysisError, analyzeInvestment,
-  }), [values, setValues, setAcquisitionType, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, analyzeInvestment]);
+  }), [values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, analyzeInvestment]);
 
   return <InvestmentWorkspaceContext.Provider value={contextValue}>{children}</InvestmentWorkspaceContext.Provider>;
 }

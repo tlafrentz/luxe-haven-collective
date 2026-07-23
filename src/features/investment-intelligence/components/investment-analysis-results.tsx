@@ -34,8 +34,8 @@ export function InvestmentAnalysisResults() {
   ) {
     return (
       <section className="rounded-3xl border border-neutral-200 bg-white px-6 py-12 shadow-sm sm:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-950" />
+        <div role="status" aria-live="polite" className="mx-auto max-w-2xl text-center">
+          <div aria-label="Investment analysis is running" className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-950" />
 
           <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
             Investment Intelligence
@@ -168,11 +168,11 @@ export function InvestmentAnalysisResults() {
         </div>
 
         <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
-          Full investment analysis
+          Full Investment Decision Analysis
         </p>
 
         <h2 className="mt-3 text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
-          Your explainable analysis will appear here.
+          No full decision analysis yet.
         </h2>
 
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-neutral-600">

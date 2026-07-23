@@ -138,7 +138,7 @@ describe(
         expect(
           metrics.returnLabel,
         ).toBe(
-          "ROI on initial capital",
+          "Return on initial cash",
         );
 
         expect(
