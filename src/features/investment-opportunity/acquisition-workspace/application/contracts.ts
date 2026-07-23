@@ -320,9 +320,15 @@ export type AcquisitionClosingReadinessWorkspaceSummary = Readonly<{
 export type AcquisitionActivityWorkspaceItem = Readonly<{
   id: string;
   type: AcquisitionActivity["type"];
+  category: "lifecycle" | "commercial" | "requirements" | "closing" | "system";
   occurredAt: Date;
   actor: AcquisitionWorkspaceActorSummary;
   summary: string;
+  affectedObject: string;
+  outcome: string;
+  pipelineVersion: number;
+  fromStage?: AcquisitionStage;
+  toStage: AcquisitionStage;
   references: readonly Readonly<{ type: "offer" | "response" | "contract" | "requirement" | "stage"; id: string }>[];
 }>;
 export type AcquisitionActivityWorkspaceSummary = Readonly<{ items: readonly AcquisitionActivityWorkspaceItem[]; totalCount: number; truncated: boolean }>;

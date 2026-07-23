@@ -88,6 +88,21 @@ describe("Investment Opportunity detail workspace architecture", () => {
     expect(closing).not.toMatch(/Repository|Supabase|createClient|requireUser|PersistenceRow|documentUrl|mimeType|evidenceContent|window\.confirm/);
   });
 
+  it("keeps unified activity and lineage on bounded presentation-safe history", () => {
+    const activity = read("src/features/investment-opportunity/components/acquisition-activity-workspace.tsx");
+    const projections = read("src/features/investment-opportunity/acquisition-workspace/application/projections.ts");
+    expect(activity).toContain("AcquisitionActivityWorkspaceItem");
+    expect(activity).toContain("filterTimeline");
+    expect(activity).toContain("groupTimeline");
+    expect(activity).toContain("<details");
+    expect(activity).toContain('type="search"');
+    expect(activity).toContain("Complete requirement-history rows are not yet exposed");
+    expect(activity).not.toMatch(/Repository|Supabase|createClient|requireUser|PersistenceRow|documentUrl|mimeType|evidencePayload/);
+    expect(projections).toContain("activityCategory");
+    expect(projections).toContain("activityOutcome");
+    expect(projections).not.toContain("commandReceipts");
+  });
+
   it("provides progressive loading and a safe route error boundary", () => {
     const loading = read("src/app/(dashboard)/dashboard/investments/opportunities/[id]/loading.tsx");
     const error = read("src/app/(dashboard)/dashboard/investments/opportunities/[id]/error.tsx");

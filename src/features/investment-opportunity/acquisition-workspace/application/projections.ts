@@ -16,6 +16,7 @@ import type {
   AcquisitionActivationBlockerCode,
   AcquisitionActivationSummary,
   AcquisitionActiveWorkspace,
+  AcquisitionActivityWorkspaceItem,
   AcquisitionCapabilityAvailability,
   AcquisitionCapabilityLimitation,
   AcquisitionClosingFactsWorkspaceSummary,
@@ -355,9 +356,64 @@ export function buildClosingReadinessSummary(value: AcquisitionClosingReadiness 
 
 function activitySummary(activity: readonly AcquisitionActivity[], limit: number) {
   const values = [...activity].sort(byDateDesc);
-  return deepFreeze({ items: values.slice(0, limit).map(item => ({ id: item.id.value, type: item.type, occurredAt: new Date(item.occurredAt), actor: { type: item.actor.type, id: item.actor.id }, summary: activityLabel(item.type), references: activityReferences(item.details) })), totalCount: values.length, truncated: values.length > limit });
+  return deepFreeze({ items: values.slice(0, limit).map(item => ({ id: item.id.value, type: item.type, category: activityCategory(item.type), occurredAt: new Date(item.occurredAt), actor: { type: item.actor.type, id: item.actor.id }, summary: activityLabel(item.type), affectedObject: activityAffectedObject(item.type), outcome: activityOutcome(item.type, item.to), pipelineVersion: item.aggregateVersion.value, ...(item.from ? { fromStage: item.from } : {}), toStage: item.to, references: activityReferences(item.details) })), totalCount: values.length, truncated: values.length > limit });
 }
-function activityLabel(type: AcquisitionActivity["type"]) { return type.split("-").map(part => part[0]!.toUpperCase() + part.slice(1)).join(" "); }
+const activityLabels: Readonly<Record<AcquisitionActivity["type"], string>> = {
+  "pipeline-activated": "Acquisition pursuit started",
+  "stage-transitioned": "Acquisition advanced to a new stage",
+  "pipeline-exited": "Acquisition pursuit ended",
+  "pipeline-closed-acquired": "Acquisition completed",
+  "offer-draft-created": "Offer draft created",
+  "offer-draft-updated": "Offer draft revised",
+  "offer-draft-rebased": "Offer updated from a newer analysis",
+  "offer-submitted": "Offer submitted",
+  "offer-withdrawn": "Offer withdrawn",
+  "offer-expired": "Offer expired",
+  "offer-rejected": "Offer rejected",
+  "offer-countered": "Counteroffer recorded",
+  "offer-accepted": "Offer accepted",
+  "counteroffer-accepted": "Counteroffer accepted",
+  "contract-recorded": "Executed contract recorded",
+  "external-contract-recorded": "External agreement recorded as contract",
+  "contingency-added": "Contingency added",
+  "due-diligence-item-added": "Due diligence requirement added",
+  "contingency-started": "Contingency work started",
+  "contingency-satisfied": "Contingency satisfied",
+  "contingency-waived": "Contingency waived",
+  "contingency-failed": "Contingency failed",
+  "due-diligence-item-started": "Due diligence work started",
+  "due-diligence-item-completed": "Due diligence requirement satisfied",
+  "due-diligence-item-waived": "Due diligence requirement waived",
+  "due-diligence-item-failed": "Due diligence requirement failed",
+};
+function activityLabel(type: AcquisitionActivity["type"]) { return activityLabels[type]; }
+function activityCategory(type: AcquisitionActivity["type"]): AcquisitionActivityWorkspaceItem["category"] {
+  if (type === "pipeline-closed-acquired") return "closing";
+  if (type.startsWith("pipeline-") || type === "stage-transitioned") return "lifecycle";
+  if (type.startsWith("offer-") || type.startsWith("counteroffer-") || type.includes("contract")) return "commercial";
+  if (type.includes("contingency") || type.includes("diligence")) return "requirements";
+  return "system";
+}
+function activityAffectedObject(type: AcquisitionActivity["type"]) {
+  if (type.includes("offer") || type.includes("counteroffer")) return "Commercial position";
+  if (type.includes("contract")) return "Acquisition contract";
+  if (type.includes("contingency")) return "Contingency";
+  if (type.includes("diligence")) return "Due diligence requirement";
+  if (type === "pipeline-closed-acquired") return "Closing outcome";
+  return "Acquisition lifecycle";
+}
+function activityOutcome(type: AcquisitionActivity["type"], to: AcquisitionStage) {
+  if (type === "pipeline-closed-acquired") return "Pipeline transitioned to Acquired";
+  if (type === "pipeline-exited") return "Pursuit became terminal";
+  if (type === "offer-submitted") return "Waiting for counterparty response";
+  if (type === "offer-countered") return "Negotiation requires review";
+  if (type === "offer-accepted" || type === "counteroffer-accepted") return "Accepted commercial basis established";
+  if (type.includes("contract-recorded")) return "Contract became the closing basis";
+  if (type.endsWith("-satisfied") || type.endsWith("-completed")) return "Requirement resolved";
+  if (type.endsWith("-failed")) return "Requirement blocks progress";
+  if (type.endsWith("-waived")) return "Risk accepted through waiver";
+  return `Current stage: ${stageLabels[to]}`;
+}
 function activityReferences(details: Readonly<Record<string, unknown>>) {
   const keys = [["offerId", "offer"], ["responseId", "response"], ["contractId", "contract"], ["contingencyId", "requirement"], ["diligenceItemId", "requirement"], ["stage", "stage"]] as const;
   return keys.flatMap(([key, type]) => typeof details[key] === "string" ? [{ type, id: details[key] as string }] : []);

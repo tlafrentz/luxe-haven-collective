@@ -3,7 +3,6 @@ import { AlertTriangle, ArrowRight, LockKeyhole } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type {
-  AcquisitionActivityWorkspaceSummary,
   AcquisitionPipelineTerminalWorkspaceSummary,
   AcquisitionPipelineWorkspaceSummary,
   AcquisitionWorkspace,
@@ -16,6 +15,7 @@ import { AcquisitionLifecycleExperience } from "./acquisition-lifecycle-experien
 import { AcquisitionCommercialWorkspace, isCommercialActionType } from "./acquisition-commercial-workspace";
 import { AcquisitionDueDiligenceWorkspace, isDiligenceActionType } from "./acquisition-due-diligence-workspace";
 import { AcquisitionClosingWorkspace, isClosingActionType } from "./acquisition-closing-workspace";
+import { AcquisitionActivityWorkspace } from "./acquisition-activity-workspace";
 
 export function AcquisitionOpportunityWorkspace({ workspace }: { workspace: AcquisitionWorkspace }) {
   const acquisition = workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? workspace.acquisition : null;
@@ -49,7 +49,7 @@ export function AcquisitionOpportunityWorkspace({ workspace }: { workspace: Acqu
         workspace={workspace}
         primaryAction={workspace.nextActions.find(action => action.priority === "primary" && isClosingActionType(action.type)) ?? null}
       />
-      <RecentActivityCard activity={workspace.acquisition.activity} />
+      <AcquisitionActivityWorkspace workspace={workspace} />
       <NextActionsCard actions={workspace.status === "pipeline-active" ? workspace.nextActions.filter(action => action.priority !== "primary") : workspace.nextActions} capabilities={workspace.capabilities} />
     </> : null}
   </main>;
@@ -100,13 +100,6 @@ function OpportunityOnlyState({ workspace }: { workspace: Extract<AcquisitionWor
   return <section aria-labelledby="acquisition-start-heading"><Card className="border-dashed p-6 sm:p-8"><div className="max-w-2xl"><p className="eyebrow">Acquisition lifecycle</p><h2 id="acquisition-start-heading" className="mt-2 text-2xl font-semibold text-stone-950">No acquisition pursuit yet</h2><p className="mt-2 text-sm leading-6 text-stone-600">This opportunity remains available for evaluation. The acquisition timeline begins after an eligible analysis is selected and pursuit is activated.</p>
     <div className="mt-5 rounded-xl bg-stone-50 p-4"><p className="text-sm font-semibold text-stone-800">{workspace.activation.eligible ? "Ready for activation" : "Activation unavailable"}</p><ul className="mt-2 space-y-1 text-sm text-stone-600">{workspace.activation.blockers.map(blocker => <li key={blocker.code}>• {blocker.message}</li>)}{workspace.activation.limitations.map(limitation => <li key={limitation.code}>• {limitation.operatorMessage}</li>)}</ul></div>
   </div></Card></section>;
-}
-
-export function RecentActivityCard({ activity }: { activity: AcquisitionActivityWorkspaceSummary }) {
-  return <SectionCard title="Recent activity" description="A bounded view of acquisition activity, newest first.">
-    {activity.items.length ? <ol className="divide-y divide-stone-100">{activity.items.map(item => <li key={item.id} className="flex gap-4 py-4 first:pt-0 last:pb-0"><span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-stone-900" aria-hidden="true" /><div className="min-w-0 flex-1"><div className="flex flex-wrap justify-between gap-2"><p className="text-sm font-semibold text-stone-900">{item.summary}</p><time dateTime={item.occurredAt.toISOString()} className="text-xs text-stone-500">{dateTime(item.occurredAt)}</time></div><p className="mt-1 text-xs text-stone-500">Actor {item.actor.id}</p></div></li>)}</ol> : <EmptyMessage title="No acquisition activity yet." body="Lifecycle and commercial events will appear here." />}
-    {activity.truncated ? <p className="mt-5 border-t border-stone-100 pt-4 text-sm text-stone-500">Showing {activity.items.length} of {activity.totalCount} activity entries. Full activity is deferred.</p> : null}
-  </SectionCard>;
 }
 
 export function NextActionsCard({ actions, capabilities }: { actions: readonly AcquisitionWorkspaceNextAction[]; capabilities: AcquisitionWorkspaceCapabilities }) {

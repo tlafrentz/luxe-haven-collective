@@ -96,7 +96,7 @@ describe("AcquisitionOpportunityWorkspace", () => {
 
   it("renders active lifecycle, commercial, requirements, readiness, activity, and next actions", () => {
     const html = renderToStaticMarkup(<AcquisitionOpportunityWorkspace workspace={view(pipeline())} />);
-    for (const heading of ["Acquisition lifecycle", "Commercial", "Requirements", "Closing readiness", "Recent activity", "Next actions"]) expect(html).toContain(heading);
+    for (const heading of ["Acquisition lifecycle", "Commercial", "Requirements", "Closing readiness", "Activity &amp; decision lineage", "Next actions"]) expect(html).toContain(heading);
     for (const stage of ["Discovery", "Analysis", "Pursuit", "Offer", "Contract", "Due diligence", "Closing", "Acquired"]) expect(html).toContain(stage);
     expect(html).toContain("Current objective");
     expect(html).toContain("Lifecycle health");

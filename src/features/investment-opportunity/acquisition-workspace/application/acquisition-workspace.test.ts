@@ -117,6 +117,37 @@ describe("Acquisition Workspace projections", () => {
     expect(value.acquisition.commercial.priorOffersTruncated).toBe(true);
   });
 
+  it("projects bounded activity as business history without raw metadata", () => {
+    const source = {
+      ...pipeline("offer-submitted"),
+      activity: [{
+        id: createAcquisitionStageTransitionId("acquisition-stage-transition-activity-offer-submitted"),
+        type: "offer-submitted" as const,
+        occurredAt: at,
+        actor,
+        details: { offerId: "offer-1", commandId: "internal-command", privatePayload: "hidden" },
+        aggregateVersion: AcquisitionPipelineVersion.from(3),
+        from: "offer-preparation" as const,
+        to: "offer-submitted" as const,
+      }],
+    };
+    const value = buildAcquisitionWorkspace({ opportunity, analysis, pipeline: source, actionStates: [], evidenceStates: [], authorization, deployment, evaluatedAt: at, limits, actionDependencyAvailable: true, evidenceDependencyAvailable: true });
+    if (value.status !== "pipeline-active") throw new Error("expected active");
+    expect(value.acquisition.activity.items[0]).toMatchObject({
+      category: "commercial",
+      summary: "Offer submitted",
+      affectedObject: "Commercial position",
+      outcome: "Waiting for counterparty response",
+      pipelineVersion: 3,
+      fromStage: "offer-preparation",
+      toStage: "offer-submitted",
+      references: [{ type: "offer", id: "offer-1" }],
+    });
+    expect(value.acquisition.activity.items[0]).not.toHaveProperty("details");
+    expect(JSON.stringify(value.acquisition.activity)).not.toContain("internal-command");
+    expect(Object.isFrozen(value.acquisition.activity.items)).toBe(true);
+  });
+
   it("counts opaque references and never returns their content", () => {
     const requirement = {
       requirementType: "contingency" as const, id: createAcquisitionContingencyId("acquisition-contingency-1"), pipelineId: createAcquisitionPipelineId("acquisition-pipeline-workspace"), route: "purchase" as const, type: "inspection" as const, title: "Inspection", status: "not-started" as const, blocking: true, priority: "critical" as const, source: { type: "operator-added" as const, explanation: "Required" }, relatedDueDiligenceItemIds: [], actionReferences: [{ actionId: createActionId("action-1"), relationship: "executes-requirement" as const }], evidenceReferences: [{ evidenceId: createEvidenceId("evidence-1"), relationship: "supports" as const }], documentReferences: [{ documentId: "document-1", relationship: "inspection" as const }], createdAt: at, createdBy: actor, updatedAt: at,
