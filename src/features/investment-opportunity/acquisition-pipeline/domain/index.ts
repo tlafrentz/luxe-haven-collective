@@ -10,3 +10,7 @@ export * from "./acquisition-command-context";
 export * from "./pipeline-activation";
 export * from "./acquisition-exit";
 export * from "./opportunity-status-synchronization";
+export * from "./acquisition-stage-history";
+export * from "./acquisition-activity";
+export * from "./acquisition-pipeline-repository";
+export * from "./acquisition-pipeline";
