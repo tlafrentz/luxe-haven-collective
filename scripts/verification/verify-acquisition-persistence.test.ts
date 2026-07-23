@@ -1,0 +1,3 @@
+import { describe, expect, it } from "vitest";
+import { ACQUISITION_VERIFICATION_PREFIX, assertRemoteVerificationGuard } from "./verify-acquisition-persistence";
+describe("remote verification guard", () => { it("requires explicit confirmation and scoped prefix", () => { expect(() => assertRemoteVerificationGuard({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "secret", IA002A76_REMOTE_CONFIRM: "YES", IA002A76_FIXTURE_PREFIX: `${ACQUISITION_VERIFICATION_PREFIX}local-` })).not.toThrow(); }); it("rejects unconfirmed execution", () => { expect(() => assertRemoteVerificationGuard({})).toThrowError(); }); });

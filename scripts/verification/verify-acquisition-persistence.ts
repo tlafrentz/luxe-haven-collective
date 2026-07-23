@@ -1,0 +1,10 @@
+import { createClient } from "@supabase/supabase-js";
+
+export const ACQUISITION_VERIFICATION_PREFIX = "verify-ia002a76-";
+const required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "IA002A76_REMOTE_CONFIRM"] as const;
+const tables = ["acquisition_pipelines", "acquisition_stage_history", "acquisition_pipeline_activity", "acquisition_offers", "acquisition_counterparty_responses", "acquisition_agreement_bases", "acquisition_contracts", "acquisition_contingencies", "acquisition_due_diligence_items", "acquisition_requirement_history", "acquisition_command_receipts"] as const;
+
+export function assertRemoteVerificationGuard(env: Readonly<Record<string, string | undefined>> = process.env): void { for (const key of required) if (!env[key]) throw new Error(`Remote verification requires ${key}.`); if (env.IA002A76_REMOTE_CONFIRM !== "YES") throw new Error("Set IA002A76_REMOTE_CONFIRM=YES to explicitly authorize remote verification."); if (!env.IA002A76_FIXTURE_PREFIX?.startsWith(ACQUISITION_VERIFICATION_PREFIX)) throw new Error(`IA002A76_FIXTURE_PREFIX must start with ${ACQUISITION_VERIFICATION_PREFIX}.`); }
+
+async function main() { assertRemoteVerificationGuard(); const url = process.env.SUPABASE_URL!; const client = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } }); console.log(JSON.stringify({ project: new URL(url).hostname, prefix: process.env.IA002A76_FIXTURE_PREFIX, tables: tables.length, mode: "inventory-only" })); for (const table of tables) { const { error } = await client.from(table).select("*", { count: "exact", head: true }); if (error) throw new Error(`Schema check failed for ${table}.`); console.log(`verified table: ${table}`); } console.log("Remote verification inventory completed. Full RLS/concurrency cases require authenticated owner tokens and are intentionally not run by default."); }
+if (import.meta.url === `file://${process.argv[1]}`) main().catch(error => { console.error(error instanceof Error ? error.message : "Remote verification failed."); process.exitCode = 1; });
