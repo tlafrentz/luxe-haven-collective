@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   AcquisitionPipelineVersion,
@@ -18,6 +18,14 @@ import {
   type AcquisitionWorkspacePipelineSource,
 } from "../acquisition-workspace";
 import { AcquisitionOpportunityWorkspace } from "./acquisition-opportunity-workspace";
+
+vi.mock("@/app/actions/acquisition-workspace-commands", () => ({
+  activateAcquisitionPipelineAction: vi.fn(),
+  beginClosingPreparationAction: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
 const at = new Date("2026-07-23T18:00:00.000Z");
 const ownerId = "owner-detail-workspace";
@@ -89,6 +97,14 @@ describe("AcquisitionOpportunityWorkspace", () => {
   it("renders active lifecycle, commercial, requirements, readiness, activity, and next actions", () => {
     const html = renderToStaticMarkup(<AcquisitionOpportunityWorkspace workspace={view(pipeline())} />);
     for (const heading of ["Acquisition lifecycle", "Commercial", "Requirements", "Closing readiness", "Recent activity", "Next actions"]) expect(html).toContain(heading);
+    for (const stage of ["Discovery", "Analysis", "Pursuit", "Offer", "Contract", "Due diligence", "Closing", "Acquired"]) expect(html).toContain(stage);
+    expect(html).toContain("Current objective");
+    expect(html).toContain("Lifecycle health");
+    expect(html).toContain("Progress");
+    expect(html).toContain("Blockers");
+    expect(html).toContain("Warnings");
+    expect(html).toContain("Recommended next action");
+    expect(html).toContain('role="progressbar"');
     expect(html).toContain('aria-current="step"');
     expect(html).toContain("Requirements have not yet been initialized.");
     expect(html).toContain("Command controls are deferred");
@@ -97,7 +113,9 @@ describe("AcquisitionOpportunityWorkspace", () => {
   it("renders an acquired terminal outcome and keeps the historical lifecycle", () => {
     const html = renderToStaticMarkup(<AcquisitionOpportunityWorkspace workspace={view(pipeline("closed-acquired"), { ...opportunity, status: "acquired" })} />);
     expect(html).toContain("Terminal outcome");
-    expect(html).toContain("Opportunity acquired");
+    expect(html).toContain("Acquisition complete");
+    expect(html).toContain("Lifecycle health");
+    expect(html).toContain("Completed");
     expect(html).toContain("Acquired");
   });
 

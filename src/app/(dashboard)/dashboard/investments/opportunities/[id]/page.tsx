@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getAcquisitionWorkspaceRequestContext } from "@/app/actions/acquisition-workspace-query-runtime";
 import { createInvestmentOpportunityId } from "@/features/investment-opportunity/domain";
-import { AcquisitionOpportunityWorkspace } from "@/features/investment-opportunity/components";
+import { AcquisitionOpportunityWorkspace } from "@/features/investment-opportunity/components/acquisition-opportunity-workspace";
 
 export default async function InvestmentOpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

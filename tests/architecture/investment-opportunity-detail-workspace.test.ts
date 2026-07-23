@@ -21,9 +21,21 @@ describe("Investment Opportunity detail workspace architecture", () => {
 
   it("keeps presentation components data-only", () => {
     const component = read("src/features/investment-opportunity/components/acquisition-opportunity-workspace.tsx");
+    const lifecycle = read("src/features/investment-opportunity/components/acquisition-lifecycle-experience.tsx");
     expect(component).not.toMatch(/Repository|Supabase|findById|handler\\.execute|createClient|requireUser|requireRole/);
-    expect(component).toContain("aria-current");
+    expect(lifecycle).not.toMatch(/Repository|Supabase|findById|handler\\.execute|createClient|requireUser|requireRole/);
+    expect(lifecycle).toContain("aria-current");
+    expect(lifecycle).toContain('role="progressbar"');
     expect(component).toContain("aria-labelledby");
+  });
+
+  it("keeps lifecycle commands typed and behind the established server boundary", () => {
+    const action = read("src/features/investment-opportunity/components/acquisition-primary-action.tsx");
+    expect(action).toContain("@/app/actions/acquisition-workspace-commands");
+    expect(action).not.toMatch(/Repository|Supabase|createClient|aggregate|ownerId|actorId/);
+    expect(action).toContain('result?.status === "conflict"');
+    expect(action).toContain('result?.status === "succeeded"');
+    expect(action).toContain("router.refresh()");
   });
 
   it("provides progressive loading and a safe route error boundary", () => {

@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Check, Circle, LockKeyhole } from "lucide-react";
+import { AlertTriangle, ArrowRight, LockKeyhole } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type {
   AcquisitionActivityWorkspaceSummary,
   AcquisitionCommercialWorkspaceSummary,
-  AcquisitionLifecycleWorkspaceSummary,
   AcquisitionOfferHeadlineTerms,
   AcquisitionPipelineTerminalWorkspaceSummary,
   AcquisitionPipelineWorkspaceSummary,
@@ -16,12 +15,16 @@ import type {
   InvestmentAnalysisWorkspaceSummary,
   InvestmentOpportunityWorkspaceSummary,
 } from "../acquisition-workspace";
+import { AcquisitionLifecycleExperience } from "./acquisition-lifecycle-experience";
 
 export function AcquisitionOpportunityWorkspace({ workspace }: { workspace: AcquisitionWorkspace }) {
   const acquisition = workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? workspace.acquisition : null;
   return <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
     <WorkspaceBreadcrumb opportunityName={workspace.opportunity.name} />
     <OpportunityWorkspaceHeader opportunity={workspace.opportunity} acquisition={acquisition} />
+    {workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal"
+      ? <AcquisitionLifecycleExperience workspace={workspace} />
+      : null}
     <section aria-label="Opportunity and decision context" className="grid gap-5 lg:grid-cols-2">
       <OpportunitySummaryCard opportunity={workspace.opportunity} />
       <DecisionContextCard analysis={workspace.analysis} opportunityId={workspace.opportunity.id} />
@@ -29,15 +32,13 @@ export function AcquisitionOpportunityWorkspace({ workspace }: { workspace: Acqu
     {workspace.status === "opportunity-only" ? <OpportunityOnlyState workspace={workspace} /> : null}
     {workspace.status === "acquisition-unavailable" ? <WorkspaceUnavailableCard message={workspace.reason.message} /> : null}
     {workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? <>
-      {workspace.status === "pipeline-terminal" ? <TerminalOutcomeCard acquisition={workspace.acquisition} /> : null}
-      <LifecycleTimeline lifecycle={workspace.acquisition.lifecycle} />
       <section aria-label="Commercial and acquisition requirements" className="grid gap-5 xl:grid-cols-2">
         <CommercialSummaryCard commercial={workspace.acquisition.commercial} />
         <RequirementsSummaryCard requirements={workspace.acquisition.requirements} />
       </section>
       <ClosingReadinessCard readiness={workspace.acquisition.readiness} />
       <RecentActivityCard activity={workspace.acquisition.activity} />
-      <NextActionsCard actions={workspace.nextActions} capabilities={workspace.capabilities} />
+      <NextActionsCard actions={workspace.status === "pipeline-active" ? workspace.nextActions.filter(action => action.priority !== "primary") : workspace.nextActions} capabilities={workspace.capabilities} />
     </> : null}
   </main>;
 }
@@ -87,18 +88,6 @@ function OpportunityOnlyState({ workspace }: { workspace: Extract<AcquisitionWor
   return <section aria-labelledby="acquisition-start-heading"><Card className="border-dashed p-6 sm:p-8"><div className="max-w-2xl"><p className="eyebrow">Acquisition lifecycle</p><h2 id="acquisition-start-heading" className="mt-2 text-2xl font-semibold text-stone-950">No acquisition pursuit yet</h2><p className="mt-2 text-sm leading-6 text-stone-600">This opportunity remains available for evaluation. The acquisition timeline begins after an eligible analysis is selected and pursuit is activated.</p>
     <div className="mt-5 rounded-xl bg-stone-50 p-4"><p className="text-sm font-semibold text-stone-800">{workspace.activation.eligible ? "Ready for activation" : "Activation unavailable"}</p><ul className="mt-2 space-y-1 text-sm text-stone-600">{workspace.activation.blockers.map(blocker => <li key={blocker.code}>• {blocker.message}</li>)}{workspace.activation.limitations.map(limitation => <li key={limitation.code}>• {limitation.operatorMessage}</li>)}</ul></div>
   </div></Card></section>;
-}
-
-export function LifecycleTimeline({ lifecycle }: { lifecycle: AcquisitionLifecycleWorkspaceSummary }) {
-  return <SectionCard title="Acquisition lifecycle" description="Canonical progress and recent stage history.">
-    <ol aria-label="Acquisition lifecycle stages" className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-      {lifecycle.stages.map(stage => <li key={stage.stage} aria-current={stage.state === "current" ? "step" : undefined} className={["rounded-xl border p-4", stage.state === "current" ? "border-teal-700 bg-teal-50" : stage.state === "completed" ? "border-emerald-200 bg-emerald-50/60" : stage.state === "exited" ? "border-rose-200 bg-rose-50" : "border-stone-200 bg-stone-50"].join(" ")}>
-        <div className="flex items-center gap-2">{stage.state === "completed" ? <Check className="h-4 w-4 text-emerald-700" aria-hidden="true" /> : stage.state === "current" ? <span className="h-3 w-3 rounded-full bg-teal-700" aria-hidden="true" /> : <Circle className="h-4 w-4 text-stone-400" aria-hidden="true" />}<span className="sr-only">{label(stage.state)}: </span><span className="text-sm font-semibold text-stone-900">{stage.label}</span></div>
-        {stage.completedAt ? <time dateTime={stage.completedAt.toISOString()} className="mt-2 block text-xs text-stone-500">{date(stage.completedAt)}</time> : null}
-      </li>)}
-    </ol>
-    {lifecycle.recentHistory.length ? <div className="mt-6 border-t border-stone-100 pt-5"><h3 className="text-sm font-semibold text-stone-900">Recent stage history</h3><ul className="mt-3 space-y-2">{lifecycle.recentHistory.map(item => <li key={item.id} className="flex flex-wrap justify-between gap-2 text-sm text-stone-600"><span>{item.from ? `${label(item.from)} → ` : ""}{label(item.to)}</span><time dateTime={item.occurredAt.toISOString()}>{dateTime(item.occurredAt)}</time></li>)}</ul></div> : null}
-  </SectionCard>;
 }
 
 export function CommercialSummaryCard({ commercial }: { commercial: AcquisitionCommercialWorkspaceSummary }) {
@@ -165,11 +154,6 @@ function ActionItem({ action }: { action: AcquisitionWorkspaceNextAction }) {
 
 export function WorkspaceUnavailableCard({ message }: { message: string }) {
   return <section aria-labelledby="acquisition-unavailable-heading"><Card className="border-amber-200 bg-amber-50 p-6"><div className="flex gap-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" /><div><h2 id="acquisition-unavailable-heading" className="font-semibold text-amber-950">Acquisition state unavailable</h2><p className="mt-1 text-sm text-amber-900">{message} The opportunity and analysis remain available.</p></div></div></Card></section>;
-}
-
-function TerminalOutcomeCard({ acquisition }: { acquisition: AcquisitionPipelineTerminalWorkspaceSummary }) {
-  const outcome = acquisition.outcome;
-  return <section aria-labelledby="terminal-outcome-heading"><Card className="bg-stone-950 p-6 text-white"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">Terminal outcome</p><h2 id="terminal-outcome-heading" className="mt-2 text-2xl font-semibold">{outcome.type === "acquired" ? "Opportunity acquired" : "Acquisition pursuit exited"}</h2><p className="mt-2 text-sm text-stone-300">{outcome.type === "acquired" ? `Closed ${date(outcome.closedAt)}.` : `${label(outcome.reason)} · exited ${date(outcome.exitedAt)}${outcome.reconsiderationEligible ? " · eligible for reconsideration" : ""}.`}</p></Card></section>;
 }
 
 function SectionCard({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {

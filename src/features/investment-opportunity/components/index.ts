@@ -6,4 +6,3 @@ export * from "./opportunity-workflow-controls";
 export * from "./opportunity-analysis-detail";
 export * from "./opportunity-comparison-selector";
 export * from "./opportunity-comparison-workspace";
-export * from "./acquisition-opportunity-workspace";
