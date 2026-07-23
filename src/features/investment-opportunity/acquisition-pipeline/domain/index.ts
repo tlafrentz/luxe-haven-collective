@@ -14,3 +14,6 @@ export * from "./acquisition-stage-history";
 export * from "./acquisition-activity";
 export * from "./acquisition-pipeline-repository";
 export * from "./acquisition-pipeline";
+export * from "./offers";
+export * from "./contracts";
+export * from "./projections";
