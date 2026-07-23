@@ -17,4 +17,6 @@ export class InMemoryAcquisitionPipelineRepository implements AcquisitionPipelin
     if (!existing && byOpportunity) throw new AcquisitionDomainError("INVALID_PIPELINE_ACTIVATION", { opportunityId: pipeline.opportunityId.value });
     this.records.set(pipeline.id.value, AcquisitionPipeline.restore(pipeline.props));
   }
+  public snapshot(): readonly AcquisitionPipeline[] { return [...this.records.values()].map(value => AcquisitionPipeline.restore(value.props)); }
+  public restoreSnapshot(values: readonly AcquisitionPipeline[]): void { this.records.clear(); for (const value of values) this.records.set(value.id.value, AcquisitionPipeline.restore(value.props)); }
 }

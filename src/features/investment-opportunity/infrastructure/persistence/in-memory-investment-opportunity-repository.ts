@@ -21,5 +21,7 @@ export class InMemoryInvestmentOpportunityRepository implements InvestmentOpport
   }
   async findAnalysisById(opportunityId: InvestmentOpportunityId, analysisId: OpportunityAnalysisId, ownerId: OpportunityOwnerId) { const opportunity = await this.findById(opportunityId, ownerId); return opportunity?.props.analyses.find(value => value.id.equals(analysisId)) ?? null; }
   async listAnalyses(opportunityId: InvestmentOpportunityId, ownerId: OpportunityOwnerId) { const opportunity = await this.findById(opportunityId, ownerId); return Object.freeze([...(opportunity?.props.analyses ?? [])].sort((a, b) => b.sequence - a.sequence)); }
+  snapshot() { return [...this.records.values()].map(clone); }
+  restoreSnapshot(values: readonly InvestmentOpportunity[]) { this.records.clear(); for (const value of values) this.records.set(value.id.value, clone(value)); }
 }
 function clone(value: InvestmentOpportunity) { return InvestmentOpportunity.restore(value.props); }
