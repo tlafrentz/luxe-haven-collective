@@ -1,7 +1,7 @@
 import type { InvestmentOpportunityId, OpportunityOwnerId, OpportunityAnalysisId, InvestmentOpportunityRoute } from "@/features/investment-opportunity/domain";
 import type { InvestmentOpportunityRepository } from "@/features/investment-opportunity/application";
 import type { AcquisitionPipelineRepository, AcquisitionPipelineId, AcquisitionCommandId, AcquisitionPipelineVersion, AcquisitionActorReference } from "../../domain";
-export type AcquisitionApplicationCommandContext = Readonly<{ commandId: AcquisitionCommandId; actor: AcquisitionActorReference; ownerId: OpportunityOwnerId; occurredAt: Date; expectedPipelineVersion?: AcquisitionPipelineVersion; expectedOpportunityVersion?: number }>;
+export type AcquisitionApplicationCommandContext = Readonly<{ commandId: AcquisitionCommandId; requestFingerprint?: string; actor: AcquisitionActorReference; ownerId: OpportunityOwnerId; occurredAt: Date; expectedPipelineVersion?: AcquisitionPipelineVersion; expectedOpportunityVersion?: number }>;
 export type AcquisitionCapability = "acquisition.pipeline.activate" | "acquisition.pipeline.manage" | "acquisition.offer.manage" | "acquisition.contract.record" | "acquisition.requirements.manage" | "acquisition.closing.prepare" | "acquisition.close" | "acquisition.pipeline.exit" | "acquisition.pipeline.read";
 export type AuthorizationDecision = Readonly<{ allowed: boolean }>;
 export interface AcquisitionAuthorization { authorize(input: Readonly<{ actor: AcquisitionActorReference; ownerId: OpportunityOwnerId; capability: AcquisitionCapability; resourceId?: string }>): Promise<AuthorizationDecision>; }
@@ -9,7 +9,7 @@ export interface AcquisitionAnalysisReader { getCompletedAnalysisReference(input
 export interface AcquisitionActionStateReader { getActionStates(input: Readonly<{ ownerId: OpportunityOwnerId; actionIds: readonly import("@/platform/actions").ActionId[] }>): Promise<readonly Readonly<{ actionId: import("@/platform/actions").ActionId; status: string; blocked: boolean; updatedAt?: Date }>[]>; }
 export interface AcquisitionEvidenceStateReader { getEvidenceStates(input: Readonly<{ ownerId: OpportunityOwnerId; evidenceIds: readonly import("@/platform/evidence").EvidenceId[] }>): Promise<readonly Readonly<{ evidenceId: import("@/platform/evidence").EvidenceId; exists: boolean; available: boolean }>[]>; }
 export interface AcquisitionClock { now(): Date; }
-export interface AcquisitionCommandReceipt { commandId: AcquisitionCommandId; ownerId: OpportunityOwnerId; commandType: string; aggregateId?: AcquisitionPipelineId; completedAt: Date; result: unknown; }
+export interface AcquisitionCommandReceipt { commandId: AcquisitionCommandId; ownerId: OpportunityOwnerId; commandType: string; aggregateId?: AcquisitionPipelineId; completedAt: Date; result: unknown; requestFingerprint?: string; }
 export interface AcquisitionCommandReceiptRepository { find(commandId: AcquisitionCommandId, ownerId: OpportunityOwnerId): Promise<AcquisitionCommandReceipt | null>; save(receipt: AcquisitionCommandReceipt & { requestFingerprint?: string }): Promise<void>; }
 export interface AcquisitionTransactionalContext { acquisitionPipelines: AcquisitionPipelineRepository; investmentOpportunities: Pick<InvestmentOpportunityRepository,"findById"|"save">; commandReceipts: AcquisitionCommandReceiptRepository; }
 export interface AcquisitionUnitOfWork { execute<T>(operation: (context: AcquisitionTransactionalContext) => Promise<T>): Promise<T>; }
