@@ -38,6 +38,18 @@ describe("Investment Opportunity detail workspace architecture", () => {
     expect(action).toContain("router.refresh()");
   });
 
+  it("keeps the negotiation workspace projection-only and route discriminated", () => {
+    const commercial = read("src/features/investment-opportunity/components/acquisition-commercial-workspace.tsx");
+    expect(commercial).not.toMatch(/Repository|Supabase|createClient|requireUser|requireRole|aggregate/);
+    expect(commercial).toContain('terms.route === "purchase"');
+    expect(commercial).toContain('current.route === "rental-arbitrage"');
+    expect(commercial).toContain("proposedMonthlyRent");
+    expect(commercial).toContain("primaryAction");
+    expect(commercial).toContain("buildCommercialDeltas");
+    expect(commercial).toContain("sourceAnalysis");
+    expect(commercial).not.toMatch(/projectedCoC|cashOnCash|netOperatingIncome/);
+  });
+
   it("provides progressive loading and a safe route error boundary", () => {
     const loading = read("src/app/(dashboard)/dashboard/investments/opportunities/[id]/loading.tsx");
     const error = read("src/app/(dashboard)/dashboard/investments/opportunities/[id]/error.tsx");

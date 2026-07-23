@@ -4,8 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type {
   AcquisitionActivityWorkspaceSummary,
-  AcquisitionCommercialWorkspaceSummary,
-  AcquisitionOfferHeadlineTerms,
   AcquisitionPipelineTerminalWorkspaceSummary,
   AcquisitionPipelineWorkspaceSummary,
   AcquisitionRequirementsWorkspaceSummary,
@@ -16,6 +14,7 @@ import type {
   InvestmentOpportunityWorkspaceSummary,
 } from "../acquisition-workspace";
 import { AcquisitionLifecycleExperience } from "./acquisition-lifecycle-experience";
+import { AcquisitionCommercialWorkspace, isCommercialActionType } from "./acquisition-commercial-workspace";
 
 export function AcquisitionOpportunityWorkspace({ workspace }: { workspace: AcquisitionWorkspace }) {
   const acquisition = workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? workspace.acquisition : null;
@@ -32,10 +31,13 @@ export function AcquisitionOpportunityWorkspace({ workspace }: { workspace: Acqu
     {workspace.status === "opportunity-only" ? <OpportunityOnlyState workspace={workspace} /> : null}
     {workspace.status === "acquisition-unavailable" ? <WorkspaceUnavailableCard message={workspace.reason.message} /> : null}
     {workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? <>
-      <section aria-label="Commercial and acquisition requirements" className="grid gap-5 xl:grid-cols-2">
-        <CommercialSummaryCard commercial={workspace.acquisition.commercial} />
-        <RequirementsSummaryCard requirements={workspace.acquisition.requirements} />
-      </section>
+      <AcquisitionCommercialWorkspace
+        commercial={workspace.acquisition.commercial}
+        opportunity={workspace.opportunity}
+        analysis={workspace.analysis}
+        primaryAction={workspace.nextActions.find(action => action.priority === "primary" && isCommercialActionType(action.type)) ?? null}
+      />
+      <RequirementsSummaryCard requirements={workspace.acquisition.requirements} />
       <ClosingReadinessCard readiness={workspace.acquisition.readiness} />
       <RecentActivityCard activity={workspace.acquisition.activity} />
       <NextActionsCard actions={workspace.status === "pipeline-active" ? workspace.nextActions.filter(action => action.priority !== "primary") : workspace.nextActions} capabilities={workspace.capabilities} />
@@ -88,19 +90,6 @@ function OpportunityOnlyState({ workspace }: { workspace: Extract<AcquisitionWor
   return <section aria-labelledby="acquisition-start-heading"><Card className="border-dashed p-6 sm:p-8"><div className="max-w-2xl"><p className="eyebrow">Acquisition lifecycle</p><h2 id="acquisition-start-heading" className="mt-2 text-2xl font-semibold text-stone-950">No acquisition pursuit yet</h2><p className="mt-2 text-sm leading-6 text-stone-600">This opportunity remains available for evaluation. The acquisition timeline begins after an eligible analysis is selected and pursuit is activated.</p>
     <div className="mt-5 rounded-xl bg-stone-50 p-4"><p className="text-sm font-semibold text-stone-800">{workspace.activation.eligible ? "Ready for activation" : "Activation unavailable"}</p><ul className="mt-2 space-y-1 text-sm text-stone-600">{workspace.activation.blockers.map(blocker => <li key={blocker.code}>• {blocker.message}</li>)}{workspace.activation.limitations.map(limitation => <li key={limitation.code}>• {limitation.operatorMessage}</li>)}</ul></div>
   </div></Card></section>;
-}
-
-export function CommercialSummaryCard({ commercial }: { commercial: AcquisitionCommercialWorkspaceSummary }) {
-  return <SectionCard title="Commercial" description="Current commercial position without full term history.">
-    <div className="space-y-4">
-      <SummaryRow label="Current offer" value={commercial.currentOffer ? `Offer ${commercial.currentOffer.sequence} · ${label(commercial.currentOffer.status)}` : "No current offer"} />
-      {commercial.currentOffer ? <SummaryRow label="Headline terms" value={offerHeadline(commercial.currentOffer.headlineTerms)} /> : null}
-      <SummaryRow label="Latest response" value={commercial.latestResponse ? label(commercial.latestResponse.type) : "No counterparty response"} />
-      <SummaryRow label="Accepted agreement" value={commercial.acceptedAgreement ? `${label(commercial.acceptedAgreement.source)} basis recorded` : "No accepted agreement"} />
-      <SummaryRow label="Contract" value={commercial.contract ? `${label(commercial.contract.source)} · effective ${date(commercial.contract.effectiveDate)}` : "No contract recorded"} />
-      {commercial.priorOfferTotalCount ? <p className="text-xs text-stone-500">{commercial.priorOfferTotalCount} prior offer{commercial.priorOfferTotalCount === 1 ? "" : "s"} retained; {commercial.priorOffers.length} shown in this summary.</p> : null}
-    </div>
-  </SectionCard>;
 }
 
 export function RequirementsSummaryCard({ requirements }: { requirements: AcquisitionRequirementsWorkspaceSummary }) {
@@ -162,7 +151,6 @@ function SectionCard({ title, description, children }: { title: string; descript
 }
 function EmptyMessage({ title, body }: { title: string; body: string }) { return <div className="rounded-xl bg-stone-50 p-5"><p className="text-sm font-semibold text-stone-800">{title}</p><p className="mt-1 text-sm leading-6 text-stone-600">{body}</p></div>; }
 function Fact({ term, value }: { term: string; value: string }) { return <div><dt className="eyebrow">{term}</dt><dd className="mt-1.5 text-sm font-semibold text-stone-800">{value}</dd></div>; }
-function SummaryRow({ label: term, value }: { label: string; value: string }) { return <div className="flex flex-col justify-between gap-1 border-b border-stone-100 pb-3 last:border-0 last:pb-0 sm:flex-row sm:gap-4"><span className="text-sm text-stone-500">{term}</span><span className="text-sm font-semibold text-stone-800 sm:text-right">{value}</span></div>; }
 function routeLabel(route: string) { return route === "purchase" ? "Purchase" : "Rental Arbitrage"; }
 function label(value: string) { return value.split("-").map(part => part ? part[0]!.toUpperCase() + part.slice(1) : part).join(" "); }
 function headlineLabel(type: string) { return type === "monthly-rent" ? "Monthly rent" : type === "purchase-price" ? "Purchase price" : "Target value"; }
@@ -170,6 +158,3 @@ function recommendationTone(value: string): "success" | "warning" | "danger" { r
 function date(value: Date) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(value); }
 function dateTime(value: Date) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(value); }
 function currency(value: number) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }
-function offerHeadline(terms: AcquisitionOfferHeadlineTerms) {
-  return terms.route === "purchase" ? `${currency(terms.offerPrice.amount)} · ${label(terms.financingType)}` : `${currency(terms.proposedMonthlyRent.amount)}/month · ${terms.leaseTermMonths} months`;
-}

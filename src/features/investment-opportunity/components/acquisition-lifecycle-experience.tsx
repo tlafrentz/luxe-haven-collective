@@ -10,6 +10,7 @@ import type {
   AcquisitionWorkspaceNextAction,
 } from "../acquisition-workspace";
 import { AcquisitionPrimaryAction } from "./acquisition-primary-action";
+import { isCommercialActionType } from "./acquisition-commercial-workspace";
 
 type PipelineWorkspace = AcquisitionActiveWorkspace | AcquisitionTerminalWorkspace;
 
@@ -107,7 +108,7 @@ export function AcquisitionLifecycleExperience({ workspace }: { workspace: Pipel
       truncated={acquisition.lifecycle.historyTruncated}
     />
 
-    {workspace.status === "pipeline-active"
+    {workspace.status === "pipeline-active" && (!primaryAction || !isCommercialActionType(primaryAction.type))
       ? <AcquisitionPrimaryAction action={primaryAction} opportunity={workspace.opportunity} analysis={workspace.analysis} />
       : null}
   </section>;
