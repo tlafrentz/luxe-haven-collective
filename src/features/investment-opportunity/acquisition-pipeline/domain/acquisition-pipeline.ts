@@ -43,6 +43,7 @@ type PipelineState = Readonly<{
   contract?: AcquisitionContract;
   contingencies: readonly AcquisitionContingency[];
   dueDiligenceItems: readonly DueDiligenceItem[];
+  requirementHistory?: readonly unknown[];
   closingFacts?: AcquisitionClosingFacts;
 }>;
 
@@ -187,7 +188,7 @@ export class AcquisitionPipeline {
   }
 }
 
-function cloneState(state: PipelineState): PipelineState { return { ...state, activation: cloneActivation(state.activation), history: Object.freeze(state.history.map(cloneHistory)), activity: Object.freeze(state.activity.map(cloneActivity)), version: AcquisitionPipelineVersion.from(state.version.value), offers: Object.freeze(state.offers.map(cloneOffer)), responses: Object.freeze(state.responses.map(cloneResponse)), contingencies: Object.freeze(state.contingencies.map(cloneContingency)), dueDiligenceItems: Object.freeze(state.dueDiligenceItems.map(cloneDiligence)), ...(state.acceptedAgreement ? { acceptedAgreement: cloneAgreement(state.acceptedAgreement) } : {}), ...(state.contract ? { contract: cloneContract(state.contract) } : {}), ...(state.closingFacts ? { closingFacts: structuredClone(state.closingFacts) } : {}) }; }
+function cloneState(state: PipelineState): PipelineState { return { ...state, activation: cloneActivation(state.activation), history: Object.freeze(state.history.map(cloneHistory)), activity: Object.freeze(state.activity.map(cloneActivity)), version: AcquisitionPipelineVersion.from(state.version.value), offers: Object.freeze(state.offers.map(cloneOffer)), responses: Object.freeze(state.responses.map(cloneResponse)), contingencies: Object.freeze(state.contingencies.map(cloneContingency)), dueDiligenceItems: Object.freeze(state.dueDiligenceItems.map(cloneDiligence)), ...(state.requirementHistory ? { requirementHistory: structuredClone(state.requirementHistory) } : {}), ...(state.acceptedAgreement ? { acceptedAgreement: cloneAgreement(state.acceptedAgreement) } : {}), ...(state.contract ? { contract: cloneContract(state.contract) } : {}), ...(state.closingFacts ? { closingFacts: structuredClone(state.closingFacts) } : {}) }; }
 function cloneActivation(value: PipelineActivation): PipelineActivation { return { ...value, activatedAt: new Date(value.activatedAt), activatedBy: { ...value.activatedBy }, sourceAnalysis: { ...value.sourceAnalysis, analyzedAt: new Date(value.sourceAnalysis.analyzedAt) } }; }
 function cloneHistory(value: AcquisitionStageHistoryEntry): AcquisitionStageHistoryEntry { return { ...value, occurredAt: new Date(value.occurredAt), actor: { ...value.actor }, ...(value.reason ? { reason: { ...value.reason } } : {}), aggregateVersion: AcquisitionPipelineVersion.from(value.aggregateVersion.value) }; }
 function cloneActivity(value: AcquisitionActivity): AcquisitionActivity { return { ...value, occurredAt: new Date(value.occurredAt), actor: { ...value.actor }, details: { ...value.details }, aggregateVersion: AcquisitionPipelineVersion.from(value.aggregateVersion.value) }; }

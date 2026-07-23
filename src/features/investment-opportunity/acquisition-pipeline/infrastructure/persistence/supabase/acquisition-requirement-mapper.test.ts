@@ -1,0 +1,8 @@
+import { describe, expect, it } from "vitest";
+import { mapAcquisitionContingencyRow, mapAcquisitionDueDiligenceRow, mapAcquisitionRequirementHistoryRow } from "./acquisition-requirement-mapper";
+const base = { pipeline_id: "acquisition-pipeline-1", route: "purchase", status: "satisfied", blocking: true, priority: "normal", source: { type: "operator-added", explanation: "Recorded" }, outcome: { status: "satisfied", recorded_at: "2026-01-02T00:00:00.000Z", recorded_by: { type: "user", id: "owner-1" }, explanation: "Reviewed" }, action_references: [], evidence_references: [], document_references: [], created_at: "2026-01-01T00:00:00.000Z", created_by: { type: "user", id: "owner-1" }, updated_at: "2026-01-02T00:00:00.000Z" } as const;
+describe("requirement persistence mappers", () => {
+  it("restores contingency outcomes and references", () => { const value = mapAcquisitionContingencyRow({ ...base, id: "acquisition-contingency-1", type: "inspection", title: "Inspection" }); expect(value.status).toBe("satisfied"); expect(value.outcome?.recordedBy.id).toBe("owner-1"); });
+  it("restores diligence relationships", () => { const value = mapAcquisitionDueDiligenceRow({ ...base, id: "due-diligence-item-1", category: "property-condition", title: "Condition", related_contingency_id: "acquisition-contingency-1" }); expect(value.relatedContingencyId?.value).toBe("acquisition-contingency-1"); });
+  it("rejects invalid requirement history", () => { expect(() => mapAcquisitionRequirementHistoryRow({ id: "", pipeline_id: base.pipeline_id, requirement_id: "x", from_status: "in-progress", to_status: "satisfied", actor: { type: "user", id: "owner-1" }, occurred_at: base.updated_at, aggregate_version: 1 })).toThrowError(); });
+});
