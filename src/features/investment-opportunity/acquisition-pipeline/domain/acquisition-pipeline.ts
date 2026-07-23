@@ -3,7 +3,7 @@ import { createAcquisitionActorReference, type AcquisitionActorReference } from 
 import { createAcquisitionCommandContext, type AcquisitionCommandContextInput } from "./acquisition-command-context";
 import { createAcquisitionExit, type AcquisitionExit } from "./acquisition-exit";
 import { AcquisitionDomainError } from "./errors";
-import { createAcquisitionPipelineId, createAcquisitionStageTransitionId, createAcquisitionOfferId, createCounterpartyResponseId, createAcquisitionContractId, createAcquisitionContingencyId, createDueDiligenceItemId, type AcquisitionPipelineId, type AcquisitionStageTransitionId, type AcquisitionOfferId, type CounterpartyResponseId, type AcquisitionContractId, type AcquisitionContingencyId, type DueDiligenceItemId } from "./identifiers";
+import { createAcquisitionPipelineId, createAcquisitionStageTransitionId, createAcquisitionOfferId, createAcquisitionContractId, createAcquisitionContingencyId, createDueDiligenceItemId, type AcquisitionPipelineId, type AcquisitionStageTransitionId, type AcquisitionOfferId, type CounterpartyResponseId, type AcquisitionContractId, type AcquisitionContingencyId, type DueDiligenceItemId } from "./identifiers";
 import { createPipelineActivation, type PipelineActivation } from "./pipeline-activation";
 import { AcquisitionPipelineVersion } from "./acquisition-pipeline-version";
 import { assessAcquisitionStageTransition, type AcquisitionTransitionClassification } from "./acquisition-stage-policy";
@@ -13,10 +13,10 @@ import { deriveOpportunityStatusFromAcquisitionStage } from "./opportunity-statu
 import { assertSupportedAcquisitionPipelineRoute } from "./acquisition-route-policy";
 import type { AcquisitionActivity } from "./acquisition-activity";
 import type { AcquisitionStageHistoryEntry } from "./acquisition-stage-history";
-import type { AcquisitionOffer, AcquisitionOfferSequence, OfferSourceAnalysisReference } from "./offers/acquisition-offer";
+import type { AcquisitionOffer, OfferSourceAnalysisReference } from "./offers/acquisition-offer";
 import { createAcquisitionOfferSequence } from "./offers/acquisition-offer";
 import { validateAcquisitionOfferTerms, type AcquisitionOfferTerms } from "./offers/acquisition-offer-terms";
-import type { AcceptedAgreementBasis, CounterpartyReference, CounterpartyResponse } from "./offers/counterparty-response";
+import type { AcceptedAgreementBasis, CounterpartyResponse } from "./offers/counterparty-response";
 import type { AcquisitionContract, AcquisitionContractSource } from "./contracts/acquisition-contract";
 import { validateAcquisitionContractTerms, type AcquisitionContractTerms } from "./contracts/acquisition-contract-terms";
 import type { AcquisitionContingency, AcquisitionContingencyType, AcquisitionContingencySource } from "./contingencies";
