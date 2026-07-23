@@ -1,0 +1,2 @@
+export type AcquisitionPersistenceErrorCode = "ACQUISITION_PIPELINE_NOT_FOUND" | "ACQUISITION_PIPELINE_ALREADY_EXISTS" | "ACQUISITION_PIPELINE_VERSION_CONFLICT" | "ACQUISITION_PERSISTENCE_MAPPING_INVALID" | "ACQUISITION_PERSISTENCE_READ_FAILED" | "ACQUISITION_PERSISTENCE_WRITE_FAILED" | "ACQUISITION_TRANSACTION_FAILED";
+export class AcquisitionPersistenceError extends Error { public constructor(public readonly code: AcquisitionPersistenceErrorCode, message: string = code, options?: ErrorOptions) { super(message, options); this.name = "AcquisitionPersistenceError"; } }
