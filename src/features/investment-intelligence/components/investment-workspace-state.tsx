@@ -42,6 +42,8 @@ type InvestmentWorkspaceState = Readonly<{
   investmentMarketContext: InvestmentMarketContext | null;
   investmentAnalysisContext: InvestmentAnalysisContext | null;
   analysis: WorkspaceInvestmentAnalysis | null;
+  analysisSaveToken: string | null;
+  analyzedAt: Date | null;
   hasStaleAnalysis: boolean;
   isAnalyzing: boolean;
   analysisError: string | null;
@@ -63,9 +65,11 @@ const DEFAULT_VALUES: InvestmentWorkspaceValues = {
 
 const InvestmentWorkspaceContext = createContext<InvestmentWorkspaceState | null>(null);
 
-export function InvestmentWorkspaceStateProvider({ children }: { children: ReactNode }) {
-  const [values, setWorkspaceValues] = useState(DEFAULT_VALUES);
+export function InvestmentWorkspaceStateProvider({ children, initialValues }: { children: ReactNode; initialValues?: Partial<InvestmentWorkspaceValues> }) {
+  const [values, setWorkspaceValues] = useState<InvestmentWorkspaceValues>({ ...DEFAULT_VALUES, ...initialValues });
   const [result, setResult] = useState<Extract<Awaited<ReturnType<typeof analyzeInvestmentWorkspace>>, { ok: true }>["result"] | null>(null);
+  const [analysisSaveToken, setAnalysisSaveToken] = useState<string | null>(null);
+  const [analyzedAt, setAnalyzedAt] = useState<Date | null>(null);
   const [stage, setStage] = useState<InvestmentWorkspaceStage>("setup");
   const [isAnalysisStale, setIsAnalysisStale] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -114,6 +118,8 @@ export function InvestmentWorkspaceStateProvider({ children }: { children: React
       return;
     }
     setResult(response.result);
+    setAnalysisSaveToken(response.analysisSaveToken);
+    setAnalyzedAt(response.analyzedAt);
     setStage("decision-review");
     setIsAnalysisStale(false);
   }, [isReadyForAnalysis, values]);
@@ -127,10 +133,12 @@ export function InvestmentWorkspaceStateProvider({ children }: { children: React
     investmentMarketContext: result?.investmentMarketContext ?? null,
     investmentAnalysisContext: result?.investmentAnalysisContext ?? null,
     analysis: result?.lifecycleResult ?? null,
+    analysisSaveToken,
+    analyzedAt,
     hasStaleAnalysis: result !== null && isAnalysisStale,
     isAnalyzing: stage === "resolving-property" || stage === "running-market-analysis" || stage === "running-investment-analysis",
     analysisError, analyzeInvestment,
-  }), [values, setValues, setAcquisitionType, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, propertyAlternatives, isAnalysisStale, analysisError, analyzeInvestment]);
+  }), [values, setValues, setAcquisitionType, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, analyzeInvestment]);
 
   return <InvestmentWorkspaceContext.Provider value={contextValue}>{children}</InvestmentWorkspaceContext.Provider>;
 }

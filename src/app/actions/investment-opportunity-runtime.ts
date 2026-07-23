@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { SupabaseInvestmentOpportunityRepository, type InvestmentOpportunityPersistencePayload, type InvestmentOpportunityPersistenceRecord, type SupabaseInvestmentOpportunityGateway } from "@/features/investment-opportunity/infrastructure";
+import { SupabaseInvestmentOpportunityRepository, SupabaseOpportunityNoteRepository, type InvestmentOpportunityPersistencePayload, type InvestmentOpportunityPersistenceRecord, type SupabaseInvestmentOpportunityGateway, type SupabaseOpportunityNoteGateway } from "@/features/investment-opportunity/infrastructure";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 type Row = Record<string, unknown>;
@@ -35,9 +35,14 @@ class ServerSupabaseOpportunityGateway implements SupabaseInvestmentOpportunityG
     return { opportunity, analyses: (analyses.data ?? []) as unknown as Row[], tags: (tags.data ?? []) as unknown as Row[], activity: (activity.data ?? []) as unknown as Row[] };
   }
 }
+class ServerSupabaseOpportunityNoteGateway implements SupabaseOpportunityNoteGateway {
+  constructor(private readonly client: Client) {}
+  async addAtomic(input: Parameters<SupabaseOpportunityNoteGateway["addAtomic"]>[0]) { const { data, error } = await this.client.rpc("add_investment_opportunity_note", { p_opportunity_id: input.opportunityId, p_note: input.note, p_activity: input.activity, p_expected_version: input.expectedVersion, p_command_id: input.commandId }); if (error) throw error; if (typeof data !== "number") throw new Error("Note RPC returned an invalid aggregate version."); return data; }
+  async listRows(opportunityId: string, ownerId: string) { const parent = await this.client.from("investment_opportunities").select("id").eq("id", opportunityId).eq("owner_id", ownerId).maybeSingle(); if (parent.error) throw parent.error; if (!parent.data) return []; const { data, error } = await this.client.from("investment_opportunity_notes").select("*").eq("opportunity_id", opportunityId).order("created_at", { ascending: false }).order("id", { ascending: false }); if (error) throw error; return (data ?? []) as unknown as Row[]; }
+}
 
 export async function getInvestmentOpportunityRequestContext() {
   const client = await createClient(), { data: { user } } = await client.auth.getUser();
   if (!user) return { ok: false as const };
-  return { ok: true as const, ownerId: user.id, repository: new SupabaseInvestmentOpportunityRepository(new ServerSupabaseOpportunityGateway(client)) };
+  return { ok: true as const, ownerId: user.id, repository: new SupabaseInvestmentOpportunityRepository(new ServerSupabaseOpportunityGateway(client)), noteRepository: new SupabaseOpportunityNoteRepository(new ServerSupabaseOpportunityNoteGateway(client)) };
 }

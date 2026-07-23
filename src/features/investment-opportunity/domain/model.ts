@@ -68,6 +68,7 @@ export type OpportunityAnalysisSnapshot = Readonly<{
   market: Readonly<{ name: string; submarket?: string; medianAdr: OpportunityMoneySnapshot; medianOccupancy: OpportunityMetricSnapshot; trend: string }>;
   risks: readonly Readonly<{ id: string; title: string; description: string; severity: string; probability: number; mitigation?: string }>[];
   dataGaps: readonly Readonly<{ code: string; description: string }>[]; evidence: readonly Readonly<{ id: string; title: string; source: string; confidence: string }>[];
+  reanalysis?: Readonly<{ userAssumptions: Readonly<Record<string, string | number | boolean>> }>;
   analyzedAt: Date;
 }>;
 export type OpportunityAnalysisSourceSummary = Readonly<{ userSuppliedCount: number; learningSuppliedCount: number; marketSuppliedCount: number; defaultSuppliedCount: number; overrides: readonly Readonly<{ assumption: string; winningSource: Exclude<OpportunitySource, "derived">; overriddenSource?: "learning" | "market" | "default" }>[]; marketEvidenceAvailable: boolean; marketAnalysisStatus?: string }>;
@@ -86,5 +87,13 @@ export class OpportunityAnalysis {
   get lineage() { return structuredClone(this.state.lineage); } get createdAt() { return new Date(this.state.createdAt); }
 }
 
-export type OpportunityActivityType = "opportunity-created" | "analysis-saved" | "status-changed" | "name-changed" | "tags-changed" | "opportunity-archived" | "opportunity-restored";
+export type OpportunityActivityType = "opportunity-created" | "analysis-saved" | "status-changed" | "name-changed" | "tags-changed" | "note-added" | "opportunity-archived" | "opportunity-restored";
 export type OpportunityActivity = Readonly<{ id: OpportunityActivityId; opportunityId: InvestmentOpportunityId; type: OpportunityActivityType; actor: OpportunityActorReference; details: Readonly<Record<string, unknown>>; occurredAt: Date; aggregateVersion: number; commandId?: string }>;
+
+export type OpportunityNoteId = Identifier<`opportunity-note-${string}`>;
+export const createOpportunityNoteId = (value?: string): OpportunityNoteId => Identifier.create((value ?? `opportunity-note-${crypto.randomUUID()}`) as `opportunity-note-${string}`);
+export class OpportunityNoteBody {
+  private constructor(public readonly value: string) {}
+  static create(value: string) { const clean = value.trim(); if (!clean || clean.length > 5000) throw new OpportunityDomainError("INVALID_OPPORTUNITY_NOTE", "Opportunity notes must contain 1–5,000 characters."); return new OpportunityNoteBody(clean); }
+}
+export type OpportunityNote = Readonly<{ id: OpportunityNoteId; opportunityId: InvestmentOpportunityId; body: OpportunityNoteBody; author: OpportunityActorReference; createdAt: Date; updatedAt?: Date }>;

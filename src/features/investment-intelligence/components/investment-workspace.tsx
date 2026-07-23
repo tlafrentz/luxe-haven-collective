@@ -30,13 +30,16 @@ import {
   LiveInvestmentSummary,
 } from "./live-investment-summary";
 import { InvestmentMarketEvidencePanel } from "./investment-market-evidence-panel";
+import type { ReactNode } from "react";
+import type { InvestmentWorkspaceValues } from "./investment-workspace-state";
 
-export function InvestmentWorkspace() {
+export function InvestmentWorkspace({ resultsActions, initialValues, contextNotice }: { resultsActions?: ReactNode; initialValues?: Partial<InvestmentWorkspaceValues>; contextNotice?: ReactNode } = {}) {
   return (
-    <InvestmentWorkspaceStateProvider>
+    <InvestmentWorkspaceStateProvider initialValues={initialValues}>
       <main className="px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <div className="mx-auto max-w-[1480px] space-y-10">
           <InvestmentWorkspaceHeader />
+          {contextNotice}
 
           <InvestmentWorkspaceNavigation />
 
@@ -92,6 +95,7 @@ export function InvestmentWorkspace() {
             </header>
 
             <InvestmentAnalysisResults />
+            {resultsActions}
           </section>
         </div>
       </main>

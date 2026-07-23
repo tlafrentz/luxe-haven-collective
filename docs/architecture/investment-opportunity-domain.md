@@ -43,4 +43,16 @@ InvestmentLifecycleResult
 
 ## Deferred scope
 
-IA-001B owns portfolio UI, advanced search/filtering, comparison and ranking projections. IA-001C owns user-authored notes and timeline presentation. IA-001D owns metric-oriented comparison persistence. Offer management, tasks, documents, CRM, messaging, MLS synchronization, photos, collaboration, and acquisition-strategy generation remain outside this capability.
+IA-001B owns portfolio UI and foundational filtering. IA-001C owns Analyzer integration, user-authored notes, workflow controls, reanalysis, and timeline/history presentation. IA-001D owns comparison, ranking, and metric-oriented persistence. Offer management, tasks, documents, CRM, messaging, MLS synchronization, photos, and collaboration remain outside this capability.
+
+## IA-001C workflow integration
+
+Completed live analyses are now made saveable through a 30-minute, owner-scoped token record. The browser receives only the opaque token. The canonical workspace result and original input remain in `investment_analysis_save_tokens`; only its SHA-256 hash is persisted. Saving resolves the record under the authenticated session and never reruns Investment or Market analysis. The workspace result supplies snapshot enrichment, Market-versus-deal values, assumption provenance, lineage, policy references, and the subset of assumptions explicitly classified as user supplied.
+
+The Analyzer and Opportunity capabilities remain directionally independent. `InvestmentWorkspace` accepts generic composed result actions and optional initial values; the dashboard page composes the Opportunity save panel and reanalysis notice. Investment Intelligence does not import Investment Opportunity.
+
+Reanalysis restores route, durable property identity, and only prior user-sourced assumptions. Market, Learning, default, derived, score, confidence, recommendation, and evidence outputs are not hydrated as user inputs. A fresh server analysis receives a fresh workspace lifecycle identity and remains unpersisted until the operator explicitly saves it as the next version.
+
+Workflow mutations are authenticated server actions over the IA-001A application commands. They derive owner and actor from the session, require aggregate version and command ID, map stable feature errors to safe UI results, and revalidate portfolio/detail/history routes. Allowed status transitions are projected from the domain transition policy rather than duplicated in the UI.
+
+Notes use a separate owner-scoped repository and `investment_opportunity_notes` table. `add_investment_opportunity_note` atomically locks the parent, validates its expected version and archive state, inserts the plain-text note, appends a body-free `note-added` activity fact, updates `updated_at`, and advances the aggregate version. Historical analysis pages read saved JSON snapshots only and never invoke analysis providers.

@@ -1,4 +1,4 @@
-import type { InvestmentLifecycleResult } from "@/features/investment-intelligence";
+import type { InvestmentLifecycleResult, InvestmentWorkspaceAnalysisResult } from "@/features/investment-intelligence";
 import { AcquisitionType } from "@/features/investment-intelligence";
 import type { OpportunityAnalysisSnapshot, OpportunityMoneySnapshot, OpportunityMetricSnapshot } from "../domain";
 
@@ -28,4 +28,14 @@ export function buildOpportunityAnalysisSnapshot(result: InvestmentLifecycleResu
   }
   const rental = result.analysis;
   return Object.freeze({ ...common, financials: Object.freeze({ proposedMonthlyLease: money(rental.assumptions.monthlyLease, "user"), projectedAnnualRevenue: money(rental.revenueProjection.projectedAnnualRevenue), projectedAdr: money(rental.revenueProjection.projectedAdr), projectedOccupancy: metric(rental.revenueProjection.projectedOccupancy.value), operatingExpenses: money(rental.expenseProjection.totalOperatingExpenses), annualCashFlow: money(rental.financialPerformance.annualCashFlow), cashOnCashReturn: metric(rental.financialPerformance.cashOnCashReturn.value), initialCashRequired: money(rental.financialPerformance.initialCashInvested, "derived") }) });
+}
+
+export function buildOpportunityAnalysisSnapshotFromWorkspace(result: InvestmentWorkspaceAnalysisResult, analyzedAt: Date): OpportunityAnalysisSnapshot {
+  const base = buildOpportunityAnalysisSnapshot(result.lifecycleResult, analyzedAt), market = result.investmentMarketContext;
+  const financials = { ...base.financials,
+    ...(market.saleValuation?.estimatedValue !== undefined ? { estimatedMarketValue: money({ amount: market.saleValuation.estimatedValue, currency: "USD" }, "market") } : {}),
+    ...(market.longTermRent?.estimatedMonthlyRent !== undefined ? { estimatedMarketRent: money({ amount: market.longTermRent.estimatedMonthlyRent, currency: "USD" }, "market") } : {}),
+  };
+  const userAssumptions = Object.fromEntries(result.investmentAnalysisContext.assumptions.filter(item => item.source === "user").map(item => [item.key, item.value]));
+  return Object.freeze({ ...base, financials: Object.freeze(financials), dataGaps: Object.freeze(market.dataGaps.map(gap => Object.freeze({ code: gap.code, description: `${gap.severity}: ${gap.affectedInvestmentAssumptionKeys.join(", ") || "market evidence"}` }))), reanalysis: Object.freeze({ userAssumptions: Object.freeze(userAssumptions) }) });
 }

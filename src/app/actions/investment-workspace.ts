@@ -25,14 +25,16 @@ import {
   setWorkspaceHealthStatus,
   updateWorkspaceHealth,
 } from "./investment-workspace-runtime";
+import { storeInvestmentAnalysis } from "./investment-analysis-save-store";
 
 type InvestmentWorkspaceActionInput = Omit<RunInvestmentWorkspaceAnalysisCommand, "context"> & Readonly<{
   clientRequestId: string;
 }>;
+export type InvestmentWorkspaceServerActionResult = Exclude<InvestmentWorkspaceActionResult, { ok: true }> | Readonly<{ ok: true; result: Extract<InvestmentWorkspaceActionResult, { ok: true }>["result"]; analysisSaveToken: string; analyzedAt: Date }>;
 
 export async function analyzeInvestmentWorkspace(
   input: InvestmentWorkspaceActionInput,
-): Promise<InvestmentWorkspaceActionResult> {
+): Promise<InvestmentWorkspaceServerActionResult> {
   const { user } = await requireRole(["admin", "owner"]);
   const parsed = investmentWorkspaceActionSchema.safeParse(input);
   if (!parsed.success) {
@@ -84,7 +86,13 @@ export async function analyzeInvestmentWorkspace(
     const durationMs = Date.now() - startedAt;
     updateWorkspaceHealth({ success: true, durationMs });
     recordWorkspaceOperation("completed", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType, durationMs, reportStatus: result.marketReport.status, confidence: result.marketReport.confidence.level, saleComparableCount: result.marketReport.summary.saleComparableCount, rentalComparableCount: result.marketReport.summary.rentalComparableCount });
-    return { ok: true, result };
+    const analysisSaveToken = await storeInvestmentAnalysis(user.id, result, {
+      address: parsed.data.address,
+      investmentInput: parsed.data.investmentInput,
+      userProvidedAssumptionKeys: parsed.data.userProvidedAssumptionKeys,
+      marketRequest: parsed.data.marketRequest,
+    }, requestedAt);
+    return { ok: true, result, analysisSaveToken, analyzedAt: requestedAt };
   } catch (error) {
     const safe = safeError(error);
     const durationMs = Date.now() - startedAt;

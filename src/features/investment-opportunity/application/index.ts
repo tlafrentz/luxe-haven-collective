@@ -3,3 +3,7 @@ export * from "./snapshot-builder";
 export * from "./services";
 export * from "./ports/repository";
 export * from "./portfolio-view";
+export * from "./notes";
+export * from "./save-workflow";
+export * from "./analysis-detail";
+export * from "./activity-timeline";
