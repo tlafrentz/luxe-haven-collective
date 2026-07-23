@@ -110,7 +110,12 @@ describe("Acquisition Workspace projections", () => {
     } satisfies AcquisitionWorkspacePipelineSource["contingencies"][number];
     const summary = buildRequirementsSummary({ ...pipeline(), contingencies: [requirement] }, [{ actionId: "action-1", status: "completed", blocked: false, updatedAt: at }], [{ evidenceId: "evidence-1", available: false, state: "withdrawn", updatedAt: at }], at, 8);
     expect(summary.blocking[0]).toMatchObject({ linkedActionCount: 1, evidenceCount: 1, documentCount: 1, unavailableEvidenceCount: 1 });
+    expect(summary.contingencies).toHaveLength(1);
+    expect(summary.dueDiligence).toHaveLength(0);
+    expect(summary.evidence).toEqual({ linked: 1, available: 0, unavailable: 1, withdrawn: 1, superseded: 0 });
+    expect(summary.contingencies[0]?.evidence).toEqual(summary.evidence);
     expect(summary.blocking[0]).not.toHaveProperty("action");
+    expect(summary.blocking[0]).not.toHaveProperty("evidenceContent");
     expect(summary.blocking[0]).not.toHaveProperty("documentMetadata");
     expect(summary.blocking[0]?.status).toBe("not-started");
   });

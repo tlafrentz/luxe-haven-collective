@@ -281,10 +281,15 @@ export function buildRequirementsSummary(pipeline: AcquisitionWorkspacePipelineS
     const concernSummary: AcquisitionRequirementConcernSummary | undefined = highest ? { highestSeverity: highest.severity, total: concerns.length, blocking: concerns.filter(value => value.blocking).length, headline: highest.title } : undefined;
     const actionIds = item.actionReferences.map(value => value.actionId.value);
     const evidenceIds = item.evidenceReferences.map(value => value.evidenceId.value);
+    const evidenceValues = evidenceIds.map(id => evidence.get(id));
+    const dependencies = item.requirementType === "contingency"
+      ? item.relatedDueDiligenceItemIds.map(value => ({ requirementId: value.value, relationship: "related-diligence" as const }))
+      : item.relatedContingencyId ? [{ requirementId: item.relatedContingencyId.value, relationship: "related-contingency" as const }] : [];
     return {
       id: item.id.value,
       kind: item.requirementType,
       title: item.title,
+      ...(item.description ? { description: item.description } : {}),
       typeOrCategory: item.requirementType === "contingency" ? item.type : item.category,
       status: item.status,
       priority: item.priority,
@@ -294,18 +299,46 @@ export function buildRequirementsSummary(pipeline: AcquisitionWorkspacePipelineS
       linkedActionCount: actionIds.length,
       evidenceCount: evidenceIds.length,
       documentCount: item.documentReferences.length,
+      evidence: {
+        linked: evidenceIds.length,
+        available: evidenceValues.filter(value => value?.state === "available" && value.available).length,
+        unavailable: evidenceValues.filter(value => !value || value.state === "unavailable" || !value.available).length,
+        withdrawn: evidenceValues.filter(value => value?.state === "withdrawn").length,
+        superseded: evidenceValues.filter(value => value?.state === "superseded").length,
+      },
       unavailableActionCount: actionIds.filter(id => !actions.has(id)).length,
       unavailableEvidenceCount: evidenceIds.filter(id => !evidence.get(id)?.available).length,
+      dependencies,
       ...(concernSummary ? { concernSummary } : {}),
       ...(item.outcome?.recordedAt ? { resolvedAt: new Date(item.outcome.recordedAt) } : {}),
+      updatedAt: new Date(item.updatedAt),
     } satisfies AcquisitionRequirementWorkspaceItem;
   });
   const order = (a: AcquisitionRequirementWorkspaceItem, b: AcquisitionRequirementWorkspaceItem) => Number(b.blocking) - Number(a.blocking) || Number(b.status === "failed") - Number(a.status === "failed") || Number(b.overdue) - Number(a.overdue) || priorityRank[a.priority] - priorityRank[b.priority] || (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity) || a.id.localeCompare(b.id);
   const blocking = items.filter(item => item.blocking && !resolved.has(item.status)).sort(order);
   const high = items.filter(item => item.priority === "critical" || item.priority === "high").sort(order);
   const recent = items.filter(item => resolved.has(item.status)).sort((a, b) => (b.resolvedAt?.getTime() ?? 0) - (a.resolvedAt?.getTime() ?? 0) || a.id.localeCompare(b.id));
+  const contingencies = items.filter(item => item.kind === "contingency").sort(order);
+  const dueDiligence = items.filter(item => item.kind === "due-diligence").sort(order);
+  const risks = source.flatMap(item => (item.outcome?.concerns ?? []).map((concern, index) => ({
+    id: `${item.id.value}-risk-${index}`,
+    requirementId: item.id.value,
+    requirementTitle: item.title,
+    title: concern.title,
+    summary: concern.summary,
+    severity: concern.severity,
+    blocking: concern.blocking,
+    evidenceCount: concern.evidenceReferences.length,
+  }))).sort((a, b) => severityRank[a.severity] - severityRank[b.severity] || Number(b.blocking) - Number(a.blocking) || a.id.localeCompare(b.id));
+  const evidenceSummary = items.reduce((total, item) => ({
+    linked: total.linked + item.evidence.linked,
+    available: total.available + item.evidence.available,
+    unavailable: total.unavailable + item.evidence.unavailable,
+    withdrawn: total.withdrawn + item.evidence.withdrawn,
+    superseded: total.superseded + item.evidence.superseded,
+  }), { linked: 0, available: 0, unavailable: 0, withdrawn: 0, superseded: 0 });
   const count = (status: string) => items.filter(item => item.status === status).length;
-  return deepFreeze({ initialized: items.length > 0, totals: { contingencies: pipeline.contingencies.length, dueDiligence: pipeline.dueDiligenceItems.length, notStarted: count("not-started"), inProgress: count("in-progress"), satisfied: count("satisfied"), waived: count("waived"), failed: count("failed"), notApplicable: count("not-applicable") }, blocking: blocking.slice(0, limit), blockingTotalCount: blocking.length, blockingTruncated: blocking.length > limit, highPriority: high.slice(0, limit), highPriorityTotalCount: high.length, highPriorityTruncated: high.length > limit, recentlyResolved: recent.slice(0, limit), recentlyResolvedTotalCount: recent.length, recentlyResolvedTruncated: recent.length > limit, waivedCount: count("waived"), failedCount: count("failed"), unresolvedCriticalConcernCount: items.reduce((sum, item) => sum + (item.concernSummary?.highestSeverity === "critical" ? item.concernSummary.blocking : 0), 0) });
+  return deepFreeze({ initialized: items.length > 0, totals: { contingencies: pipeline.contingencies.length, dueDiligence: pipeline.dueDiligenceItems.length, notStarted: count("not-started"), inProgress: count("in-progress"), satisfied: count("satisfied"), waived: count("waived"), failed: count("failed"), notApplicable: count("not-applicable") }, blocking: blocking.slice(0, limit), blockingTotalCount: blocking.length, blockingTruncated: blocking.length > limit, highPriority: high.slice(0, limit), highPriorityTotalCount: high.length, highPriorityTruncated: high.length > limit, recentlyResolved: recent.slice(0, limit), recentlyResolvedTotalCount: recent.length, recentlyResolvedTruncated: recent.length > limit, contingencies: contingencies.slice(0, limit), contingencyTotalCount: contingencies.length, contingenciesTruncated: contingencies.length > limit, dueDiligence: dueDiligence.slice(0, limit), dueDiligenceTotalCount: dueDiligence.length, dueDiligenceTruncated: dueDiligence.length > limit, risks: risks.slice(0, limit), riskTotalCount: risks.length, risksTruncated: risks.length > limit, evidence: evidenceSummary, waivedCount: count("waived"), failedCount: count("failed"), unresolvedCriticalConcernCount: items.reduce((sum, item) => sum + (item.concernSummary?.highestSeverity === "critical" ? item.concernSummary.blocking : 0), 0) });
 }
 
 export function buildClosingReadinessSummary(value: AcquisitionClosingReadiness | undefined, pipelineVersion: number, limits: Pick<AcquisitionWorkspaceResolvedLimits, "blockers" | "warnings">): AcquisitionClosingReadinessWorkspaceSummary | null {

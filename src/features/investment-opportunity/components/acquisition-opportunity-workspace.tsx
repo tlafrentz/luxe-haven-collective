@@ -6,7 +6,6 @@ import type {
   AcquisitionActivityWorkspaceSummary,
   AcquisitionPipelineTerminalWorkspaceSummary,
   AcquisitionPipelineWorkspaceSummary,
-  AcquisitionRequirementsWorkspaceSummary,
   AcquisitionWorkspace,
   AcquisitionWorkspaceCapabilities,
   AcquisitionWorkspaceNextAction,
@@ -15,6 +14,7 @@ import type {
 } from "../acquisition-workspace";
 import { AcquisitionLifecycleExperience } from "./acquisition-lifecycle-experience";
 import { AcquisitionCommercialWorkspace, isCommercialActionType } from "./acquisition-commercial-workspace";
+import { AcquisitionDueDiligenceWorkspace, isDiligenceActionType } from "./acquisition-due-diligence-workspace";
 
 export function AcquisitionOpportunityWorkspace({ workspace }: { workspace: AcquisitionWorkspace }) {
   const acquisition = workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? workspace.acquisition : null;
@@ -37,7 +37,13 @@ export function AcquisitionOpportunityWorkspace({ workspace }: { workspace: Acqu
         analysis={workspace.analysis}
         primaryAction={workspace.nextActions.find(action => action.priority === "primary" && isCommercialActionType(action.type)) ?? null}
       />
-      <RequirementsSummaryCard requirements={workspace.acquisition.requirements} />
+      <AcquisitionDueDiligenceWorkspace
+        requirements={workspace.acquisition.requirements}
+        readiness={workspace.acquisition.readiness}
+        primaryAction={workspace.nextActions.find(action => action.priority === "primary" && isDiligenceActionType(action.type)) ?? null}
+        opportunity={workspace.opportunity}
+        analysis={workspace.analysis}
+      />
       <ClosingReadinessCard readiness={workspace.acquisition.readiness} />
       <RecentActivityCard activity={workspace.acquisition.activity} />
       <NextActionsCard actions={workspace.status === "pipeline-active" ? workspace.nextActions.filter(action => action.priority !== "primary") : workspace.nextActions} capabilities={workspace.capabilities} />
@@ -90,22 +96,6 @@ function OpportunityOnlyState({ workspace }: { workspace: Extract<AcquisitionWor
   return <section aria-labelledby="acquisition-start-heading"><Card className="border-dashed p-6 sm:p-8"><div className="max-w-2xl"><p className="eyebrow">Acquisition lifecycle</p><h2 id="acquisition-start-heading" className="mt-2 text-2xl font-semibold text-stone-950">No acquisition pursuit yet</h2><p className="mt-2 text-sm leading-6 text-stone-600">This opportunity remains available for evaluation. The acquisition timeline begins after an eligible analysis is selected and pursuit is activated.</p>
     <div className="mt-5 rounded-xl bg-stone-50 p-4"><p className="text-sm font-semibold text-stone-800">{workspace.activation.eligible ? "Ready for activation" : "Activation unavailable"}</p><ul className="mt-2 space-y-1 text-sm text-stone-600">{workspace.activation.blockers.map(blocker => <li key={blocker.code}>• {blocker.message}</li>)}{workspace.activation.limitations.map(limitation => <li key={limitation.code}>• {limitation.operatorMessage}</li>)}</ul></div>
   </div></Card></section>;
-}
-
-export function RequirementsSummaryCard({ requirements }: { requirements: AcquisitionRequirementsWorkspaceSummary }) {
-  return <SectionCard title="Requirements" description="Blocking and priority acquisition requirements.">
-    {!requirements.initialized ? <EmptyMessage title="Requirements have not yet been initialized." body="Requirements will appear after the applicable acquisition policy is initialized." /> : <>
-      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4"><Fact term="Contingencies" value={String(requirements.totals.contingencies)} /><Fact term="Due diligence" value={String(requirements.totals.dueDiligence)} /><Fact term="Failed" value={String(requirements.failedCount)} /><Fact term="Waived" value={String(requirements.waivedCount)} /></dl>
-      <RequirementList title="Blocking now" items={requirements.blocking} />
-      <RequirementList title="High priority" items={requirements.highPriority} />
-      <RequirementList title="Recently resolved" items={requirements.recentlyResolved} />
-    </>}
-  </SectionCard>;
-}
-
-function RequirementList({ title, items }: { title: string; items: AcquisitionRequirementsWorkspaceSummary["blocking"] }) {
-  if (!items.length) return null;
-  return <div className="mt-5 border-t border-stone-100 pt-4"><h3 className="text-sm font-semibold text-stone-900">{title}</h3><ul className="mt-3 space-y-2">{items.map(item => <li key={item.id} className="rounded-xl bg-stone-50 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-medium text-stone-800">{item.title}</span><Badge tone={item.status === "failed" ? "danger" : item.blocking ? "warning" : "neutral"}>{label(item.status)}</Badge></div><p className="mt-1 text-xs text-stone-500">{label(item.priority)} priority{item.overdue ? " · Overdue" : ""} · {item.linkedActionCount} actions · {item.evidenceCount} evidence · {item.documentCount} documents</p></li>)}</ul></div>;
 }
 
 export function ClosingReadinessCard({ readiness }: { readiness: AcquisitionPipelineWorkspaceSummary["readiness"] }) {

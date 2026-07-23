@@ -223,10 +223,32 @@ export type AcquisitionRequirementConcernSummary = Readonly<{
   blocking: number;
   headline?: string;
 }>;
+export type AcquisitionRequirementEvidenceCounts = Readonly<{
+  linked: number;
+  available: number;
+  unavailable: number;
+  withdrawn: number;
+  superseded: number;
+}>;
+export type AcquisitionRequirementRiskWorkspaceSummary = Readonly<{
+  id: string;
+  requirementId: string;
+  requirementTitle: string;
+  title: string;
+  summary: string;
+  severity: "low" | "moderate" | "high" | "critical";
+  blocking: boolean;
+  evidenceCount: number;
+}>;
+export type AcquisitionRequirementDependencySummary = Readonly<{
+  requirementId: string;
+  relationship: "related-contingency" | "related-diligence";
+}>;
 export type AcquisitionRequirementWorkspaceItem = Readonly<{
   id: string;
   kind: "contingency" | "due-diligence";
   title: string;
+  description?: string;
   typeOrCategory: string;
   status: "not-started" | "in-progress" | "satisfied" | "waived" | "failed" | "not-applicable";
   priority: "low" | "normal" | "high" | "critical";
@@ -236,10 +258,13 @@ export type AcquisitionRequirementWorkspaceItem = Readonly<{
   linkedActionCount: number;
   evidenceCount: number;
   documentCount: number;
+  evidence: AcquisitionRequirementEvidenceCounts;
   unavailableActionCount: number;
   unavailableEvidenceCount: number;
+  dependencies: readonly AcquisitionRequirementDependencySummary[];
   concernSummary?: AcquisitionRequirementConcernSummary;
   resolvedAt?: Date;
+  updatedAt: Date;
 }>;
 export type AcquisitionRequirementCounts = Readonly<{
   contingencies: number;
@@ -263,6 +288,16 @@ export type AcquisitionRequirementsWorkspaceSummary = Readonly<{
   recentlyResolved: readonly AcquisitionRequirementWorkspaceItem[];
   recentlyResolvedTotalCount: number;
   recentlyResolvedTruncated: boolean;
+  contingencies: readonly AcquisitionRequirementWorkspaceItem[];
+  contingencyTotalCount: number;
+  contingenciesTruncated: boolean;
+  dueDiligence: readonly AcquisitionRequirementWorkspaceItem[];
+  dueDiligenceTotalCount: number;
+  dueDiligenceTruncated: boolean;
+  risks: readonly AcquisitionRequirementRiskWorkspaceSummary[];
+  riskTotalCount: number;
+  risksTruncated: boolean;
+  evidence: AcquisitionRequirementEvidenceCounts;
   waivedCount: number;
   failedCount: number;
   unresolvedCriticalConcernCount: number;

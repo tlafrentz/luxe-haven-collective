@@ -62,6 +62,19 @@ describe("Investment Opportunity detail workspace architecture", () => {
     expect(review).not.toMatch(/Repository|Supabase|createClient|aggregate|window\.confirm|confirm\(/);
   });
 
+  it("keeps due diligence presentation on bounded workspace projections", () => {
+    const diligence = read("src/features/investment-opportunity/components/acquisition-due-diligence-workspace.tsx");
+    const contracts = read("src/features/investment-opportunity/acquisition-workspace/application/contracts.ts");
+    expect(diligence).not.toMatch(/Repository|Supabase|createClient|requireUser|aggregate|evidencePayload|documentUrl|mimeType/);
+    expect(diligence).toContain("AcquisitionRequirementsWorkspaceSummary");
+    expect(diligence).toContain("primaryAction");
+    expect(diligence).toContain("<details");
+    expect(diligence).toContain("Evidence content, provenance, URLs, and document previews are intentionally excluded");
+    expect(contracts).toContain("AcquisitionRequirementEvidenceCounts");
+    expect(contracts).toContain("AcquisitionRequirementRiskWorkspaceSummary");
+    expect(contracts).toContain("AcquisitionRequirementDependencySummary");
+  });
+
   it("provides progressive loading and a safe route error boundary", () => {
     const loading = read("src/app/(dashboard)/dashboard/investments/opportunities/[id]/loading.tsx");
     const error = read("src/app/(dashboard)/dashboard/investments/opportunities/[id]/error.tsx");
