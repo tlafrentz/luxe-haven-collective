@@ -438,7 +438,20 @@ export type AcquisitionWorkspaceDeploymentStatus = Readonly<{
 
 export interface AcquisitionWorkspaceOpportunityReader { findOpportunity(input: Readonly<{ ownerId: string; opportunityId: InvestmentOpportunityId }>): Promise<AcquisitionWorkspaceOpportunitySource | null>; }
 export interface AcquisitionWorkspaceAnalysisReader { findLatestCompletedAnalysis(input: Readonly<{ ownerId: string; opportunityId: InvestmentOpportunityId }>): Promise<AcquisitionWorkspaceAnalysisSource | null>; }
-export interface AcquisitionWorkspacePipelineReader { findByOpportunity(input: Readonly<{ ownerId: string; opportunityId: InvestmentOpportunityId }>): Promise<AcquisitionWorkspacePipelineSource | null>; }
+export interface AcquisitionWorkspacePipelineReader { findByOpportunity(input: Readonly<{ ownerId: string; opportunityId: InvestmentOpportunityId; evaluatedAt: Date }>): Promise<AcquisitionWorkspacePipelineSource | null>; }
 export interface AcquisitionWorkspaceActionReader { getActionStates(input: Readonly<{ ownerId: string; actionIds: readonly string[] }>): Promise<readonly AcquisitionWorkspaceActionState[]>; }
 export interface AcquisitionWorkspaceEvidenceReader { getEvidenceStates(input: Readonly<{ ownerId: string; evidenceIds: readonly string[] }>): Promise<readonly AcquisitionWorkspaceEvidenceState[]>; }
 export interface AcquisitionWorkspaceAuthorizer { authorize(input: Readonly<{ ownerId: string; actor: AcquisitionActorReference; opportunityId: InvestmentOpportunityId }>): Promise<AcquisitionWorkspaceAuthorizationSource>; }
+
+export type AcquisitionWorkspaceQueryOperation =
+  | "authorization"
+  | "opportunity-reader"
+  | "analysis-reader"
+  | "pipeline-reader"
+  | "action-reader"
+  | "evidence-reader"
+  | "projection";
+export interface AcquisitionWorkspaceQueryObserver {
+  measure<T>(operation: AcquisitionWorkspaceQueryOperation, work: () => Promise<T>): Promise<T>;
+  measureSync<T>(operation: AcquisitionWorkspaceQueryOperation, work: () => T): T;
+}
