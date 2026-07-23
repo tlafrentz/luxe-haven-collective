@@ -182,7 +182,12 @@ function domainBlockers(name: string, pipeline: AcquisitionWorkspacePipelineSour
   const result: { code: string; message: string }[] = [];
   if (name === "recordContract" && !pipeline.acceptedAgreement) result.push({ code: "AGREEMENT_REQUIRED", message: "An accepted agreement is required." });
   if (name === "prepareClosing" && !pipeline.contract) result.push({ code: "CONTRACT_REQUIRED", message: "A recorded contract is required." });
+  if (name === "prepareClosing" && !pipeline.readiness) result.push({ code: "READINESS_REQUIRED", message: "Closing readiness must be evaluated." });
+  if (name === "prepareClosing" && pipeline.readiness && pipeline.readiness.evaluatedPipelineVersion !== pipeline.version) result.push({ code: "READINESS_STALE", message: "Closing readiness must be re-evaluated for the current pipeline version." });
+  if (name === "prepareClosing" && pipeline.readiness?.blockers.length) result.push({ code: "CLOSING_NOT_READY", message: "Resolve closing-readiness blockers before preparing to close." });
   if (name === "close" && pipeline.stage !== "closing-preparation") result.push({ code: "CLOSING_PREPARATION_REQUIRED", message: "The pipeline must be in closing preparation." });
+  if (name === "close" && (!pipeline.readiness || pipeline.readiness.evaluatedPipelineVersion !== pipeline.version)) result.push({ code: "READINESS_STALE", message: "Current closing readiness is required." });
+  if (name === "close" && pipeline.readiness?.blockers.length) result.push({ code: "CLOSING_NOT_READY", message: "Resolve closing-readiness blockers before closing." });
   return result;
 }
 
@@ -408,6 +413,7 @@ export function buildNextActions(input: Readonly<{ opportunity: InvestmentOpport
     : stage === "offer-submitted" || stage === "negotiating" ? ["record-response", "Record response", "Record the counterparty response.", "manageOffers", "record-response"]
     : stage === "under-contract" && !input.acquisition.commercial.contract ? ["record-contract", "Record contract", "Record the executed agreement.", "recordContract", "record-contract"]
     : stage === "under-contract" && !input.acquisition.requirements.initialized ? ["initialize-requirements", "Initialize requirements", "Create the acquisition requirements.", "manageRequirements", "initialize-requirements"]
+    : (stage === "under-contract" || stage === "due-diligence") && input.acquisition.readiness?.current && input.acquisition.readiness.status !== "not-ready" ? ["begin-closing-preparation", "Prepare closing", "Confirm current readiness and enter closing preparation.", "prepareClosing", "prepare-closing"]
     : stage === "under-contract" || stage === "due-diligence" ? ["manage-due-diligence", "Manage due diligence", "Resolve priority acquisition requirements.", "manageRequirements", "manage-requirements"]
     : stage === "closing-preparation" ? ["close-acquisition", "Close acquisition", "Record the terminal acquisition outcome.", "close", "close"]
     : ["review-closing-readiness", "Review closing readiness", "Review current closing blockers.", "prepareClosing", "prepare-closing"];

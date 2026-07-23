@@ -75,6 +75,19 @@ describe("Investment Opportunity detail workspace architecture", () => {
     expect(contracts).toContain("AcquisitionRequirementDependencySummary");
   });
 
+  it("keeps closing presentation projection-only and mutations behind the typed boundary", () => {
+    const closing = read("src/features/investment-opportunity/components/acquisition-closing-workspace.tsx");
+    expect(closing).toContain("closeAcquisitionAction");
+    expect(closing).toContain("expectedPipelineVersion");
+    expect(closing).toContain("crypto.randomUUID()");
+    expect(closing).toContain('role="dialog"');
+    expect(closing).toContain("router.refresh()");
+    expect(closing).toContain('result?.status === "conflict"');
+    expect(closing).toContain('result?.status === "blocked"');
+    expect(closing).toContain('result?.status === "unavailable"');
+    expect(closing).not.toMatch(/Repository|Supabase|createClient|requireUser|PersistenceRow|documentUrl|mimeType|evidenceContent|window\.confirm/);
+  });
+
   it("provides progressive loading and a safe route error boundary", () => {
     const loading = read("src/app/(dashboard)/dashboard/investments/opportunities/[id]/loading.tsx");
     const error = read("src/app/(dashboard)/dashboard/investments/opportunities/[id]/error.tsx");

@@ -3,7 +3,7 @@ import { createInvestmentOpportunityId, createOpportunityAnalysisId } from "../.
 import { AcquisitionPipelineVersion, createAcquisitionContingencyId, createAcquisitionOfferId, createAcquisitionStageTransitionId, createAcquisitionPipelineId, createAcquisitionActorReference, type AcquisitionOffer } from "../../acquisition-pipeline/domain";
 import { createActionId } from "@/platform/actions";
 import { createEvidenceId } from "@/platform/evidence";
-import { buildAcquisitionWorkspace, buildAnalysisWorkspaceSummary, buildLifecycleSummary, buildRequirementsSummary, getAcquisitionWorkspace, resolveAcquisitionWorkspaceLimits, type AcquisitionWorkspaceAnalysisSource, type AcquisitionWorkspaceAuthorizationSource, type AcquisitionWorkspaceDeploymentStatus, type AcquisitionWorkspaceOpportunitySource, type AcquisitionWorkspacePipelineSource, type GetAcquisitionWorkspaceDependencies } from ".";
+import { buildAcquisitionWorkspace, buildAnalysisWorkspaceSummary, buildLifecycleSummary, buildNextActions, buildRequirementsSummary, getAcquisitionWorkspace, resolveAcquisitionWorkspaceLimits, type AcquisitionWorkspaceAnalysisSource, type AcquisitionWorkspaceAuthorizationSource, type AcquisitionWorkspaceDeploymentStatus, type AcquisitionWorkspaceOpportunitySource, type AcquisitionWorkspacePipelineSource, type GetAcquisitionWorkspaceDependencies } from ".";
 
 const at = new Date("2026-07-23T12:00:00Z");
 const ownerId = "owner-1", opportunityId = createInvestmentOpportunityId("investment-opportunity-workspace");
@@ -93,6 +93,19 @@ describe("Acquisition Workspace projections", () => {
     const lifecycle = buildLifecycleSummary(pipeline("offer-preparation"), 10);
     expect(lifecycle.availableTransitions).toEqual(expect.arrayContaining([expect.objectContaining({ targetStage: "offer-submitted", commandType: "submit-offer" })]));
     expect(lifecycle.availableTransitions.map(value => value.targetStage)).not.toContain("closed-acquired");
+  });
+
+  it("projects closing preparation only from current blocker-free readiness", () => {
+    const baseline = buildAcquisitionWorkspace({ opportunity, analysis, pipeline: pipeline("due-diligence"), actionStates: [], evidenceStates: [], authorization, deployment, evaluatedAt: at, limits, actionDependencyAvailable: true, evidenceDependencyAvailable: true });
+    if (baseline.status !== "pipeline-active") throw new Error("expected active");
+    const ready = { status: "ready" as const, evaluatedAt: at, evaluatedPipelineVersion: 3, current: true, blockers: [], blockerTotalCount: 0, blockersTruncated: false, warnings: [], warningTotalCount: 0, warningsTruncated: false, counts: { requiredContingencies: 0, unresolvedContingencies: 0, requiredDiligence: 0, unresolvedDiligence: 0, waived: 0, failed: 0 } };
+    const capabilities = Object.fromEntries(["read", "activate", "manageOffers", "recordContract", "manageRequirements", "prepareClosing", "close", "exit"].map(name => [name, { status: "available" }])) as typeof baseline.capabilities;
+    const source = { ...pipeline("due-diligence"), readiness: { status: "ready" as const, evaluatedAt: at, evaluatedPipelineVersion: 3, route: "purchase" as const, pipelineStage: "due-diligence" as const, blockers: [], warnings: [], satisfiedConditions: [], requiredContingencyCount: 0, unresolvedContingencyCount: 0, requiredDiligenceCount: 0, unresolvedDiligenceCount: 0, waivedRequirementCount: 0, failedRequirementCount: 0 } };
+    const acquisition = { ...baseline.acquisition, readiness: ready };
+    const actions = buildNextActions({ opportunity: baseline.opportunity, analysis: baseline.analysis, pipeline: source, acquisition, capabilities, versions: baseline.versions });
+    expect(actions[0]).toMatchObject({ type: "begin-closing-preparation", command: { commandType: "prepare-closing" } });
+    const stale = buildNextActions({ opportunity: baseline.opportunity, analysis: baseline.analysis, pipeline: source, acquisition: { ...acquisition, readiness: { ...ready, current: false } }, capabilities, versions: baseline.versions });
+    expect(stale[0]?.type).toBe("manage-due-diligence");
   });
 
   it("orders and bounds prior offers by sequence", () => {
