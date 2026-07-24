@@ -17,7 +17,7 @@ import {
 
 type ShellProps = Readonly<{ children: ReactNode; experience: PlatformExperience; role?: string | null }>;
 const groupLabels: Record<string, string> = { home: "Home", hpm: "HPM lifecycle", business: "Business", services: "Services", settings: "Settings", operations: "Operations", infrastructure: "Infrastructure" };
-const iconLabels: Record<string, string> = { home: "HM", observe: "OB", understand: "UN", decide: "DC", execute: "EX", learn: "LN", property: "PR", investment: "IN", booking: "BK", message: "MS", report: "RP", service: "SV", settings: "ST", operations: "OP", integration: "IT", content: "CT" };
+const iconLabels: Record<string, string> = { home: "HM", observe: "OB", understand: "UN", portfolio: "PI", decide: "DC", execute: "EX", learn: "LN", property: "PR", investment: "IN", booking: "BK", message: "MS", report: "RP", service: "SV", settings: "ST", operations: "OP", integration: "IT", content: "CT" };
 const availabilityLabels: Record<NavigationAvailability, string> = { available: "", "limited-preview": "Limited", "coming-soon": "Soon" };
 
 export function ClientWorkspaceShell({ children, role }: Omit<ShellProps, "experience">) { return <PlatformShell experience="client-workspace" role={role}>{children}</PlatformShell>; }
@@ -78,7 +78,7 @@ export function PlatformShell({ children, experience, role }: ShellProps) {
           <div className="flex items-center gap-3"><EnvironmentIndicator /><span className="hidden rounded-full border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-600 sm:inline-flex">{experience === "client-workspace" ? "Workspace" : "Internal"}</span><Link href={experience === "client-workspace" ? "/dashboard/settings" : "/admin"} aria-label="Open user profile menu" className="flex h-10 w-10 items-center justify-center rounded-full bg-stone-950 text-xs font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">TL</Link></div>
         </div>
       </header>
-      <main id="main-content">{children}</main>
+      <main id="main-content" className="sm:mx-6 lg:mx-8">{children}</main>
     </div>
   </div>;
 }
