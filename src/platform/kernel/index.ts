@@ -3,6 +3,8 @@ export {
   EntityWithProps,
 } from "./domain/entity-with-props";
 export { Identifier } from "./domain/identifier";
+export { Money } from "./domain/money";
+export { Percentage } from "./domain/percentage";
 export { ValueObject } from "./domain/value-object";
 
 export {
