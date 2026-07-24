@@ -1,2 +1,2 @@
-import { PortfolioWorkspaceSkeleton } from "@/features/portfolio-intelligence";
-export default function PortfolioIntelligenceLoading() { return <PortfolioWorkspaceSkeleton />; }
+import { PortfolioDashboardSkeleton } from "@/features/portfolio-intelligence";
+export default function PortfolioDashboardLoading() { return <PortfolioDashboardSkeleton />; }

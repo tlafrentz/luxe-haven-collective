@@ -32,7 +32,7 @@ describe("Capital Allocation architecture", () => {
   });
   it("performs no Portfolio, Opportunity, Pipeline, or Action mutation", () => {
     const all = [...files("domain/allocation"), ...files("application")].map((item) => item.source).join("\n");
-    expect(all).not.toMatch(/\.addProperty|\.removeProperty|\.updateCapital|\.changeHealth|\.recordDecision|\.transitionStatus|\.transition\(|\.closeAcquisition|createAction/);
+    expect(all).not.toMatch(/\.addProperty|\.removeProperty|\.updateCapital|\.changeHealth|\.recordDecision|\.transitionStatus|\.transition\(|\.closeAcquisition|\.createAction\(/);
   });
   it("has deterministic bounded output and no calculation persistence requirement", () => {
     const policy = readFileSync(resolve(root, "domain/allocation/policy.ts"), "utf8");

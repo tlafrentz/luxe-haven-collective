@@ -26,6 +26,7 @@ describe("workspace-driven platform experience", () => {
     ["/dashboard/insights", "observe"],
     ["/dashboard/actions/abc", "execute"],
     ["/dashboard/portfolio", "understand"],
+    ["/dashboard/portfolio/workspace", "understand"],
   ] as const)("resolves %s to %s", (path, workspace) => expect(resolveWorkspaceForPath(path)).toBe(workspace));
 
   it("does not resolve unrelated routes to an HPM workspace", () => {
@@ -49,6 +50,7 @@ describe("workspace-driven platform experience", () => {
     const route = platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio");
     expect(route).toMatchObject({ hpmStage: "understand", businessWorkspace: "portfolio", navigationItemId: "portfolio-intelligence" });
     expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ group: "business", href: "/dashboard/portfolio" });
+    expect(platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio/workspace")).toMatchObject({ hpmStage: "understand", navigationItemId: "portfolio-intelligence" });
   });
 
   it("builds consistent Investment Intelligence breadcrumbs", () => {
