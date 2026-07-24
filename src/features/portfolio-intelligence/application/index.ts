@@ -1,5 +1,7 @@
 export * from "./allocation-builders";
 export * from "./workspace";
+export * from "./recommendation-contracts";
+export * from "./evaluate-portfolio-recommendations";
 export * from "./allocation-contracts";
 export * from "./compare-portfolio-health";
 export * from "./compare-capital-allocation";
