@@ -1,5 +1,5 @@
 import "server-only";
-import { createProductionLearningWorkspaceComposition, type LearningObservationWindow, type LearningWorkspaceOutcomeReader, type LearningWorkspacePortfolioLearningReader, type LearningWorkspacePortfolioReader, type LearningWorkspaceRecommendationReader } from "@/features/learning-intelligence";
+import { createGetLearningDashboard, createProductionLearningWorkspaceComposition, type LearningObservationWindow, type LearningWorkspaceOutcomeReader, type LearningWorkspacePortfolioLearningReader, type LearningWorkspacePortfolioReader, type LearningWorkspaceRecommendationReader } from "@/features/learning-intelligence";
 import { getSessionProfile } from "@/lib/auth/session";
 
 const unavailablePortfolio: LearningWorkspacePortfolioReader = Object.freeze({
@@ -28,5 +28,19 @@ export async function getContinuousImprovementWorkspaceRouteState(input: Readonl
     readers: Object.freeze({ portfolios: unavailablePortfolio, outcomes: unavailableOutcomes, recommendations: unavailableRecommendations, learnings: unavailableLearnings }),
   });
   const result = await execute(Object.freeze({ ownerId: user.id, portfolioId: input.portfolioId, observationWindow: input.observationWindow }));
+  return result.isSuccess ? { ok: true as const, state: result.value } : { ok: false as const, code: result.error.code };
+}
+
+export async function getLearningDashboardRouteState(input: Readonly<{
+  portfolioId: string;
+  observationWindow: LearningObservationWindow;
+}>) {
+  const { user } = await getSessionProfile();
+  if (!user) return { ok: false as const, code: "LEARNING_DASHBOARD_NOT_AUTHENTICATED" as const };
+  const getWorkspace = createProductionLearningWorkspaceComposition({
+    authenticatedOwnerId: user.id,
+    readers: Object.freeze({ portfolios: unavailablePortfolio, outcomes: unavailableOutcomes, recommendations: unavailableRecommendations, learnings: unavailableLearnings }),
+  });
+  const result = await createGetLearningDashboard(getWorkspace)(Object.freeze({ ownerId: user.id, portfolioId: input.portfolioId, observationWindow: input.observationWindow }));
   return result.isSuccess ? { ok: true as const, state: result.value } : { ok: false as const, code: result.error.code };
 }

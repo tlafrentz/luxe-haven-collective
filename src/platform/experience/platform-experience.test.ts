@@ -5,7 +5,7 @@ describe("workspace-driven platform experience", () => {
   it("defines five flat lifecycle workspaces in canonical order", () => {
     const lifecycle = clientWorkspaceNavigation.filter(item => item.group === "hpm");
     expect(lifecycle.map(item => item.lifecycleStage)).toEqual(["observe", "understand", "decide", "execute", "learn"]);
-    expect(lifecycle.map(item => item.workspaceLabel)).toEqual(["Revenue Intelligence", "Executive Intelligence", "Investment Intelligence", "Action Center", "Continuous Improvement"]);
+    expect(lifecycle.map(item => item.workspaceLabel)).toEqual(["Revenue Intelligence", "Executive Intelligence", "Investment Intelligence", "Action Center", "Learning Intelligence"]);
     expect(lifecycle.every(item => !("children" in item))).toBe(true);
     expect(new Set(lifecycle.map(item => item.href).filter(Boolean)).size).toBe(lifecycle.filter(item => item.href).length);
   });
@@ -27,6 +27,8 @@ describe("workspace-driven platform experience", () => {
     ["/dashboard/actions/abc", "execute"],
     ["/dashboard/portfolio", "understand"],
     ["/dashboard/portfolio/workspace", "understand"],
+    ["/dashboard/learning", "learn"],
+    ["/dashboard/learning/workspace", "learn"],
   ] as const)("resolves %s to %s", (path, workspace) => expect(resolveWorkspaceForPath(path)).toBe(workspace));
 
   it("does not resolve unrelated routes to an HPM workspace", () => {

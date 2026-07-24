@@ -121,7 +121,10 @@ export function pageDetails(pathname: string, experience: PlatformExperience): {
     return { eyebrow: "Decide · Investment Intelligence", title: destination, breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "decide", label: "Decide", href: "/dashboard/investments" }, { id: "workspace", label: "Investment Intelligence", href: "/dashboard/investments" }, ...(destination === "Overview" ? [] : [{ id: "current", label: destination, current: true }])] };
   }
   if (pathname.startsWith("/dashboard/actions")) return { eyebrow: "Execute", title: "Action Center", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Action Center", current: true }] };
-  if (pathname.startsWith("/dashboard/learning")) return { eyebrow: "Learn", title: "Continuous Improvement", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Continuous Improvement", current: true }] };
+  if (pathname.startsWith("/dashboard/learning")) {
+    const workspace = pathname.startsWith("/dashboard/learning/workspace");
+    return { eyebrow: "Learn", title: workspace ? "Continuous Improvement" : "Learning Intelligence", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "learning", label: "Learning Intelligence", ...(workspace ? { href: "/dashboard/learning" } : { current: true }) }, ...(workspace ? [{ id: "workspace", label: "Continuous Improvement", current: true }] : [])] };
+  }
   if (pathname.startsWith("/dashboard/insights")) return { eyebrow: "Observe", title: "Revenue Intelligence", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Revenue Intelligence", current: true }] };
   return { eyebrow: "Home", title: "Home", breadcrumbs: [{ id: "current", label: "Home", current: true }] };
 }

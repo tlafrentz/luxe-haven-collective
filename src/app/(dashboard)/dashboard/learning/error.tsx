@@ -1,5 +1,2 @@
 "use client";
-
-export default function LearningWorkspaceError({ reset }: { reset: () => void }) {
-  return <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6"><section role="alert" aria-live="assertive" className="rounded-3xl border border-rose-200 bg-white p-8"><h1 className="text-2xl font-semibold">Learning Intelligence could not be loaded.</h1><p className="mt-3 text-sm text-stone-600">No conclusion has been inferred from the unavailable data.</p><button type="button" onClick={reset} className="mt-6 rounded-xl bg-stone-950 px-4 py-2 text-sm font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">Try again</button></section></div>;
-}
+export default function LearningDashboardError({ reset }: { reset: () => void }) { return <div className="mx-auto max-w-3xl px-4 py-16"><section role="alert" aria-live="assertive" className="rounded-3xl border border-rose-200 bg-white p-8"><h1 className="text-2xl font-semibold">Learning Intelligence could not be loaded.</h1><p className="mt-3 text-sm text-stone-600">No executive conclusion has been inferred from unavailable data.</p><button type="button" onClick={reset} className="mt-6 rounded-xl bg-stone-950 px-4 py-2 text-sm font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Try again</button></section></div>; }

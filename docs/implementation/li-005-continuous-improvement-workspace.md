@@ -4,7 +4,7 @@
 
 Continuous Improvement is the canonical operator workspace for Learning Intelligence. It explains what was measured, whether decisions worked, whether recommendation types have worked repeatedly, and which portfolio patterns are supported. It does not evaluate or mutate those records.
 
-The canonical route is `/dashboard/learning`. The HPM `Learn` lifecycle stage owns the **Continuous Improvement** navigation entry. Outcomes, Decision Outcome Assessments, Recommendation Effectiveness, and Portfolio Learning remain local sections rather than separate global destinations.
+The canonical deep-investigation route is `/dashboard/learning/workspace`. The HPM `Learn` lifecycle stage lands on the LI-006 Learning Intelligence Dashboard at `/dashboard/learning`, which links to **Continuous Improvement** for evidence review. Outcomes, Decision Outcome Assessments, Recommendation Effectiveness, and Portfolio Learning remain local sections rather than separate global destinations.
 
 ```mermaid
 flowchart LR
