@@ -86,7 +86,15 @@ export type CapitalAllocationCandidate = Readonly<{
   evidence: readonly CapitalAllocationEvidenceReference[]; confidence: ConfidenceAssessment;
   sourceVersion: CapitalAllocationSourceVersion;
 }>;
-export type CapitalAllocationCandidateReference = Readonly<{ id: CapitalAllocationCandidateId; purpose: CapitalAllocationPurpose; subject: CapitalAllocationSubject }>;
+export type CapitalAllocationCandidateReference = Readonly<{
+  id: CapitalAllocationCandidateId;
+  purpose: CapitalAllocationPurpose;
+  classification: CapitalAllocationClassification;
+  subject: CapitalAllocationSubject;
+  requiredCapital: CapitalRequirement;
+  timing: CapitalAllocationTiming;
+  expectedImpact: CapitalAllocationExpectedImpact;
+}>;
 
 export type CapitalAllocationPosition = Readonly<{
   reportingCurrency: "USD"; availableCapital: Money; reservedCapital: Money; committedCapital: Money;

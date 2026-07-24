@@ -1,10 +1,11 @@
 import type { CapabilityId } from "../capabilities";
 export type HpmStage = "home" | "observe" | "understand" | "decide" | "execute" | "learn";
-export type BusinessWorkspaceId = "properties" | "investments" | "bookings" | "messages" | "reports";
+export type BusinessWorkspaceId = "properties" | "portfolio" | "investments" | "bookings" | "messages" | "reports";
 export type BreadcrumbPolicy = "home" | "investment" | "action" | "admin" | "static";
 export type PlatformRouteDefinition = Readonly<{ id: string; pathPattern: string; experience: "client-workspace" | "operations-console"; hpmStage?: HpmStage; businessWorkspace?: BusinessWorkspaceId; navigationItemId?: string; requiredCapabilities?: readonly CapabilityId[]; breadcrumbPolicy: BreadcrumbPolicy }>;
 export const platformRouteDefinitions: readonly PlatformRouteDefinition[] = [
   { id: "home", pathPattern: "/dashboard", experience: "client-workspace", hpmStage: "home", navigationItemId: "home", breadcrumbPolicy: "home" },
+  { id: "portfolio-intelligence", pathPattern: "/dashboard/portfolio", experience: "client-workspace", hpmStage: "understand", businessWorkspace: "portfolio", navigationItemId: "portfolio-intelligence", requiredCapabilities: ["view_executive_intelligence"], breadcrumbPolicy: "static" },
   { id: "investment-overview", pathPattern: "/dashboard/investments", experience: "client-workspace", hpmStage: "decide", businessWorkspace: "investments", navigationItemId: "decide", requiredCapabilities: ["view_investment_workspace"], breadcrumbPolicy: "investment" },
   { id: "investment-new-analysis", pathPattern: "/dashboard/investments/new", experience: "client-workspace", hpmStage: "decide", businessWorkspace: "investments", navigationItemId: "decide", requiredCapabilities: ["create_investment_analysis"], breadcrumbPolicy: "investment" },
   { id: "investment-opportunities", pathPattern: "/dashboard/investments/opportunities", experience: "client-workspace", hpmStage: "decide", businessWorkspace: "investments", navigationItemId: "decide", requiredCapabilities: ["view_investment_opportunities"], breadcrumbPolicy: "investment" },

@@ -239,7 +239,15 @@ function toAssessment(value: CandidateWork, primaryId: string | null, rank: numb
     : value.feasibility.status === "conditionally-feasible" ? "fund-conditionally"
     : "defer";
   return Object.freeze({
-    candidate: Object.freeze({ id: value.candidate.id, purpose: value.candidate.purpose, subject: value.candidate.subject }),
+    candidate: Object.freeze({
+      id: value.candidate.id,
+      purpose: value.candidate.purpose,
+      classification: value.candidate.classification,
+      subject: value.candidate.subject,
+      requiredCapital: value.candidate.requiredCapital,
+      timing: value.candidate.timing,
+      expectedImpact: value.candidate.expectedImpact,
+    }),
     feasibility: value.feasibility, priorityClass: value.priorityClass, scores: value.scores,
     confidence: value.confidence, strengths: value.strengths, weaknesses: value.weaknesses,
     tradeOffs: value.tradeOffs, opportunityCosts: value.opportunityCosts, dataGaps: value.dataGaps, rank, posture,
