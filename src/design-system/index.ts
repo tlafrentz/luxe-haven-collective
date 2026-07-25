@@ -5,3 +5,4 @@ export * from "./hpm";
 export * from "./templates";
 export * from "./icons";
 export * from "./utilities";
+export * from "./components";

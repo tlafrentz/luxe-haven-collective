@@ -4,6 +4,7 @@ import type {
 } from "../types";
 
 import { addDays } from "./date-range";
+import { canonicalComparison } from "@/platform/calculations";
 
 const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -39,33 +40,13 @@ export function calculateTrend(
   current: number,
   previous: number,
 ): MetricTrend {
-  const difference = current - previous;
-
-  if (previous === 0) {
-    return {
-      difference,
-      percentChange: current === 0 ? 0 : 100,
-      direction:
-        current > 0
-          ? "up"
-          : current < 0
-            ? "down"
-            : "neutral",
-    };
-  }
-
-  const percentChange =
-    (difference / Math.abs(previous)) * 100;
-
+  const comparison = canonicalComparison(current, previous);
   return {
-    difference: roundMetric(difference),
-    percentChange: roundMetric(percentChange),
-    direction:
-      difference > 0
-        ? "up"
-        : difference < 0
-          ? "down"
-          : "neutral",
+    difference: roundMetric(comparison.absolute),
+    percentChange: comparison.percentage === null ? 0 : roundMetric(comparison.percentage),
+    direction: comparison.direction,
+    status: comparison.status,
+    ...(comparison.status === "unavailable" ? { reason: comparison.reason } : {}),
   };
 }
 

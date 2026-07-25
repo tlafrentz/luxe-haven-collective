@@ -15,6 +15,12 @@ export function MetricTrendIndicator({
   trend,
   label = "vs previous period",
 }: MetricTrendIndicatorProps) {
+  if (trend.status === "new-measurement") {
+    return <p className="mt-3 text-sm font-medium text-teal-700">New measurement <span className="font-normal text-neutral-500">· {label}</span></p>;
+  }
+  if (trend.status === "unavailable") {
+    return <p className="mt-3 text-sm font-medium text-neutral-600" title={trend.reason}>Comparison unavailable <span className="font-normal text-neutral-500">· {label}</span></p>;
+  }
   const Icon =
     trend.direction === "up"
       ? ArrowUp

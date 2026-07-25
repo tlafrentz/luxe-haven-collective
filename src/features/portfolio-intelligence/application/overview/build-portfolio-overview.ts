@@ -9,11 +9,15 @@ import type {
   PortfolioExecutionSummary, PortfolioMetric, PortfolioMetricSummary, PortfolioOverview,
   PortfolioOverviewThresholdPolicy,
 } from "./contracts";
+import { canonicalComparison } from "@/platform/calculations";
 
 const emptyExecution: PortfolioExecutionSummary = Object.freeze({ activeDecisions: 0, openActions: 0, outcomeReviewsDue: 0, items: [] });
 const refs = (property: PortfolioPropertyProjection): readonly EvidenceReference[] => property.evidence.map(({ id, statement }) => ({ id, statement }));
 const value = (input: number | null, reason: string): MetricValueState => input === null ? { state: "unavailable", reason } : { state: "available", value: input };
-const percent = (current: number, comparison: number) => comparison === 0 ? null : (current - comparison) / Math.abs(comparison);
+const percent = (current: number, comparison: number) => {
+  const result = canonicalComparison(current, comparison);
+  return result.status === "available" ? result.percentage / 100 : null;
+};
 const metricValue = (projection: PortfolioProjection, metric: PortfolioMetric): number | null => {
   const values = projection.performance;
   return metric === "gross-revenue" ? values.grossRevenue : metric === "occupancy" ? values.occupancy :

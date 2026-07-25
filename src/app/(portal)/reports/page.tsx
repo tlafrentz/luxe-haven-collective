@@ -59,25 +59,26 @@ export default function ReportsPage() {
 
   const active = editions.find((edition) => edition.id === activeEdition) ?? editions[0];
 
-  const openGenerator = (edition: EditionId = "executive") => {
-    setReportType(edition === "exports" ? "executive" : edition);
-    setStep(1);
-    setGeneratorOpen(true);
-  };
-
   return (
     <WorkspacePage width="medium">
       <WorkspaceHeader
         eyebrow="Luxe Haven Press"
         title="Hospitality Performance Reports"
         description="Package platform intelligence into decision-ready narratives for every hospitality stakeholder."
+        context={<span className="rounded-full bg-violet-100 px-3 py-1.5 text-xs font-semibold text-violet-800">Preview</span>}
         actions={
-        <button type="button" onClick={() => openGenerator()} className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white outline-none hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">
+        <button type="button" disabled title="Requires report composition services" className="inline-flex cursor-not-allowed items-center justify-center gap-2 self-start rounded-full bg-stone-300 px-5 py-3 text-sm font-semibold text-white">
           <Sparkles aria-hidden="true" className="h-4 w-4" />
-          Generate report
+          Generate report · Preview
         </button>
         }
       />
+      <WorkspaceContent>
+        <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5 text-sm text-violet-950">
+          <p className="font-semibold">Preview — report composition is not connected</p>
+          <p className="mt-1">The examples below demonstrate the planned report workflow. Generation, snapshots, sharing, and archive actions are disabled until a report provider is connected.</p>
+        </div>
+      </WorkspaceContent>
 
       <WorkspaceOverview className="overflow-hidden rounded-3xl border border-stone-200 bg-stone-950 text-white shadow-sm">
         <div className="grid lg:grid-cols-[1.15fr_0.85fr]">
@@ -130,7 +131,7 @@ export default function ReportsPage() {
                 <p className="mt-2 text-base font-medium text-teal-800">{active.question}</p>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{active.description}</p>
               </div>
-              {active.id !== "exports" ? <button type="button" onClick={() => openGenerator(active.id)} className="inline-flex shrink-0 items-center gap-1 self-start rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-800 outline-none hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-teal-600">Create edition <ChevronRight aria-hidden="true" className="h-4 w-4" /></button> : null}
+              {active.id !== "exports" ? <button type="button" disabled title="Preview: report composition is not connected" className="inline-flex cursor-not-allowed shrink-0 items-center gap-1 self-start rounded-full border border-stone-200 bg-stone-50 px-4 py-2 text-sm font-semibold text-stone-400">Create edition · Preview <ChevronRight aria-hidden="true" className="h-4 w-4" /></button> : null}
             </div>
             <div className="mt-7 grid gap-3 border-t border-stone-200 pt-6 sm:grid-cols-3">
               <NarrativePart title="What happened?" description="Trusted performance metrics and material changes." />
@@ -142,7 +143,7 @@ export default function ReportsPage() {
       </WorkspaceContent>
 
       <WorkspaceActivity aria-labelledby="recent-reports">
-        <div className="flex items-end justify-between gap-4"><div><h2 id="recent-reports" className="text-xl font-semibold text-stone-950">Recent reports</h2><p className="mt-1 text-sm text-stone-600">Published snapshots preserve exactly what each audience received.</p></div><button type="button" className="hidden text-sm font-semibold text-stone-600 hover:text-stone-950 sm:inline-flex">View archive</button></div>
+        <div className="flex items-end justify-between gap-4"><div><h2 id="recent-reports" className="text-xl font-semibold text-stone-950">Example reports <span className="ml-2 rounded-full bg-violet-100 px-2 py-1 text-[10px] uppercase text-violet-800">Preview</span></h2><p className="mt-1 text-sm text-stone-600">Illustrative data only; no production snapshots have been generated.</p></div><button type="button" disabled className="hidden cursor-not-allowed text-sm font-semibold text-stone-400 sm:inline-flex">View archive · Preview</button></div>
         <div className="mt-5 overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
           {recentReports.map((report) => {
             const Icon = report.icon;
@@ -150,7 +151,7 @@ export default function ReportsPage() {
               <article key={report.id} className="grid gap-4 border-b border-stone-200 p-5 last:border-b-0 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:p-6">
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-stone-100 text-stone-700"><Icon aria-hidden="true" className="h-5 w-5" /></span>
                 <div><div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-semibold text-stone-950">{report.title}</h3><span className="rounded-full bg-teal-50 px-2.5 py-1 text-[10px] font-semibold text-teal-800">{report.status}</span></div><p className="mt-1 text-xs text-stone-500">{report.edition} · {report.audience}</p><p className="mt-2 text-xs text-stone-400">{report.period} · Published {report.published}</p></div>
-                <div className="flex gap-2 sm:justify-end"><button type="button" className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 text-stone-600 outline-none hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-teal-600" aria-label={`Share ${report.title}`}><Share2 aria-hidden="true" className="h-4 w-4" /></button><button type="button" className="inline-flex items-center gap-1 rounded-full border border-stone-200 px-4 py-2 text-xs font-semibold text-stone-700 outline-none hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-teal-600">View snapshot <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" /></button></div>
+                <div className="flex gap-2 sm:justify-end"><button type="button" disabled title="Preview: sharing is not connected" className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border border-stone-200 text-stone-400" aria-label={`Share ${report.title} unavailable in preview`}><Share2 aria-hidden="true" className="h-4 w-4" /></button><button type="button" disabled title="Preview: snapshots are not connected" className="inline-flex cursor-not-allowed items-center gap-1 rounded-full border border-stone-200 px-4 py-2 text-xs font-semibold text-stone-400">View snapshot · Preview <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" /></button></div>
               </article>
             );
           })}

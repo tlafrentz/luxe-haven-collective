@@ -116,6 +116,8 @@ export type MetricTrend = {
   difference: number;
   percentChange: number;
   direction: MetricTrendDirection;
+  status?: "available" | "new-measurement" | "unavailable";
+  reason?: string;
 };
 
 export type DashboardComparison = {

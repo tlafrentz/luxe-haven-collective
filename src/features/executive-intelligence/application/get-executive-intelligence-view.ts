@@ -13,6 +13,11 @@ export async function getExecutiveIntelligenceView(
   getLifecycle: (query: CurrentHpmQuery) => Promise<CurrentHpmLifecycleResult> = getCurrentHpmLifecycleProjection,
 ): Promise<ExecutiveIntelligenceViewResult> {
   const lifecycleResult = await getLifecycle(query);
+  const analytics = lifecycleResult.context.analytics;
+  const revenueUnavailable =
+    analytics.metrics.grossRevenue === 0 &&
+    analytics.metrics.totalBookings > 0 &&
+    (analytics.metrics.roomRevenue > 0 || analytics.metrics.averageDailyRate > 0);
   return Object.freeze({
     view: buildExecutiveIntelligenceView(lifecycleResult.lifecycle, {
       scope: Object.freeze({
@@ -26,7 +31,7 @@ export async function getExecutiveIntelligenceView(
       }),
       performance: Object.freeze({
         available: true,
-        grossRevenue: metric(lifecycleResult.context.analytics.metrics.grossRevenue, lifecycleResult.context.analytics.comparison.revenue),
+        grossRevenue: metric(revenueUnavailable ? null : lifecycleResult.context.analytics.metrics.grossRevenue, lifecycleResult.context.analytics.comparison.revenue),
         occupancyRate: metric(lifecycleResult.context.analytics.metrics.occupancyRate, lifecycleResult.context.analytics.comparison.occupancy),
         averageDailyRate: metric(lifecycleResult.context.analytics.metrics.averageDailyRate, lifecycleResult.context.analytics.comparison.adr),
         revPar: metric(lifecycleResult.context.analytics.metrics.revPar, lifecycleResult.context.analytics.comparison.revPar),
@@ -38,6 +43,11 @@ export async function getExecutiveIntelligenceView(
   });
 }
 
-function metric(value: number, trend: Readonly<{ percentChange: number; direction: "up" | "down" | "neutral" }>) {
-  return Object.freeze({ value, trend: Object.freeze({ percentChange: trend.percentChange, direction: trend.direction }) });
+function metric(value: number | null, trend: Readonly<{ percentChange: number; direction: "up" | "down" | "neutral"; status?: "available" | "new-measurement" | "unavailable" }>) {
+  return Object.freeze({
+    value,
+    trend: value === null || (trend.status && trend.status !== "available")
+      ? null
+      : Object.freeze({ percentChange: trend.percentChange, direction: trend.direction }),
+  });
 }

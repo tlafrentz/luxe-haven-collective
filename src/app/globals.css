@@ -43,6 +43,22 @@
   --duration-standard: 180ms;
   --duration-slow: 240ms;
   --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --space-page-mobile: 2rem;
+  --space-page: 3rem;
+  --space-section: 2.5rem;
+  --space-card: 1.5rem;
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+  --radius-panel: 1.5rem;
+  --radius-pill: 9999px;
+  --shadow-raised: 0 1px 2px rgb(28 25 23 / 0.045), 0 8px 24px rgb(28 25 23 / 0.025);
+  --shadow-interactive: 0 8px 24px rgb(28 25 23 / 0.07);
+  --shadow-overlay: 0 18px 48px rgb(28 25 23 / 0.16);
+  --chart-primary: #0f766e;
+  --chart-comparison: #b9935a;
+  --chart-grid: #e7e5e4;
+  --chart-axis: #78716c;
+  --opacity-disabled: .46;
   --background: var(--surface-canvas);
   --foreground: var(--text-primary);
   --muted: var(--surface-subtle);
@@ -97,6 +113,13 @@
   --status-information-bg: #1e3a8a;
   --status-information-border: #2563eb;
   --status-information-icon: #93c5fd;
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.24), 0 12px 32px rgb(0 0 0 / 0.12);
+  --shadow-interactive: 0 12px 32px rgb(0 0 0 / 0.28);
+  --shadow-overlay: 0 20px 56px rgb(0 0 0 / 0.42);
+  --chart-primary: #5eead4;
+  --chart-comparison: #d4ad72;
+  --chart-grid: #44403c;
+  --chart-axis: #a8a29e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -139,6 +162,13 @@
     --status-information-bg: #1e3a8a;
     --status-information-border: #2563eb;
     --status-information-icon: #93c5fd;
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.24), 0 12px 32px rgb(0 0 0 / 0.12);
+    --shadow-interactive: 0 12px 32px rgb(0 0 0 / 0.28);
+    --shadow-overlay: 0 20px 56px rgb(0 0 0 / 0.42);
+    --chart-primary: #5eead4;
+    --chart-comparison: #d4ad72;
+    --chart-grid: #44403c;
+    --chart-axis: #a8a29e;
   }
 }
 
@@ -163,6 +193,46 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+::selection { background: color-mix(in srgb, var(--border-focus) 22%, transparent); }
+:focus-visible { outline-color: var(--border-focus); }
+
+.ui-capability { color: var(--text-link); font-size: .75rem; font-weight: 650; letter-spacing: .18em; line-height: 1rem; text-transform: uppercase; }
+.ui-page-title { color: var(--text-primary); font-size: clamp(1.875rem, 3vw, 2.25rem); font-weight: 650; letter-spacing: -.03em; line-height: 1.12; }
+.ui-section-title { color: var(--text-primary); font-size: 1.25rem; font-weight: 650; letter-spacing: -.018em; line-height: 1.35; }
+.ui-card-title { color: var(--text-primary); font-size: 1rem; font-weight: 650; line-height: 1.4; }
+.ui-metric { color: var(--text-primary); font-size: 1.875rem; font-variant-numeric: tabular-nums; font-weight: 650; letter-spacing: -.025em; line-height: 1.12; }
+.ui-supporting { color: var(--text-secondary); font-size: .875rem; line-height: 1.5rem; }
+.ui-surface { background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); box-shadow: var(--shadow-raised); }
+.ui-panel { background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: var(--radius-panel); box-shadow: var(--shadow-raised); }
+.ui-surface-muted { background: var(--surface-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); }
+.ui-control { min-height: 2.75rem; border: 1px solid var(--border-default); border-radius: var(--radius-control); background: var(--surface-raised); color: var(--text-primary); transition: border-color var(--duration-fast) var(--easing-standard), box-shadow var(--duration-fast) var(--easing-standard), background-color var(--duration-fast) var(--easing-standard); }
+.ui-control:hover:not(:disabled) { border-color: var(--border-strong); }
+.ui-control:focus-visible { border-color: var(--border-focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--border-focus) 18%, transparent); outline: none; }
+.ui-control:disabled, .ui-control[aria-disabled="true"] { cursor: not-allowed; opacity: .46; }
+.ui-button { min-height: 2.75rem; border-radius: var(--radius-pill); transition: background-color var(--duration-fast) var(--easing-standard), border-color var(--duration-fast) var(--easing-standard), color var(--duration-fast) var(--easing-standard), box-shadow var(--duration-fast) var(--easing-standard), transform var(--duration-fast) var(--easing-standard); }
+.ui-button:hover:not(:disabled) { box-shadow: var(--shadow-interactive); transform: translateY(-1px); }
+.ui-button:active:not(:disabled) { box-shadow: none; transform: translateY(0); }
+.ui-table { width: 100%; border-collapse: separate; border-spacing: 0; color: var(--text-secondary); }
+.ui-table thead { background: var(--surface-subtle); }
+.ui-table th { color: var(--text-muted); font-size: .6875rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.ui-table tbody tr { transition: background-color var(--duration-fast) var(--easing-standard); }
+.ui-table tbody tr:hover { background: color-mix(in srgb, var(--surface-subtle) 72%, transparent); }
+
+/* Compatibility bridge while feature surfaces migrate from palette utilities to semantic tokens. */
+.platform-workspace .bg-white { background-color: var(--surface-raised); }
+.platform-workspace .bg-stone-50, .platform-workspace .bg-neutral-50 { background-color: var(--surface-subtle); }
+.platform-workspace .text-stone-950, .platform-workspace .text-neutral-950 { color: var(--text-primary); }
+.platform-workspace .text-stone-600, .platform-workspace .text-neutral-600,
+.platform-workspace .text-stone-500, .platform-workspace .text-neutral-500 { color: var(--text-secondary); }
+.platform-workspace .border-stone-200, .platform-workspace .border-neutral-200 { border-color: var(--border-subtle); }
+.platform-workspace .border-stone-300, .platform-workspace .border-neutral-300 { border-color: var(--border-default); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+  .ui-button:hover:not(:disabled) { transform: none; }
 }
 
 a { text-decoration: none; }

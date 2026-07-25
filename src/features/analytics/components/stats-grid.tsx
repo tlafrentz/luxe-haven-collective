@@ -25,6 +25,11 @@ export function StatsGrid({
   metrics,
   comparison,
 }: StatsGridProps) {
+  const revenueUnavailable =
+    metrics.grossRevenue === 0 &&
+    metrics.totalBookings > 0 &&
+    (metrics.roomRevenue > 0 || metrics.averageDailyRate > 0);
+
   return (
     <section
       aria-label="Property performance metrics"
@@ -32,9 +37,9 @@ export function StatsGrid({
     >
 <StatCard
   title="Gross Revenue"
-  value={formatCurrency(metrics.grossRevenue)}
-  description={`${metrics.totalBookings} revenue-producing bookings`}
-  trend={comparison.revenue}
+  value={revenueUnavailable ? "Unavailable" : formatCurrency(metrics.grossRevenue)}
+  description={revenueUnavailable ? "Revenue data has not synchronized for the selected booking." : `${metrics.totalBookings} revenue-producing bookings`}
+  trend={revenueUnavailable ? undefined : comparison.revenue}
   accent="emerald"
   icon={
     <DollarSign

@@ -2,6 +2,7 @@ import type { PortfolioPeriod } from "@/features/portfolio";
 import type { PortfolioProjectionSource, PortfolioPropertySource } from "@/features/portfolio/application/read-model";
 import { ConfidenceLevel } from "@/platform/scoring";
 import { createClient } from "@/lib/supabase/server";
+import { canonicalAdr, canonicalOccupancy, canonicalOverlappingNights, canonicalRevPar } from "@/platform/calculations";
 
 type PropertyRow = Readonly<{ id: string; name: string; city: string; state: string; status: string; property_type: string | null; updated_at: string }>;
 type BookingRow = Readonly<{ id: string; property_id: string; check_in: string; check_out: string; total_amount: number; status: string }>;
@@ -19,7 +20,7 @@ export class SupabasePortfolioProjectionSource implements PortfolioProjectionSou
     const client = await createClient();
     const [{ data: properties, error: propertyError }, { data: bookings, error: bookingError }, { data: configurations, error: configurationError }] = await Promise.all([
       client.from("properties").select("id,name,city,state,status,property_type,updated_at").eq("owner_id", workspaceId).in("id", [...propertyIds]),
-      client.from("bookings").select("id,property_id,check_in,check_out,total_amount,status").in("property_id", [...propertyIds]).neq("status", "cancelled").gte("check_in", period.current.from).lte("check_in", period.current.to),
+      client.from("bookings").select("id,property_id,check_in,check_out,total_amount,status").in("property_id", [...propertyIds]).neq("status", "cancelled").lt("check_in", addDay(period.current.to)).gt("check_out", period.current.from),
       client.from("property_workspace_configuration").select("property_id,currency_override").eq("workspace_id", workspaceId).in("property_id", [...propertyIds]),
     ]);
     if (propertyError) throw new Error(`Unable to read authorized Portfolio properties: ${propertyError.message}`);
@@ -34,7 +35,8 @@ export class SupabasePortfolioProjectionSource implements PortfolioProjectionSou
   }
 
   private project(property: PropertyRow, bookings: readonly BookingRow[], period: PortfolioPeriod): PortfolioPropertySource {
-    const occupiedNights = bookings.reduce((total, booking) => total + nights(booking.check_in, booking.check_out), 0);
+    const periodEndExclusive = addDay(period.current.to);
+    const occupiedNights = bookings.reduce((total, booking) => total + canonicalOverlappingNights(booking.check_in, booking.check_out, period.current.from, periodEndExclusive), 0);
     const availableNights = inclusiveDays(period.current.from, period.current.to);
     const revenue = bookings.reduce((total, booking) => total + Number(booking.total_amount), 0);
     const ageHours = (Date.now() - Date.parse(property.updated_at)) / 3_600_000;
@@ -53,9 +55,9 @@ export class SupabasePortfolioProjectionSource implements PortfolioProjectionSou
       operatingModel: property.property_type,
       metrics: Object.freeze({
         grossRevenue: revenue,
-        adr: occupiedNights ? revenue / occupiedNights : null,
-        occupancy: availableNights ? occupiedNights / availableNights : null,
-        revpar: availableNights ? revenue / availableNights : null,
+        adr: canonicalAdr(revenue, occupiedNights),
+        occupancy: canonicalOccupancy(occupiedNights, availableNights),
+        revpar: canonicalRevPar(revenue, availableNights),
         netOperatingIncome: null,
         cashFlow: null,
         margin: null,
@@ -75,3 +77,4 @@ export class SupabasePortfolioProjectionSource implements PortfolioProjectionSou
 function nights(from: string, to: string) { return Math.max(0, Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)); }
 function inclusiveDays(from: string, to: string) { return nights(from, to) + 1; }
 function isoToday() { return new Date().toISOString().slice(0, 10); }
+function addDay(value: string) { const date = new Date(`${value}T00:00:00.000Z`); date.setUTCDate(date.getUTCDate() + 1); return date.toISOString().slice(0, 10); }

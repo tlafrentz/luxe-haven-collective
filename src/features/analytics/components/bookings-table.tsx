@@ -20,7 +20,7 @@ export function BookingsTable({
   );
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+    <section className="ui-surface overflow-hidden">
       <div className="border-b border-neutral-200 px-5 py-4">
         <p className="text-sm font-medium text-neutral-500">
           Reservation activity
@@ -48,7 +48,7 @@ export function BookingsTable({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-neutral-200">
+          <table className="ui-table min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
               <tr>
                 <TableHeading>Guest</TableHeading>
@@ -65,7 +65,7 @@ export function BookingsTable({
               {sortedBookings.map((booking) => (
                 <tr
                   key={booking.id}
-                  className="transition hover:bg-neutral-50"
+                  className="transition-colors duration-[var(--duration-fast)]"
                 >
                   <TableCell>
                     <div>

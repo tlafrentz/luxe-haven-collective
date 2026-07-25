@@ -53,7 +53,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <WorkspaceHeader
         eyebrow="Operational home"
         title="Today in your hospitality business"
-        description="Live arrivals, active stays, departures, synchronization, and issues from the same trusted operational records."
+        description="Arrivals, active stays, departures, and open issues for today."
         actions={
           <Link
             href="/bookings"

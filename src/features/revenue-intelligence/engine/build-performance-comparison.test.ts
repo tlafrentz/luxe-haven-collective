@@ -162,6 +162,7 @@ describe("buildPerformanceComparison", () => {
         difference: 0,
         percentChange: 0,
         direction: "neutral",
+        status: "available",
       });
     }
   });

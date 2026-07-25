@@ -1,6 +1,9 @@
 export {
   AppShell,
   EmptyStateAction,
+  ExpandablePanel,
+  HelpTooltip,
+  StatusChip,
   WorkspaceActivity,
   WorkspaceCard,
   WorkspaceContent,
@@ -14,6 +17,7 @@ export {
   WorkspaceSectionHeading,
   WorkspaceSkeleton,
   WorkspaceSupporting,
+  WorkspacePlaceholder,
   applicationLayoutTokens,
   type WorkspaceCardLevel,
   type WorkspaceWidth,

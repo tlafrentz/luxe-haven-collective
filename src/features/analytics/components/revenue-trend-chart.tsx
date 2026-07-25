@@ -66,7 +66,7 @@ function RevenueTooltip({
   const revenue = payload[0]?.value ?? 0;
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-lg">
+    <div className="ui-surface px-4 py-3 shadow-[var(--shadow-overlay)]">
       <p className="text-xs font-medium text-neutral-500">
         {formatTooltipDate(label)}
       </p>
@@ -90,7 +90,7 @@ export function RevenueTrendChart({
   );
 
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+    <section className="ui-surface p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-medium text-neutral-500">
@@ -107,7 +107,7 @@ export function RevenueTrendChart({
           </p>
         </div>
 
-        <div className="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+        <div className="w-fit rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)]">
           Room revenue
         </div>
       </div>
@@ -150,13 +150,13 @@ export function RevenueTrendChart({
                 >
                   <stop
                     offset="5%"
-                    stopColor="currentColor"
-                    stopOpacity={0.18}
+                    stopColor="var(--chart-primary)"
+                    stopOpacity={0.12}
                   />
 
                   <stop
                     offset="95%"
-                    stopColor="currentColor"
+                    stopColor="var(--chart-primary)"
                     stopOpacity={0}
                   />
                 </linearGradient>
@@ -165,7 +165,7 @@ export function RevenueTrendChart({
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke="#e5e5e5"
+                stroke="var(--chart-grid)"
               />
 
               <XAxis
@@ -175,7 +175,7 @@ export function RevenueTrendChart({
                 tickLine={false}
                 minTickGap={28}
                 tick={{
-                  fill: "#737373",
+                  fill: "var(--chart-axis)",
                   fontSize: 12,
                 }}
               />
@@ -188,7 +188,7 @@ export function RevenueTrendChart({
                   formatCurrency(value)
                 }
                 tick={{
-                  fill: "#737373",
+                  fill: "var(--chart-axis)",
                   fontSize: 12,
                 }}
               />
@@ -196,7 +196,7 @@ export function RevenueTrendChart({
               <Tooltip
                 content={<RevenueTooltip />}
                 cursor={{
-                  stroke: "#a3a3a3",
+                  stroke: "var(--chart-axis)",
                   strokeDasharray: "4 4",
                 }}
               />
@@ -204,13 +204,13 @@ export function RevenueTrendChart({
               <Area
                 type="monotone"
                 dataKey="revenue"
-                stroke="#059669"
-                strokeWidth={2.5}
+                stroke="var(--chart-primary)"
+                strokeWidth={2}
                 fill="url(#revenueGradient)"
                 activeDot={{
                   r: 5,
-                  fill: "#059669",
-                  stroke: "#ffffff",
+                  fill: "var(--chart-primary)",
+                  stroke: "var(--surface-raised)",
                   strokeWidth: 2,
                 }}
               />

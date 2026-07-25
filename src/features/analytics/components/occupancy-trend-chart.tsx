@@ -62,7 +62,7 @@ function OccupancyTooltip({
   }
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-lg">
+    <div className="ui-surface px-4 py-3 shadow-[var(--shadow-overlay)]">
       <p className="text-xs font-medium text-neutral-500">
         {formatTooltipDate(label)}
       </p>
@@ -90,7 +90,7 @@ export function OccupancyTrendChart({
   );
 
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+    <section className="ui-surface p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-medium text-neutral-500">
@@ -107,7 +107,7 @@ export function OccupancyTrendChart({
           </p>
         </div>
 
-        <div className="w-fit rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
+        <div className="w-fit rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)]">
           Occupancy rate
         </div>
       </div>
@@ -150,13 +150,13 @@ export function OccupancyTrendChart({
                 >
                   <stop
                     offset="5%"
-                    stopColor="#2563eb"
-                    stopOpacity={0.18}
+                    stopColor="var(--chart-primary)"
+                    stopOpacity={0.12}
                   />
 
                   <stop
                     offset="95%"
-                    stopColor="#2563eb"
+                    stopColor="var(--chart-primary)"
                     stopOpacity={0}
                   />
                 </linearGradient>
@@ -165,7 +165,7 @@ export function OccupancyTrendChart({
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke="#e5e5e5"
+                stroke="var(--chart-grid)"
               />
 
               <XAxis
@@ -175,7 +175,7 @@ export function OccupancyTrendChart({
                 tickLine={false}
                 minTickGap={28}
                 tick={{
-                  fill: "#737373",
+                  fill: "var(--chart-axis)",
                   fontSize: 12,
                 }}
               />
@@ -189,7 +189,7 @@ export function OccupancyTrendChart({
                   `${value}%`
                 }
                 tick={{
-                  fill: "#737373",
+                  fill: "var(--chart-axis)",
                   fontSize: 12,
                 }}
               />
@@ -197,7 +197,7 @@ export function OccupancyTrendChart({
               <Tooltip
                 content={<OccupancyTooltip />}
                 cursor={{
-                  stroke: "#a3a3a3",
+                  stroke: "var(--chart-axis)",
                   strokeDasharray: "4 4",
                 }}
               />
@@ -205,13 +205,13 @@ export function OccupancyTrendChart({
               <Area
                 type="stepAfter"
                 dataKey="occupancyRate"
-                stroke="#2563eb"
-                strokeWidth={2.5}
+                stroke="var(--chart-primary)"
+                strokeWidth={2}
                 fill="url(#occupancyGradient)"
                 activeDot={{
                   r: 5,
-                  fill: "#2563eb",
-                  stroke: "#ffffff",
+                  fill: "var(--chart-primary)",
+                  stroke: "var(--surface-raised)",
                   strokeWidth: 2,
                 }}
               />

@@ -99,24 +99,26 @@ export function PortfolioSnapshotGrid({
         })}
       </div>
 
-      <div className="mt-4 flex items-center justify-between rounded-2xl bg-stone-950 px-4 py-4 text-white">
+      <div className="mt-3 grid grid-cols-2 gap-3">
         <div>
-          <p className="text-xs text-white/50">
+          <div className="rounded-2xl bg-stone-50 p-4">
+          <p className="text-xs text-stone-500">
             Total bookings
           </p>
 
-          <p className="mt-1 text-xl font-semibold">
+          <p className="mt-2 text-xl font-semibold text-stone-950">
             {performance.totalBookings ?? "Unavailable"}
           </p>
+          </div>
         </div>
 
-        <div className="text-right">
-          <p className="flex items-center justify-end gap-2 text-xs text-white/50">
+        <div className="rounded-2xl bg-stone-50 p-4">
+          <p className="flex items-center gap-2 text-xs text-stone-500">
             <CalendarCheck2 className="h-3.5 w-3.5" />
             Upcoming
           </p>
 
-          <p className="mt-1 text-xl font-semibold">
+          <p className="mt-2 text-xl font-semibold text-stone-950">
             {performance.upcomingBookings ?? "Unavailable"}
           </p>
         </div>

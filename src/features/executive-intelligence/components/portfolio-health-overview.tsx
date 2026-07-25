@@ -14,10 +14,10 @@ export function PortfolioHealthOverview({ health, dataQuality }: PortfolioHealth
     <section>
       <SectionHeading eyebrow="Hospitality performance" title="Business health" description="Canonical HPM scores appear only when supported pillar scores are available." />
       <div className="mt-5 rounded-3xl border border-stone-200 bg-stone-100/60 p-5">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div><p className="text-xs text-stone-500">Health score</p><p className="mt-1 text-2xl font-semibold text-stone-950">{health.score ?? "Unavailable"}</p></div>
-          <div><p className="text-xs text-stone-500">Confidence</p><p className="mt-1 text-2xl font-semibold text-stone-950">{health.confidence === null ? "Unavailable" : `${health.confidence}%`}</p></div>
-          <div><p className="text-xs text-stone-500">Status</p><p className="mt-1 text-lg font-semibold text-stone-950">{statusLabel(health.status)}</p></div>
+        <div className="grid gap-4 min-[520px]:grid-cols-3">
+          <div className="min-w-0"><p className="text-xs text-stone-500">Health score</p><p className="mt-1 break-words text-xl font-semibold text-stone-950">{health.score ?? "Unavailable"}</p></div>
+          <div className="min-w-0"><p className="text-xs text-stone-500">Confidence</p><p className="mt-1 break-words text-xl font-semibold text-stone-950">{health.confidence === null ? "Unavailable" : `${health.confidence}%`}</p></div>
+          <div className="min-w-0"><p className="text-xs text-stone-500">Status</p><p className="mt-1 break-words text-lg font-semibold text-stone-950">{statusLabel(health.status)}</p></div>
         </div>
         <p className="mt-4 text-sm leading-6 text-stone-600">{health.summary}</p>
         <div className="mt-4 flex items-start gap-3 rounded-xl bg-white p-3">

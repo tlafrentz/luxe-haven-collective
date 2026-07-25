@@ -7,7 +7,7 @@ describe("PI-001F governance boundaries", () => {
   const workflow = readFileSync(resolve("src/features/portfolio-intelligence/application/decisions/decision-workflow.ts"), "utf8");
   const handoff = readFileSync(resolve("src/features/portfolio-intelligence/application/decisions/action-center-handoff.ts"), "utf8");
   const page = readFileSync(resolve("src/app/(dashboard)/dashboard/portfolio/decisions/page.tsx"), "utf8");
-  const migration = readFileSync(resolve("supabase/migrations/20260725170000_portfolio_recommendation_reviews.sql"), "utf8");
+  const migration = readFileSync(resolve("supabase/migrations/20260725173000_portfolio_recommendation_reviews.sql"), "utf8");
   it("consumes PI-001E findings and does not recreate risk or composition logic", () => {
     expect(builder).toContain("findings.prioritized");
     expect(builder).not.toMatch(/evaluatePortfolioRisk|evaluateConcentration|buildPortfolioProjection/);

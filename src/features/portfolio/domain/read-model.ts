@@ -1,4 +1,5 @@
 import type { ConfidenceLevel } from "@/platform/scoring";
+import { canonicalAdr, canonicalOccupancy, canonicalRevPar } from "@/platform/calculations";
 
 export type DateRange = Readonly<{ from: string; to: string }>;
 export type PortfolioComparison = "previous-period" | "previous-year" | "none";
@@ -134,9 +135,9 @@ export function aggregatePortfolioMetrics(properties: readonly PortfolioProperty
   const availableNights = properties.reduce((total, property) => total + (property.metrics.revpar && property.metrics.grossRevenue ? property.metrics.grossRevenue / property.metrics.revpar : 0), 0);
   return Object.freeze({
     grossRevenue: revenue,
-    adr: bookedNights > 0 && revenue !== null ? revenue / bookedNights : null,
-    occupancy: availableNights > 0 ? bookedNights / availableNights : null,
-    revpar: availableNights > 0 && revenue !== null ? revenue / availableNights : null,
+    adr: canonicalAdr(revenue, bookedNights),
+    occupancy: canonicalOccupancy(bookedNights, availableNights),
+    revpar: canonicalRevPar(revenue, availableNights),
     netOperatingIncome: noi,
     cashFlow: sumNullable(({ metrics }) => metrics.cashFlow),
     margin: revenue && noi !== null ? noi / revenue : null,

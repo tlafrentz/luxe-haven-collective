@@ -10,10 +10,10 @@ describe("workspace-driven platform experience", () => {
     expect(new Set(lifecycle.map(item => item.href).filter(Boolean)).size).toBe(lifecycle.filter(item => item.href).length);
   });
 
-  it("models the canonical three-level Understand hierarchy", () => {
+  it("models Understand products as lifecycle peers", () => {
     expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ kind: "group", level: 1 });
     expect(clientWorkspaceNavigation.find(item => item.id === "executive-intelligence")).toMatchObject({ parentId: "understand", kind: "product", level: 2 });
-    expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ parentId: "executive-intelligence", kind: "product", level: 3 });
+    expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ parentId: "understand", kind: "product", level: 2 });
   });
 
   it("keeps business, service, operations, and infrastructure concepts separate", () => {
@@ -65,7 +65,7 @@ describe("workspace-driven platform experience", () => {
   it("owns Portfolio Intelligence as an Understand lifecycle destination", () => {
     const route = platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio");
     expect(route).toMatchObject({ hpmStage: "understand", businessWorkspace: "portfolio", navigationItemId: "portfolio-intelligence" });
-    expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ group: "hpm", parentId: "executive-intelligence", level: 3, href: "/dashboard/portfolio", icon: "portfolio" });
+    expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ group: "hpm", parentId: "understand", level: 2, href: "/dashboard/portfolio", icon: "understand" });
     expect(platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio/workspace")).toMatchObject({ hpmStage: "understand", navigationItemId: "portfolio-intelligence" });
   });
 

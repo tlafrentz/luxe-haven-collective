@@ -8,6 +8,12 @@ import {
   type StayLengthBucket,
   type StayLengthBucketId,
 } from "../types";
+import {
+  canonicalAdr,
+  canonicalOccupancy,
+  canonicalOverlappingNights,
+  canonicalRevPar,
+} from "@/platform/calculations";
 
 const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -248,29 +254,7 @@ export function getOverlappingNights(
   rangeStart: string,
   rangeEnd: string,
 ): number {
-  const bookingStart = parseUtcDate(bookingCheckIn);
-  const bookingEnd = parseUtcDate(bookingCheckOut);
-  const reportingStart = parseUtcDate(rangeStart);
-  const reportingEnd = parseUtcDate(rangeEnd);
-
-  const overlapStart =
-    bookingStart > reportingStart
-      ? bookingStart
-      : reportingStart;
-
-  const overlapEnd =
-    bookingEnd < reportingEnd
-      ? bookingEnd
-      : reportingEnd;
-
-  if (overlapEnd <= overlapStart) {
-    return 0;
-  }
-
-  return Math.round(
-    (overlapEnd.getTime() - overlapStart.getTime()) /
-      MILLISECONDS_PER_DAY,
-  );
+  return canonicalOverlappingNights(bookingCheckIn, bookingCheckOut, rangeStart, rangeEnd);
 }
 
 export function calculateDashboardMetrics({
@@ -419,20 +403,9 @@ export function calculateDashboardMetrics({
     (booking) => booking.status === "cancelled",
   ).length;
 
-  const occupancyRate =
-    availableNights > 0
-      ? (occupiedNights / availableNights) * 100
-      : 0;
-
-  const averageDailyRate =
-    occupiedNights > 0
-      ? roomRevenue / occupiedNights
-      : 0;
-
-  const revPar =
-    availableNights > 0
-      ? roomRevenue / availableNights
-      : 0;
+  const occupancyRate = (canonicalOccupancy(occupiedNights, availableNights) ?? 0) * 100;
+  const averageDailyRate = canonicalAdr(roomRevenue, occupiedNights) ?? 0;
+  const revPar = canonicalRevPar(roomRevenue, availableNights) ?? 0;
 
   const averageLengthOfStay =
     revenueBookings.length > 0

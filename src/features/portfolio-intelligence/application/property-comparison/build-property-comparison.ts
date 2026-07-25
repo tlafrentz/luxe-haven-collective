@@ -6,9 +6,14 @@ import type {
   PortfolioPropertyComparisonRow, PortfolioPropertyRanking, PortfolioPropertyRankingMetric,
   PortfolioPropertyRole, PropertyComparisonPolicy, PropertyMomentum,
 } from "./contracts";
+import { canonicalComparison } from "@/platform/calculations";
 
 const ratio = (value: number, total: number | null) => total && total !== 0 ? value / total : null;
-const percent = (current: number | null, prior: number | null | undefined) => current === null || prior === null || prior === undefined || prior === 0 ? null : (current - prior) / Math.abs(prior);
+const percent = (current: number | null, prior: number | null | undefined) => {
+  if (current === null || prior === null || prior === undefined) return null;
+  const result = canonicalComparison(current, prior);
+  return result.status === "available" ? result.percentage / 100 : null;
+};
 const difference = (current: number | null, prior: number | null | undefined) => current === null || prior === null || prior === undefined ? null : current - prior;
 const inferredBookedNights = (property: PortfolioPropertyProjection) => property.metrics.grossRevenue !== null && property.metrics.adr ? property.metrics.grossRevenue / property.metrics.adr : null;
 const inferredAvailableNights = (property: PortfolioPropertyProjection) => property.metrics.grossRevenue !== null && property.metrics.revpar ? property.metrics.grossRevenue / property.metrics.revpar : null;

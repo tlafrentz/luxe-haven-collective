@@ -1,5 +1,5 @@
 export const designSystemTokens = Object.freeze({
-  version: "1.0.0",
+  version: "2.0.0",
   color: Object.freeze({
     light: Object.freeze({
       brandPrimary: "#171412",
@@ -55,10 +55,12 @@ export const designSystemTokens = Object.freeze({
     }),
   }),
   typography: Object.freeze({
+    capability: "text-xs font-semibold uppercase tracking-[0.18em]",
     display: "text-4xl font-semibold tracking-tight",
     pageTitle: "text-3xl font-semibold tracking-tight sm:text-4xl",
-    sectionTitle: "text-xl font-semibold",
+    sectionTitle: "text-xl font-semibold tracking-tight",
     panelTitle: "text-base font-semibold",
+    metric: "text-3xl font-semibold tracking-[-0.025em] tabular-nums",
     body: "text-sm leading-6",
     bodyStrong: "text-sm font-semibold leading-6",
     label: "text-sm font-semibold",
@@ -67,11 +69,15 @@ export const designSystemTokens = Object.freeze({
     code: "font-mono text-sm",
   }),
   spacing: Object.freeze({ 1: "4px", 2: "8px", 3: "12px", 4: "16px", 5: "20px", 6: "24px", 8: "32px", 10: "40px", 12: "48px", 16: "64px", 20: "80px" }),
-  semanticSpacing: Object.freeze({ control: "12px", inline: "8px", card: "24px", section: "40px", page: "48px" }),
+  semanticSpacing: Object.freeze({ control: "12px", inline: "8px", card: "24px", section: "40px", page: "48px", pageMobile: "32px" }),
   radius: Object.freeze({ control: "12px", card: "16px", panel: "24px", modal: "24px", pill: "9999px" }),
-  elevation: Object.freeze({ none: "none", raised: "0 1px 2px rgb(0 0 0 / 0.06)", overlay: "0 12px 30px rgb(0 0 0 / 0.16)", modal: "0 24px 60px rgb(0 0 0 / 0.24)" }),
+  border: Object.freeze({ width: "1px", subtleOpacity: 0.72, strongOpacity: 1 }),
+  opacity: Object.freeze({ disabled: 0.46, muted: 0.68, overlay: 0.62 }),
+  elevation: Object.freeze({ none: "none", raised: "0 1px 2px rgb(28 25 23 / 0.045), 0 8px 24px rgb(28 25 23 / 0.025)", interactive: "0 8px 24px rgb(28 25 23 / 0.07)", overlay: "0 18px 48px rgb(28 25 23 / 0.16)", modal: "0 28px 80px rgb(28 25 23 / 0.24)" }),
   motion: Object.freeze({ durationFast: "120ms", durationStandard: "180ms", durationSlow: "240ms", easingEnter: "cubic-bezier(0, 0, 0.2, 1)", easingExit: "cubic-bezier(0.4, 0, 1, 1)", easingStandard: "cubic-bezier(0.2, 0, 0, 1)" }),
   sizing: Object.freeze({ touchTarget: "44px", contentNarrow: "768px", contentMedium: "1152px", contentWide: "1440px" }),
+  grid: Object.freeze({ columns: 12, gutterMobile: "16px", gutterTablet: "24px", gutterDesktop: "32px" }),
+  chart: Object.freeze({ primary: "#0f766e", comparison: "#b9935a", grid: "#e7e5e4", axis: "#78716c", fillOpacity: 0.12 }),
 });
 
 export type AppearanceMode = "light" | "dark" | "system";

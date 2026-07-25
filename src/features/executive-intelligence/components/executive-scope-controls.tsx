@@ -75,7 +75,7 @@ export function ExecutiveScopeControls({
 
   return (
     <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-end 2xl:justify-between">
         <div>
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
             <SlidersHorizontal className="h-4 w-4" />
@@ -89,8 +89,8 @@ export function ExecutiveScopeControls({
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_160px_160px_auto_auto]">
-          <label className="grid gap-1.5">
+        <div className="grid w-full min-w-0 gap-3 sm:grid-cols-2 2xl:w-auto 2xl:grid-cols-[minmax(220px,280px)_160px_160px_auto_auto]">
+          <label className="grid min-w-0 gap-1.5">
             <span className="text-xs font-medium text-stone-600">
               Property
             </span>
@@ -102,7 +102,7 @@ export function ExecutiveScopeControls({
                   event.target.value,
                 )
               }
-              className="h-11 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900 outline-none transition focus:border-amber-600 focus:ring-2 focus:ring-amber-600/10"
+              className="h-11 min-w-0 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900 outline-none transition focus:border-amber-600 focus:ring-2 focus:ring-amber-600/10"
             >
               <option value="portfolio">
                 Entire portfolio

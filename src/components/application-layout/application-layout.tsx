@@ -1,7 +1,7 @@
 "use client";
 
 import type { HTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
-import { AlertTriangle, ArrowRight, Inbox, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowRight, CircleHelp, Inbox, RotateCcw } from "lucide-react";
 
 import { ClientWorkspaceShell } from "@/components/platform-shell";
 import { cn } from "@/lib/utils";
@@ -23,9 +23,9 @@ const widthClasses: Record<WorkspaceWidth, string> = {
 };
 
 const cardLevelClasses: Record<WorkspaceCardLevel, string> = {
-  1: "rounded-3xl border border-stone-200 bg-white shadow-sm",
-  2: "rounded-2xl border border-stone-200 bg-white shadow-sm",
-  3: "rounded-2xl border border-stone-200 bg-stone-50/70",
+  1: "ui-panel",
+  2: "ui-surface",
+  3: "ui-surface-muted",
 };
 
 /** Canonical authenticated customer shell. Route layouts should use this instead of assembling navigation. */
@@ -35,7 +35,7 @@ export function AppShell({ children, role }: Readonly<{ children: ReactNode; rol
 
 /** Canonical content container. The platform shell already owns the document's main landmark. */
 export function WorkspacePage({ children, width = "wide", className, ...props }: HTMLAttributes<HTMLDivElement> & Readonly<{ width?: WorkspaceWidth }>) {
-  return <div data-als="workspace-page" className={cn("mx-auto w-full px-4 py-8 sm:px-6 lg:px-8", widthClasses[width], className)} {...props}>{children}</div>;
+  return <div data-als="workspace-page" className={cn("mx-auto w-full px-4 py-8 sm:px-6 lg:px-8 lg:py-12", widthClasses[width], className)} {...props}>{children}</div>;
 }
 
 export function WorkspaceHeader({
@@ -49,9 +49,9 @@ export function WorkspaceHeader({
   return (
     <header data-als="workspace-header" className={cn("flex flex-col justify-between gap-6 border-b border-stone-200 pb-8 lg:flex-row lg:items-end", className)}>
       <div className="min-w-0">
-        {eyebrow ? <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700">{eyebrow}</p> : null}
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl">{title}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">{description}</p>
+        {eyebrow ? <p className="ui-capability">{eyebrow}</p> : null}
+        <h1 className="ui-page-title mt-2">{title}</h1>
+        <p className="ui-supporting mt-3 max-w-2xl">{description}</p>
       </div>
       {actions || context ? <div className="flex flex-col gap-3 sm:flex-row sm:items-center">{context}{actions}</div> : null}
     </header>
@@ -62,7 +62,7 @@ export function WorkspaceContextSelector({ label, className, children, ...props 
   return (
     <label className={cn("block", className)}>
       <span className="sr-only">{label}</span>
-      <select aria-label={label} className="min-h-11 rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-700 outline-none focus-visible:ring-2 focus-visible:ring-teal-600" {...props}>{children}</select>
+      <select aria-label={label} className="ui-control rounded-full px-4 text-sm font-semibold" {...props}>{children}</select>
     </label>
   );
 }
@@ -89,7 +89,7 @@ export function WorkspaceActivity(props: Omit<Parameters<typeof Region>[0], "typ
 }
 
 export function WorkspaceGrid({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div data-als="workspace-grid" className={cn("grid grid-cols-1 gap-6 md:grid-cols-6 lg:grid-cols-12", className)} {...props}>{children}</div>;
+  return <div data-als="workspace-grid" className={cn("grid grid-cols-1 gap-4 md:grid-cols-6 md:gap-6 lg:grid-cols-12", className)} {...props}>{children}</div>;
 }
 
 export function WorkspaceCard({ level = 2, className, ...props }: HTMLAttributes<HTMLDivElement> & Readonly<{ level?: WorkspaceCardLevel }>) {
@@ -97,7 +97,7 @@ export function WorkspaceCard({ level = 2, className, ...props }: HTMLAttributes
 }
 
 export function WorkspaceSectionHeading({ title, description, action, className }: Readonly<{ title: string; description?: string; action?: ReactNode; className?: string }>) {
-  return <div className={cn("mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end", className)}><div><h2 className="text-xl font-semibold text-stone-950">{title}</h2>{description ? <p className="mt-1 text-sm leading-6 text-stone-600">{description}</p> : null}</div>{action}</div>;
+  return <div className={cn("mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end", className)}><div><h2 className="ui-section-title">{title}</h2>{description ? <p className="ui-supporting mt-1">{description}</p> : null}</div>{action}</div>;
 }
 
 export function WorkspaceEmptyState({ title, description, action, icon }: Readonly<{ title: string; description: string; action?: ReactNode; icon?: ReactNode }>) {
@@ -114,4 +114,27 @@ export function WorkspaceSkeleton({ cards = 4 }: Readonly<{ cards?: number }>) {
 
 export function EmptyStateAction({ children }: Readonly<{ children: ReactNode }>) {
   return <span className="inline-flex items-center gap-1 rounded-full bg-stone-950 px-5 py-2.5 text-sm font-semibold text-white">{children}<ArrowRight aria-hidden="true" className="h-4 w-4" /></span>;
+}
+
+export function StatusChip({ children, tone = "neutral" }: Readonly<{ children: ReactNode; tone?: "healthy" | "attention" | "unavailable" | "preview" | "neutral" }>) {
+  const tones = {
+    healthy: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    attention: "border-amber-200 bg-amber-50 text-amber-900",
+    unavailable: "border-stone-300 bg-stone-100 text-stone-700",
+    preview: "border-violet-200 bg-violet-50 text-violet-800",
+    neutral: "border-stone-200 bg-white text-stone-700",
+  };
+  return <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold", tones[tone])}>{children}</span>;
+}
+
+export function HelpTooltip({ label, children }: Readonly<{ label: string; children: ReactNode }>) {
+  return <span className="group/help relative inline-flex align-middle"><button type="button" aria-label={`About ${label}`} className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-stone-400 outline-none hover:bg-stone-100 hover:text-stone-700 focus-visible:ring-2 focus-visible:ring-teal-600"><CircleHelp aria-hidden="true" className="h-4 w-4" /></button><span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 hidden w-64 -translate-x-1/2 rounded-xl bg-stone-950 px-3 py-2 text-left text-xs font-normal leading-5 text-white shadow-xl group-hover/help:block group-focus-within/help:block">{children}</span></span>;
+}
+
+export function ExpandablePanel({ title, summary, children }: Readonly<{ title: string; summary: string; children: ReactNode }>) {
+  return <details className="group rounded-2xl border border-stone-200 bg-white p-5"><summary className="cursor-pointer list-none rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-teal-600"><span className="font-semibold text-stone-950">{title}</span><span className="mt-1 block text-sm text-stone-600">{summary}</span><span className="mt-3 block text-xs font-semibold text-teal-800 group-open:hidden">Show details</span><span className="mt-3 hidden text-xs font-semibold text-teal-800 group-open:block">Hide details</span></summary><div className="mt-4 border-t border-stone-200 pt-4">{children}</div></details>;
+}
+
+export function WorkspacePlaceholder({ title, description, label = "Preview" }: Readonly<{ title: string; description: string; label?: "Preview" | "Coming Soon" | "Needs Connection" | "Needs Data" }>) {
+  return <WorkspaceCard level={3} aria-disabled="true" className="border-dashed p-6"><StatusChip tone="preview">{label}</StatusChip><h2 className="mt-4 font-semibold text-stone-950">{title}</h2><p className="mt-2 text-sm leading-6 text-stone-600">{description}</p></WorkspaceCard>;
 }

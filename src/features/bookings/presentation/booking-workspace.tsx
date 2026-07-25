@@ -1,3 +1,5 @@
+"use client";
+
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -10,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 
 import {
   WorkspaceContent,
@@ -89,9 +92,13 @@ export function BookingWorkspace({
   qualitySummary?: WorkspaceOperationalDataHealth;
   contextValue?: OperationalContextValue;
 }>) {
+  const detailRef = useRef<HTMLElement>(null);
   const degraded = !["current", "never-synchronized"].includes(
     model.health.synchronizationStatus,
   );
+  useEffect(() => {
+    if (selectedBooking) detailRef.current?.focus();
+  }, [selectedBooking]);
 
   return (
     <WorkspacePage width="wide">
@@ -167,11 +174,11 @@ export function BookingWorkspace({
         <HealthCard
           icon={AlertTriangle}
           label="Data health"
-          value={qualitySummary ? qualityLabel(qualitySummary.status) : "Pending"}
+          value={qualitySummary ? qualityLabel(qualitySummary.status) : "Awaiting analysis"}
           detail={
             qualitySummary
               ? `${qualitySummary.counts.trusted} trusted · ${qualitySummary.openIssues.warning + qualitySummary.openIssues.critical} issues`
-              : "Evaluation pending"
+              : "Data quality analysis has not completed"
           }
         />
         <HealthCard
@@ -270,6 +277,7 @@ export function BookingWorkspace({
               qualityByBookingId={qualityByBookingId}
             />
             <BookingDetail
+              detailRef={detailRef}
               booking={selectedBooking}
               context={selectedContext ?? null}
               quality={
@@ -332,6 +340,12 @@ function BookingTable({
   selectedId?: string;
   qualityByBookingId: Readonly<Record<string, OperationalDataQuality>>;
 }>) {
+  const selectBooking = (bookingId: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("booking", bookingId);
+    window.location.assign(`/bookings?${params.toString()}`);
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[780px] text-left text-sm">
@@ -364,10 +378,20 @@ function BookingTable({
                   ? "border-t border-stone-200 bg-teal-50/60"
                   : "border-t border-stone-200 hover:bg-stone-50"
               }
+              aria-selected={booking.id === selectedId}
+              tabIndex={0}
+              onClick={() => selectBooking(booking.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  selectBooking(booking.id);
+                }
+              }}
             >
               <td className="px-4 py-4">
                 <Link
                   href={`/bookings?booking=${encodeURIComponent(booking.id)}`}
+                  onClick={(event) => event.stopPropagation()}
                   className="font-semibold text-stone-950 hover:underline"
                 >
                   {formatDate(booking.stay.arrival)}
@@ -411,15 +435,19 @@ function BookingDetail({
   booking,
   context,
   quality,
+  detailRef,
 }: Readonly<{
   booking: Booking | null;
   context: ReservationContext | null;
   quality: OperationalDataQuality | null;
+  detailRef: React.RefObject<HTMLElement | null>;
 }>) {
   if (!booking) return null;
 
   return (
     <aside
+      ref={detailRef}
+      tabIndex={-1}
       aria-labelledby="booking-detail-title"
       className="border-t border-stone-200 bg-stone-50 p-6 xl:border-l xl:border-t-0"
     >
