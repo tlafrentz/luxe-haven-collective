@@ -102,7 +102,7 @@ on public.property_workspace_configuration(workspace_id,inclusion);
 
 insert into public.property_workspace_configuration(property_id,workspace_id,inclusion)
 select property.id,property.owner_id,
-  case when property.status='archived' then 'archived' when property.status='paused' then 'excluded' else 'included' end
+  case when property.status='archived' then 'archived' else 'included' end
 from public.properties property
 join public.owners owner on owner.id=property.owner_id
 where property.owner_id is not null
