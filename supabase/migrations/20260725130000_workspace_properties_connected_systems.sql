@@ -41,15 +41,36 @@ alter table public.external_properties
   add column if not exists last_observed_at timestamptz;
 
 update public.external_properties external
-set workspace_id=coalesce(external.workspace_id,connection.workspace_id,property.owner_id),
-    link_status=coalesce(external.link_status,case
+set
+  workspace_id = coalesce(
+    external.workspace_id,
+    resolved.connection_workspace_id,
+    resolved.property_owner_id
+  ),
+  link_status = coalesce(
+    external.link_status,
+    case
       when external.property_id is not null then 'linked'
-      when external.sync_status='error' then 'conflict'
-      else 'unlinked' end),
-    last_observed_at=coalesce(external.last_observed_at,external.last_synced_at)
-from public.integration_connections connection
-left join public.properties property on property.id=external.property_id
-where connection.id=external.connection_id;
+      when external.sync_status = 'error' then 'conflict'
+      else 'unlinked'
+    end
+  ),
+  last_observed_at = coalesce(
+    external.last_observed_at,
+    external.last_synced_at
+  )
+from (
+  select
+    source.id as external_property_id,
+    connection.workspace_id as connection_workspace_id,
+    property.owner_id as property_owner_id
+  from public.external_properties source
+  join public.integration_connections connection
+    on connection.id = source.connection_id
+  left join public.properties property
+    on property.id = source.property_id
+) resolved
+where external.id = resolved.external_property_id;
 
 alter table public.external_properties
   drop constraint if exists external_properties_link_status_check,
