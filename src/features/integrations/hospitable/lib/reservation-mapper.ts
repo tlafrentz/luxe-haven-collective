@@ -44,6 +44,12 @@ export type HospitableReservationMapping = {
     external_platform: string;
     booking_code: string | null;
     external_guest_id: string | null;
+    guest_language: string | null;
+    party_adults: number | null;
+    party_children: number | null;
+    party_infants: number | null;
+    party_pets: number | null;
+    guest_context_synced_at: string;
     currency: string | null;
     host_revenue: number;
     host_service_fee: number;
@@ -426,6 +432,27 @@ export function mapHospitableReservation({
         reservation.code,
       external_guest_id:
         reservation.guest?.id ?? null,
+      guest_language:
+        reservation.guest?.language?.trim() ||
+        reservation.conversation_language?.trim() ||
+        null,
+      party_adults:
+        Number.isInteger(reservation.guests.adult_count)
+          ? reservation.guests.adult_count
+          : null,
+      party_children:
+        Number.isInteger(reservation.guests.child_count)
+          ? reservation.guests.child_count
+          : null,
+      party_infants:
+        Number.isInteger(reservation.guests.infant_count)
+          ? reservation.guests.infant_count
+          : null,
+      party_pets:
+        Number.isInteger(reservation.guests.pet_count)
+          ? reservation.guests.pet_count
+          : null,
+      guest_context_synced_at: syncedAt,
       currency:
         reservation.financials
           ?.currency ?? null,

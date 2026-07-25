@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createHash } from "node:crypto";
 
 import type {
   HospitableReservation,
@@ -420,10 +421,92 @@ async function upsertBooking(
   >["booking"],
 ): Promise<void> {
   const supabase = createAdminClient();
+  const { data: property, error: propertyError } = await supabase
+    .from("properties")
+    .select("owner_id, owner:owners!inner(profile_id)")
+    .eq("id", booking.property_id)
+    .single();
+
+  const ownerRelation = property?.owner as unknown as
+    | { profile_id: string }
+    | readonly { profile_id: string }[]
+    | undefined;
+  const ownerProfile = Array.isArray(ownerRelation)
+    ? ownerRelation[0]
+    : ownerRelation;
+  if (propertyError || !property?.owner_id || !ownerProfile?.profile_id) {
+    throw new Error(
+      `Unable to resolve the reservation owner for property "${booking.property_id}".`,
+    );
+  }
+
+  const ownerProfileId = ownerProfile.profile_id;
+  const identityKey = booking.external_guest_id
+    ? `${ownerProfileId}:${booking.external_provider}:${booking.external_guest_id}`
+    : `booking:${booking.external_reservation_id}`;
+  const digest = createHash("md5").update(identityKey).digest("hex");
+  const primaryGuestId = [
+    digest.slice(0, 8),
+    digest.slice(8, 12),
+    digest.slice(12, 16),
+    digest.slice(16, 20),
+    digest.slice(20),
+  ].join("-");
+  const identityStatus = booking.external_guest_id
+    ? "resolved"
+    : booking.guest_full_name
+      ? "provisional"
+      : "unidentified";
+
+  const { error: guestError } = await supabase.from("guests").upsert(
+    {
+      id: primaryGuestId,
+      owner_id: ownerProfileId,
+      identity_status: identityStatus,
+      display_name: booking.guest_full_name ?? "Guest",
+      normalized_name: booking.guest_full_name?.trim().toLowerCase() ?? null,
+      email: booking.guest_email,
+      phone: booking.guest_phone,
+      language: booking.guest_language,
+      last_observed_at: booking.guest_context_synced_at,
+      updated_at: booking.guest_context_synced_at,
+    },
+    { onConflict: "id" },
+  );
+
+  if (guestError) {
+    throw new Error(
+      `Unable to enrich reservation guest context: ${guestError.message}`,
+    );
+  }
+
+  if (booking.external_guest_id) {
+    const { error: referenceError } = await supabase
+      .from("provider_guest_references")
+      .upsert(
+        {
+          guest_id: primaryGuestId,
+          owner_id: ownerProfileId,
+          provider: booking.external_provider,
+          external_guest_id: booking.external_guest_id,
+          last_observed_at: booking.guest_context_synced_at,
+          updated_at: booking.guest_context_synced_at,
+        },
+        {
+          onConflict: "owner_id,provider,external_guest_id",
+        },
+      );
+
+    if (referenceError) {
+      throw new Error(
+        `Unable to retain reservation guest provenance: ${referenceError.message}`,
+      );
+    }
+  }
 
   const { error } = await supabase
     .from("bookings")
-    .upsert(booking, {
+    .upsert({ ...booking, primary_guest_id: primaryGuestId }, {
       onConflict:
         "external_provider,external_reservation_id",
     });
@@ -480,6 +563,88 @@ async function safelyFinalizeFailedSync({
             : "Unknown connection update error.",
       },
     );
+  }
+}
+
+async function persistOperationalSyncSummaries({
+  syncRunId,
+  connectionId,
+  result,
+}: {
+  syncRunId: string;
+  connectionId: string;
+  result: ReservationSyncResult;
+}): Promise<void> {
+  const supabase = createAdminClient();
+  const { data: links, error: linksError } = await supabase
+    .from("external_properties")
+    .select("properties!inner(owner:owners!inner(profile_id))")
+    .eq("connection_id", connectionId)
+    .not("property_id", "is", null);
+  if (linksError) throw new Error("Unable to resolve sync summary owners.");
+  const ownerIds = new Set(
+    (links ?? []).flatMap((link) => {
+      const relation = link.properties as unknown as
+        | {
+            owner:
+              | { profile_id: string }
+              | readonly { profile_id: string }[];
+          }
+        | readonly {
+            owner:
+              | { profile_id: string }
+              | readonly { profile_id: string }[];
+          }[];
+      const property = Array.isArray(relation) ? relation[0] : relation;
+      const owner = property
+        ? Array.isArray(property.owner)
+          ? property.owner[0]
+          : property.owner
+        : undefined;
+      return owner?.profile_id ? [owner.profile_id] : [];
+    }),
+  );
+  const status =
+    result.failed === 0
+      ? "succeeded"
+      : result.processed > 0
+        ? "partially-succeeded"
+        : "failed";
+  const completedAt = new Date().toISOString();
+  if (!ownerIds.size) return;
+  const { error } = await supabase.from("operational_sync_summaries").insert(
+    [...ownerIds].map((ownerId) => ({
+      owner_id: ownerId,
+      connection_id: connectionId,
+      sync_run_id: syncRunId,
+      provider: PROVIDER,
+      status,
+      completed_at: completedAt,
+      records_discovered: result.discovered,
+      records_created: result.created,
+      records_updated: result.updated,
+      records_unchanged: 0,
+      records_skipped: result.skipped,
+      records_failed: result.failed,
+      warnings: result.errors,
+      affected_capabilities:
+        result.failed > 0 ? ["bookings", "guest-context"] : [],
+    })),
+  );
+  if (error) throw new Error("Unable to persist operational sync summary.");
+}
+
+async function safelyPersistOperationalSyncSummaries(
+  input: Parameters<typeof persistOperationalSyncSummaries>[0],
+): Promise<void> {
+  try {
+    await persistOperationalSyncSummaries(input);
+  } catch {
+    console.error("Unable to persist redacted operational sync summary", {
+      syncRunId: input.syncRunId,
+      connectionId: input.connectionId,
+      failed: input.result.failed,
+    });
   }
 }
 
@@ -651,6 +816,12 @@ export async function syncHospitableReservations({
           : undefined,
     });
 
+    await safelyPersistOperationalSyncSummaries({
+      syncRunId,
+      connectionId: connection.id,
+      result,
+    });
+
     return result;
   } catch (error) {
     const primaryError =
@@ -676,6 +847,12 @@ export async function syncHospitableReservations({
     }
 
     await safelyFinalizeFailedSync({
+      syncRunId,
+      connectionId: connection.id,
+      result,
+    });
+
+    await safelyPersistOperationalSyncSummaries({
       syncRunId,
       connectionId: connection.id,
       result,

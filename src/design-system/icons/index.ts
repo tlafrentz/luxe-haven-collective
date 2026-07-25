@@ -1,0 +1,16 @@
+export const productIconRoles = Object.freeze({
+  home: "home",
+  workspace: "settings",
+  revenueIntelligence: "trend",
+  executiveIntelligence: "overview",
+  portfolioIntelligence: "portfolio",
+  investmentIntelligence: "analysis",
+  actionCenter: "execution",
+  learningIntelligence: "learning",
+  properties: "building",
+  bookings: "calendar",
+  guestCommunications: "message",
+  reports: "document",
+  guidebookStudio: "book",
+  administration: "controls",
+});

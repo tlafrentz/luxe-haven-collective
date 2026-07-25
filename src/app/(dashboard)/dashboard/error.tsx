@@ -24,14 +24,13 @@ export default function DashboardError({
         </div>
 
         <h1 className="mt-5 text-2xl font-semibold tracking-tight text-stone-950">
-          Executive Intelligence could not load
+          Operational Home could not load
         </h1>
 
         <p className="mt-3 text-sm leading-6 text-stone-600">
-          The Command Center encountered a problem while
-          loading portfolio performance. Try the request
-          again. If the issue continues, review the
-          server logs and connected data sources.
+          Your operational records were not changed. Try
+          loading Home again. If the issue continues,
+          review your connected hospitality platform.
         </p>
 
         {process.env.NODE_ENV ===

@@ -12,7 +12,8 @@ describe("operational surface persistence mapping", () => {
       new URL("./supabase-operational-surface-repository.ts", import.meta.url),
       "utf8",
     );
-    expect(source.match(/\.eq\("owner_id", ownerId\)/g)).toHaveLength(2);
+    expect(source).toContain("resolveOwnerIdentity(supabase, profileId)");
+    expect(source).toContain('.eq("owner_id", identity.ownerId)');
     expect(source).toContain("principal.workspaceId");
   });
 
@@ -21,6 +22,7 @@ describe("operational surface persistence mapping", () => {
       {
         id: "property-1",
         owner_id: "owner-1",
+        owner: { profile_id: "profile-1" },
         name: "River District Loft",
         city: "Chicago",
         state: "IL",
@@ -32,7 +34,7 @@ describe("operational surface persistence mapping", () => {
       },
     ]);
     expect(result[0]).toMatchObject({
-      ownerId: "owner-1",
+      ownerId: "profile-1",
       connectionState: "unknown",
       marketLabel: "Chicago, IL",
     });

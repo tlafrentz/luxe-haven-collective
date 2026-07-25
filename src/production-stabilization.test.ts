@@ -20,9 +20,9 @@ describe("critical production safeguards", () => {
     const insightsPage = read("src/app/(dashboard)/dashboard/insights/page.tsx");
     const dashboardLayout = read("src/app/(dashboard)/layout.tsx");
 
-    expect(dashboardPage).toContain("getExecutiveIntelligenceView");
+    expect(dashboardPage).toContain("getOperationalSurfaceProjection");
     expect(insightsPage).toBeTruthy();
-    expect(dashboardLayout).toContain("DashboardShell");
+    expect(dashboardLayout).toContain("AppShell");
     expect(dashboardLayout).toContain("requireUser");
   });
 

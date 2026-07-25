@@ -93,7 +93,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             description="Connect your hospitality platform to begin monitoring properties, reservations, guest stays, and synchronization health."
             action={
               <Link
-                href="/dashboard/settings?section=connections"
+                href="/dashboard/workspace/connected-systems"
                 className="inline-flex min-h-11 items-center rounded-full bg-stone-950 px-5 text-sm font-semibold text-white"
               >
                 Connect hospitality platform

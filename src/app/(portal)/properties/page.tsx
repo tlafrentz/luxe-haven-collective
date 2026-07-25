@@ -108,7 +108,7 @@ export default async function PropertiesPage({
             description="Import properties from your connected hospitality platform to begin operating your portfolio."
             action={
               <Link
-                href="/dashboard/settings?section=connections"
+                href="/dashboard/workspace/connected-systems"
                 className="inline-flex min-h-11 items-center rounded-full bg-stone-950 px-5 text-sm font-semibold text-white"
               >
                 Import properties

@@ -3,11 +3,17 @@ import { buildPlatformBreadcrumbs, clientWorkspaceNavigation, matchesNavigationR
 
 describe("workspace-driven platform experience", () => {
   it("defines lifecycle capabilities in canonical order", () => {
-    const lifecycle = clientWorkspaceNavigation.filter(item => item.group === "hpm");
+    const lifecycle = clientWorkspaceNavigation.filter(item => "lifecycleStage" in item);
     expect(lifecycle.map(item => item.lifecycleStage)).toEqual(["observe", "understand", "understand", "decide", "execute", "learn"]);
-    expect(lifecycle.map(item => item.workspaceLabel)).toEqual(["Revenue Intelligence", "Executive Intelligence", "Business health & capital", "Investment Intelligence", "Action Center", "Learning Intelligence"]);
+    expect(lifecycle.map(item => item.label)).toEqual(["Revenue Intelligence", "Executive Intelligence", "Portfolio Intelligence", "Investment Intelligence", "Action Center", "Learning Intelligence"]);
     expect(lifecycle.every(item => !("children" in item))).toBe(true);
     expect(new Set(lifecycle.map(item => item.href).filter(Boolean)).size).toBe(lifecycle.filter(item => item.href).length);
+  });
+
+  it("models the canonical three-level Understand hierarchy", () => {
+    expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ kind: "group", level: 1 });
+    expect(clientWorkspaceNavigation.find(item => item.id === "executive-intelligence")).toMatchObject({ parentId: "understand", kind: "product", level: 2 });
+    expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ parentId: "executive-intelligence", kind: "product", level: 3 });
   });
 
   it("keeps business, service, operations, and infrastructure concepts separate", () => {
@@ -42,35 +48,43 @@ describe("workspace-driven platform experience", () => {
     expect(resolveNavigation(operationsConsoleNavigation, resolveUserCapabilities({ authenticated: true, role: "admin" })).some(item => item.id === "platform-integrations")).toBe(true);
   });
 
+  it("omits empty groups and requires explicit feature participation", () => {
+    const cleanerNavigation = resolveNavigation(clientWorkspaceNavigation, resolveUserCapabilities({ authenticated: true, role: "cleaner" }));
+    expect(cleanerNavigation.some(item => item.id === "understand")).toBe(false);
+    const flagged = [{ ...clientWorkspaceNavigation[0], id: "beta-product", featureFlag: "beta-product" }];
+    expect(resolveNavigation(flagged, resolveUserCapabilities({ authenticated: true, role: "owner" }))).toHaveLength(0);
+    expect(resolveNavigation(flagged, resolveUserCapabilities({ authenticated: true, role: "owner" }), new Set(["beta-product"]))).toHaveLength(1);
+  });
+
   it("owns canonical and legacy investment routes from Decide", () => {
     const investmentRoutes = platformRouteDefinitions.filter(route => route.pathPattern.startsWith("/dashboard/investments"));
     expect(investmentRoutes.length).toBeGreaterThan(5);
-    expect(investmentRoutes.every(route => route.hpmStage === "decide" && route.navigationItemId === "decide")).toBe(true);
+    expect(investmentRoutes.every(route => route.hpmStage === "decide" && route.navigationItemId === "investment-intelligence")).toBe(true);
   });
 
   it("owns Portfolio Intelligence as an Understand lifecycle destination", () => {
     const route = platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio");
     expect(route).toMatchObject({ hpmStage: "understand", businessWorkspace: "portfolio", navigationItemId: "portfolio-intelligence" });
-    expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ group: "hpm", href: "/dashboard/portfolio", icon: "portfolio" });
+    expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ group: "hpm", parentId: "executive-intelligence", level: 3, href: "/dashboard/portfolio", icon: "portfolio" });
     expect(platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio/workspace")).toMatchObject({ hpmStage: "understand", navigationItemId: "portfolio-intelligence" });
   });
 
   it("keeps business navigation limited to operational record sets", () => {
-    expect(clientWorkspaceNavigation.filter(item => item.group === "business").map(item => item.label)).toEqual(["Properties", "Bookings", "Messages", "Reports"]);
+    expect(clientWorkspaceNavigation.filter(item => item.group === "business").map(item => item.label)).toEqual(["Properties", "Bookings", "Guest Communications", "Reports"]);
     expect(clientWorkspaceNavigation.some(item => item.group === "business" && item.id === "portfolio-intelligence")).toBe(false);
   });
 
   it("separates customer guidebook service consumption from internal delivery", () => {
     const customerService = clientWorkspaceNavigation.find(item => item.id === "guidebook-studio");
     const internalService = operationsConsoleNavigation.find(item => item.id === "guidebook-projects");
-    expect(customerService).toMatchObject({ group: "services", label: "Guidebook Studio", availability: "coming-soon", description: "Create and manage your guest guidebook" });
+    expect(customerService).toMatchObject({ group: "services", label: "Guidebook Studio", availability: "available", href: "/guidebooks", description: "Design and publish your guest experience" });
     expect(internalService).toMatchObject({ group: "services", label: "Guidebook Projects", availability: "coming-soon", description: "Manage guidebook service delivery" });
     expect(customerService?.label).not.toBe(internalService?.label);
   });
 
   it.each(["/dashboard/portfolio", "/dashboard/portfolio/workspace"])("activates Portfolio Intelligence for %s", path => {
     const item = clientWorkspaceNavigation.find(entry => entry.id === "portfolio-intelligence");
-    expect(item && matchesNavigationRoute(path, item.activeMatch)).toBe(true);
+    expect(item?.activeMatch && matchesNavigationRoute(path, item.activeMatch)).toBe(true);
   });
 
   it("has no duplicate hrefs within either shell", () => {

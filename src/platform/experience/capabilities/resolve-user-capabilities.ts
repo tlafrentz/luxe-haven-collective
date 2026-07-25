@@ -6,7 +6,19 @@ const allInternal: readonly CapabilityId[] = ["view_internal_operations", "manag
 export function resolveUserCapabilities(input: Readonly<{ role?: UserRole | string | null; authenticated?: boolean }>): ReadonlySet<CapabilityId> {
   if (!input.authenticated) return new Set();
   if (input.role === "admin") return new Set([...allClient, ...allInternal]);
-  if (input.role === "owner") return new Set(allClient);
+  if (input.role === "owner" || input.role === "administrator") return new Set(allClient);
+  if (input.role === "operator") return new Set([
+    "view_home", "view_observations", "view_executive_intelligence",
+    "view_actions", "manage_actions", "view_properties",
+  ]);
+  if (input.role === "contributor") return new Set([
+    "view_home", "view_observations", "view_actions", "manage_actions",
+    "view_properties",
+  ]);
+  if (input.role === "viewer") return new Set([
+    "view_home", "view_observations", "view_executive_intelligence",
+    "view_actions", "view_properties",
+  ]);
   if (input.role === "cleaner") return new Set(["view_home", "view_observations", "view_actions", "view_properties"]);
   return new Set(["view_home"]);
 }
