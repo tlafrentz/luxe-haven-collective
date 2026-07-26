@@ -9,6 +9,7 @@ import { PlatformError } from "@/platform/kernel";
 import { PropertyType } from "../domain";
 import { buildInvestmentAnalysisContext } from "./build-investment-analysis-context";
 import { buildInvestmentMarketContext } from "./build-investment-market-context";
+import { getInvestmentDecisionAnalysis } from "./get-investment-decision-analysis";
 import { runInvestmentAnalysis } from "./run-investment-analysis";
 
 import type { RunInvestmentAnalysisCommand } from "./run-investment-analysis";
@@ -90,7 +91,7 @@ export async function runInvestmentWorkspaceAnalysis(
     marketContext: investmentMarketContext,
   });
   const lifecycleResult = runInvestmentAnalysis(investmentAnalysisContext.input);
-  return deepFreeze({
+  const result = {
     propertyResolution,
     marketReport,
     investmentMarketContext,
@@ -103,6 +104,10 @@ export async function runInvestmentWorkspaceAnalysis(
       investmentSubjectId: investmentAnalysisContext.input.property.id,
       marketEvidenceIds: [...investmentMarketContext.lineage.evidenceIds],
     },
+  };
+  return deepFreeze({
+    ...result,
+    decisionAnalysis: getInvestmentDecisionAnalysis(result),
   });
 }
 

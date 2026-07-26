@@ -7,6 +7,8 @@ import {
   RevenueIntelligenceDashboard,
 } from "@/features/revenue-intelligence";
 import { WorkspaceHeader, WorkspacePage } from "@/components/application-layout";
+import { getRelevantLearning } from "@/app/actions/platform-learning-workspace";
+import { RelevantLearningPanel } from "@/components/learning/relevant-learning-panel";
 
 type InsightsPageProps = {
   searchParams: Promise<{
@@ -34,6 +36,13 @@ export default async function InsightsPage({
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
     });
+  const learning = await getRelevantLearning({
+    capability: "revenue",
+    subjectType: "revenue-recommendation",
+    subjectId: params.property ?? "workspace-revenue",
+    propertyId: params.property,
+    strategy: "revenue-optimization",
+  }).catch(() => null);
 
   return (
     <WorkspacePage className="space-y-6">
@@ -50,6 +59,7 @@ export default async function InsightsPage({
       <RevenueIntelligenceDashboard
         intelligence={intelligence}
       />
+      {learning ? <RelevantLearningPanel projection={learning} title="Relevant revenue learning" /> : null}
     </WorkspacePage>
   );
 }

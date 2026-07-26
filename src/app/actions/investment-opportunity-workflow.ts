@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/session";
-import { addOpportunityNote, archiveInvestmentOpportunity, buildOpportunityAnalysisSnapshotFromWorkspace, buildOpportunityPropertyReference, buildOpportunitySourceSummary, createInvestmentOpportunity, createInvestmentOpportunityId, InvestmentOpportunityError, listCompatibleInvestmentOpportunities, restoreInvestmentOpportunity, saveOpportunityAnalysis, updateInvestmentOpportunity, updateOpportunityStatus, type OpportunityStatus } from "@/features/investment-opportunity";
+import { addOpportunityNote, archiveInvestmentOpportunity, buildOpportunityAnalysisSnapshotFromWorkspace, buildOpportunityPropertyReference, buildOpportunitySourceSummary, createInvestmentOpportunity, createInvestmentOpportunityId, InvestmentOpportunityError, listCompatibleInvestmentOpportunities, markPreferredInvestmentScenario, restoreInvestmentOpportunity, saveOpportunityAnalysis, updateInvestmentOpportunity, updateOpportunityStatus, type OpportunityStatus } from "@/features/investment-opportunity";
 import { getInvestmentOpportunityRequestContext } from "./investment-opportunity-runtime";
 import { resolveInvestmentAnalysis } from "./investment-analysis-save-store";
 
@@ -10,6 +10,22 @@ export type OpportunityMutationResult<T> = Readonly<{ ok: true; data: T }> | Rea
 type WorkflowFailure = Extract<OpportunityMutationResult<never>, { ok: false }>;
 const saveSchema = z.object({ analysisToken: z.string().min(1), name: z.string().trim().max(120).optional(), tags: z.array(z.string().max(40)).max(20), idempotencyKey: z.string().min(8).max(160), note: z.string().trim().max(5000).optional() });
 const existingSchema = saveSchema.pick({ analysisToken: true, idempotencyKey: true }).extend({ opportunityId: z.string().min(1), expectedVersion: z.number().int().positive() });
+const preferredScenarioSchema = z.object({ opportunityId: z.string().min(1), scenarioId: z.string().min(1), expectedVersion: z.number().int().positive(), idempotencyKey: z.string().min(8).max(160) });
+
+export async function markPreferredScenarioAction(input: unknown) {
+  const parsed = preferredScenarioSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, message: "The preferred scenario request is invalid." };
+  const context = await getInvestmentOpportunityRequestContext();
+  if (!context.ok) return { ok: false as const, message: "You are not authorized to change the preferred scenario." };
+  try {
+    const opportunity = await markPreferredInvestmentScenario(context.repository, { ...parsed.data, ownerId: context.ownerId, actor: { type: "user", id: context.ownerId } });
+    revalidatePath(`/dashboard/investments/opportunities/${parsed.data.opportunityId}`);
+    revalidatePath(`/dashboard/investments/opportunities/${parsed.data.opportunityId}/scenarios`);
+    return { ok: true as const, aggregateVersion: opportunity.version };
+  } catch (error) {
+    return { ok: false as const, message: error instanceof Error ? error.message : "The preferred scenario could not be changed." };
+  }
+}
 const mutationSchema = z.object({ opportunityId: z.string().min(1), expectedVersion: z.number().int().positive(), commandId: z.string().min(8).max(160) });
 
 export async function saveAnalysisAsNewOpportunityAction(input: unknown): Promise<OpportunityMutationResult<{ opportunityId: string; analysisId: string; analysisSequence: 1; aggregateVersion: number; redirectPath: string }>> {

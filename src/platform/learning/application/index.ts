@@ -3,3 +3,10 @@ export { LearningExecutor, type LearningExecutorInput } from "./learning-executo
 export { type ConfidenceCalibrationResult, type LearningInsightResult, type LearningPolicy, type LearningPolicyContext, type LearningPolicyResult, type LearningRecordSet, type PolicyImprovementResult, type ScoringImprovementResult } from "./learning-policy";
 export { LearningPolicyRegistry } from "./learning-policy-registry";
 export { LearningSession, type LearningSessionInput } from "./learning-session";
+export * from "./persistent-learning";
+export * from "./outcome-review-services";
+export * from "./lesson-knowledge-services";
+export * from "./learning-workspace";
+export * from "./relevant-learning";
+export * from "./learning-administration";
+export * from "./calibration-services";

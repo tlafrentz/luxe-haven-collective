@@ -95,6 +95,10 @@ describe("runInvestmentWorkspaceAnalysis", () => {
     }
     expect(result.lifecycleResult.analysis.comparableAnalysis.comparables).toEqual([]);
     expect(result.lineage).toMatchObject({ propertyResolutionId: "resolution-1", marketAnalysisId: "market-1" });
+    expect(result.decisionAnalysis.lifecycleResult).toBe(result.lifecycleResult);
+    expect(result.decisionAnalysis.score.components.reduce((sum, component) => sum + component.weight, 0)).toBe(100);
+    expect(result.decisionAnalysis.timeline.map(({ type }) => type)).toEqual(["analysis-created", "evidence-evaluated", "decision-generated"]);
+    expect(result.decisionAnalysis.lineage.marketEvidenceIds).toEqual(result.lineage.marketEvidenceIds);
   });
 
   it("keeps a rental lease separate from the Market rent benchmark", async () => {
@@ -103,6 +107,8 @@ describe("runInvestmentWorkspaceAnalysis", () => {
     expect(result.investmentAnalysisContext.input.acquisitionType).toBe(AcquisitionType.RentalArbitrage);
     if (result.investmentAnalysisContext.input.acquisitionType === AcquisitionType.RentalArbitrage) expect(result.investmentAnalysisContext.input.lease.monthlyLease).toBe(2500);
     expect(result.investmentAnalysisContext.assumptions.find(({ key }) => key === "market-monthly-rent-estimate")?.source).toBe("market");
+    expect(result.decisionAnalysis.identity.acquisitionType).toBe(AcquisitionType.RentalArbitrage);
+    expect("capRate" in result.decisionAnalysis.lifecycleResult.analysis.financialPerformance).toBe(false);
   });
 
   it("rejects ambiguous properties without calling comparable acquisition", async () => {
@@ -126,5 +132,6 @@ describe("runInvestmentWorkspaceAnalysis", () => {
     expect(second).toEqual(first);
     expect(Object.isFrozen(first)).toBe(true);
     expect(Object.isFrozen(first.marketReport)).toBe(true);
+    expect(Object.isFrozen(first.decisionAnalysis.score.components)).toBe(true);
   });
 });

@@ -6,7 +6,7 @@ import type {
   MarketPropertyResolutionProvider,
 } from "@/features/market-intelligence";
 
-import type { InvestmentLifecycleResult } from "../../domain";
+import type { InvestmentDecisionAnalysis, InvestmentLifecycleResult } from "../../domain";
 import type { RunInvestmentAnalysisCommand } from "../run-investment-analysis";
 import type { InvestmentAnalysisContext } from "./investment-analysis-context-types";
 import type { InvestmentAppliedLearningContext } from "./investment-learning-application-types";
@@ -62,6 +62,7 @@ export type InvestmentWorkspaceAnalysisResult = Readonly<{
   investmentMarketContext: InvestmentMarketContext;
   investmentAnalysisContext: InvestmentAnalysisContext;
   lifecycleResult: InvestmentLifecycleResult;
+  decisionAnalysis: InvestmentDecisionAnalysis;
   lineage: InvestmentWorkspaceLineage;
 }>;
 

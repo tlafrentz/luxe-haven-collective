@@ -189,6 +189,10 @@ export {
   runInvestmentAnalysis,
 } from "./run-investment-analysis";
 
+export {
+  getInvestmentDecisionAnalysis,
+} from "./get-investment-decision-analysis";
+
 export type {
   RunInvestmentAnalysisCommand,
   RunPurchaseInvestmentAnalysisCommand,

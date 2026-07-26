@@ -1,0 +1,12 @@
+import { getCatalogHealth } from "@/app/actions/commerce-operations";
+
+export default async function CommerceCatalogHealthPage() {
+  const view = await getCatalogHealth();
+  return <main className="mx-auto max-w-7xl space-y-8 px-5 py-10">
+    <header><p className="eyebrow">Commerce operations</p><h1 className="mt-2 text-4xl font-semibold">Catalog health</h1><p className="mt-3 text-stone-600">Pre-release validation of Product, Offer, Price, Stripe, entitlement, and fulfillment mappings.</p></header>
+    {view.dataState === "partial" ? <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4">Catalog validation is partial because one or more sources are unavailable.</p> : null}
+    <section className="rounded-2xl border p-6"><p className="text-sm font-semibold uppercase tracking-wide">Catalog condition</p><p className="mt-2 text-3xl font-semibold capitalize">{view.health.status}</p><p className="mt-2 text-stone-600">{view.health.issues.length} validation issue{view.health.issues.length === 1 ? "" : "s"} found.</p></section>
+    <section><h2 className="text-2xl font-semibold">Validation findings</h2><div className="mt-4 overflow-x-auto rounded-2xl border"><table className="min-w-full text-left text-sm"><thead className="bg-stone-50"><tr><th className="p-4">Severity</th><th className="p-4">Subject</th><th className="p-4">Issue</th><th className="p-4">Explanation</th></tr></thead><tbody>{view.health.issues.map((issue) => <tr className="border-t" key={`${issue.code}:${issue.subjectId}`}><td className="p-4 font-semibold uppercase">{issue.severity}</td><td className="p-4">{issue.subjectType}: {issue.subjectId}</td><td className="p-4">{issue.code}</td><td className="p-4">{issue.message}</td></tr>)}</tbody></table>{!view.health.issues.length ? <p className="p-8 text-center text-stone-600">All current catalog mappings passed validation.</p> : null}</div></section>
+    <section><h2 className="text-2xl font-semibold">Catalog inventory</h2><dl className="mt-4 grid gap-4 sm:grid-cols-3"><div className="rounded-2xl border p-5"><dt>Products</dt><dd className="mt-2 text-3xl font-semibold">{view.products.length}</dd></div><div className="rounded-2xl border p-5"><dt>Offers</dt><dd className="mt-2 text-3xl font-semibold">{view.offers.length}</dd></div><div className="rounded-2xl border p-5"><dt>Prices</dt><dd className="mt-2 text-3xl font-semibold">{view.prices.length}</dd></div></dl></section>
+  </main>;
+}

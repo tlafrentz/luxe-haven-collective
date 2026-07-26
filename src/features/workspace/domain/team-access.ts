@@ -28,8 +28,69 @@ export type WorkspacePermission =
   | "bookings.view"
   | "bookings.operate"
   | "intelligence.view"
+  | "financial.read"
+  | "financial.detail"
+  | "financial.planning"
+  | "financial.administration"
+  | "financial.overview.view"
+  | "financial.profitability.view"
+  | "financial.cash.view"
+  | "financial.details.view"
+  | "financial.planning.view"
+  | "financial.administration.manage"
+  | "financial.revenue.detail"
+  | "financial.expense.detail"
+  | "financial.cash.summary.view"
+  | "financial.cash.accounts.view"
+  | "financial.cash.transactions.view"
+  | "financial.cash.obligations.view"
+  | "financial.cash.reserves.view"
+  | "financial.cash.manage"
+  | "financial.planning.summary.view"
+  | "financial.budget.approve"
+  | "financial.forecast.edit"
+  | "financial.planning.manage"
+  | "financial.capital.summary.view"
+  | "financial.capital.requests.view"
+  | "financial.capital.requests.create"
+  | "financial.capital.requests.manage"
+  | "financial.capital.plans.create"
+  | "financial.capital.plans.review"
+  | "financial.capital.plans.approve"
+  | "financial.capital.administer"
+  | "financial.outcomes.view"
+  | "financial.learning.publish"
+  | "financial.planning.review"
+  | "financial.outcomes.administer"
   | "actions.view"
   | "actions.manage"
+  | "communications.view"
+  | "communications.reply"
+  | "communications.manage"
+  | "learning.view"
+  | "learning.manage"
+  | "learning.measurement-plans.view"
+  | "learning.measurement-plans.create"
+  | "learning.measurement-plans.activate"
+  | "learning.reviews.view"
+  | "learning.reviews.measure"
+  | "learning.reviews.evaluate"
+  | "learning.reviews.complete"
+  | "learning.reviews.revise"
+  | "learning.reviews.admin"
+  | "learning.assumptions.view"
+  | "learning.assumptions.validate"
+  | "learning.lessons.view"
+  | "learning.lessons.review"
+  | "learning.lessons.publish"
+  | "learning.lessons.retire"
+  | "learning.lessons.merge"
+  | "learning.lessons.admin"
+  | "learning.calibration.view"
+  | "learning.calibration.review"
+  | "learning.calibration.approve"
+  | "learning.governance.retry"
+  | "learning.health.view"
   | "reports.view"
   | "reports.generate"
   | "guidebooks.view"
@@ -86,19 +147,46 @@ export const workspaceRolePolicyVersion = "workspace-role-policy-v1";
 
 const viewer: readonly WorkspacePermission[] = [
   "workspace.view", "properties.view", "bookings.view", "intelligence.view",
-  "actions.view", "reports.view", "guidebooks.view",
+  "financial.read", "financial.overview.view", "financial.profitability.view",
+  "financial.cash.summary.view",
+  "financial.planning.summary.view",
+  "financial.capital.summary.view", "financial.capital.requests.view",
+  "financial.outcomes.view",
+  "actions.view", "communications.view", "learning.view", "learning.measurement-plans.view",
+  "learning.reviews.view", "learning.assumptions.view", "learning.lessons.view",
+  "learning.calibration.view", "learning.health.view",
+  "reports.view", "guidebooks.view",
 ];
 const contributor: readonly WorkspacePermission[] = [
-  ...viewer, "bookings.operate", "actions.manage", "reports.generate",
-  "guidebooks.manage",
+  ...viewer, "bookings.operate", "actions.manage", "communications.reply", "reports.generate",
+  "guidebooks.manage", "learning.measurement-plans.create", "learning.reviews.measure",
+  "learning.lessons.review",
 ];
 const operator: readonly WorkspacePermission[] = [
-  ...contributor, "properties.manage",
+  ...contributor, "properties.manage", "financial.detail", "financial.details.view",
+  "financial.capital.requests.create", "learning.reviews.evaluate",
+  "learning.assumptions.validate",
 ];
 const administrator: readonly WorkspacePermission[] = [
   ...operator, "organization.update", "team.view", "team.invite",
   "team.manage_roles", "team.manage_access", "team.suspend", "team.remove",
   "connections.view", "connections.manage",
+  "communications.manage",
+  "learning.manage",
+  "learning.measurement-plans.activate", "learning.reviews.complete",
+  "learning.reviews.revise", "learning.reviews.admin",
+  "learning.lessons.publish", "learning.lessons.retire", "learning.lessons.merge",
+  "learning.lessons.admin", "learning.calibration.review", "learning.calibration.approve",
+  "learning.governance.retry",
+  "financial.planning", "financial.administration", "financial.cash.view",
+  "financial.planning.view", "financial.administration.manage",
+  "financial.revenue.detail", "financial.expense.detail",
+  "financial.cash.accounts.view", "financial.cash.transactions.view",
+  "financial.cash.obligations.view", "financial.cash.reserves.view", "financial.cash.manage",
+  "financial.budget.approve", "financial.forecast.edit", "financial.planning.manage",
+  "financial.capital.requests.manage", "financial.capital.plans.create",
+  "financial.capital.plans.review", "financial.capital.plans.approve", "financial.capital.administer",
+  "financial.learning.publish", "financial.planning.review", "financial.outcomes.administer",
 ];
 const owner: readonly WorkspacePermission[] = [...administrator];
 

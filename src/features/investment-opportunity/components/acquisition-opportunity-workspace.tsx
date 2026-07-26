@@ -72,7 +72,7 @@ export function OpportunityWorkspaceHeader({ opportunity, acquisition }: { oppor
         <h1 className="mt-2 font-serif text-4xl tracking-tight text-stone-950 sm:text-5xl">{opportunity.name}</h1>
         <p className="mt-3 text-base text-stone-600">{opportunity.location.display}</p>
       </div>
-      <div className="text-left lg:text-right"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-400">Last updated</p><time dateTime={opportunity.updatedAt.toISOString()} className="mt-1 block text-sm font-medium text-stone-700">{dateTime(opportunity.updatedAt)}</time></div>
+      <div className="text-left lg:text-right"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-400">Last updated</p><time dateTime={opportunity.updatedAt.toISOString()} className="mt-1 block text-sm font-medium text-stone-700">{dateTime(opportunity.updatedAt)}</time><Link href={`/dashboard/investments/opportunities/${opportunity.id}/scenarios`} className="mt-4 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-900">Compare scenarios</Link></div>
     </div>
   </header>;
 }

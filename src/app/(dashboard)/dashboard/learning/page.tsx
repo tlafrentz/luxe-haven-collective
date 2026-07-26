@@ -1,17 +1,250 @@
-import { getLearningDashboardRouteState } from "@/app/actions/learning-workspace-runtime";
-import { LearningIntelligenceDashboardView } from "@/features/learning-intelligence";
 import Link from "next/link";
 
-export default async function LearningDashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const params = await searchParams;
-  const portfolioId = single(params.portfolio);
-  if (!portfolioId) return <ScopeRequired />;
-  const end = parseDate(single(params.end)) ?? new Date();
-  const start = parseDate(single(params.start)) ?? new Date(Date.UTC(end.getUTCFullYear() - 1, end.getUTCMonth(), end.getUTCDate()));
-  const result = await getLearningDashboardRouteState({ portfolioId, observationWindow: Object.freeze({ start, end }) });
-  return result.ok ? <LearningIntelligenceDashboardView state={result.state} /> : <RouteError code={result.code} />;
+import { getPlatformLearningWorkspace } from "@/app/actions/platform-learning-workspace";
+import {
+  ContradictionCard,
+  Empty,
+  GapCard,
+  HealthGrid,
+  LearningHeader,
+  LessonCard,
+  Metric,
+  ReviewRow,
+} from "@/components/learning/learning-workspace-ui";
+
+type LearningWorkspaceModel = Awaited<
+  ReturnType<typeof getPlatformLearningWorkspace>
+>;
+
+type LearningDashboardPageProps = Readonly<{
+  searchParams: Promise<{
+    workspace?: string;
+  }>;
+}>;
+
+export default async function LearningDashboardPage({
+  searchParams,
+}: LearningDashboardPageProps) {
+  const { workspace } = await searchParams;
+
+  let model: LearningWorkspaceModel;
+
+  try {
+    model = await getPlatformLearningWorkspace(workspace);
+  } catch {
+    return <PermissionState />;
+  }
+
+  return <LearningDashboardView model={model} />;
 }
-function ScopeRequired() { return <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6"><section role="status" className="rounded-3xl border border-stone-200 bg-white p-8"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Learn · Learning Intelligence</p><h1 className="mt-3 text-3xl font-semibold">Choose a portfolio to review learning</h1><p className="mt-4 text-sm leading-6 text-stone-600">Learning is empty because no portfolio is selected. Open Portfolio Intelligence, choose the operating scope, then return here to review measured outcomes.</p><Link href="/dashboard/portfolio" className="mt-6 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white">Choose portfolio</Link></section></div>; }
-function RouteError({ code }: { code: string }) { const missing = code === "LEARNING_DASHBOARD_NOT_FOUND" || code === "LEARNING_DASHBOARD_NOT_AUTHORIZED"; return <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6"><section role="alert" aria-live="assertive" className="rounded-3xl border border-rose-200 bg-white p-8"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">Learning Intelligence</p><h1 className="mt-3 text-3xl font-semibold">{missing ? "Portfolio not found." : "Learning Intelligence is temporarily unavailable."}</h1><p className="mt-4 text-sm text-stone-600">No Outcome, recommendation, trend, or learning has been fabricated.</p></section></div>; }
-function single(value: string | string[] | undefined) { return Array.isArray(value) ? value[0] : value; }
-function parseDate(value?: string) { if (!value) return null; const parsed = new Date(`${value}T00:00:00.000Z`); return Number.isNaN(parsed.getTime()) ? null : parsed; }
+
+function LearningDashboardView({
+  model,
+}: Readonly<{
+  model: LearningWorkspaceModel;
+}>) {
+  const metrics = model.dashboard.metrics;
+
+  return (
+    <main className="mx-auto max-w-7xl space-y-10 px-5 py-10">
+      <LearningHeader
+        title="Learning Workspace"
+        description="Review what happened, understand what your organization has validated, and see where more evidence is needed."
+      />
+
+      <section aria-labelledby="learning-summary">
+        <div className="flex items-end justify-between">
+          <h2
+            id="learning-summary"
+            className="text-2xl font-semibold"
+          >
+            Learning summary
+          </h2>
+
+          <Link
+            href="/dashboard/learning/health"
+            className="text-sm font-semibold text-teal-800"
+          >
+            Health score {model.dashboard.health.score}/100 →
+          </Link>
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric
+            label="Reviews completed"
+            value={metrics.reviewsCompleted}
+          />
+          <Metric
+            label="Reviews ready"
+            value={metrics.reviewsReady}
+          />
+          <Metric
+            label="Validated lessons"
+            value={metrics.validatedLessons}
+          />
+          <Metric
+            label="Knowledge gaps"
+            value={model.gaps.length}
+          />
+          <Metric
+            label="Reviews overdue"
+            value={metrics.reviewsOverdue}
+          />
+          <Metric
+            label="Candidate lessons"
+            value={metrics.candidateLessons}
+          />
+          <Metric
+            label="Emerging knowledge"
+            value={metrics.emergingKnowledge}
+          />
+          <Metric
+            label="Well validated"
+            value={metrics.wellValidatedKnowledge}
+          />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-semibold">
+          Knowledge health
+        </h2>
+
+        <p className="mt-2 text-sm text-stone-600">
+          Confidence and maturity remain separate dimensions.
+        </p>
+
+        <div className="mt-5">
+          <HealthGrid health={model.dashboard.health} />
+        </div>
+      </section>
+
+      <section>
+        <div className="flex justify-between">
+          <h2 className="text-2xl font-semibold">
+            Validated knowledge
+          </h2>
+
+          <Link
+            href="/dashboard/learning/lessons"
+            className="text-sm font-semibold text-teal-800"
+          >
+            Browse knowledge base →
+          </Link>
+        </div>
+
+        {model.dashboard.recentLessons.length ? (
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            {model.dashboard.recentLessons.map((lesson) => (
+              <LessonCard
+                key={lesson.id}
+                lesson={lesson}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5">
+            <Empty
+              title="No validated learning yet"
+              detail="Complete Outcome Reviews and validate evidence to begin building organizational knowledge."
+            />
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-semibold">
+          Recent outcome reviews
+        </h2>
+
+        {model.dashboard.recentReviews.length ? (
+          <div className="mt-5 overflow-x-auto rounded-2xl border bg-white">
+            <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className="p-4">Review</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">Result</th>
+                  <th className="p-4">Confidence</th>
+                  <th className="p-4">Completed</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {model.dashboard.recentReviews.map((review) => (
+                  <ReviewRow
+                    key={review.id}
+                    review={review}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="mt-5">
+            <Empty
+              title="No outcome reviews"
+              detail="Activate a Measurement Plan to begin measuring decisions and actions."
+            />
+          </div>
+        )}
+      </section>
+
+      {model.dashboard.gaps.length ? (
+        <section>
+          <h2 className="text-2xl font-semibold">
+            Knowledge gaps
+          </h2>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            {model.dashboard.gaps.map((gap) => (
+              <GapCard
+                key={gap.id}
+                gap={gap}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {model.dashboard.contradictions.length ? (
+        <section>
+          <h2 className="text-2xl font-semibold">
+            Contradictions
+          </h2>
+
+          <div className="mt-5 space-y-4">
+            {model.dashboard.contradictions.map(
+              (contradiction) => (
+                <ContradictionCard
+                  key={contradiction.id}
+                  contradiction={contradiction}
+                />
+              ),
+            )}
+          </div>
+        </section>
+      ) : null}
+    </main>
+  );
+}
+
+function PermissionState() {
+  return (
+    <main className="mx-auto max-w-3xl px-5 py-16">
+      <section
+        role="alert"
+        className="rounded-3xl border border-stone-200 bg-white p-8"
+      >
+        <h1 className="text-3xl font-semibold">
+          Learning Workspace unavailable
+        </h1>
+
+        <p className="mt-3 text-stone-600">
+          Sign in with Learning access or choose an authorized
+          workspace.
+        </p>
+      </section>
+    </main>
+  );
+}

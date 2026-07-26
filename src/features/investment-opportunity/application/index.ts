@@ -8,3 +8,4 @@ export * from "./save-workflow";
 export * from "./analysis-detail";
 export * from "./activity-timeline";
 export * from "./comparison";
+export * from "./scenarios";

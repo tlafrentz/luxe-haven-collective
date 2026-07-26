@@ -28,7 +28,7 @@ const lifecycle = [
 ] as const;
 
 const foundationDependencies: Readonly<Record<string, readonly string[]>> = {
-  kernel: [], scoring: ["kernel"], execution: ["kernel"],
+  kernel: [], scoring: ["kernel"], execution: ["kernel"], commerce: ["kernel"],
 };
 
 export function analyzeRepository(root = process.cwd()): MigrationAnalysis {

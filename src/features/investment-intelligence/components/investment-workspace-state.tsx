@@ -7,7 +7,7 @@ import { analyzeInvestmentWorkspace } from "@/app/actions/investment-workspace";
 import type { MarketAnalysisReport, MarketPropertyResolutionResult } from "@/features/market-intelligence";
 
 import { AcquisitionType, MarketTrend, PropertyType } from "../domain";
-import type { InvestmentLifecycleResult } from "../domain";
+import type { InvestmentDecisionAnalysis, InvestmentLifecycleResult } from "../domain";
 import type { InvestmentAnalysisContext, InvestmentMarketContext, InvestmentWorkspaceStage, RunInvestmentAnalysisCommand } from "../application";
 import { applyStrategyTransition, buildStrategyTransitionPlan, type StrategyTransitionPlan } from "../application";
 import { buildInvestmentWorkspaceReadiness } from "./investment-workspace-readiness";
@@ -46,6 +46,7 @@ type InvestmentWorkspaceState = Readonly<{
   investmentMarketContext: InvestmentMarketContext | null;
   investmentAnalysisContext: InvestmentAnalysisContext | null;
   analysis: WorkspaceInvestmentAnalysis | null;
+  decisionAnalysis: InvestmentDecisionAnalysis | null;
   analysisSaveToken: string | null;
   analyzedAt: Date | null;
   hasStaleAnalysis: boolean;
@@ -166,6 +167,7 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
     investmentMarketContext: result?.investmentMarketContext ?? null,
     investmentAnalysisContext: result?.investmentAnalysisContext ?? null,
     analysis: result?.lifecycleResult ?? null,
+    decisionAnalysis: result?.decisionAnalysis ?? null,
     analysisSaveToken,
     analyzedAt,
     hasStaleAnalysis: result !== null && isAnalysisStale,

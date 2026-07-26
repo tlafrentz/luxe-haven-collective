@@ -1,0 +1,1 @@
+export const CAPITAL_POLICY_VERSION="capital-policy-v1";export const CAPITAL_POLICY=Object.freeze({minimumFundingCoverage:.8,minimumRequestCompleteness:.75,minimumHistoryMonths:3,materialLiquidityChangeRate:.1});
