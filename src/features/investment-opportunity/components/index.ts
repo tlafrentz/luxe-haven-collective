@@ -2,6 +2,8 @@ export * from "./portfolio-workspace";
 export * from "./opportunity-detail";
 export * from "./investment-section-navigation";
 export * from "./save-opportunity-panel";
+export * from "./investment-scenario-workspace";
+export * from "./preferred-scenario-button";
 export * from "./opportunity-workflow-controls";
 export * from "./opportunity-analysis-detail";
 export * from "./opportunity-comparison-selector";

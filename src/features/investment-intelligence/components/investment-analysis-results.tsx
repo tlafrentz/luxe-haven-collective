@@ -8,7 +8,7 @@ import {
   useInvestmentWorkspaceState,
 } from "./investment-workspace-state";
 
-import { buildInvestmentWorkspaceView } from "../application/adapters";
+import { InvestmentDecisionContext } from "./investment-decision-context";
 
 const ANALYSIS_OUTPUTS = [
   "Acquisition recommendation",
@@ -23,6 +23,7 @@ const ANALYSIS_OUTPUTS = [
 export function InvestmentAnalysisResults() {
   const {
     analysis,
+    decisionAnalysis,
     hasStaleAnalysis,
     isAnalyzing,
     analysisError,
@@ -55,10 +56,6 @@ export function InvestmentAnalysisResults() {
   }
 
   if (analysis) {
-    buildInvestmentWorkspaceView(
-      analysis,
-    );
-
     return (
       <div className="space-y-4">
         {hasStaleAnalysis ? (
@@ -119,6 +116,8 @@ export function InvestmentAnalysisResults() {
             </p>
           </section>
         ) : null}
+
+        {decisionAnalysis ? <InvestmentDecisionContext analysis={decisionAnalysis} /> : null}
 
         <InvestmentReport
           result={analysis}
