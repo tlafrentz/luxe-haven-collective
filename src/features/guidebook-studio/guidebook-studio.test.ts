@@ -1,0 +1,11 @@
+import {describe,expect,it}from"vitest";
+import{createGuidebook,publishGuidebook,projectPublishedGuidebook,updateGuidebookDraft,GuidebookError,type PropertyGuidebookSnapshot}from".";
+const now="2026-07-25T12:00:00.000Z",property:PropertyGuidebookSnapshot={propertyId:"property-1",name:"Retreat",address:"1 Main St",city:"Mesa",state:"AZ",checkInTime:"4 PM",checkoutTime:"10 AM",amenities:["Wi-Fi"],houseRules:["No smoking"],sourceUpdatedAt:now};
+function draft(){return createGuidebook({id:"guidebook-1",workspaceId:"workspace-1",propertyId:"property-1",title:"Retreat Guide",description:"Welcome",publicSlug:"abc123def456ghi7",brand:{theme:"luxe-haven",primaryColor:"#1d1a17",accentColor:"#d7b77d"},createdAt:now,updatedAt:now,sections:[{id:"welcome",key:"welcome",title:"Welcome",position:0,visible:true,blocks:[{id:"heading",type:"heading",position:0,guestSafe:true,content:{text:"Welcome home"}}]}]})}
+describe("Guidebook Studio",()=>{
+ it("creates ordered immutable drafts",()=>{const value=draft();expect(value.status).toBe("draft");expect(value.currentVersion).toBe(0);expect(Object.isFrozen(value.sections)).toBe(true)});
+ it("publishes a new immutable snapshot without mutating the draft",()=>{const source=draft(),result=publishGuidebook(source,property,now);expect(source.currentVersion).toBe(0);expect(result.guidebook.currentVersion).toBe(1);expect(projectPublishedGuidebook(result.guidebook,result.version).property.name).toBe("Retreat");expect(Object.isFrozen(result.version.snapshot)).toBe(true)});
+ it("preserves the published version while later draft content changes",()=>{const first=publishGuidebook(draft(),property,now),changed=updateGuidebookDraft(first.guidebook,{title:"Changed Draft"},first.guidebook.revision);expect(first.version.snapshot.title).toBe("Retreat Guide");expect(changed.title).toBe("Changed Draft")});
+ it("blocks private content from public publication",()=>{const value=updateGuidebookDraft(draft(),{sections:[{id:"private",key:"private",title:"Private",position:0,visible:true,blocks:[{id:"note",type:"rich-text",position:0,guestSafe:false,content:{text:"Owner note"}}]}]},1);expect(()=>publishGuidebook(value,property,now)).toThrowError(GuidebookError)});
+ it("rejects stale draft revisions",()=>expect(()=>updateGuidebookDraft(draft(),{title:"Nope"},2)).toThrowError(GuidebookError));
+});
