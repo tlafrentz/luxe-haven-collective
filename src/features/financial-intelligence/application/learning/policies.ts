@@ -1,0 +1,1 @@
+export const FINANCIAL_LEARNING_POLICY_VERSION="financial-learning-v1";export const FINANCIAL_LEARNING_POLICY=Object.freeze({minimumElapsedDays:30,minimumEvidenceReferences:2,minimumForecastReviews:2,highlyAccurateError:.05,accurateError:.1,moderateError:.2,supportedLessons:3,establishedLessons:7,wellValidatedLessons:12});
