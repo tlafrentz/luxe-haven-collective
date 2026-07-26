@@ -1,0 +1,6 @@
+import{readFileSync}from"node:fs";import{describe,expect,it}from"vitest";
+describe("Learning governance boundary",()=>{
+ it("keeps calibration separate from capability decisions",()=>{const source=readFileSync("src/platform/learning/domain/learning-calibration.ts","utf8");expect(source).not.toMatch(/@\/features|InvestmentDecision|RevenueRecommendation|FinancialModel|Stripe/);expect(source).toContain("supersedesLessonId");});
+ it("keeps administration calculations outside presentation",()=>{const app=readFileSync("src/platform/learning/application/learning-administration.ts","utf8"),page=readFileSync("src/app/(admin)/admin/learning/health/page.tsx","utf8");expect(app).toContain("getLearningAdministration");expect(app).toContain("buildLearningAlerts");expect(page).not.toMatch(/contradictionRate\s*=|evidenceCoverage\s*=|reviewCompletion\s*=/);});
+ it("persists governed audit, retry, alerts, and RLS",()=>{const sql=readFileSync("supabase/migrations/20260726100000_learning_governance_release.sql","utf8");for(const table of["learning_calibrations","learning_governance_actions","learning_governance_jobs","learning_operational_alerts"])expect(sql).toContain(`public.${table}`);expect(sql).toContain("enable row level security");expect(sql).toContain("prevent_learning_history_change");});
+});

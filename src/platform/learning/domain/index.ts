@@ -6,3 +6,7 @@ export { LearningInsight, type LearningInsightInput, type LearningInsightType } 
 export { LearningReport, type LearningArtifact, type LearningReportInput } from "./learning-report";
 export { PolicyImprovement, type PolicyImprovementInput } from "./policy-improvement";
 export { ScoringImprovement, type ScoringFactorChange, type ScoringImprovementInput } from "./scoring-improvement";
+export * from "./learning-lineage";
+export * from "./outcome-measurement";
+export * from "./lesson-knowledge";
+export * from "./learning-calibration";

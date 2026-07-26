@@ -1,0 +1,5 @@
+import{readFileSync}from"node:fs";import{describe,expect,it}from"vitest";
+describe("Learning feedback boundaries",()=>{
+ it("exposes a capability-neutral advisory port",()=>{const source=readFileSync("src/platform/learning/application/relevant-learning.ts","utf8");expect(source).toContain("RelevantLearningPort");expect(source).toContain("RelevantLearningSourcePort");expect(source).not.toMatch(/@\/features|stripe|Supabase/);});
+ it("adds panels without changing capability calculations",()=>{for(const path of["src/app/(dashboard)/dashboard/insights/page.tsx","src/app/(dashboard)/dashboard/financial/capital/page.tsx","src/app/(dashboard)/dashboard/investments/opportunities/[id]/page.tsx"]){const source=readFileSync(path,"utf8");expect(source).toContain("RelevantLearningPanel");expect(source).toContain("getRelevantLearning");}const resolver=readFileSync("src/platform/learning/application/relevant-learning.ts","utf8");expect(resolver).not.toMatch(/projectedAnnualRevenue|recommendationScore|publishRates|financialCalculation/);});
+});
