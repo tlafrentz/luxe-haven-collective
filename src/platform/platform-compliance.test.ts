@@ -29,6 +29,7 @@ const foundationDependencies: Readonly<Record<string, readonly string[]>> = {
   kernel: [],
   scoring: ["kernel"],
   execution: ["kernel"],
+  commerce: ["kernel"],
 };
 
 describe("Platform v1 compliance", () => {

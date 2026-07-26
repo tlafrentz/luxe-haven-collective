@@ -4,8 +4,8 @@ import { buildPlatformBreadcrumbs, clientWorkspaceNavigation, matchesNavigationR
 describe("workspace-driven platform experience", () => {
   it("defines lifecycle capabilities in canonical order", () => {
     const lifecycle = clientWorkspaceNavigation.filter(item => "lifecycleStage" in item);
-    expect(lifecycle.map(item => item.lifecycleStage)).toEqual(["observe", "understand", "understand", "decide", "execute", "learn"]);
-    expect(lifecycle.map(item => item.label)).toEqual(["Revenue Intelligence", "Executive Intelligence", "Portfolio Intelligence", "Investment Intelligence", "Action Center", "Learning Intelligence"]);
+    expect(lifecycle.map(item => item.lifecycleStage)).toEqual(["observe", "understand", "understand", "understand", "decide", "execute", "learn"]);
+    expect(lifecycle.map(item => item.label)).toEqual(["Revenue Intelligence", "Executive Intelligence", "Portfolio Intelligence", "Financial Intelligence", "Investment Intelligence", "Action Center", "Learning Intelligence"]);
     expect(lifecycle.every(item => !("children" in item))).toBe(true);
     expect(new Set(lifecycle.map(item => item.href).filter(Boolean)).size).toBe(lifecycle.filter(item => item.href).length);
   });
@@ -14,6 +14,7 @@ describe("workspace-driven platform experience", () => {
     expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ kind: "group", level: 1 });
     expect(clientWorkspaceNavigation.find(item => item.id === "executive-intelligence")).toMatchObject({ parentId: "understand", kind: "product", level: 2 });
     expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ parentId: "understand", kind: "product", level: 2 });
+    expect(clientWorkspaceNavigation.find(item => item.id === "financial-intelligence")).toMatchObject({ parentId: "understand", kind: "product", level: 2 });
   });
 
   it("keeps business, service, operations, and infrastructure concepts separate", () => {
@@ -77,7 +78,7 @@ describe("workspace-driven platform experience", () => {
   it("separates customer guidebook service consumption from internal delivery", () => {
     const customerService = clientWorkspaceNavigation.find(item => item.id === "guidebook-studio");
     const internalService = operationsConsoleNavigation.find(item => item.id === "guidebook-projects");
-    expect(customerService).toMatchObject({ group: "services", label: "Guidebook Studio", availability: "available", href: "/guidebooks", description: "Design and publish your guest experience" });
+    expect(customerService).toMatchObject({ group: "services", label: "Guidebook Studio", availability: "available", href: "/dashboard/guidebooks", description: "Publish mobile-first guest experiences" });
     expect(internalService).toMatchObject({ group: "services", label: "Guidebook Projects", availability: "coming-soon", description: "Manage guidebook service delivery" });
     expect(customerService?.label).not.toBe(internalService?.label);
   });
