@@ -1,0 +1,7 @@
+import { notFound } from "next/navigation";
+import { getCommerceProduct, defaultCommerceCatalog } from "@/platform/commerce";
+export default async function CommerceProductAdminPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params, result = await getCommerceProduct(defaultCommerceCatalog, id); if (!result) notFound();
+  return <main className="mx-auto max-w-5xl px-5 py-10"><p className="eyebrow">Commerce product</p><h1 className="mt-2 text-4xl font-semibold">{result.product.name}</h1><p className="mt-3 text-stone-600">{result.product.longDescription}</p><dl className="mt-8 grid gap-5 rounded-3xl border p-6 sm:grid-cols-2"><Fact t="Status" v={result.product.status}/><Fact t="Type" v={result.product.type}/><Fact t="Category" v={result.product.categoryId}/><Fact t="Fulfillment" v={result.product.fulfillmentType}/><Fact t="Eligibility policy" v={result.product.eligibilityPolicyId ?? "Public"}/><Fact t="Entitlements" v={result.product.entitlementTemplateIds.join(", ") || "None"}/></dl><h2 className="mt-10 text-2xl font-semibold">Immutable price history</h2><div className="mt-4 space-y-3">{result.prices.map(price => <div key={price.id} className="rounded-xl border p-4">{price.amount.format()} · {price.type} · v{price.version} · {price.status}</div>)}</div></main>;
+}
+function Fact({t,v}:{t:string;v:string}){return <div><dt className="eyebrow">{t}</dt><dd className="mt-1 font-semibold">{v}</dd></div>}

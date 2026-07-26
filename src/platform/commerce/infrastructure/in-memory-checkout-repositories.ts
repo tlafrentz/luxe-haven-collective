@@ -1,0 +1,5 @@
+import type { CommerceCustomer, CommerceOrder } from "../domain";
+import type { CommerceCheckoutRecord, CommerceCheckoutRepository, CommerceCustomerStore } from "../application";
+export class InMemoryCommerceCustomerStore implements CommerceCustomerStore{values:CommerceCustomer[]=[];async findByIdentity(input:{profileId?:string;workspaceId?:string;email:string}){return this.values.find(value=>(input.profileId&&value.profileId===input.profileId)||(input.workspaceId&&value.workspaceId===input.workspaceId)||value.email.toLowerCase()===input.email.toLowerCase())??null}async save(value:CommerceCustomer){this.values=this.values.filter(item=>item.id!==value.id).concat(value)}}
+export class InMemoryCommerceOrderRepository{values:CommerceOrder[]=[];async save(value:CommerceOrder){this.values.push(value)}}
+export class InMemoryCommerceCheckoutRepository implements CommerceCheckoutRepository{values:CommerceCheckoutRecord[]=[];async save(value:CommerceCheckoutRecord){this.values.push(value)}async findByProviderSession(id:string){return this.values.find(value=>value.providerSessionId===id)??null}}
