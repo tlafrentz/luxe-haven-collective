@@ -1,4 +1,5 @@
 export { hospitableRequest } from "./client";
+export { hospitableMessagingAdapter } from "./messaging-adapter";
 
 export {
   authorizeHospitableSyncRequest,

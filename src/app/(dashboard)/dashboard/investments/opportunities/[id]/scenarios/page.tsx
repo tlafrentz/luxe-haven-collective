@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getInvestmentScenarioWorkspaceRequest } from "@/app/actions/investment-scenario-runtime";
-import { InvestmentScenarioWorkspaceView } from "@/features/investment-opportunity/components";
+import { InvestmentScenarioWorkspaceView } from "@/features/investment-opportunity/components/investment-scenario-workspace";
 
 export default async function InvestmentScenariosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

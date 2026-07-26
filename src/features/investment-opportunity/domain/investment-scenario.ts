@@ -9,6 +9,7 @@ export type InvestmentScenarioType =
   | "optimistic"
   | "conservative"
   | "cash-purchase"
+  | "seller-financing"
   | "leveraged-purchase"
   | "rental-arbitrage"
   | "renovation"
@@ -44,10 +45,13 @@ export type InvestmentScenario = Readonly<{
   status: InvestmentScenarioStatus;
   preferred: boolean;
   revision: number;
+  metadataRevision?: number;
+  notes?: string;
   snapshot: InvestmentScenarioSnapshot;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  archivedAt?: Date;
 }>;
 
 export type ScenarioDifferenceState =
@@ -57,7 +61,12 @@ export type ScenarioDifferenceState =
   | "unavailable";
 
 export type ScenarioComparison = Readonly<{
+  projectionVersion: string;
+  generatedAt: Date;
   scenarioIds: readonly string[];
+  executiveSummary: Readonly<{ bestOverallScenarioId: string; decision: string; highestCashFlowScenarioId?: string; lowestRiskScenarioId?: string; fastestPaybackScenarioId?: string }>;
+  metrics: readonly Readonly<{ key: string; label: string; category: "revenue" | "expenses" | "returns" | "risk"; unit: "currency" | "percentage" | "months" | "rating"; favorable: "higher" | "lower"; bestScenarioIds: readonly string[]; worstScenarioIds: readonly string[]; values: readonly Readonly<{ scenarioId: string; value?: number | string; state: "best" | "worst" | "higher" | "lower" | "equal" | "unavailable" }>[] }>[];
+  tradeoffs: readonly Readonly<{ scenarioId: string; benefits: readonly string[]; tradeoffs: readonly string[]; risks: readonly string[] }>[];
   changedAssumptions: readonly Readonly<{
     key: string;
     values: readonly Readonly<{ scenarioId: string; value?: string | number | boolean }>[];

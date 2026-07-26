@@ -1,6 +1,7 @@
 import type { ReportProjection } from "../domain";
 
 export function ReportViewer({ projection, metadata }: Readonly<{ projection: ReportProjection; metadata?: Readonly<{ reportNumber?: string; generatedAt?: string; templateVersion?: number }> }>) {
+  const executive=projection.executiveSummary??{decision:projection.summary,primaryFindings:[],keyRisks:[],recommendedActions:[],confidence:projection.confidence,freshness:projection.freshness};
   return <article className="mx-auto max-w-5xl bg-white px-5 py-10 text-stone-900 sm:px-10 lg:px-16 print:max-w-none print:px-0 print:py-0">
     <header className="min-h-72 border-b-2 border-stone-200 pb-10">
       <p className="text-xs font-bold uppercase tracking-[0.24em] text-amber-700">Luxe Haven Collective</p>
@@ -13,7 +14,7 @@ export function ReportViewer({ projection, metadata }: Readonly<{ projection: Re
         <Metadata label="Freshness" value={projection.freshness} />
       </dl>
     </header>
-    <section aria-labelledby="report-summary" className="py-10"><h2 id="report-summary" className="font-serif text-3xl font-semibold">Executive Summary</h2><p className="mt-4 max-w-3xl text-lg leading-8 text-stone-700">{projection.summary}</p></section>
+    <section aria-labelledby="report-summary" className="py-10"><h2 id="report-summary" className="font-serif text-3xl font-semibold">Executive Summary</h2><h3 className="mt-5 font-semibold">Decision</h3><p className="mt-2 max-w-3xl text-lg leading-8 text-stone-700">{executive.decision}</p><SummaryList title="Primary Findings" items={executive.primaryFindings}/><SummaryList title="Key Risks" items={executive.keyRisks}/><SummaryList title="Recommended Actions" items={executive.recommendedActions}/><p className="mt-5 text-sm capitalize text-stone-600">Confidence: {executive.confidence.replaceAll("-"," ")} · Freshness: {executive.freshness}</p></section>
     {projection.sections.filter((section) => section.status !== "omitted").sort((a,b)=>a.order-b.order).map((section) => <section aria-labelledby={`report-${section.key}`} className="border-t border-stone-200 py-10" key={section.key}>
       <h2 id={`report-${section.key}`} className="font-serif text-3xl font-semibold">{section.title}</h2>
       {section.status === "unavailable" ? <p role="note" className="mt-4 rounded-xl bg-amber-50 p-4 text-amber-950">This section was unavailable at generation time.</p> : null}
@@ -26,3 +27,4 @@ export function ReportViewer({ projection, metadata }: Readonly<{ projection: Re
   </article>;
 }
 function Metadata({label,value}:{label:string;value:string}){return <div><dt className="font-semibold uppercase tracking-wide text-stone-500">{label}</dt><dd className="mt-1 capitalize">{value}</dd></div>;}
+function SummaryList({title,items}:{title:string;items:readonly string[]}){return <div className="mt-5"><h3 className="font-semibold">{title}</h3>{items.length?<ul className="mt-2 list-disc space-y-1 pl-5 text-stone-700">{items.map((item,index)=><li key={`${title}-${index}`}>{item}</li>)}</ul>:<p className="mt-2 text-sm text-stone-500">No additional {title.toLowerCase()} were recorded.</p>}</div>;}

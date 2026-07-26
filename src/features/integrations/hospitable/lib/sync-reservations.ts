@@ -504,18 +504,39 @@ async function upsertBooking(
     }
   }
 
-  const { error } = await supabase
+  const { data: persistedBooking,error } = await supabase
     .from("bookings")
     .upsert({ ...booking, primary_guest_id: primaryGuestId }, {
       onConflict:
         "external_provider,external_reservation_id",
-    });
+    }).select("id").single();
 
   if (error) {
     throw new Error(
       `Unable to upsert reservation "${booking.external_reservation_id}": ${error.message}`,
     );
   }
+  const synchronizedAt=booking.last_synced_at??new Date().toISOString();
+  const{data:existingConversation,error:conversationLookupError}=await supabase.from("guest_conversations").select("id").eq("workspace_id",ownerProfileId).eq("guest_id",primaryGuestId).eq("property_id",booking.property_id).neq("status","archived").order("last_activity_at",{ascending:false}).limit(1).maybeSingle();
+  if(conversationLookupError)throw new Error(`Unable to resolve the guest relationship conversation: ${conversationLookupError.message}`);
+  const conversationId=existingConversation?.id??`guest-conversation-${crypto.randomUUID()}`;
+  if(!existingConversation){
+    const{error:createError}=await supabase.from("guest_conversations").insert({id:conversationId,workspace_id:ownerProfileId,reservation_id:booking.external_reservation_id,active_reservation_id:booking.external_reservation_id,booking_id:persistedBooking.id,guest_id:primaryGuestId,property_id:booking.property_id,channel:"internal",status:"open",waiting_on:"none",priority:"normal",unread_count:0,last_activity_at:synchronizedAt,revision:1,created_at:synchronizedAt,updated_at:synchronizedAt});
+    if(createError)throw new Error(`Unable to initialize the guest relationship conversation: ${createError.message}`);
+    await Promise.all([
+      supabase.from("guest_conversation_participants").insert({id:`guest-participant-${conversationId}`,conversation_id:conversationId,participant_type:"guest",guest_id:primaryGuestId,display_name:booking.guest_full_name??"Guest",joined_at:synchronizedAt}),
+      supabase.from("guest_conversation_activity").insert({id:`conversation-created-${conversationId}`,conversation_id:conversationId,workspace_id:ownerProfileId,event_type:"conversation-created",safe_summary:"Conversation created from synchronized reservation context.",occurred_at:synchronizedAt}),
+    ]);
+  }
+  await supabase.from("guest_conversation_reservations").update({active:false,unlinked_at:synchronizedAt}).eq("conversation_id",conversationId).eq("active",true).neq("reservation_id",booking.external_reservation_id);
+  const[{error:linkError},{error:threadError}]=await Promise.all([
+    supabase.from("guest_conversation_reservations").upsert({conversation_id:conversationId,reservation_id:booking.external_reservation_id,booking_id:persistedBooking.id,property_id:booking.property_id,active:true,linked_at:synchronizedAt},{onConflict:"conversation_id,reservation_id",ignoreDuplicates:true}),
+    supabase.from("guest_conversation_provider_threads").upsert({id:`provider-thread-${conversationId}-${booking.external_reservation_id}`,conversation_id:conversationId,workspace_id:ownerProfileId,provider:"hospitable",thread_id:booking.external_reservation_id,reservation_reference:booking.external_reservation_id,last_observed_at:synchronizedAt},{onConflict:"workspace_id,provider,thread_id",ignoreDuplicates:true}),
+  ]);
+  if(linkError||threadError)throw new Error(`Unable to link provider context to the guest conversation: ${(linkError??threadError)?.message}`);
+  const{error:activateLinkError}=await supabase.from("guest_conversation_reservations").update({booking_id:persistedBooking.id,property_id:booking.property_id,active:true,unlinked_at:null}).eq("conversation_id",conversationId).eq("reservation_id",booking.external_reservation_id);
+  if(activateLinkError)throw new Error(`Unable to activate reservation context for the guest conversation: ${activateLinkError.message}`);
+  await supabase.from("guest_conversations").update({reservation_id:booking.external_reservation_id,active_reservation_id:booking.external_reservation_id,booking_id:persistedBooking.id,last_activity_at:synchronizedAt,updated_at:synchronizedAt}).eq("id",conversationId);
 }
 
 async function safelyFinalizeFailedSync({

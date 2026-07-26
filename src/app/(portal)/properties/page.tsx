@@ -67,6 +67,7 @@ export default async function PropertiesPage({
         eyebrow="Business operations"
         title="Properties"
         description="Operate the hospitality assets you own using live reservations, stay context, connection state, and trusted data quality."
+        actions={params.property?<Link href={`/dashboard/reports/new?type=property-performance&source=${params.property}`} className="inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold">Generate property report</Link>:undefined}
       />
       <OperationalContextBar
         action="/properties"

@@ -3,6 +3,8 @@ import {
   assertSharingAllowed,
   createGeneratedReport,
   evaluateShareAccess,
+  evaluateArtifactPublication,
+  compareReportProjections,
   generateReportNumber,
   getReportDefinition,
   renderReportHtml,
@@ -14,6 +16,8 @@ import {
   type ReportProjection,
   type ReportRequest,
   type ReportTemplate,
+  canonicalReportRegistry,
+  reportSectionLibrary,
 } from "./index";
 
 const now = "2026-07-25T12:00:00.000Z";
@@ -33,6 +37,7 @@ const request: ReportRequest = Object.freeze({
 const projection: ReportProjection = Object.freeze({
   reportType: "investment-decision", scope: request.scope, title: "Investment Decision — 650 S Main",
   summary: "Proceed with conditions based on the selected immutable scenario.",
+  executiveSummary:Object.freeze({decision:"Proceed with conditions based on the selected immutable scenario.",primaryFindings:Object.freeze([]),keyRisks:Object.freeze([]),recommendedActions:Object.freeze([]),confidence:"moderate",freshness:"current"}),
   sections: Object.freeze(template.sectionKeys.map((key, order) => Object.freeze({
     key, title: key.replaceAll("-", " "), order, status: "included" as const,
     metrics: Object.freeze(key === "financial-performance" ? [Object.freeze({ key: "cash-flow", label: "Annual Cash Flow", displayValue: "$18,400", rawValue: 18400, unit: "USD", qualification: "projected" as const, accessibleDescription: "Projected annual cash flow of 18,400 US dollars." })] : []),
@@ -77,5 +82,29 @@ describe("Platform Reporting", () => {
     const pdf = renderSimpleReportPdf(rendered.content, { title: projection.title, generatedAt: now });
     expect(new TextDecoder().decode(pdf.slice(0, 8))).toBe("%PDF-1.4");
     expect(pdf.byteLength).toBeGreaterThan(500);
+  });
+
+  it("keeps report publication independent from artifact lifecycle and requires an active PDF", () => {
+    expect(evaluateArtifactPublication([{ type: "html", status: "active" }]).publishable).toBe(false);
+    expect(evaluateArtifactPublication([{ type: "html", status: "failed" }, { type: "pdf", status: "active" }])).toEqual({
+      publishable: true, policy: "pdf-required", pdf: "active", html: "unpublished",
+    });
+  });
+
+  it("compares immutable projections without exposing raw snapshots", () => {
+    const changed={...projection,confidence:"high" as const,sections:projection.sections.map(section=>section.key==="financial-performance"?{...section,metrics:section.metrics.map(item=>({...item,displayValue:"$19,504",rawValue:19504}))}:section)};
+    const comparison=compareReportProjections(projection,changed);
+    expect(comparison.confidence).toEqual({before:"moderate",after:"high",changed:true});
+    expect(comparison.metrics.find(item=>item.key==="cash-flow")).toMatchObject({state:"increased",percentChange:6});
+    expect(comparison).not.toHaveProperty("projectionSnapshot");
+  });
+
+  it("uses one canonical registry and reusable section library for the full report portfolio", () => {
+    expect(canonicalReportRegistry.active().map(item=>item.requiredProjectionKey)).toEqual([
+      "investment-report-projection.v1","property-report-projection.v1","portfolio-report-projection.v1","financial-report-projection.v1",
+    ]);
+    expect(canonicalReportRegistry.get("property-performance")?.audiences).toContain("Property Manager");
+    expect(reportSectionLibrary.find(item=>item.key==="executive-summary")?.kind).toBe("common");
+    expect(reportSectionLibrary.find(item=>item.key==="booking-trends")?.kind).toBe("capability");
   });
 });

@@ -11,21 +11,15 @@ import type {
   ReportType,
 } from "../domain";
 import { ReportingError } from "../domain";
+import { canonicalReportRegistry } from "../domain";
 
 export const REPORT_SNAPSHOT_SCHEMA_VERSION = "report-snapshot.v1";
 export const REPORT_RENDERER_VERSION = "luxe-haven-html.v1";
 
-const definitions: readonly ReportDefinition[] = [
-  definition("investment-decision", ["investment-scenario"], false, "investment.reports.generate", "investment-report-projection.v1", ["decision-summary","property-profile","market-intelligence","financial-performance","risk-analysis","investment-score","recommendation","evidence-methodology"], "allowed"),
-  definition("property-performance", ["property"], true, "reports.generate", "property-report-projection.v1", ["performance-summary","revenue-metrics","booking-trends","operational-attention","evidence-methodology"], "workspace-policy"),
-  definition("portfolio-performance", ["portfolio","workspace"], true, "portfolio.reports.generate", "portfolio-report-projection.v1", ["portfolio-condition","primary-metrics","property-contribution","risks-opportunities","evidence-methodology"], "workspace-policy"),
-  definition("financial-performance", ["financial-scope"], true, "financial.reports.generate", "financial-report-projection.v1", ["financial-condition","income-statement","cash-flow","liquidity","budget-forecast","evidence-methodology"], "disabled"),
-];
-
-export const reportDefinitions = Object.freeze(definitions);
+export const reportDefinitions = canonicalReportRegistry.definitions;
 
 export function getReportDefinition(type: ReportType) {
-  return definitions.find((item) => item.key === type) ?? null;
+  return canonicalReportRegistry.get(type);
 }
 
 export function validateReportRequest(input: {
@@ -52,6 +46,7 @@ export function validateReportProjection(projection: ReportProjection, definitio
   const keys = new Set(projection.sections.filter((section) => section.status === "included").map((section) => section.key));
   if (definitionValue.requiredSections.some((key) => !keys.has(key))) throw new ReportingError("report_projection_invalid", "The projection is missing a required section.");
   if (!projection.projectionVersion || !projection.sourceVersions.length || !projection.evaluatedAt) throw new ReportingError("report_projection_invalid", "Projection lineage is incomplete.");
+  if (!projection.executiveSummary) throw new ReportingError("report_projection_invalid", "The common executive summary contract is missing.");
   return projection;
 }
 
@@ -115,6 +110,34 @@ export function classifyJobRetry(job: ReportGenerationJob, now = new Date()) {
   return Object.freeze({ retryable: !job.failureCode || !nonRetryable.has(job.failureCode), reuseSnapshot: Boolean(job.generatedReportId) });
 }
 
+export function evaluateArtifactPublication(artifacts: readonly Readonly<{ type: "html" | "pdf"; status: "pending" | "active" | "superseded" | "failed" | "archived" | "deleted" }>[]) {
+  const pdf = artifacts.find(item => item.type === "pdf" && item.status === "active");
+  const html = artifacts.find(item => item.type === "html" && item.status === "active");
+  return Object.freeze({ publishable: Boolean(pdf), policy: "pdf-required" as const, pdf: pdf?.status ?? "unpublished", html: html?.status ?? "unpublished" });
+}
+
+export function compareReportProjections(previous:ReportProjection,current:ReportProjection){
+  const previousMetrics=new Map(previous.sections.flatMap(section=>section.metrics).map(metric=>[metric.key,metric]));
+  const currentMetrics=new Map(current.sections.flatMap(section=>section.metrics).map(metric=>[metric.key,metric]));
+  const metricKeys=new Set([...previousMetrics.keys(),...currentMetrics.keys()]);
+  const metrics=[...metricKeys].map(key=>{
+    const before=previousMetrics.get(key),after=currentMetrics.get(key);
+    const state=!before?"newly-available":!after?"unavailable":before.displayValue===after.displayValue?"unchanged":typeof before.rawValue==="number"&&typeof after.rawValue==="number"?(after.rawValue>before.rawValue?"increased":"decreased"):"changed";
+    const percent=typeof before?.rawValue==="number"&&typeof after?.rawValue==="number"&&before.rawValue!==0?((after.rawValue-before.rawValue)/Math.abs(before.rawValue))*100:undefined;
+    return Object.freeze({key,label:after?.label??before?.label??key,before:before?.displayValue??"Unavailable",after:after?.displayValue??"Unavailable",state,...(percent!==undefined?{percentChange:percent}:{})});
+  });
+  const narrative=(projection:ReportProjection,key:string)=>projection.sections.find(section=>section.key===key)?.narrative??"Unavailable";
+  return Object.freeze({
+    reportType:current.reportType,scope:current.scope.label,
+    summary:Object.freeze({before:previous.summary,after:current.summary,changed:previous.summary!==current.summary}),
+    metrics:Object.freeze(metrics),confidence:Object.freeze({before:previous.confidence,after:current.confidence,changed:previous.confidence!==current.confidence}),
+    freshness:Object.freeze({before:previous.freshness,after:current.freshness,changed:previous.freshness!==current.freshness}),
+    recommendation:Object.freeze({before:narrative(previous,"recommendation"),after:narrative(current,"recommendation"),changed:narrative(previous,"recommendation")!==narrative(current,"recommendation")}),
+    risks:Object.freeze({before:narrative(previous,"risk-analysis"),after:narrative(current,"risk-analysis"),changed:narrative(previous,"risk-analysis")!==narrative(current,"risk-analysis")}),
+    evidence:Object.freeze({before:previous.evidence.length,after:current.evidence.length}),
+  });
+}
+
 export function generateReportNumber(type: ReportType, sequence: number, year: number) {
   if (!Number.isInteger(sequence) || sequence <= 0) throw new RangeError("Report sequence must be a positive integer.");
   const prefix = { "investment-decision": "INV", "property-performance": "PRP", "portfolio-performance": "POR", "financial-performance": "FIN" }[type];
@@ -138,10 +161,6 @@ export interface ReportDocumentRenderer {
   renderPdf(html: string, metadata: Readonly<{ title: string; generatedAt: string }>): Promise<Readonly<{ bytes: Uint8Array; checksum: string; sizeBytes: number }>>;
 }
 
-function definition(key: ReportType, scopes: ReportDefinition["supportedScopes"], periods: boolean, entitlement: string, projection: string, requiredSections: readonly string[], sharing: ReportDefinition["externalSharing"]): ReportDefinition {
-  const names = { "investment-decision": "Investment Decision Report", "property-performance": "Property Performance Report", "portfolio-performance": "Portfolio Performance Report", "financial-performance": "Financial Performance Report" };
-  return Object.freeze({ id: `report-definition-${key}`, key, name: names[key], description: `Canonical ${names[key].toLowerCase()}.`, supportedScopes: Object.freeze(scopes), supportsPeriods: periods, requiredEntitlementKey: entitlement, requiredProjectionKey: projection, defaultTemplateId: `report-template-${key}-v1`, requiredSections: Object.freeze(requiredSections), optionalSections: Object.freeze(["actions","notes"]), externalSharing: sharing, status: "active" });
-}
 function clone<T>(value: T): T { return JSON.parse(JSON.stringify(value)) as T; }
 function deepFreeze<T>(value: T): T {
   if (value && typeof value === "object") {

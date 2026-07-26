@@ -5,6 +5,8 @@ export type ReportConfidence = "high" | "moderate" | "low" | "insufficient-evide
 export type ReportFreshness = "current" | "partial" | "stale" | "degraded" | "unknown";
 export type ReportStatus = "draft" | "queued" | "generating" | "generated" | "generation-failed" | "published" | "archived" | "superseded";
 export type ReportJobStage = "queued" | "projection" | "html" | "pdf" | "storage" | "completed";
+export type ReportArtifactStatus = "pending" | "active" | "superseded" | "failed" | "archived" | "deleted";
+export type ReportArtifactJobStatus = "queued" | "rendering" | "validating" | "storing" | "completed" | "failed" | "cancelled";
 
 export type ReportScope = Readonly<{
   type: ReportScopeType;
@@ -66,6 +68,14 @@ export type ReportProjection = Readonly<{
   title: string;
   subtitle?: string;
   summary: string;
+  executiveSummary?: Readonly<{
+    decision: string;
+    primaryFindings: readonly string[];
+    keyRisks: readonly string[];
+    recommendedActions: readonly string[];
+    confidence: ReportConfidence;
+    freshness: ReportFreshness;
+  }>;
   sections: readonly ReportSectionSnapshot[];
   evidence: readonly ReportEvidenceReference[];
   confidence: ReportConfidence;
@@ -89,6 +99,7 @@ export type ReportDefinition = Readonly<{
   defaultTemplateId: string;
   requiredSections: readonly string[];
   optionalSections: readonly string[];
+  audiences: readonly string[];
   externalSharing: "allowed" | "workspace-policy" | "disabled";
   status: "draft" | "active" | "inactive" | "archived";
 }>;
@@ -161,7 +172,7 @@ export type ReportArtifact = Readonly<{
   sizeBytes: number;
   checksum: string;
   rendererVersion: string;
-  status: "active" | "superseded" | "deleted";
+  status: ReportArtifactStatus;
   createdAt: string;
 }>;
 

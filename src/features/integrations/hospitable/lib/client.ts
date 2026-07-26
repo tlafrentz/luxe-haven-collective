@@ -5,7 +5,8 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
 const MAX_ERROR_RESPONSE_LENGTH = 500;
 
 type HospitableRequestOptions = {
-  method?: "GET";
+  method?: "GET"|"POST";
+  body?: unknown;
   searchParams?: Record<
     string,
     string | number | boolean | undefined
@@ -159,7 +160,9 @@ export async function hospitableRequest<T>(
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${token}`,
+        ...(options.body===undefined?{}:{"Content-Type":"application/json"}),
       },
+      ...(options.body===undefined?{}:{body:JSON.stringify(options.body)}),
       cache: "no-store",
       signal: controller.signal,
     });
@@ -173,7 +176,7 @@ export async function hospitableRequest<T>(
         {
           path,
           status: response.status,
-          providerMessage,
+          responseAvailable: Boolean(providerMessage),
         },
       );
 
