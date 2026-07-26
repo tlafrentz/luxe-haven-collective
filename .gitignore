@@ -26,3 +26,6 @@ pnpm-debug.log*
 *.tsbuildinfo
 .vercel
 .env*
+
+# Local agent workspace
+.agents/
