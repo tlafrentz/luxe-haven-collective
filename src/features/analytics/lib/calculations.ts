@@ -377,25 +377,30 @@ export function calculateDashboardMetrics({
     }
 
     /*
-     * Reservation-level charges are recognized in the
-     * reporting period containing the check-in date.
+     * Recognize reservation-level amounts proportionally across every
+     * reporting period touched by the stay. This keeps gross revenue in
+     * step with the occupied nights and room revenue already recognized
+     * above for long-running reservations.
      */
-    if (
-      booking.checkIn >= dateRange.startDate &&
-      booking.checkIn < dateRange.endDate
-    ) {
-      const knownRevenue =
+    if (overlappingNights > 0 && fullStayNights > 0) {
+      const recognitionRatio = overlappingNights / fullStayNights;
+      const knownStayRevenue =
         booking.nightlyRate * fullStayNights +
         booking.cleaningFee +
         booking.taxes +
         booking.serviceFee;
+      const recognizedGrossRevenue =
+        booking.totalAmount > 0
+          ? booking.totalAmount * recognitionRatio
+          : recognizedRoomRevenue;
 
-      grossRevenue += booking.totalAmount;
-      cleaningFees += booking.cleaningFee;
-      taxes += booking.taxes;
-      serviceFees += booking.serviceFee;
+      grossRevenue += recognizedGrossRevenue;
+      cleaningFees += booking.cleaningFee * recognitionRatio;
+      taxes += booking.taxes * recognitionRatio;
+      serviceFees += booking.serviceFee * recognitionRatio;
       otherRevenue +=
-        booking.totalAmount - knownRevenue;
+        (booking.totalAmount - knownStayRevenue) *
+        recognitionRatio;
     }
   }
 

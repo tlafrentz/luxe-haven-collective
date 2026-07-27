@@ -1,5 +1,12 @@
 export { hospitableRequest } from "./client";
 export { hospitableMessagingAdapter } from "./messaging-adapter";
+export {
+  getHospitableReservationMessages,
+  normalizeHospitableMessage,
+  sendHospitableReservationMessage,
+  type HospitableReservationMessage,
+  type NormalizedHospitableMessage,
+} from "./messages";
 
 export {
   authorizeHospitableSyncRequest,
@@ -49,3 +56,10 @@ export {
 export {
   runHospitableReservationSync,
 } from "./run-reservation-sync";
+
+export {
+  MESSAGE_SYNC_ALREADY_RUNNING_ERROR,
+  syncHospitableMessages,
+  type MessageSyncOptions,
+  type MessageSyncResult,
+} from "./sync-messages";

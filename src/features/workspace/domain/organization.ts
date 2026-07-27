@@ -113,9 +113,7 @@ export function evaluateOrganizationCompleteness(input: Readonly<{
       ? confirmed.size === 0
         ? "incomplete"
         : "needs-attention"
-      : missingRecommended.length
-        ? "needs-attention"
-        : "complete",
+      : "complete",
     missingRequired,
     missingRecommended,
     dimensions: {

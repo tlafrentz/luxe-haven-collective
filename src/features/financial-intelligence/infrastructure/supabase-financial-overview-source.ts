@@ -4,7 +4,31 @@ import { FinancialTransaction, type FinancialAccount, type FinancialIdentity } f
 import type { FinancialSource } from "../application";
 import type { FinancialPropertyCatalog } from "./financial-overview-projection-adapter";
 
-type BookingRow = Readonly<{ id: string; property_id: string; check_in: string; total_amount: number; currency: string | null; updated_at: string }>;
+type BookingRow = Readonly<{
+  id: string;
+  property_id: string;
+  check_in: string;
+  check_out: string;
+  total_amount: number;
+  currency: string | null;
+  updated_at: string;
+}>;
+
+const DAY_MS = 86_400_000;
+
+function dateValue(value: string): number {
+  return new Date(`${value.slice(0, 10)}T00:00:00.000Z`).getTime();
+}
+
+function nextDate(value: string): string {
+  return new Date(dateValue(value) + DAY_MS).toISOString().slice(0, 10);
+}
+
+function overlappingNights(checkIn: string, checkOut: string, from: string, to: string): number {
+  const start = Math.max(dateValue(checkIn), dateValue(from));
+  const end = Math.min(dateValue(checkOut), dateValue(nextDate(to)));
+  return Math.max(0, Math.round((end - start) / DAY_MS));
+}
 
 export class SupabaseFinancialOverviewSource implements FinancialSource, FinancialPropertyCatalog {
   async getIdentity(workspaceId: string): Promise<FinancialIdentity> {
@@ -25,21 +49,26 @@ export class SupabaseFinancialOverviewSource implements FinancialSource, Financi
     if (!propertyIds.length) return Object.freeze([]);
     const client = await createClient();
     const { data, error } = await client.from("bookings")
-      .select("id,property_id,check_in,total_amount,currency,updated_at")
+      .select("id,property_id,check_in,check_out,total_amount,currency,updated_at")
       .in("property_id", propertyIds).neq("status", "cancelled")
-      .gte("check_in", scope.period.from).lte("check_in", scope.period.to);
+      .lt("check_in", nextDate(scope.period.to)).gt("check_out", scope.period.from);
     if (error) throw new Error(`Unable to read canonical recognized revenue: ${error.message}`);
     const identity = await this.getIdentity(scope.workspaceId);
-    return Object.freeze(((data ?? []) as BookingRow[]).map(row => {
+    return Object.freeze(((data ?? []) as BookingRow[]).flatMap(row => {
       const currency = row.currency ?? identity.reportingCurrency;
       if (currency !== identity.reportingCurrency) throw new Error("FINANCIAL_CURRENCY_MISMATCH");
-      return FinancialTransaction.create({
+      const stayNights = Math.max(0, Math.round((dateValue(row.check_out) - dateValue(row.check_in)) / DAY_MS));
+      const recognizedNights = overlappingNights(row.check_in, row.check_out, scope.period.from, scope.period.to);
+      if (stayNights === 0 || recognizedNights === 0) return [];
+      const effectiveDate = row.check_in > scope.period.from ? row.check_in : scope.period.from;
+      return [FinancialTransaction.create({
         id: `booking-revenue:${row.id}`, accountId: `account:${scope.workspaceId}:recognized-revenue`,
-        workspaceId: scope.workspaceId, propertyId: row.property_id, amount: Money.of(Number(row.total_amount), currency),
-        category: "accommodation", measurement: "measured", effectiveDate: row.check_in, postingDate: row.check_in,
+        workspaceId: scope.workspaceId, propertyId: row.property_id,
+        amount: Money.of(Number(row.total_amount) * (recognizedNights / stayNights), currency),
+        category: "accommodation", measurement: "measured", effectiveDate, postingDate: effectiveDate,
         source: { provider: "canonical-bookings", externalId: row.id }, status: "posted",
         evidenceIds: [`booking:${row.id}`],
-      });
+      })];
     }));
   }
   async getSynchronization(workspaceId: string) {
@@ -57,7 +86,7 @@ export class SupabaseFinancialOverviewSource implements FinancialSource, Financi
     if (propertyError || configurationError) throw new Error(`Unable to resolve Financial scope: ${propertyError?.message ?? configurationError?.message}`);
     const configuration = new Map((configurations ?? []).map(row => [row.property_id, row.inclusion]));
     return Object.freeze((properties ?? []).map(row => ({
-      propertyId: String(row.id), label: String(row.name), included: configuration.get(row.id) === "included",
+      propertyId: String(row.id), label: String(row.name), included: configuration.get(row.id) !== "excluded",
       reportingEligible: row.status !== "archived",
       market: [row.city, row.state].filter(Boolean).join(", ") || undefined,
       operatingModel: row.property_type || undefined,

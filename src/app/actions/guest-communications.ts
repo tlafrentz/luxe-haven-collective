@@ -35,6 +35,15 @@ async function authorize(workspaceId?: string, permission: "communications.view"
   return { user, access };
 }
 
+async function authorizeLegacyCommunicationWorkspace(
+  ownerProfileId: string,
+  permission: "communications.view" | "communications.reply" | "communications.manage" = "communications.view",
+) {
+  const result = await authorize(undefined, permission);
+  if (result.access.ownerProfileId !== ownerProfileId) throw new Error("permission_denied");
+  return result;
+}
+
 export async function getGuestCommunicationInbox(input: { workspaceId?: string; query?: string; status?: string; sort?:string; page?:number;propertyId?:string;stage?:string;priority?:string } = {}) {
   try {
     const { access } = await authorize(input.workspaceId);
@@ -98,10 +107,12 @@ export async function getGuestCommunicationWorkspaceRequest(conversationId: stri
     const { data: candidate } = await admin.from("guest_conversations").select("*").eq("id", conversationId).maybeSingle();
     if (!candidate) return { ok: false as const, code: "conversation_not_found" };
     const row = candidate as ConversationRow;
-    const { access } = await authorize(row.workspace_id);
+    const { access } = await authorizeLegacyCommunicationWorkspace(row.workspace_id);
     if (!evaluatePropertyAccess(access, row.property_id)) return { ok: false as const, code: "permission_denied" };
     const canViewContact = access.role === "owner" || access.role === "administrator";
-    const principal = { userId: access.profileId, workspaceId: access.workspaceId, role: access.role === "owner" ? "owner" as const : access.role === "administrator" ? "admin" as const : "cleaner" as const };
+    // The Supabase reservation repository resolves the caller's workspace
+    // membership from their profile id before applying its property scope.
+    const principal = { userId: access.profileId, workspaceId: access.profileId, role: access.role === "owner" ? "owner" as const : access.role === "administrator" ? "admin" as const : "cleaner" as const };
     const reservation = await getReservationContext(new SupabaseReservationContextRepository(), principal, row.booking_id, canViewContact ? "operational-contact" : "operational-summary");
     if (!reservation) return { ok: false as const, code: "reservation_not_found" };
     const [{ data: messages }, { data: notes }, { data: timeline }, { data: templates }, { data: links }, { data: guidebook },{data:draft},{data:attachments},{data:attempts},{data:connection},{data:participants},{data:reservationLinks},{data:providerThreads},{data:deliveryEvents},{data:activity},{data:propertyDetails},{data:maintenance},{count:previousStayCount},{count:previousConversationCount},{data:recommendationRows}] = await Promise.all([
@@ -145,7 +156,7 @@ export async function getGuestCommunicationWorkspaceRequest(conversationId: stri
     const projection=buildConversationProjection({conversation:aggregate,reservation,guestContext,guidance,...(draft?{draft:{body:String(draft.body??""),...(draft.template_id?{templateId:String(draft.template_id)}:{}),updatedAt:String(draft.updated_at)}}:{}),templates:normalizedTemplates,providerState:provider,capabilities:{view:true,reply:canReply,archive:canReply,note:canReply,template:canReply}});
     return { ok: true as const, projection,conversation: row, reservation, messages: messages ?? [], notes: notes ?? [], timeline: timeline ?? [], templates: normalizedTemplates, actionLinks: links ?? [], guidebook: guidebook ? { ...guidebook, publicUrl: `/g/${guidebook.public_slug}` } : null,draft,attachments:attachments??[],deliveryAttempts:attempts??[],provider,suggestions:projection.suggestedActions,canReply };
   } catch (error) {
-    console.error("guest_communication_workspace_failed", { conversationId, errorType: error instanceof Error ? error.message : "unexpected" });
+    console.error("guest_communication_workspace_failed", conversationId, error instanceof Error ? error.message : "unexpected");
     return { ok: false as const, code: error instanceof Error && error.message === "permission_denied" ? "permission_denied" : "unexpected" };
   }
 }
@@ -159,7 +170,7 @@ export async function saveGuestCommunicationDraft(_state:GuestCommunicationCompo
   const { data: candidate } = await admin.from("guest_conversations").select("*").eq("id", conversationId).maybeSingle();
   if (!candidate) throw new Error("conversation_not_found");
   const row = candidate as ConversationRow;
-  const { access } = await authorize(row.workspace_id, "communications.reply");
+  const { access } = await authorizeLegacyCommunicationWorkspace(row.workspace_id, "communications.reply");
   if (!evaluatePropertyAccess(access, row.property_id)) throw new Error("permission_denied");
   const{error}=await createClient().then(client=>client.rpc("save_guest_communication_draft",{p_conversation_id:conversationId,p_body:body,p_template_id:String(formData.get("templateId")??"")||null}));
   if(error)return{ok:false,message:"Draft could not be saved. Your text remains in this browser."};
@@ -171,7 +182,7 @@ export async function sendGuestCommunicationReplyAction(_state:GuestCommunicatio
   if(!conversationId||!body||body.length>10000)return{ok:false,message:"Write a message of 10,000 characters or fewer."};
   const admin=createAdminClient(),{data:candidate}=await admin.from("guest_conversations").select("*").eq("id",conversationId).maybeSingle();
   if(!candidate)return{ok:false,message:"This conversation is no longer available."};
-  const row=candidate as ConversationRow,{user,access}=await authorize(row.workspace_id,"communications.reply");
+  const row=candidate as ConversationRow,{user,access}=await authorizeLegacyCommunicationWorkspace(row.workspace_id,"communications.reply");
   if(!evaluatePropertyAccess(access,row.property_id))return{ok:false,message:"You no longer have access to this conversation."};
   if(templateId&&/\{\{\w+\}\}/.test(body))return{ok:false,message:"Resolve every template variable before sending."};
   const client=await createClient(),messageId=`guest-message-${crypto.randomUUID()}`,{data:queued,error}=await client.rpc("queue_guest_communication_message",{p_conversation_id:conversationId,p_message_id:messageId,p_body:body,p_template_id:templateId,p_idempotency_key:idempotencyKey});
@@ -203,7 +214,7 @@ export async function sendGuestCommunicationReplyAction(_state:GuestCommunicatio
 export async function retryGuestCommunicationDeliveryAction(formData:FormData){
   const messageId=String(formData.get("messageId")??""),admin=createAdminClient(),{data:message}=await admin.from("guest_communication_messages").select("*,guest_conversations!inner(*)").eq("id",messageId).eq("delivery_status","failed").maybeSingle();
   if(!message)throw new Error("communication_message_unavailable");
-  const relation=message.guest_conversations as unknown as ConversationRow,{access}=await authorize(relation.workspace_id,"communications.reply");
+  const relation=message.guest_conversations as unknown as ConversationRow,{access}=await authorizeLegacyCommunicationWorkspace(relation.workspace_id,"communications.reply");
   if(!evaluatePropertyAccess(access,relation.property_id))throw new Error("permission_denied");
   const{data:lastAttempt}=await admin.from("guest_communication_delivery_attempts").select("retryable").eq("message_id",messageId).order("started_at",{ascending:false}).limit(1).maybeSingle();
   if(lastAttempt?.retryable===false)throw new Error("communication_retry_not_safe");
@@ -217,7 +228,7 @@ export async function associateProviderReviewMessageAction(formData:FormData){
   const reviewId=String(formData.get("reviewId")??""),conversationId=String(formData.get("conversationId")??"");
   const admin=createAdminClient(),{data:review}=await admin.from("messaging_provider_review_queue").select("*").eq("id",reviewId).eq("status","pending").maybeSingle();
   if(!review?.workspace_id)throw new Error("provider_review_unavailable");
-  const{user,access}=await authorize(String(review.workspace_id),"communications.manage"),{data:conversation}=await admin.from("guest_conversations").select("*").eq("id",conversationId).eq("workspace_id",review.workspace_id).maybeSingle();
+  const{user,access}=await authorizeLegacyCommunicationWorkspace(String(review.workspace_id),"communications.manage"),{data:conversation}=await admin.from("guest_conversations").select("*").eq("id",conversationId).eq("workspace_id",review.workspace_id).maybeSingle();
   if(!conversation||!evaluatePropertyAccess(access,String(conversation.property_id)))throw new Error("permission_denied");
   const{data:booking}=await admin.from("bookings").select("id,external_reservation_id,primary_guest_id,property_id,guest_full_name").eq("id",conversation.booking_id).maybeSingle();
   if(!booking?.primary_guest_id)throw new Error("provider_review_context_incomplete");
@@ -240,7 +251,7 @@ export async function addGuestCommunicationNote(formData: FormData) {
   const { data: candidate } = await admin.from("guest_conversations").select("*").eq("id", conversationId).maybeSingle();
   if (!candidate) throw new Error("conversation_not_found");
   const row = candidate as ConversationRow;
-  const { user, access } = await authorize(row.workspace_id, "communications.reply");
+  const { user, access } = await authorizeLegacyCommunicationWorkspace(row.workspace_id, "communications.reply");
   if (!evaluatePropertyAccess(access, row.property_id)) throw new Error("permission_denied");
   const createdAt = new Date().toISOString();
   const noteId = `guest-note-${crypto.randomUUID()}`;
@@ -257,7 +268,7 @@ export async function addGuestCommunicationLinkAttachmentAction(formData:FormDat
   if(!conversationId||!name||name.length>200||parsed.protocol!=="https:")throw new Error("attachment_invalid");
   const admin=createAdminClient(),{data:candidate}=await admin.from("guest_conversations").select("*").eq("id",conversationId).maybeSingle();
   if(!candidate)throw new Error("conversation_not_found");
-  const row=candidate as ConversationRow,{user,access}=await authorize(row.workspace_id,"communications.reply");
+  const row=candidate as ConversationRow,{user,access}=await authorizeLegacyCommunicationWorkspace(row.workspace_id,"communications.reply");
   if(!evaluatePropertyAccess(access,row.property_id))throw new Error("permission_denied");
   const createdAt=new Date().toISOString(),attachmentId=`guest-attachment-${crypto.randomUUID()}`;
   await Promise.all([
@@ -273,7 +284,7 @@ export async function changeGuestConversationStatusAction(formData:FormData){
   if(!["close","reopen","archive"].includes(operation))throw new Error("conversation_status_invalid");
   const admin=createAdminClient(),{data:candidate}=await admin.from("guest_conversations").select("*").eq("id",conversationId).maybeSingle();
   if(!candidate)throw new Error("conversation_not_found");
-  const row=candidate as ConversationRow,{user,access}=await authorize(row.workspace_id,"communications.reply");
+  const row=candidate as ConversationRow,{user,access}=await authorizeLegacyCommunicationWorkspace(row.workspace_id,"communications.reply");
   if(!evaluatePropertyAccess(access,row.property_id))throw new Error("permission_denied");
   const status=operation==="close"?"resolved":operation==="archive"?"archived":"open",waitingOn="none",occurredAt=new Date().toISOString();
   const{error}=await admin.from("guest_conversations").update({status,waiting_on:waitingOn,updated_at:occurredAt,revision:row.revision+1}).eq("id",conversationId).eq("revision",row.revision);

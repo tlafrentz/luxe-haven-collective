@@ -1,7 +1,7 @@
 import{deriveProviderHealth}from"../../application/provider-health";
 import type{MessagingProviderAdapter,ProviderMessageCommand,ProviderSyncCommand}from"../../domain/messaging-provider";
-import{runHospitableReservationSync}from"./run-reservation-sync";
 import{sendHospitableReservationMessage}from"./messages";
+import{syncHospitableMessages}from"./sync-messages";
 
 export const hospitableMessagingAdapter:MessagingProviderAdapter=Object.freeze({
  id:"hospitable",name:"Hospitable",version:"hospitable-messaging-v1",channels:Object.freeze(["platform-messaging"]),
@@ -13,9 +13,12 @@ export const hospitableMessagingAdapter:MessagingProviderAdapter=Object.freeze({
   const result=await sendHospitableReservationMessage({reservationId:command.reservationReference??command.threadId,body:command.body});
   return Object.freeze({providerMessageId:result.providerMessageId,deliveryState:result.status==="delivered"?"delivered"as const:"queued"as const,acceptedAt:new Date().toISOString()});
  },
- async receiveMessages(){return Object.freeze([]);},
+ async receiveMessages(input:Parameters<MessagingProviderAdapter["receiveMessages"]>[0]){
+  await syncHospitableMessages({workspaceId:input.workspaceId,mode:"incremental"});
+  return Object.freeze([] as const);
+ },
  async synchronize(command:ProviderSyncCommand){
-  const startedAt=new Date().toISOString(),result=await runHospitableReservationSync();
+  const startedAt=new Date().toISOString(),result=await syncHospitableMessages({workspaceId:command.workspaceId,mode:command.mode});
   return Object.freeze({processed:result.processed,created:result.created,updated:result.updated,failed:result.failed,startedAt,completedAt:new Date().toISOString(),...(command.cursor?{cursor:command.cursor}:{})});
  },
  async resolveThread(input:Parameters<MessagingProviderAdapter["resolveThread"]>[0]){if(!input.providerThreadId&&!input.reservationReference)throw new Error("thread-unresolved");return Object.freeze({...(input.providerThreadId?{providerThreadId:input.providerThreadId}:{}),...(input.reservationReference?{reservationReference:input.reservationReference}:{})});},

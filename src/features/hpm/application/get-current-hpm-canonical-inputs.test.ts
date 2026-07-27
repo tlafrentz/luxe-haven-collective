@@ -10,10 +10,18 @@ import { RecommendationCollection } from "@/platform/recommendations";
 import { getCurrentHpmCanonicalInputs } from "./get-current-hpm-canonical-inputs";
 
 function analytics(): AnalyticsDashboardProjection {
+  const metrics: AnalyticsDashboardProjection["metrics"] = {
+    grossRevenue: 4200, roomRevenue: 4050, occupiedNights: 25, availableNights: 31,
+    occupancyRate: 80.6, averageDailyRate: 162, revPar: 130.65,
+    averageLengthOfStay: 25, averageBookingLeadTime: 10, cancellationRate: 0,
+    totalBookings: 1, upcomingBookings: 0, completedBookings: 0, cancelledBookings: 0,
+    revenueBreakdown: { roomRevenue: 4050, cleaningFees: 150, taxes: 0, serviceFees: 0, otherRevenue: 0, grossRevenue: 4200 },
+    bookingSources: [], stayLengthDistribution: [],
+  };
   return {
     generatedAt: "2026-07-20T12:00:00Z", dateRange: { startDate: "2026-07-01", endDate: "2026-08-01" },
     previousDateRange: { startDate: "2026-06-01", endDate: "2026-07-01" }, selectedProperty: null, properties: [],
-    metrics: {} as AnalyticsDashboardProjection["metrics"], previousMetrics: {} as AnalyticsDashboardProjection["previousMetrics"],
+    metrics, previousMetrics: metrics,
     comparison: {} as AnalyticsDashboardProjection["comparison"], revenueSeries: [], occupancySeries: [], bookings: [], summaries: [],
     metricProjections: [{ metric: "gross-revenue", label: "Gross revenue", value: 1000, unit: "currency",
       scope: { type: "portfolio", id: "portfolio" }, period: { startDate: "2026-07-01", endDate: "2026-08-01" },
@@ -42,14 +50,19 @@ describe("getCurrentHpmCanonicalInputs", () => {
     expect(result.inputs.actions.isEmpty).toBe(true);
     expect(result.inputs.decisions.isEmpty).toBe(true);
     expect(result.inputs.outcomes.isEmpty).toBe(true);
-    expect(result.inputs.pillarScores).toBeUndefined();
+    expect([...result.inputs.pillarScores?.keys() ?? []]).toEqual(["operations", "revenue", "financial"]);
+    expect(result.inputs.pillarScores?.get("operations")?.value).toBe(80.6);
     expect(result.inputs.analytics).toEqual({ generatedAt: new Date("2026-07-20T12:00:00Z"), metricCount: 1 });
     expect(getAnalytics).toHaveBeenCalledOnce();
     expect(getRevenue).toHaveBeenCalledOnce();
   });
 
   it("keeps missing Analytics observations and optional Revenue reasoning partial", async () => {
-    const emptyAnalytics = { ...analytics(), metricProjections: [] };
+    const emptyAnalytics = {
+      ...analytics(),
+      metricProjections: [],
+      metrics: { ...analytics().metrics, grossRevenue: 0, roomRevenue: 0, occupiedNights: 0, totalBookings: 0 },
+    };
     const result = await getCurrentHpmCanonicalInputs(
       { startDate: "2026-07-01", endDate: "2026-08-01" },
       { getAnalytics: vi.fn().mockResolvedValue(emptyAnalytics), getRevenue: vi.fn().mockResolvedValue(revenue(false)) },
@@ -57,6 +70,7 @@ describe("getCurrentHpmCanonicalInputs", () => {
     expect(result.inputs.observations.isEmpty).toBe(true);
     expect(result.inputs.evidence.isEmpty).toBe(true);
     expect(result.inputs.recommendations.isEmpty).toBe(true);
+    expect(result.inputs.pillarScores).toBeUndefined();
     expect(result.context.analytics).toBe(emptyAnalytics);
   });
 });

@@ -10,8 +10,9 @@ import { LearningCollection } from "@/platform/learning";
 import { ObservationCollection } from "@/platform/observations";
 import { OutcomeCollection } from "@/platform/outcomes";
 import { RecommendationCollection } from "@/platform/recommendations";
+import { Score } from "@/platform/scoring";
 
-import type { HpmCanonicalInputs } from "../domain";
+import type { HpmCanonicalInputs, HpmPillar } from "../domain";
 
 export type CurrentHpmQuery = AnalyticsQueryParams & Readonly<{ generatedAt?: string }>;
 
@@ -34,6 +35,25 @@ const productionProviders: CurrentHpmCanonicalInputProviders = {
   getAnalytics: getAnalyticsDashboardProjection,
   getRevenue: getRevenueIntelligence,
 };
+
+function deriveMeasuredPillarScores(
+  analytics: AnalyticsDashboardProjection,
+): ReadonlyMap<HpmPillar, Score> | undefined {
+  const { metrics } = analytics;
+  if (metrics.availableNights <= 0 || metrics.totalBookings <= 0) return undefined;
+
+  const operatingPerformance = Math.max(0, Math.min(100, metrics.occupancyRate));
+  const scores = new Map<HpmPillar, Score>([
+    ["operations", Score.create(operatingPerformance)],
+  ]);
+  if (metrics.occupiedNights > 0 && metrics.roomRevenue > 0) {
+    scores.set("revenue", Score.create(operatingPerformance));
+  }
+  if (metrics.grossRevenue > 0) {
+    scores.set("financial", Score.create(operatingPerformance));
+  }
+  return scores;
+}
 
 /** Production assembly boundary for all currently available canonical HPM inputs. */
 export async function getCurrentHpmCanonicalInputs(
@@ -64,6 +84,7 @@ export async function getCurrentHpmCanonicalInputs(
       outcomes: OutcomeCollection.empty(),
       intelligence: IntelligenceCollection.empty(),
       learning: LearningCollection.empty(),
+      pillarScores: deriveMeasuredPillarScores(analytics),
       analytics: Object.freeze({
         generatedAt: new Date(generatedAt),
         metricCount: analytics.metricProjections.length,

@@ -105,14 +105,14 @@ describe("Organization completeness", () => {
     expect(completeness.missingRequired).toContain("Timezone");
   });
 
-  it("marks required confirmed values complete while recommendations remain attention", () => {
+  it("marks required confirmed values complete while recommendations remain optional", () => {
     const completeness = evaluateOrganizationCompleteness({
       profile: {
         ...base,
         confirmedFields: ["displayName", "timezone", "currency", "language", "country"],
       },
     });
-    expect(completeness.status).toBe("needs-attention");
+    expect(completeness.status).toBe("complete");
     expect(completeness.missingRequired).toEqual([]);
     expect(completeness.missingRecommended).toContain("Business email");
   });

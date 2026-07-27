@@ -129,12 +129,12 @@ function FirstUseState({ displayName }: Readonly<{ displayName: string | null }>
         description="Create your business identity, connect your hospitality platform, and import your first property."
       />
       <WorkspaceOverview>
-        <WorkspaceCard level={1} className="overflow-hidden bg-stone-950 p-7 text-white sm:p-9">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">Ready to begin</p>
+        <WorkspaceCard level={1} className="overflow-hidden !bg-stone-950 p-7 !text-white sm:p-9">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] !text-amber-200">Ready to begin</p>
           <h2 className="mt-3 text-2xl font-semibold">
             {displayName ? `${displayName}, create your hospitality workspace.` : "Create your hospitality workspace."}
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-300">
+          <p className="mt-3 max-w-2xl text-sm leading-6 !text-stone-300">
             This creates one owner record for your authenticated profile. Repeating the request is safe and will always return the same workspace.
           </p>
           <form action={initializeWorkspaceAction} className="mt-6">
@@ -174,14 +174,14 @@ function Overview({ summary }: OverviewProps) {
         </WorkspaceContent>
       ) : null}
       <WorkspaceOverview>
-        <WorkspaceCard level={1} className="overflow-hidden bg-stone-950 text-white">
+        <WorkspaceCard level={1} className="overflow-hidden !bg-stone-950 !text-white">
           <div className="grid gap-6 p-7 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">Workspace health</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] !text-amber-200">Workspace health</p>
               <h2 className="mt-3 text-2xl font-semibold">
                 {summary.health.state === "healthy" ? "Your workspace is ready." : "Your foundation is taking shape."}
               </h2>
-              <p className="mt-2 text-sm text-stone-300">
+              <p className="mt-2 text-sm !text-stone-300">
                 {summary.health.setupItems.length} setup {summary.health.setupItems.length === 1 ? "item" : "items"} remaining
               </p>
             </div>

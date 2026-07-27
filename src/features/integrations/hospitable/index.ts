@@ -8,9 +8,13 @@ export {
   hospitableRequest,
   mapHospitableProperty,
   mapHospitableReservation,
+  MESSAGE_SYNC_ALREADY_RUNNING_ERROR,
   normalizeHospitableReservation,
+  normalizeHospitableMessage,
   runInBatches,
+  sendHospitableReservationMessage,
   syncHospitableProperties,
+  syncHospitableMessages,
   syncHospitableReservations,
   SYNC_ALREADY_RUNNING_ERROR,
 } from "./lib";
@@ -24,6 +28,8 @@ export type {
   PropertySyncResult,
   ReservationSyncOptions,
   ReservationSyncResult,
+  MessageSyncOptions,
+  MessageSyncResult,
 } from "./lib";
 
 export {
