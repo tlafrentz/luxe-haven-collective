@@ -40,7 +40,7 @@ export async function getGuestCommunicationInbox(input: { workspaceId?: string; 
     const { access } = await authorize(input.workspaceId);
     const admin = createAdminClient();
     const page=Math.max(1,input.page??1),pageSize=50,from=(page-1)*pageSize;
-    const { data, error } = await admin.from("guest_conversations").select("*").eq("workspace_id", access.workspaceId).order("last_activity_at", { ascending: false }).range(from,from+pageSize-1);
+    const { data, error } = await admin.from("guest_conversations").select("*").eq("workspace_id", access.ownerProfileId).order("last_activity_at", { ascending: false }).range(from,from+pageSize-1);
     if (error) throw error;
     const allowed = (data as ConversationRow[]).filter(row => evaluatePropertyAccess(access, row.property_id));
     const guestIds = [...new Set(allowed.map(row => row.guest_id))];
