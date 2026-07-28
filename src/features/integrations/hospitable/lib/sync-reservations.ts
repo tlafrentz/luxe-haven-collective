@@ -14,6 +14,7 @@ import {
 } from "./reservation-mapper";
 import { runInBatches } from "./run-in-batches";
 import { resolveHospitableMessagingWorkspace } from "./messaging-workspace";
+import { linkProviderThread, ProviderThreadLinkError, type ProviderThreadLinkOutcome } from "./provider-thread-link";
 
 const PROVIDER = "hospitable";
 const CONNECTION_NAME = "Hospitable Primary";
@@ -60,6 +61,9 @@ export type ReservationSyncResult = {
   updated: number;
   skipped: number;
   failed: number;
+  providerThreadsCreated: number;
+  providerThreadsReused: number;
+  providerThreadConflicts: number;
   errors: string[];
 };
 
@@ -258,6 +262,9 @@ async function finishSyncRun({
         end_date: result.endDate,
         discovered: result.discovered,
         skipped: result.skipped,
+        provider_threads_created: result.providerThreadsCreated,
+        provider_threads_reused: result.providerThreadsReused,
+        provider_thread_conflicts: result.providerThreadConflicts,
       },
     })
     .eq("id", syncRunId);
@@ -422,7 +429,7 @@ async function upsertBooking(
     typeof mapHospitableReservation
   >["booking"],
   messagingWorkspaceId: string,
-): Promise<void> {
+): Promise<ProviderThreadLinkOutcome> {
   const supabase = createAdminClient();
   const { data: property, error: propertyError } = await supabase
     .from("properties")
@@ -532,14 +539,13 @@ async function upsertBooking(
     ]);
   }
   await supabase.from("guest_conversation_reservations").update({active:false,unlinked_at:synchronizedAt}).eq("conversation_id",conversationId).eq("active",true).neq("reservation_id",booking.external_reservation_id);
-  const[{error:linkError},{error:threadError}]=await Promise.all([
-    supabase.from("guest_conversation_reservations").upsert({conversation_id:conversationId,reservation_id:booking.external_reservation_id,booking_id:persistedBooking.id,property_id:booking.property_id,active:true,linked_at:synchronizedAt},{onConflict:"conversation_id,reservation_id",ignoreDuplicates:true}),
-    supabase.from("guest_conversation_provider_threads").upsert({id:`provider-thread-${conversationId}-${booking.external_reservation_id}`,conversation_id:conversationId,workspace_id:messagingWorkspaceId,provider:"hospitable",thread_id:booking.external_reservation_id,reservation_reference:booking.external_reservation_id,last_observed_at:synchronizedAt},{onConflict:"workspace_id,provider,thread_id",ignoreDuplicates:true}),
-  ]);
-  if(linkError||threadError)throw new Error(`Unable to link provider context to the guest conversation: ${(linkError??threadError)?.message}`);
+  const{error:linkError}=await supabase.from("guest_conversation_reservations").upsert({conversation_id:conversationId,reservation_id:booking.external_reservation_id,booking_id:persistedBooking.id,property_id:booking.property_id,active:true,linked_at:synchronizedAt},{onConflict:"conversation_id,reservation_id",ignoreDuplicates:true});
+  if(linkError)throw new Error(`Unable to link reservation context to the guest conversation: ${linkError.message}`);
+  const providerThread=await linkProviderThread({conversationId,workspaceId:messagingWorkspaceId,provider:"hospitable",threadId:booking.external_reservation_id,reservationReference:booking.external_reservation_id,observedAt:synchronizedAt});
   const{error:activateLinkError}=await supabase.from("guest_conversation_reservations").update({booking_id:persistedBooking.id,property_id:booking.property_id,active:true,unlinked_at:null}).eq("conversation_id",conversationId).eq("reservation_id",booking.external_reservation_id);
   if(activateLinkError)throw new Error(`Unable to activate reservation context for the guest conversation: ${activateLinkError.message}`);
   await supabase.from("guest_conversations").update({reservation_id:booking.external_reservation_id,active_reservation_id:booking.external_reservation_id,booking_id:persistedBooking.id,last_activity_at:synchronizedAt,updated_at:synchronizedAt}).eq("id",conversationId);
+  return providerThread.outcome;
 }
 
 async function safelyFinalizeFailedSync({
@@ -698,6 +704,9 @@ export async function syncHospitableReservations({
     updated: 0,
     skipped: 0,
     failed: 0,
+    providerThreadsCreated: 0,
+    providerThreadsReused: 0,
+    providerThreadConflicts: 0,
     errors: [],
   };
 
@@ -803,7 +812,9 @@ export async function syncHospitableReservations({
             localPropertyId,
           });
 
-        await upsertBooking(mapping.booking, messagingWorkspace.workspaceId);
+        const providerThreadOutcome=await upsertBooking(mapping.booking, messagingWorkspace.workspaceId);
+        if(providerThreadOutcome==="created")result.providerThreadsCreated+=1;
+        else result.providerThreadsReused+=1;
 
         result.processed += 1;
 
@@ -818,6 +829,7 @@ export async function syncHospitableReservations({
         }
       } catch (error) {
         result.failed += 1;
+        if(error instanceof ProviderThreadLinkError&&error.code==="PROVIDER_THREAD_CONVERSATION_CONFLICT")result.providerThreadConflicts+=1;
         result.errors.push(
           error instanceof Error
             ? error.message

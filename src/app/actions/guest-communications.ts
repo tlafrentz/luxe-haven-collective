@@ -17,6 +17,7 @@ import {
 } from "@/features/reservation-context";
 import { DEFAULT_MESSAGING_PROVIDER_REGISTRY, providerFailure } from "@/features/integrations";
 import { hydrateHospitableReservationMessageHistory } from "@/features/integrations/hospitable";
+import { linkProviderThread } from "@/features/integrations/hospitable/lib/provider-thread-link";
 import { assertCanonicalMessagingWorkspace, resolveHospitableMessagingWorkspace } from "@/features/integrations/hospitable/lib/messaging-workspace";
 import { buildConversationProjection, buildGuestContextProjection, createConversationAggregate, evaluateCommunicationGuidance, type CanonicalMessage, type CommunicationAttachment, type ConversationActivity, type ConversationParticipant, type ConversationReservationLink, type DeliveryEvent, type InternalCommunicationNote, type ProviderThreadReference } from "@/features/guest-communications";
 import {buildCanonicalPropertyProjection} from "@/features/property-projection";
@@ -236,9 +237,7 @@ export async function associateProviderReviewMessageAction(formData:FormData){
   if(!booking?.primary_guest_id)throw new Error("provider_review_context_incomplete");
   const providerThread=String(review.provider_thread_reference??review.reservation_reference??"");
   if(!providerThread)throw new Error("provider_review_thread_missing");
-  const{data:existingThread}=await admin.from("guest_conversation_provider_threads").select("conversation_id").eq("workspace_id",review.workspace_id).eq("provider",review.provider).eq("thread_id",providerThread).maybeSingle();
-  if(existingThread&&existingThread.conversation_id!==conversationId)throw new Error("provider_review_conflict");
-  if(!existingThread){const{error:threadError}=await admin.from("guest_conversation_provider_threads").insert({id:`provider-thread-${crypto.randomUUID()}`,conversation_id:conversationId,workspace_id:review.workspace_id,provider:review.provider,thread_id:providerThread,reservation_reference:booking.external_reservation_id??conversation.reservation_id,last_observed_at:review.occurred_at});if(threadError)throw new Error("provider_review_thread_conflict");}
+  await linkProviderThread({workspaceId:review.workspace_id,conversationId,provider:review.provider,threadId:providerThread,reservationReference:booking.external_reservation_id??conversation.reservation_id,observedAt:review.occurred_at});
   const{error}=await admin.rpc("ingest_guest_provider_message",{p_workspace_id:review.workspace_id,p_property_id:booking.property_id,p_booking_id:booking.id,p_conversation_id:conversationId,p_provider:review.provider,p_provider_message_id:review.provider_event_id,p_platform_message_id:null,p_provider_reservation_id:booking.external_reservation_id??conversation.reservation_id,p_provider_conversation_id:providerThread,p_sender_type:"guest",p_sender_display_name:booking.guest_full_name??"Guest",p_body:review.pending_message_body,p_content_type:"text/plain",p_message_channel:review.provider,p_direction:"inbound",p_delivery_status:"delivered",p_occurred_at:review.occurred_at,p_ingested_at:new Date().toISOString(),p_attachments:[],p_metadata:{reviewId},p_provenance:{provider:review.provider,source:"manual-review"},p_backfill:false});
   if(error)throw new Error("provider_review_association_failed");
   await admin.from("messaging_provider_review_queue").update({status:"associated",reviewed_by:user.id,reviewed_at:new Date().toISOString(),conversation_id:conversationId,pending_message_body:null}).eq("id",reviewId).eq("status","pending");

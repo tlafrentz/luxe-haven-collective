@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveHospitableMessagingWorkspace } from "@/features/integrations/hospitable/lib/messaging-workspace";
+import { linkProviderThread, ProviderThreadLinkError } from "@/features/integrations/hospitable/lib/provider-thread-link";
 
 type Payload=Record<string,unknown>;
 export async function POST(request:Request){
@@ -19,6 +20,8 @@ export async function POST(request:Request){
   catch{return NextResponse.json({accepted:false,code:"workspace_unresolved"},{status:202});}
   const{data:links,error:linkError}=await admin.from("guest_conversation_reservations").select("conversation_id").eq("booking_id",booking.id).eq("reservation_id",reservationId);
   if(linkError||(links??[]).length!==1)return NextResponse.json({accepted:false,code:(links??[]).length>1?"conversation_ambiguous":"conversation_unresolved",reviewRequired:true},{status:202});
+  try{await linkProviderThread({workspaceId,conversationId:String(links![0].conversation_id),provider:"hospitable",threadId,reservationReference:reservationId,observedAt:occurredAt});}
+  catch(error){const code=error instanceof ProviderThreadLinkError?error.code:"PROVIDER_THREAD_LINK_FAILED";console.error("guest_message_webhook_thread_link_failed",{provider:"hospitable",code});return NextResponse.json({accepted:false,code},{status:code==="PROVIDER_THREAD_CONVERSATION_CONFLICT"?409:503});}
   const{error}=await admin.rpc("ingest_guest_provider_message",{p_workspace_id:workspaceId,p_property_id:booking.property_id,p_booking_id:booking.id,p_conversation_id:links![0].conversation_id,p_provider:"hospitable",p_provider_message_id:providerMessageId,p_platform_message_id:data.platform_id?String(data.platform_id):null,p_provider_reservation_id:reservationId,p_provider_conversation_id:threadId,p_sender_type:"guest",p_sender_display_name:booking.guest_full_name??"Guest",p_body:body,p_content_type:text(data,"content_type")||"text/plain",p_message_channel:text(data,"platform")||"hospitable",p_direction:"inbound",p_delivery_status:"delivered",p_occurred_at:occurredAt,p_ingested_at:new Date().toISOString(),p_attachments:attachments,p_metadata:{eventType:text(envelope,"event")||text(envelope,"type")||"unknown"},p_provenance:{provider:"hospitable",source:"webhook"},p_backfill:false});
   if(error){console.error("guest_message_webhook_failed",{provider:"hospitable",errorType:error.code??"storage"});return NextResponse.json({accepted:false,code:"message_ingestion_failed"},{status:503});}
   return NextResponse.json({accepted:true});

@@ -7,6 +7,7 @@ import {
   type NormalizedHospitableMessage,
 } from "./messages";
 import { resolveHospitableMessagingWorkspace } from "./messaging-workspace";
+import { linkProviderThread } from "./provider-thread-link";
 
 export type HospitableMessageHydrationContext = Readonly<{
   workspaceId: string;
@@ -181,6 +182,14 @@ export function createSupabaseHospitableMessageHydrationGateway(): HospitableMes
         .maybeSingle();
       if (conversationError) throw new Error("message_hydration_conversation_lookup_failed");
       if (!conversation || link.property_id !== booking.property_id) throw new Error("message_hydration_scope_mismatch");
+      await linkProviderThread({
+        workspaceId: messagingWorkspace.workspaceId,
+        conversationId: String(conversation.id),
+        provider: "hospitable",
+        threadId: input.reservationId,
+        reservationReference: input.reservationId,
+        observedAt: new Date().toISOString(),
+      });
       return Object.freeze({
         workspaceId: messagingWorkspace.workspaceId,
         propertyId: String(booking.property_id),

@@ -1,6 +1,14 @@
 export { hospitableRequest } from "./client";
 export { hospitableMessagingAdapter } from "./messaging-adapter";
 export {
+  linkProviderThread,
+  mapProviderThreadLinkError,
+  ProviderThreadLinkError,
+  type ProviderThreadLink,
+  type ProviderThreadLinkCode,
+  type ProviderThreadLinkOutcome,
+} from "./provider-thread-link";
+export {
   assertCanonicalMessagingWorkspace,
   resolveHospitableMessagingWorkspace,
   type MessagingWorkspace,
