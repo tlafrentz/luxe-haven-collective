@@ -13,3 +13,7 @@ export {
 export {
   SyncNowButton,
 } from "./sync-now-button";
+
+export {
+  SyncMessagesButton,
+} from "./sync-messages-button";

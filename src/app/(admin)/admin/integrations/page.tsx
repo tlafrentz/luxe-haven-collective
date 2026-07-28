@@ -39,6 +39,11 @@ export default async function IntegrationsPage() {
             <SyncHistory
               history={integration.syncHistory}
             />
+
+            <SyncHistory
+              history={integration.messageSyncHistory}
+              kind="messages"
+            />
           </section>
         ),
       )}

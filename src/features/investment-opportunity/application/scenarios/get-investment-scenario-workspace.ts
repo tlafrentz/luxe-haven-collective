@@ -100,6 +100,9 @@ function projectScenario(
     id: record.scenarioId,
     opportunityId: props.opportunityId.value,
     sourceAnalysisVersionId: record.sourceAnalysisVersionId,
+    sourceAnalysisVersionNumber: props.sequence,
+    ...(record.sourceScenarioId ? { sourceScenarioId: record.sourceScenarioId } : {}),
+    ...(record.sourceScenarioName ? { sourceScenarioName: record.sourceScenarioName } : {}),
     name: record.name,
     description: record.description??(index === 0
       ? "Original calculated investment strategy."
@@ -133,7 +136,7 @@ function projectScenario(
   };
 }
 
-type ScenarioRecord=Readonly<{scenarioId:string;sourceAnalysisVersionId:string;name:string;scenarioType:string;description?:string;notes?:string;status:string;revision:number;assumptions:Readonly<Record<string,string|number|boolean>>;output:OpportunityAnalysis["props"]["resultSnapshot"];createdBy:string;createdAt:string;updatedAt:string;archivedAt?:string}>;
+type ScenarioRecord=Readonly<{scenarioId:string;sourceAnalysisVersionId:string;sourceScenarioId?:string;sourceScenarioName?:string;name:string;scenarioType:string;description?:string;notes?:string;status:string;revision:number;assumptions:Readonly<Record<string,string|number|boolean>>;output:OpportunityAnalysis["props"]["resultSnapshot"];createdBy:string;createdAt:string;updatedAt:string;archivedAt?:string}>;
 
 function deepFreeze<T>(value: T): T {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {

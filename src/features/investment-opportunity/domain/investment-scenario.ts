@@ -40,6 +40,9 @@ export type InvestmentScenario = Readonly<{
   id: string;
   opportunityId: string;
   sourceAnalysisVersionId: string;
+  sourceAnalysisVersionNumber?: number;
+  sourceScenarioId?: string;
+  sourceScenarioName?: string;
   name: string;
   description?: string;
   type: InvestmentScenarioType;

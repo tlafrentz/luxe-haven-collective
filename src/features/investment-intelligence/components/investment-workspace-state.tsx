@@ -27,6 +27,11 @@ export type InvestmentWorkspaceValues = Readonly<{
 }>;
 
 export type WorkspaceInvestmentAnalysis = InvestmentLifecycleResult;
+export type CurrentInvestmentAnalysisState =
+  | Readonly<{ status: "idle" }>
+  | Readonly<{ status: "running" }>
+  | Readonly<{ status: "failed"; error: string }>
+  | Readonly<{ status: "completed"; analysisId: string; saveToken: string; analyzedAt: string; expiresAt: string; route: "purchase" | "rental-arbitrage"; result: WorkspaceInvestmentAnalysis }>;
 
 type InvestmentWorkspaceState = Readonly<{
   values: InvestmentWorkspaceValues;
@@ -52,6 +57,7 @@ type InvestmentWorkspaceState = Readonly<{
   hasStaleAnalysis: boolean;
   isAnalyzing: boolean;
   analysisError: string | null;
+  currentAnalysis: CurrentInvestmentAnalysisState;
   analyzeInvestment: () => Promise<void>;
 }>;
 
@@ -75,6 +81,8 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
   const [result, setResult] = useState<Extract<Awaited<ReturnType<typeof analyzeInvestmentWorkspace>>, { ok: true }>["result"] | null>(null);
   const [analysisSaveToken, setAnalysisSaveToken] = useState<string | null>(null);
   const [analyzedAt, setAnalyzedAt] = useState<Date | null>(null);
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [stage, setStage] = useState<InvestmentWorkspaceStage>("setup");
   const [isAnalysisStale, setIsAnalysisStale] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -152,11 +160,20 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
       return;
     }
     setResult(response.result);
+    setAnalysisId(response.analysisId);
     setAnalysisSaveToken(response.analysisSaveToken);
     setAnalyzedAt(response.analyzedAt);
+    setExpiresAt(response.expiresAt);
     setStage("decision-review");
     setIsAnalysisStale(false);
   }, [isReadyForAnalysis, values]);
+
+  const currentAnalysis = useMemo<CurrentInvestmentAnalysisState>(() => {
+    if (analysisError) return { status: "failed", error: analysisError };
+    if (stage === "resolving-property" || stage === "running-market-analysis" || stage === "running-investment-analysis") return { status: "running" };
+    if (!result || isAnalysisStale || !analysisId || !analysisSaveToken || !analyzedAt || !expiresAt) return { status: "idle" };
+    return { status: "completed", analysisId, saveToken: analysisSaveToken, analyzedAt: analyzedAt.toISOString(), expiresAt: expiresAt.toISOString(), route: result.lifecycleResult.acquisitionType, result: result.lifecycleResult };
+  }, [analysisError, stage, result, isAnalysisStale, analysisId, analysisSaveToken, analyzedAt, expiresAt]);
 
   const contextValue = useMemo<InvestmentWorkspaceState>(() => ({
     values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount,
@@ -172,8 +189,8 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
     analyzedAt,
     hasStaleAnalysis: result !== null && isAnalysisStale,
     isAnalyzing: stage === "resolving-property" || stage === "running-market-analysis" || stage === "running-investment-analysis",
-    analysisError, analyzeInvestment,
-  }), [values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, analyzeInvestment]);
+    analysisError, currentAnalysis, analyzeInvestment,
+  }), [values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, currentAnalysis, analyzeInvestment]);
 
   return <InvestmentWorkspaceContext.Provider value={contextValue}>{children}</InvestmentWorkspaceContext.Provider>;
 }

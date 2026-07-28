@@ -11,6 +11,7 @@ import type {
 
 import { ConnectionStatusBadge } from "./connection-status-badge";
 import { SyncNowButton } from "./sync-now-button";
+import { SyncMessagesButton } from "./sync-messages-button";
 
 type IntegrationCardProps = {
   integration: IntegrationDashboardItem;
@@ -140,10 +141,18 @@ export function IntegrationCard({
         </div>
 
         {integration.provider === "hospitable" ? (
-          <SyncNowButton
-            provider="hospitable"
-            disabled={!canSync}
-          />
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            <SyncNowButton
+              provider="hospitable"
+              disabled={!canSync}
+            />
+            <SyncMessagesButton
+              disabled={!canSync}
+              running={
+                integration.messageSyncRunning
+              }
+            />
+          </div>
         ) : null}
       </div>
     </article>

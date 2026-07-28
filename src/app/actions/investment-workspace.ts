@@ -31,7 +31,7 @@ import { storeInvestmentAnalysis } from "./investment-analysis-save-store";
 type InvestmentWorkspaceActionInput = Omit<RunInvestmentWorkspaceAnalysisCommand, "context"> & Readonly<{
   clientRequestId: string;
 }>;
-export type InvestmentWorkspaceServerActionResult = Exclude<InvestmentWorkspaceActionResult, { ok: true }> | Readonly<{ ok: true; result: Extract<InvestmentWorkspaceActionResult, { ok: true }>["result"]; analysisSaveToken: string; analyzedAt: Date }>;
+export type InvestmentWorkspaceServerActionResult = Exclude<InvestmentWorkspaceActionResult, { ok: true }> | Readonly<{ ok: true; result: Extract<InvestmentWorkspaceActionResult, { ok: true }>["result"]; analysisId: string; analysisSaveToken: string; analyzedAt: Date; expiresAt: Date }>;
 
 export async function analyzeInvestmentWorkspace(
   input: InvestmentWorkspaceActionInput,
@@ -94,13 +94,13 @@ export async function analyzeInvestmentWorkspace(
     const durationMs = Date.now() - startedAt;
     updateWorkspaceHealth({ success: true, durationMs });
     recordWorkspaceOperation("completed", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType, durationMs, reportStatus: result.marketReport.status, confidence: result.marketReport.confidence.level, saleComparableCount: result.marketReport.summary.saleComparableCount, rentalComparableCount: result.marketReport.summary.rentalComparableCount });
-    const analysisSaveToken = await storeInvestmentAnalysis(user.id, result, {
+    const issuedSaveToken = await storeInvestmentAnalysis(user.id, result, {
       address: parsed.data.address,
       investmentInput: parsed.data.investmentInput,
       userProvidedAssumptionKeys: parsed.data.userProvidedAssumptionKeys,
       marketRequest: parsed.data.marketRequest,
     }, requestedAt);
-    return { ok: true, result, analysisSaveToken, analyzedAt: requestedAt };
+    return { ok: true, result, analysisId: result.lineage.workspaceRunId, analysisSaveToken: issuedSaveToken.token, analyzedAt: requestedAt, expiresAt: issuedSaveToken.expiresAt };
   } catch (error) {
     const safe = safeError(error);
     const durationMs = Date.now() - startedAt;

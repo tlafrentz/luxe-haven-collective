@@ -13,6 +13,7 @@ import type {
 
 type SyncHistoryProps = {
   history: IntegrationSyncHistoryItem[];
+  kind?: "reservations" | "messages";
 };
 
 type StatusConfig = {
@@ -79,6 +80,7 @@ function formatDuration(
 
 export function SyncHistory({
   history,
+  kind = "reservations",
 }: SyncHistoryProps) {
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white shadow-sm">
@@ -88,12 +90,12 @@ export function SyncHistory({
         </p>
 
         <h2 className="mt-1 text-xl font-semibold text-neutral-950">
-          Recent sync history
+          Recent {kind === "messages" ? "message " : ""}sync history
         </h2>
 
         <p className="mt-1 text-sm text-neutral-500">
-          The most recent reservation synchronization
-          attempts for this connection.
+          The most recent {kind} synchronization attempts
+          for this connection.
         </p>
       </div>
 
@@ -109,8 +111,8 @@ export function SyncHistory({
           </h3>
 
           <p className="mt-2 text-sm text-neutral-500">
-            Run the integration to create the first
-            activity record.
+            Run the {kind === "messages" ? "message " : ""}
+            integration to create the first activity record.
           </p>
         </div>
       ) : (

@@ -32,7 +32,7 @@ export async function getInvestmentScenarioWorkspaceRequest(opportunityId: strin
       workspace: getInvestmentScenarioWorkspace(opportunity, {
         actorId: context.ownerId,
         canManage: true,
-        records:(records??[]).map(row=>({scenarioId:row.scenario_id,sourceAnalysisVersionId:row.source_analysis_version_id,name:row.name,scenarioType:row.scenario_type,description:row.description??undefined,notes:row.notes??undefined,status:row.status,revision:row.revision,assumptions:(row.assumptions_snapshot??{}) as Readonly<Record<string,string|number|boolean>>,output:row.output_snapshot,createdBy:row.created_by_profile_id,createdAt:row.created_at,updatedAt:row.updated_at,archivedAt:row.archived_at??undefined})),
+        records:(records??[]).map(row=>({scenarioId:row.scenario_id,sourceAnalysisVersionId:row.source_analysis_version_id,sourceScenarioId:row.source_scenario_id??undefined,sourceScenarioName:(records??[]).find(candidate=>candidate.scenario_id===row.source_scenario_id)?.name??undefined,name:row.name,scenarioType:row.scenario_type,description:row.description??undefined,notes:row.notes??undefined,status:row.status,revision:row.revision,assumptions:(row.assumptions_snapshot??{}) as Readonly<Record<string,string|number|boolean>>,output:row.output_snapshot,createdBy:row.created_by_profile_id,createdAt:row.created_at,updatedAt:row.updated_at,archivedAt:row.archived_at??undefined})),
         events:(events??[]).map(row=>({id:row.id,scenarioId:row.scenario_id,eventType:row.event_type,safeSummary:row.safe_summary,occurredAt:row.occurred_at})),
         preferredScenarioId:pointer?.preferred_scenario_id??undefined,
       }),

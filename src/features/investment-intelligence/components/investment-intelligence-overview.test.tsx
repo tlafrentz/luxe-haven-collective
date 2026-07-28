@@ -5,12 +5,13 @@ import { InvestmentIntelligenceOverview } from "./investment-intelligence-overvi
 const metrics = { evaluating: 0, researching: 0, shortlisted: 0, underContract: 0, acquired: 0 };
 
 describe("Investment Intelligence overview", () => {
-  it("renders workspace actions and a safe Saved Scenarios state", () => {
+  it("renders the live scenarios workspace action", () => {
     const html = renderToStaticMarkup(<InvestmentIntelligenceOverview view={{ metrics, opportunities: [], empty: true }} />);
     expect(html).toContain("Investment Intelligence");
     expect(html).toContain('href="/dashboard/investments/new"');
     expect(html).toContain('href="/dashboard/investments/opportunities"');
-    expect(html).toContain("Saved Scenarios is coming soon");
+    expect(html).toContain('href="/dashboard/investments/scenarios"');
+    expect(html).not.toContain("Soon");
     expect(html).toContain("No opportunities yet");
   });
 

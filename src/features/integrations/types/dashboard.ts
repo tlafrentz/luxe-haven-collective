@@ -42,6 +42,8 @@ export type IntegrationDashboardItem = {
   lastSyncedAt: string | null;
   lastSync: SyncSummary | null;
   syncHistory: IntegrationSyncHistoryItem[];
+  messageSyncHistory: IntegrationSyncHistoryItem[];
+  messageSyncRunning: boolean;
 };
 
 export type IntegrationsDashboardData = {

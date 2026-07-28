@@ -209,6 +209,8 @@ async function getHospitableDashboardItem(): Promise<
       lastSyncedAt: null,
       lastSync: null,
       syncHistory: [],
+      messageSyncHistory: [],
+      messageSyncRunning: false,
     };
   }
 
@@ -219,6 +221,7 @@ async function getHospitableDashboardItem(): Promise<
     propertyCountResult,
     reservationCountResult,
     syncHistoryResult,
+    messageSyncHistoryResult,
   ] = await Promise.all([
     supabase
       .from("external_properties")
@@ -271,6 +274,27 @@ async function getHospitableDashboardItem(): Promise<
         ascending: false,
       })
       .limit(8),
+
+    supabase
+      .from("integration_sync_runs")
+      .select(
+        `
+          id,
+          status,
+          started_at,
+          completed_at,
+          records_processed,
+          records_created,
+          records_updated,
+          records_failed,
+          error_message,
+          metadata
+        `,
+      )
+      .eq("connection_id", typedConnection.id)
+      .eq("sync_type", "messages")
+      .order("started_at", { ascending: false })
+      .limit(8),
   ]);
 
   if (propertyCountResult.error) {
@@ -291,12 +315,21 @@ async function getHospitableDashboardItem(): Promise<
     );
   }
 
+  if (messageSyncHistoryResult.error) {
+    throw new Error(
+      `Unable to load message sync history: ${messageSyncHistoryResult.error.message}`,
+    );
+  }
+
   const syncHistory = (
     (syncHistoryResult.data ?? []) as SyncRunRow[]
   ).map(mapSyncHistoryItem);
 
   const latestSync =
     syncHistory[0] ?? null;
+  const messageSyncHistory = (
+    (messageSyncHistoryResult.data ?? []) as SyncRunRow[]
+  ).map(mapSyncHistoryItem);
 
   const connectionStatus =
     mapConnectionStatus(
@@ -324,6 +357,11 @@ async function getHospitableDashboardItem(): Promise<
     lastSync:
       mapSyncSummary(latestSync),
     syncHistory,
+    messageSyncHistory,
+    messageSyncRunning:
+      messageSyncHistory.some(
+        (syncRun) => syncRun.status === "running",
+      ),
   };
 }
 
