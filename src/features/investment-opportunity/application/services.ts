@@ -2,28 +2,35 @@ import type { InvestmentLifecycleResult } from "@/features/investment-intelligen
 import { InvestmentOpportunity, OpportunityAnalysis, createInvestmentOpportunityId, createOpportunityAnalysisId, createOpportunityOwnerId, type InvestmentOpportunityId, type InvestmentOpportunityRoute, type OpportunityActorReference, type OpportunityAnalysisLineage, type OpportunityAnalysisPolicyVersions, type OpportunityAnalysisSnapshot, type OpportunityAnalysisSourceSummary, type OpportunityPropertyReference, type OpportunityStatus } from "../domain";
 import { buildOpportunityAnalysisSnapshot } from "./snapshot-builder";
 import { InvestmentOpportunityError } from "./errors";
-import type { InvestmentOpportunityRepository, InvestmentOpportunityRepositoryQuery } from "./ports/repository";
+import type { InvestmentOpportunityRepository, InvestmentOpportunityRepositoryQuery, InvestmentOpportunitySaveOptions } from "./ports/repository";
 
 export type OpportunityCommandContext = Readonly<{ authenticatedOwnerId: string; actor: OpportunityActorReference; occurredAt?: Date; commandId?: string; expectedVersion?: number }>;
-export type SaveOpportunityAnalysisInput = Readonly<{ lifecycleResult: InvestmentLifecycleResult; lifecycleResultId: string; sourceSummary: OpportunityAnalysisSourceSummary; snapshot?: OpportunityAnalysisSnapshot; policyVersions?: Omit<OpportunityAnalysisPolicyVersions, "opportunitySnapshotSchema">; lineage?: Omit<OpportunityAnalysisLineage, "investmentLifecycleResultId" | "evidenceIds">; analyzedAt: Date }>;
+export type SaveOpportunityAnalysisInput = Readonly<{ lifecycleResult: InvestmentLifecycleResult; lifecycleResultId: string; sourceSummary: OpportunityAnalysisSourceSummary; snapshot?: OpportunityAnalysisSnapshot; policyVersions?: Omit<OpportunityAnalysisPolicyVersions, "opportunitySnapshotSchema">; lineage?: Omit<OpportunityAnalysisLineage, "investmentLifecycleResultId" | "evidenceIds">; sourceAnalysisVersionId?: string; analyzedAt: Date }>;
 const now = (context: OpportunityCommandContext) => context.occurredAt ?? new Date();
 const mutation = (context: OpportunityCommandContext) => ({ actor: context.actor, occurredAt: now(context), ...(context.commandId ? { commandId: context.commandId } : {}) });
 const defaultName = (property: OpportunityPropertyReference, route: InvestmentOpportunityRoute) => `${property.displayAddress} — ${route === "purchase" ? "Purchase" : "Rental Arbitrage"}`;
 
 export async function createInvestmentOpportunity(repository: InvestmentOpportunityRepository, command: OpportunityCommandContext & { ownerId?: string; name?: string; route: InvestmentOpportunityRoute; property: OpportunityPropertyReference; initialAnalysis?: SaveOpportunityAnalysisInput; tags?: readonly string[] }) {
+  return (await createInvestmentOpportunityWithResult(repository, command)).opportunity;
+}
+export async function createInvestmentOpportunityWithResult(repository: InvestmentOpportunityRepository, command: OpportunityCommandContext & { ownerId?: string; name?: string; route: InvestmentOpportunityRoute; property: OpportunityPropertyReference; initialAnalysis?: SaveOpportunityAnalysisInput; tags?: readonly string[]; saveOptions?: InvestmentOpportunitySaveOptions }) {
   if (command.ownerId && command.ownerId !== command.authenticatedOwnerId) throw new InvestmentOpportunityError("OPPORTUNITY_ACCESS_DENIED", "Authenticated ownership cannot be overridden.");
   const id = createInvestmentOpportunityId();
   const opportunity = InvestmentOpportunity.create({ id, ownerId: createOpportunityOwnerId(command.authenticatedOwnerId), name: command.name ?? defaultName(command.property, command.route), route: command.route, property: command.property, tags: command.tags, actor: command.actor, occurredAt: now(command), commandId: command.commandId });
   if (command.initialAnalysis) opportunity.addAnalysis(buildAnalysis(opportunity, command.initialAnalysis, command.actor), mutation(command));
-  await repository.save(opportunity, undefined, command.commandId);
-  return opportunity;
+  const saveResult = await repository.save(opportunity, undefined, command.commandId, command.saveOptions);
+  return Object.freeze({ opportunity, saveResult });
 }
 
 export async function saveOpportunityAnalysis(repository: InvestmentOpportunityRepository, command: OpportunityCommandContext & { opportunityId: InvestmentOpportunityId; analysis: SaveOpportunityAnalysisInput }) {
+  return (await saveOpportunityAnalysisWithResult(repository, command)).opportunity;
+}
+export async function saveOpportunityAnalysisWithResult(repository: InvestmentOpportunityRepository, command: OpportunityCommandContext & { opportunityId: InvestmentOpportunityId; analysis: SaveOpportunityAnalysisInput; saveOptions?: InvestmentOpportunitySaveOptions }) {
   const opportunity = await required(repository, command.opportunityId, command.authenticatedOwnerId);
   const expected = requireExpected(command, opportunity.version);
-  opportunity.addAnalysis(buildAnalysis(opportunity, command.analysis, command.actor), mutation(command));
-  await repository.save(opportunity, expected, command.commandId); return opportunity;
+  if (command.analysis.sourceAnalysisVersionId && !opportunity.props.analyses.some(value => value.id.value === command.analysis.sourceAnalysisVersionId)) throw new InvestmentOpportunityError("OPPORTUNITY_NOT_FOUND", "Investment opportunity was not found.");
+  opportunity.addAnalysis(buildAnalysis(opportunity, { ...command.analysis, ...(!command.analysis.sourceAnalysisVersionId && opportunity.props.currentAnalysisId ? { sourceAnalysisVersionId: opportunity.props.currentAnalysisId.value } : {}) }, command.actor), mutation(command));
+  const saveResult = await repository.save(opportunity, expected, command.commandId, command.saveOptions); return Object.freeze({ opportunity, saveResult });
 }
 export async function updateOpportunityStatus(repository: InvestmentOpportunityRepository, command: OpportunityCommandContext & { opportunityId: InvestmentOpportunityId; status: OpportunityStatus }) { const opportunity = await required(repository, command.opportunityId, command.authenticatedOwnerId), expected = requireExpected(command, opportunity.version); opportunity.transitionStatus(command.status, mutation(command)); await repository.save(opportunity, expected, command.commandId); return opportunity; }
 export async function updateInvestmentOpportunity(repository: InvestmentOpportunityRepository, command: OpportunityCommandContext & { opportunityId: InvestmentOpportunityId; name?: string; tags?: readonly string[] }) { const opportunity = await required(repository, command.opportunityId, command.authenticatedOwnerId), expected = requireExpected(command, opportunity.version); opportunity.updateMetadata({ ...mutation(command), name: command.name, tags: command.tags }); await repository.save(opportunity, expected, command.commandId); return opportunity; }
@@ -36,7 +43,7 @@ export const getOpportunityAnalysisById = (repository: InvestmentOpportunityRepo
 
 function buildAnalysis(opportunity: InvestmentOpportunity, input: SaveOpportunityAnalysisInput, actor: OpportunityActorReference): OpportunityAnalysis {
   const result = input.lifecycleResult, evidenceIds = result.analysis.supportingEvidence.map(e => e.id), propertyId = result.analysis.property.id;
-  return OpportunityAnalysis.create({ id: createOpportunityAnalysisId(), opportunityId: opportunity.id, sequence: opportunity.props.analyses.length + 1, route: result.acquisitionType, investmentAnalysisId: propertyId, resultSnapshot: input.snapshot ?? buildOpportunityAnalysisSnapshot(result, input.analyzedAt), sourceSummary: input.sourceSummary, policyVersions: { ...input.policyVersions, opportunitySnapshotSchema: "1" }, lineage: { ...input.lineage, investmentLifecycleResultId: input.lifecycleResultId, evidenceIds }, createdBy: actor, createdAt: new Date(input.analyzedAt) });
+  return OpportunityAnalysis.create({ id: createOpportunityAnalysisId(), opportunityId: opportunity.id, sequence: opportunity.props.analyses.length + 1, route: result.acquisitionType, investmentAnalysisId: propertyId, resultSnapshot: input.snapshot ?? buildOpportunityAnalysisSnapshot(result, input.analyzedAt), sourceSummary: input.sourceSummary, policyVersions: { ...input.policyVersions, opportunitySnapshotSchema: "1" }, lineage: { ...input.lineage, ...(input.sourceAnalysisVersionId ? { sourceAnalysisVersionId: input.sourceAnalysisVersionId } : {}), investmentLifecycleResultId: input.lifecycleResultId, evidenceIds }, createdBy: actor, createdAt: new Date(input.analyzedAt) });
 }
 async function required(repository: InvestmentOpportunityRepository, id: InvestmentOpportunityId, owner: string) { const value = await repository.findById(id, createOpportunityOwnerId(owner)); if (!value) throw new InvestmentOpportunityError("OPPORTUNITY_NOT_FOUND", "Investment opportunity was not found."); return value; }
 function requireExpected(context: OpportunityCommandContext, actual: number) { if (context.expectedVersion === undefined) throw new InvestmentOpportunityError("CONCURRENT_OPPORTUNITY_MODIFICATION", "An expected aggregate version is required."); if (context.expectedVersion !== actual) throw new InvestmentOpportunityError("CONCURRENT_OPPORTUNITY_MODIFICATION", "The opportunity was modified concurrently."); return context.expectedVersion; }

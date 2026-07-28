@@ -1,10 +1,19 @@
 export { hospitableRequest } from "./client";
 export { hospitableMessagingAdapter } from "./messaging-adapter";
 export {
+  createSupabaseHospitableMessageHydrationGateway,
+  hydrateHospitableReservationMessageHistory,
+  type HospitableMessageHydrationContext,
+  type HospitableMessageHydrationGateway,
+  type HospitableMessageHydrationResult,
+} from "./hydrate-messages";
+export {
+  getHospitableReservationMessagePage,
   getHospitableReservationMessages,
   normalizeHospitableMessage,
   sendHospitableReservationMessage,
   type HospitableReservationMessage,
+  type HospitableMessagePage,
   type NormalizedHospitableMessage,
 } from "./messages";
 

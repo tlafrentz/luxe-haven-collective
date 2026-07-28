@@ -5,6 +5,7 @@ export {
   getHospitableProperties,
   getHospitableReservationDetail,
   getHospitableReservations,
+  hydrateHospitableReservationMessageHistory,
   hospitableRequest,
   mapHospitableProperty,
   mapHospitableReservation,
@@ -30,6 +31,7 @@ export type {
   ReservationSyncResult,
   MessageSyncOptions,
   MessageSyncResult,
+  HospitableMessageHydrationResult,
 } from "./lib";
 
 export {

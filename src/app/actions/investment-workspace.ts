@@ -1,6 +1,7 @@
 "use server";
 
-import { requireRole } from "@/lib/auth/session";
+import { getSessionProfile } from "@/lib/auth/session";
+import { resolveWorkspaceAccessContext, SupabaseTeamAccessRepository } from "@/features/workspace";
 import {
   InvestmentWorkspaceAnalysisError,
   runInvestmentWorkspaceAnalysis,
@@ -35,7 +36,14 @@ export type InvestmentWorkspaceServerActionResult = Exclude<InvestmentWorkspaceA
 export async function analyzeInvestmentWorkspace(
   input: InvestmentWorkspaceActionInput,
 ): Promise<InvestmentWorkspaceServerActionResult> {
-  const { user } = await requireRole(["admin", "owner"]);
+  const { user } = await getSessionProfile();
+  if (!user) return { ok: false, error: { code: "INVALID_INPUT", message: "Sign in before analyzing an investment.", retryable: false } };
+  try {
+    const access = await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(), user.id);
+    if (!["owner", "administrator"].includes(access.role)) return { ok: false, error: { code: "INVALID_INPUT", message: "You are not authorized to analyze investments in this workspace.", retryable: false } };
+  } catch {
+    return { ok: false, error: { code: "INVALID_INPUT", message: "You are not authorized to analyze investments in this workspace.", retryable: false } };
+  }
   const parsed = investmentWorkspaceActionSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: { code: "INVALID_INPUT", message: "Review the workspace fields and try again.", retryable: false } };

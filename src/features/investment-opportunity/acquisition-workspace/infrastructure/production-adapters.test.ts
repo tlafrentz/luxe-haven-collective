@@ -74,7 +74,7 @@ function opportunityRepository(overrides: Partial<InvestmentOpportunityRepositor
   const value = opportunity();
   return {
     findById: vi.fn(async (id, owner) => id.equals(opportunityId) && owner.value === ownerId ? value : null),
-    save: vi.fn(async () => undefined),
+    save: vi.fn(async (opportunity) => ({ opportunityId: opportunity.id.value, aggregateVersion: opportunity.version, idempotent: false })),
     list: vi.fn(async () => ({ items: [] })),
     findAnalysisById: vi.fn(async () => null),
     listAnalyses: vi.fn(async () => []),

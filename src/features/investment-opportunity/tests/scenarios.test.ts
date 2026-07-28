@@ -16,20 +16,22 @@ const property = { marketPropertyId: "investment-platform-purchase", normalizedA
 const sourceSummary = { userSuppliedCount: 3, learningSuppliedCount: 0, marketSuppliedCount: 2, defaultSuppliedCount: 1, overrides: [], marketEvidenceAvailable: true } as const;
 
 describe("Investment scenario management", () => {
-  it("projects immutable analyses as independent scenario revisions and marks current preferred", async () => {
+  it("projects standalone scenarios from canonical source analysis versions and marks preferred independently", async () => {
     const opportunity = await opportunityWithTwoAnalyses();
-    const workspace = getInvestmentScenarioWorkspace(opportunity, { actorId: actor.id, evaluatedAt: at });
+    const records=scenarioRecords(opportunity);
+    const workspace = getInvestmentScenarioWorkspace(opportunity, { actorId: actor.id, evaluatedAt: at,records,preferredScenarioId:records[1].scenarioId });
 
     expect(workspace.scenarios.map(({ revision }) => revision)).toEqual([1, 2]);
     expect(workspace.scenarios[0].status).toBe("calculated");
     expect(workspace.scenarios[1].status).toBe("preferred");
-    expect(workspace.preferredScenario?.id).toBe(workspace.scenarios[1].id);
+    expect(workspace.preferredScenario?.id).toBe(records[1].scenarioId);
+    expect(workspace.scenarios[0].sourceAnalysisVersionId).toBe(opportunity.props.analyses[0].id.value);
     expect(workspace.scenarios[0].snapshot.calculationVersion).toBe("lifecycle-1");
     expect(Object.isFrozen(workspace.scenarios[0].snapshot.result)).toBe(true);
   });
 
   it("compares two to four scenarios and exposes changed assumptions and directional financial differences", async () => {
-    const workspace = getInvestmentScenarioWorkspace(await opportunityWithTwoAnalyses(), { actorId: actor.id, evaluatedAt: at });
+    const opportunity=await opportunityWithTwoAnalyses(),workspace = getInvestmentScenarioWorkspace(opportunity, { actorId: actor.id, evaluatedAt: at,records:scenarioRecords(opportunity) });
     const base = withValues(workspace.scenarios[0], "base", 68, 40000);
     const upside = withValues(workspace.scenarios[1], "upside", 74, 45000);
     const comparison = compareInvestmentScenarios([base, upside]);
@@ -55,14 +57,14 @@ describe("Investment scenario management", () => {
   });
 
   it("rejects invalid comparison cardinality and duplicates", async () => {
-    const [scenario] = getInvestmentScenarioWorkspace(await opportunityWithTwoAnalyses(), { actorId: actor.id }).scenarios;
+    const opportunity=await opportunityWithTwoAnalyses(),[scenario] = getInvestmentScenarioWorkspace(opportunity, { actorId: actor.id,records:scenarioRecords(opportunity) }).scenarios;
     expect(() => compareInvestmentScenarios([scenario])).toThrow("Select at least two scenarios.");
     expect(() => compareInvestmentScenarios([scenario, scenario])).toThrow("Select each scenario only once.");
     expect(() => compareInvestmentScenarios([scenario, withValues(scenario, "2"), withValues(scenario, "3"), withValues(scenario, "4"), withValues(scenario, "5")])).toThrow("Compare no more than four scenarios.");
   });
 
   it("evaluates immutable scenario hypotheses against append-only measured outcomes",async()=>{
-    const workspace=getInvestmentScenarioWorkspace(await opportunityWithTwoAnalyses(),{actorId:actor.id,evaluatedAt:at});
+    const opportunity=await opportunityWithTwoAnalyses(),workspace=getInvestmentScenarioWorkspace(opportunity,{actorId:actor.id,evaluatedAt:at,records:scenarioRecords(opportunity)});
     const scenario=withValues(workspace.scenarios[0],"measured",68,40000);
     const outcome:ScenarioOutcomeRevision={id:"outcome-1",scenarioId:scenario.id,opportunityId:scenario.opportunityId,revision:1,periodStart:"2026-01-01",periodEnd:"2026-12-31",actualMetrics:{annualRevenue:scenario.snapshot.result.financials.projectedAnnualRevenue.amount*1.1,occupancy:70,annualCashFlow:36000},recommendationOutcome:"successful",confidence:"high",evidence:[{source:"financial",label:"2026 reconciled operating statement",quality:"high"}],createdBy:actor.id,createdAt:at.toISOString()};
     const projection=buildScenarioLearningProjection(scenario,outcome,at.toISOString());
@@ -75,7 +77,7 @@ describe("Investment scenario management", () => {
   });
 
   it("represents absent operational evidence explicitly instead of as zero",async()=>{
-    const scenario=getInvestmentScenarioWorkspace(await opportunityWithTwoAnalyses(),{actorId:actor.id}).scenarios[0];
+    const opportunity=await opportunityWithTwoAnalyses(),scenario=getInvestmentScenarioWorkspace(opportunity,{actorId:actor.id,records:scenarioRecords(opportunity)}).scenarios[0];
     const projection=buildScenarioLearningProjection(scenario);
     expect(projection.state).toBe("no-outcome");
     expect(projection.metrics.every(item=>item.actual===undefined&&item.direction==="unavailable")).toBe(true);
@@ -84,7 +86,7 @@ describe("Investment scenario management", () => {
 
   it("overlays operational metadata without changing immutable calculation results",async()=>{
     const opportunity=await opportunityWithTwoAnalyses(),analysis=opportunity.props.analyses[0],original=analysis.props.resultSnapshot.financials.annualCashFlow.amount;
-    const workspace=getInvestmentScenarioWorkspace(opportunity,{actorId:actor.id,records:[{scenarioId:analysis.id.value,name:"Cash Purchase",scenarioType:"cash-purchase",notes:"Seller prefers a quick close.",status:"archived",revision:3,createdAt:at.toISOString(),updatedAt:at.toISOString(),archivedAt:at.toISOString()}],events:[{id:"event-1",scenarioId:analysis.id.value,eventType:"scenario-archived",safeSummary:"Scenario archived without deleting its history.",occurredAt:at.toISOString()}]});
+    const workspace=getInvestmentScenarioWorkspace(opportunity,{actorId:actor.id,records:[{scenarioId:"scenario-cash",sourceAnalysisVersionId:analysis.id.value,name:"Cash Purchase",scenarioType:"cash-purchase",notes:"Seller prefers a quick close.",status:"archived",revision:3,assumptions:{},output:analysis.props.resultSnapshot,createdBy:actor.id,createdAt:at.toISOString(),updatedAt:at.toISOString(),archivedAt:at.toISOString()}],events:[{id:"event-1",scenarioId:"scenario-cash",eventType:"scenario-archived",safeSummary:"Scenario archived without deleting its history.",occurredAt:at.toISOString()}]});
     expect(workspace.scenarios[0]).toMatchObject({name:"Cash Purchase",type:"cash-purchase",status:"archived",metadataRevision:3,notes:"Seller prefers a quick close."});
     expect(workspace.scenarios[0].snapshot.result.financials.annualCashFlow.amount).toBe(original);
     expect(workspace.archivedScenarios).toHaveLength(1);
@@ -97,6 +99,10 @@ async function opportunityWithTwoAnalyses() {
   let opportunity = await createInvestmentOpportunity(repository, { authenticatedOwnerId: actor.id, route: "purchase", property, actor, occurredAt: at });
   opportunity = await saveOpportunityAnalysis(repository, { authenticatedOwnerId: actor.id, opportunityId: opportunity.id, expectedVersion: 1, actor, occurredAt: at, analysis: { lifecycleResult: createPurchaseLifecycleResult(), lifecycleResultId: "lifecycle-1", sourceSummary, analyzedAt: at } });
   return saveOpportunityAnalysis(repository, { authenticatedOwnerId: actor.id, opportunityId: opportunity.id, expectedVersion: 2, actor, occurredAt: at, analysis: { lifecycleResult: createPurchaseLifecycleResult(), lifecycleResultId: "lifecycle-2", sourceSummary, analyzedAt: at } });
+}
+
+function scenarioRecords(opportunity:Awaited<ReturnType<typeof opportunityWithTwoAnalyses>>){
+  return opportunity.props.analyses.map((analysis,index)=>({scenarioId:`scenario-${index+1}`,sourceAnalysisVersionId:analysis.id.value,name:index===0?"Base Scenario":"Upside Scenario",scenarioType:index===0?"base":"custom",status:"active",revision:1,assumptions:analysis.props.resultSnapshot.reanalysis?.userAssumptions??{},output:analysis.props.resultSnapshot,createdBy:actor.id,createdAt:analysis.props.createdAt.toISOString(),updatedAt:analysis.props.createdAt.toISOString()}));
 }
 
 function withValues(scenario: InvestmentScenario, id: string, occupancy = 68, cashFlow = scenario.snapshot.result.financials.annualCashFlow.amount): InvestmentScenario {

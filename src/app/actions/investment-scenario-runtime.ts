@@ -15,23 +15,26 @@ export async function getInvestmentScenarioWorkspaceRequest(opportunityId: strin
   const context = await getInvestmentOpportunityRequestContext();
   if (!context.ok) return { ok: false as const, code: "SCENARIO_NOT_AUTHENTICATED" as const };
   try {
+    if(!await context.authorizeOpportunity(opportunityId,"scenario.read"))return{ok:false as const,code:"SCENARIO_NOT_FOUND" as const};
     const opportunity = await context.repository.findById(
       createInvestmentOpportunityId(opportunityId),
       createOpportunityOwnerId(context.ownerId),
     );
     if (!opportunity) return { ok: false as const, code: "SCENARIO_NOT_FOUND" as const };
     const client=await createClient();
-    const[{data:records},{data:events}]=await Promise.all([
+    const[{data:records},{data:events},{data:pointer}]=await Promise.all([
       client.from("investment_scenarios").select("*").eq("opportunity_id",opportunityId),
       client.from("investment_scenario_events").select("*").eq("opportunity_id",opportunityId).order("occurred_at",{ascending:false}).limit(200),
+      client.from("investment_opportunities").select("preferred_scenario_id").eq("id",opportunityId).maybeSingle(),
     ]);
     return {
       ok: true as const,
       workspace: getInvestmentScenarioWorkspace(opportunity, {
         actorId: context.ownerId,
         canManage: true,
-        records:(records??[]).map(row=>({scenarioId:row.scenario_id,name:row.name,scenarioType:row.scenario_type,description:row.description??undefined,notes:row.notes??undefined,status:row.status,revision:row.revision,createdAt:row.created_at,updatedAt:row.updated_at,archivedAt:row.archived_at??undefined})),
+        records:(records??[]).map(row=>({scenarioId:row.scenario_id,sourceAnalysisVersionId:row.source_analysis_version_id,name:row.name,scenarioType:row.scenario_type,description:row.description??undefined,notes:row.notes??undefined,status:row.status,revision:row.revision,assumptions:(row.assumptions_snapshot??{}) as Readonly<Record<string,string|number|boolean>>,output:row.output_snapshot,createdBy:row.created_by_profile_id,createdAt:row.created_at,updatedAt:row.updated_at,archivedAt:row.archived_at??undefined})),
         events:(events??[]).map(row=>({id:row.id,scenarioId:row.scenario_id,eventType:row.event_type,safeSummary:row.safe_summary,occurredAt:row.occurred_at})),
+        preferredScenarioId:pointer?.preferred_scenario_id??undefined,
       }),
     };
   } catch {
@@ -59,17 +62,21 @@ export async function saveScenarioComparisonSelectionAction(formData:FormData){
 }
 
 export async function createInvestmentScenarioAction(formData:FormData){
-  const opportunityId=String(formData.get("opportunityId")??""),sourceScenarioId=String(formData.get("sourceScenarioId")??""),expectedVersion=Number(formData.get("expectedVersion")),name=String(formData.get("name")??"").trim(),type=String(formData.get("scenarioType")??"custom");
-  if(!opportunityId||!name||!Number.isInteger(expectedVersion)||!["base","cash-purchase","rental-arbitrage","seller-financing","custom"].includes(type))throw new Error("scenario_invalid");
-  const client=await createClient(),scenarioId=`scenario-${crypto.randomUUID()}`;
-  const{error}=await client.rpc("create_investment_scenario",{p_opportunity_id:opportunityId,p_source_scenario_id:sourceScenarioId,p_scenario_id:scenarioId,p_name:name,p_scenario_type:type,p_description:String(formData.get("description")??"").trim(),p_notes:String(formData.get("notes")??"").trim(),p_expected_version:expectedVersion,p_command_id:String(formData.get("commandId")??crypto.randomUUID())});
+  const opportunityId=String(formData.get("opportunityId")??""),sourceAnalysisVersionId=String(formData.get("sourceAnalysisVersionId")??""),sourceScenarioId=String(formData.get("sourceScenarioId")??""),expectedVersion=Number(formData.get("expectedVersion")),name=String(formData.get("name")??"").trim(),type=String(formData.get("scenarioType")??"custom");
+  if(!opportunityId||!sourceAnalysisVersionId||!name||!Number.isInteger(expectedVersion)||!["base","cash-purchase","rental-arbitrage","seller-financing","custom"].includes(type))throw new Error("scenario_invalid");
+  const context=await getInvestmentOpportunityRequestContext();if(!context.ok||!await context.authorizeOpportunity(opportunityId,"scenario.create",sourceAnalysisVersionId))throw new Error("scenario_permission_denied");
+  const client=await createClient(),scenarioId=`scenario-${crypto.randomUUID()}`,commandId=String(formData.get("commandId")??crypto.randomUUID());
+  const{data,error}=await client.rpc("create_investment_scenario",{p_opportunity_id:opportunityId,p_source_analysis_version_id:sourceAnalysisVersionId,p_source_scenario_id:sourceScenarioId,p_scenario_id:scenarioId,p_name:name,p_scenario_type:type,p_description:String(formData.get("description")??"").trim(),p_notes:String(formData.get("notes")??"").trim(),p_expected_version:expectedVersion,p_command_id:commandId});
   if(error)throw new Error(scenarioError(error.message));
-  revalidateScenario(opportunityId);redirect(`/dashboard/investments/opportunities/${opportunityId}/scenarios/${scenarioId}`);
+  const persistedScenarioId=data?.[0]?.scenario_id??scenarioId;
+  console.info("investment_scenario_created",{commandId,opportunityId,analysisVersionId:sourceAnalysisVersionId,scenarioId:persistedScenarioId,sourceScenarioId:sourceScenarioId||null});
+  revalidateScenario(opportunityId);redirect(`/dashboard/investments/opportunities/${opportunityId}/scenarios/${persistedScenarioId}`);
 }
 
 export async function mutateInvestmentScenarioAction(formData:FormData){
   const opportunityId=String(formData.get("opportunityId")??""),scenarioId=String(formData.get("scenarioId")??""),operation=String(formData.get("operation")??"save"),expectedVersion=Number(formData.get("expectedVersion")),expectedRevision=Number(formData.get("expectedRevision"));
   if(!opportunityId||!scenarioId||!["save","archive","restore","preferred"].includes(operation)||!Number.isInteger(expectedVersion)||!Number.isInteger(expectedRevision))throw new Error("scenario_invalid");
+  const context=await getInvestmentOpportunityRequestContext();if(!context.ok||!await context.authorizeOpportunity(opportunityId,"scenario.modify"))throw new Error("scenario_permission_denied");
   const client=await createClient(),{error}=await client.rpc("mutate_investment_scenario",{p_opportunity_id:opportunityId,p_scenario_id:scenarioId,p_operation:operation,p_name:String(formData.get("name")??"").trim(),p_description:String(formData.get("description")??"").trim(),p_notes:String(formData.get("notes")??"").trim(),p_expected_scenario_revision:expectedRevision,p_expected_version:expectedVersion,p_command_id:String(formData.get("commandId")??crypto.randomUUID())});
   if(error)throw new Error(scenarioError(error.message));
   revalidateScenario(opportunityId);

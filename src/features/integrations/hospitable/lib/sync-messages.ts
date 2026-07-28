@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getHospitableReservationMessages,normalizeHospitableMessage } from "./messages";
+import { hydrateHospitableReservationMessageHistory } from "./hydrate-messages";
 import { runInBatches } from "./run-in-batches";
 
 const PROVIDER="hospitable";
@@ -8,7 +8,7 @@ const MAX_RUNNING_SYNC_AGE_MINUTES=30;
 export const MESSAGE_SYNC_ALREADY_RUNNING_ERROR="A Hospitable message sync is already running.";
 
 type ReservationConversationRow=Readonly<{booking_id:string;reservation_id:string;conversation_id:string}>;
-export type MessageSyncOptions=Readonly<{batchSize?:number;workspaceId?:string;mode?:"manual"|"automatic"|"incremental"|"recovery"}>;
+export type MessageSyncOptions=Readonly<{batchSize?:number;workspaceId?:string;mode?:"manual"|"automatic"|"incremental"|"recovery";signal?:AbortSignal}>;
 export type MessageSyncResult=Readonly<{
   connectionId:string;
   reservations:number;
@@ -21,8 +21,8 @@ export type MessageSyncResult=Readonly<{
 }>;
 
 export async function syncHospitableMessages(options:MessageSyncOptions={}):Promise<MessageSyncResult>{
-  const batchSize=options.batchSize??5;
-  if(!Number.isInteger(batchSize)||batchSize<1||batchSize>10)throw new Error("Message sync batch size must be between 1 and 10.");
+  const batchSize=options.batchSize??1;
+  if(!Number.isInteger(batchSize)||batchSize!==1)throw new Error("Hospitable message hydration concurrency must be 1.");
   const admin=createAdminClient();
   let connectionQuery=admin.from("integration_connections").select("id,workspace_id").eq("provider",PROVIDER).eq("name",CONNECTION_NAME);
   if(options.workspaceId)connectionQuery=connectionQuery.eq("workspace_id",options.workspaceId);
@@ -40,28 +40,18 @@ export async function syncHospitableMessages(options:MessageSyncOptions={}):Prom
     result.reservations=rows.length;
     await runInBatches({items:rows,batchSize,handler:async(link:ReservationConversationRow)=>{
       try{
-        const messages=await getHospitableReservationMessages(link.reservation_id);
-        for(const raw of messages){
-          const message=normalizeHospitableMessage(raw);
-          if(!message){result.failed+=1;result.errors.push(`Reservation ${link.reservation_id} returned an unsupported message.`);continue;}
-          const{data:inserted,error}=await admin.rpc("append_guest_provider_message",{
-            p_workspace_id:workspaceId,
-            p_conversation_id:String(link.conversation_id),
-            p_provider:PROVIDER,
-            p_provider_message_id:message.providerMessageId,
-            p_sender_type:message.senderType,
-            p_sender_display_name:message.senderDisplayName,
-            p_body:message.body,
-            p_message_channel:message.platform,
-            p_direction:message.direction,
-            p_occurred_at:message.occurredAt,
-            p_backfill:true,
-          });
-          result.processed+=1;
-          if(error){result.failed+=1;result.errors.push(`Message ${message.providerMessageId}: ${error.message}`);}
-          else if(inserted)result.created+=1;
-          else result.skipped+=1;
-        }
+        options.signal?.throwIfAborted();
+        const hydrated=await hydrateHospitableReservationMessageHistory({
+          workspaceId,
+          reservationId:link.reservation_id,
+          requestId:`${syncRunId}:${link.booking_id}`,
+          signal:options.signal,
+        });
+        result.processed+=hydrated.observed;
+        result.created+=hydrated.inserted;
+        result.skipped+=hydrated.duplicates;
+        result.failed+=hydrated.rejected+(hydrated.state==="partial"||hydrated.state==="failed"?1:0);
+        if(hydrated.state==="partial"||hydrated.state==="failed")result.errors.push(`Reservation ${link.reservation_id} message hydration ${hydrated.state}.`);
       }catch(error){
         result.failed+=1;
         result.errors.push(`Reservation ${link.reservation_id}: ${error instanceof Error?error.message:"Unexpected message sync failure."}`);

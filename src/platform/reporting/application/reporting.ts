@@ -33,7 +33,7 @@ export function validateReportRequest(input: {
   if (input.request.workspaceId !== input.authorizedWorkspaceId || input.request.scope.workspaceId !== input.authorizedWorkspaceId) throw new ReportingError("report_permission_denied", "The report scope is not authorized.");
   if (!definitionValue.supportedScopes.includes(input.request.scope.type)) throw new ReportingError("report_scope_invalid", "The selected scope is incompatible with this report.");
   if (definitionValue.supportsPeriods && !input.request.period) throw new ReportingError("report_scope_invalid", "A reporting period is required.");
-  if (input.request.reportType === "investment-decision" && (!input.request.scope.opportunityId || !input.request.scope.scenarioId)) throw new ReportingError("report_source_not_ready", "A calculated Investment Scenario is required.");
+  if (input.request.reportType === "investment-decision" && (!input.request.scope.opportunityId || !input.request.scope.analysisVersionId)) throw new ReportingError("report_source_not_ready", "A saved Investment Analysis Version is required.");
   if (!input.hasEntitlement) throw new ReportingError("report_entitlement_required", definitionValue.requiredEntitlementKey);
   if (input.template.reportType !== input.request.reportType || input.template.status !== "active") throw new ReportingError("report_template_inactive", "The selected template is not active for this report type.");
   const omitted = new Set(input.request.sectionConfiguration.filter((item) => !item.included).map((item) => item.key));

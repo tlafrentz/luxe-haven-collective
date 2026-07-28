@@ -4,7 +4,7 @@ import { createInvestmentOpportunityId, listOpportunityNotes, loadOpportunityDet
 import { OpportunityDetail } from "@/features/investment-opportunity/components";
 
 export default async function InvestmentOpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params, context = await getInvestmentOpportunityRequestContext(); if (!context.ok) notFound();
+  const { id } = await params, context = await getInvestmentOpportunityRequestContext(); if (!context.ok||!await context.authorizeOpportunity(id,"opportunity.read")) notFound();
   const opportunity = await loadOpportunityDetail(context.repository, context.ownerId, createInvestmentOpportunityId(id)); if (!opportunity) notFound();
   const notes = await listOpportunityNotes(context.noteRepository, id, context.ownerId);
   return <OpportunityDetail opportunity={opportunity} notes={notes} />;

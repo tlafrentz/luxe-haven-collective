@@ -67,13 +67,26 @@ export type OpportunityAnalysisSnapshot = Readonly<{
   confidence: OpportunityConfidenceSnapshot; financials: OpportunityFinancialSnapshot;
   market: Readonly<{ name: string; submarket?: string; medianAdr: OpportunityMoneySnapshot; medianOccupancy: OpportunityMetricSnapshot; trend: string }>;
   risks: readonly Readonly<{ id: string; title: string; description: string; severity: string; probability: number; mitigation?: string }>[];
-  dataGaps: readonly Readonly<{ code: string; description: string }>[]; evidence: readonly Readonly<{ id: string; title: string; source: string; confidence: string }>[];
+  dataGaps: readonly Readonly<{ code: string; description: string }>[]; evidence: readonly Readonly<{ id: string; title: string; source: string; confidence: string; providerTimestamp?:string; freshness?:string; observationIds?:readonly string[]; comparableIds?:readonly string[] }>[];
+  assumptions?: readonly Readonly<{
+    key: string;
+    value: string | number | boolean | null;
+    source: string;
+    unit?: "currency" | "percentage" | "count" | "boolean" | "text";
+    currency?: "USD";
+    period?: "nightly" | "monthly" | "annual" | "term" | "once";
+    mode?: "fixed" | "percentage";
+    explicitlyOverridden?: boolean;
+    overriddenValue?: string | number | boolean | null;
+    overriddenSource?: string;
+    sourceTimestamp?: string;
+  }>[];
   reanalysis?: Readonly<{ userAssumptions: Readonly<Record<string, string | number | boolean>> }>;
   analyzedAt: Date;
 }>;
 export type OpportunityAnalysisSourceSummary = Readonly<{ userSuppliedCount: number; learningSuppliedCount: number; marketSuppliedCount: number; defaultSuppliedCount: number; overrides: readonly Readonly<{ assumption: string; winningSource: Exclude<OpportunitySource, "derived">; overriddenSource?: "learning" | "market" | "default" }>[]; marketEvidenceAvailable: boolean; marketAnalysisStatus?: string }>;
 export type OpportunityAnalysisPolicyVersions = Readonly<{ investmentAnalysisPolicy?: string; investmentRecommendationPolicy?: string; investmentConfidencePolicy?: string; marketAnalysisPolicy?: string; comparableQualificationPolicy?: string; opportunitySnapshotSchema: "1" }>;
-export type OpportunityAnalysisLineage = Readonly<{ investmentLifecycleResultId: string; investmentAnalysisContextId?: string; investmentMarketContextId?: string; marketAnalysisReportId?: string; evidenceIds: readonly string[]; decisionId?: string; recommendationId?: string }>;
+export type OpportunityAnalysisLineage = Readonly<{ investmentLifecycleResultId: string; sourceAnalysisVersionId?: string; investmentAnalysisContextId?: string; investmentMarketContextId?: string; marketAnalysisReportId?: string; evidenceIds: readonly string[]; decisionId?: string; recommendationId?: string }>;
 
 export type OpportunityAnalysisProps = Readonly<{ id: OpportunityAnalysisId; opportunityId: InvestmentOpportunityId; sequence: number; route: InvestmentOpportunityRoute; investmentAnalysisId: string; investmentDecisionId?: string; marketAnalysisId?: string; resultSnapshot: OpportunityAnalysisSnapshot; sourceSummary: OpportunityAnalysisSourceSummary; policyVersions: OpportunityAnalysisPolicyVersions; lineage: OpportunityAnalysisLineage; createdBy: OpportunityActorReference; createdAt: Date }>;
 export class OpportunityAnalysis {
@@ -87,8 +100,8 @@ export class OpportunityAnalysis {
   get lineage() { return structuredClone(this.state.lineage); } get createdAt() { return new Date(this.state.createdAt); }
 }
 
-export type OpportunityActivityType = "opportunity-created" | "analysis-saved" | "status-changed" | "name-changed" | "tags-changed" | "note-added" | "opportunity-archived" | "opportunity-restored";
-export type OpportunityActivity = Readonly<{ id: OpportunityActivityId; opportunityId: InvestmentOpportunityId; type: OpportunityActivityType; actor: OpportunityActorReference; details: Readonly<Record<string, unknown>>; occurredAt: Date; aggregateVersion: number; commandId?: string }>;
+export type OpportunityActivityType = "opportunity-created" | "analysis-saved" | "scenario-created" | "report-generated" | "reanalysis-started" | "status-changed" | "name-changed" | "tags-changed" | "note-added" | "opportunity-archived" | "opportunity-restored";
+export type OpportunityActivity = Readonly<{ id: OpportunityActivityId; opportunityId: InvestmentOpportunityId; analysisVersionId?: OpportunityAnalysisId; type: OpportunityActivityType; actor: OpportunityActorReference; details: Readonly<Record<string, unknown>>; occurredAt: Date; aggregateVersion: number; commandId?: string }>;
 
 export type OpportunityNoteId = Identifier<`opportunity-note-${string}`>;
 export const createOpportunityNoteId = (value?: string): OpportunityNoteId => Identifier.create((value ?? `opportunity-note-${crypto.randomUUID()}`) as `opportunity-note-${string}`);

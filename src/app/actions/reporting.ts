@@ -8,7 +8,8 @@ import { resolveWorkspaceAccessContext, SupabaseTeamAccessRepository } from "@/f
 import { getCommerceAccessWorkspace } from "./commerce-access";
 import { getInvestmentScenarioWorkspaceRequest } from "./investment-scenario-runtime";
 import { getInvestmentScenarioLearningRequest } from "./investment-scenario-learning-runtime";
-import { compareInvestmentScenarios } from "@/features/investment-opportunity";
+import { compareInvestmentScenarios, readImmutableAnalysis } from "@/features/investment-opportunity";
+import { getInvestmentOpportunityRequestContext } from "./investment-opportunity-runtime";
 import { getFinancialOverviewRouteState } from "./financial-overview-runtime";
 import { getPortfolioOverviewRouteState } from "./portfolio-overview-runtime";
 import { getAnalyticsDashboardProjection } from "@/features/analytics";
@@ -59,7 +60,7 @@ export async function getReportWorkspace(filters?: Readonly<{ status?: string; t
   return Object.freeze({ reports: data ?? [], jobs: jobs ?? [], total: count ?? 0, page, pageSize, evaluatedAt: new Date().toISOString() });
 }
 
-export async function getReportComposerContext(input?: Readonly<{ workspaceId?: string; reportType?: string; sourceId?: string; scenarioId?: string }>) {
+export async function getReportComposerContext(input?: Readonly<{ workspaceId?: string; reportType?: string; sourceId?: string; scenarioId?: string; analysisVersionId?:string }>) {
   const client = await createClient();
   const { data: { user } } = await client.auth.getUser();
   if (!user) return Object.freeze({ state: "insufficient-permission" as ReportPreflightState, message: "Sign in to create a report.", nextAction: "/login" });
@@ -68,7 +69,7 @@ export async function getReportComposerContext(input?: Readonly<{ workspaceId?: 
     const commerce = await getCommerceAccessWorkspace();
     const [{ data: properties }, { data: opportunities }] = await Promise.all([
       client.from("properties").select("id,name,status").eq("owner_id", access.ownerId).order("name").limit(500),
-      client.from("investment_opportunities").select("id,name,status").eq("owner_id", access.ownerProfileId).order("updated_at", { ascending: false }).limit(200),
+      client.from("investment_opportunities").select("id,name,status").eq("workspace_id", access.workspaceId).order("updated_at", { ascending: false }).limit(200),
     ]);
     const entitlements = new Set((commerce?.entitlements ?? []).filter(item => item.status === "available").map(item => item.key));
     const definitions = reportDefinitions.map(definition => Object.freeze({
@@ -80,15 +81,19 @@ export async function getReportComposerContext(input?: Readonly<{ workspaceId?: 
     const selected = getReportDefinition((input?.reportType ?? "portfolio-performance") as ReportType);
     const scenarioWorkspace=selected?.key==="investment-decision"&&input?.sourceId?await getInvestmentScenarioWorkspaceRequest(input.sourceId):null;
     const selectedScenario=input?.scenarioId??(scenarioWorkspace?.ok?scenarioWorkspace.workspace.preferredScenario?.id:undefined);
+    const{data:versions}=selected?.key==="investment-decision"&&input?.sourceId?await client.from("investment_opportunity_analyses").select("id,sequence,created_at").eq("opportunity_id",input.sourceId).order("sequence",{ascending:false}):{data:[]};
+    const selectedAnalysisVersion=input?.analysisVersionId??(selectedScenario&&scenarioWorkspace?.ok?scenarioWorkspace.workspace.scenarios.find(item=>item.id===selectedScenario)?.sourceAnalysisVersionId:undefined);
     const state: ReportPreflightState = !selected ? "unsupported-scope"
       : !entitlements.has(selected.requiredEntitlementKey) ? "missing-entitlement"
       : selected.key === "property-performance" && !input?.sourceId ? "configuration-incomplete"
-      : selected.key === "investment-decision" && (!input?.sourceId || !selectedScenario) ? "configuration-incomplete"
+      : selected.key === "investment-decision" && (!input?.sourceId || !selectedAnalysisVersion) ? "configuration-incomplete"
       : "ready";
     return Object.freeze({
       state, workspaceId: access.workspaceId, role: access.role, definitions,
       properties: properties ?? [], opportunities: opportunities ?? [],
       scenarios:scenarioWorkspace?.ok?scenarioWorkspace.workspace.activeScenarios.map(item=>({id:item.id,name:item.name,preferred:item.preferred,version:item.metadataRevision??1})):[],
+      versions:(versions??[]).map(item=>({id:item.id,sequence:item.sequence,createdAt:item.created_at})),
+      selectedAnalysisVersion,
       selectedScenario,
       selectedType: selected?.key ?? "portfolio-performance",
       message: preflightMessage(state), nextAction: state === "missing-entitlement" ? "/dashboard/billing" : undefined,
@@ -105,6 +110,7 @@ export async function getGeneratedReportView(reportId: string) {
   if (!user || !reportId.startsWith("report-")) return null;
   const { data: report } = await client.from("generated_reports").select("*").eq("id", reportId).maybeSingle();
   if (!report) return null;
+  if(report.report_type==="investment-decision"&&report.opportunity_id){const context=await getInvestmentOpportunityRequestContext();if(!context.ok||!await context.authorizeOpportunity(report.opportunity_id,"report.read",report.analysis_version_id??undefined))return null;}
   const [{ data: artifacts }, { data: artifactJobs }, { data: shares }, { data: activity }, { data: versions }] = await Promise.all([
     client.from("report_artifacts").select("id,artifact_type,status,size_bytes,checksum,renderer_version,created_at").eq("report_id", reportId).order("created_at", { ascending: false }),
     client.from("report_artifact_jobs").select("id,artifact_type,status,attempts,idempotency_key,renderer_version,failure_code,failure_message,retryable,created_at,completed_at").eq("report_id", reportId).order("created_at", { ascending: false }).limit(50),
@@ -175,16 +181,17 @@ export async function generateReportAction(formData: FormData) {
   }
   const sourceId = String(formData.get("sourceId") ?? "");
   let scenarioId = String(formData.get("scenarioId") ?? "");
+  let analysisVersionId=String(formData.get("analysisVersionId")??"");
   const requestedComparisonIds=String(formData.get("comparisonScenarioIds")??"").split(",").map(value=>value.trim()).filter(Boolean);
-  let scenarioIdentity:{name:string;version:number;notes?:string}|undefined;
-  if(reportType==="investment-decision"){const scenarioWorkspace=await getInvestmentScenarioWorkspaceRequest(sourceId);if(!scenarioWorkspace.ok)throw new Error("report_source_not_ready");const selectedScenario=scenarioWorkspace.workspace.scenarios.find(item=>item.id===scenarioId)??scenarioWorkspace.workspace.preferredScenario;if(!selectedScenario)throw new Error("report_source_not_ready");if(requestedComparisonIds.length&&(requestedComparisonIds.length<2||requestedComparisonIds.length>4||new Set(requestedComparisonIds).size!==requestedComparisonIds.length||requestedComparisonIds.some(id=>!scenarioWorkspace.workspace.scenarios.some(item=>item.id===id))))throw new Error("report_comparison_invalid");scenarioId=selectedScenario.id;scenarioIdentity={name:selectedScenario.name,version:selectedScenario.metadataRevision??1,...(selectedScenario.notes?{notes:selectedScenario.notes}:{})};}
-  const scope = scopeFor(reportType, workspaceId, sourceId, scenarioId,scenarioIdentity?.name);
+  let scenarioIdentity:{name:string;version:number;analysisVersionId:string;notes?:string}|undefined;
+  if(reportType==="investment-decision"){const scenarioWorkspace=await getInvestmentScenarioWorkspaceRequest(sourceId);if(!scenarioWorkspace.ok)throw new Error("report_source_not_ready");const selectedScenario=scenarioId?scenarioWorkspace.workspace.scenarios.find(item=>item.id===scenarioId):undefined;if(requestedComparisonIds.length&&(requestedComparisonIds.length<2||requestedComparisonIds.length>4||new Set(requestedComparisonIds).size!==requestedComparisonIds.length||requestedComparisonIds.some(id=>!scenarioWorkspace.workspace.scenarios.some(item=>item.id===id))))throw new Error("report_comparison_invalid");if(selectedScenario){scenarioId=selectedScenario.id;if(analysisVersionId&&analysisVersionId!==selectedScenario.sourceAnalysisVersionId)throw new Error("report_source_lineage_mismatch");analysisVersionId=selectedScenario.sourceAnalysisVersionId;scenarioIdentity={name:selectedScenario.name,version:selectedScenario.metadataRevision??1,analysisVersionId,...(selectedScenario.notes?{notes:selectedScenario.notes}:{})};}if(!analysisVersionId)throw new Error("report_source_not_ready");const immutableContext=await getInvestmentOpportunityRequestContext();if(!immutableContext.ok||immutableContext.workspaceId!==workspaceId||!await immutableContext.authorizeOpportunity(sourceId,"report.generate",analysisVersionId)||!await readImmutableAnalysis(immutableContext.repository,{ownerId:immutableContext.ownerId,opportunityId:sourceId,analysisVersionId}))throw new Error("report_source_not_ready");}
+  const scope = scopeFor(reportType, workspaceId, sourceId, analysisVersionId,scenarioId,scenarioIdentity?.name);
   const period = periodFor(reportType, String(formData.get("periodPreset") ?? "current-month"));
   const requestId = `report-request-${crypto.randomUUID()}`;
   const template = templateFor(reportType);
   const request: ReportRequest = Object.freeze({
     id: requestId, workspaceId, requestedByProfileId: user.id, reportType, scope,
-    ...(period ? { period } : {}), sourceContext: Object.freeze(sourceContext(reportType, sourceId, scenarioId,scenarioIdentity,requestedComparisonIds)),
+    ...(period ? { period } : {}), sourceContext: Object.freeze(sourceContext(reportType, sourceId,analysisVersionId, scenarioId,scenarioIdentity,requestedComparisonIds)),
     templateId: template.id, title: String(formData.get("title") ?? "").trim() || undefined,
     subtitle: String(formData.get("subtitle") ?? "").trim() || undefined,
     sectionConfiguration: Object.freeze([]), status: "generating", idempotencyKey, createdAt: new Date().toISOString(),
@@ -209,7 +216,7 @@ export async function generateReportAction(formData: FormData) {
     const { error: reportError } = await admin.from("generated_reports").insert({
       id: report.id, report_number: report.reportNumber, report_request_id: requestId, workspace_id: workspaceId,
       generated_by_profile_id: user.id, report_type: reportType, status: "generated", title: report.title, subtitle: report.subtitle,
-      scope_type: scope.type, property_id: scope.propertyId, opportunity_id: scope.opportunityId, scenario_id: scope.scenarioId,
+      scope_type: scope.type, property_id: scope.propertyId, opportunity_id: scope.opportunityId, scenario_id: scope.scenarioId, analysis_version_id: scope.analysisVersionId,
       scope_snapshot: scope, period_snapshot: period, source_context_snapshot: request.sourceContext,
       projection_snapshot: report.projectionSnapshot, snapshot_schema_version: report.snapshotSchemaVersion,
       snapshot_size_bytes: new TextEncoder().encode(snapshot).byteLength, template_id: template.id, template_version: template.version,
@@ -450,17 +457,20 @@ async function propertyProjection(request:ReportRequest):Promise<ReportProjectio
 async function investmentProjection(request: ReportRequest): Promise<ReportProjection> {
   const result = await getInvestmentScenarioWorkspaceRequest(request.scope.opportunityId!);
   if (!result.ok) throw new Error("report_source_not_ready");
-  const scenario = result.workspace.scenarios.find((item) => item.id === request.scope.scenarioId);
-  if (!scenario) throw new Error("report_source_not_ready");
-  const snapshot = scenario.snapshot.result, confidenceLevel = confidence(snapshot.confidence.level);
+  const scenario = request.scope.scenarioId?result.workspace.scenarios.find((item) => item.id === request.scope.scenarioId):undefined;
+  const context=await getInvestmentOpportunityRequestContext();
+  if(!context.ok||context.workspaceId!==request.workspaceId)throw new Error("report_source_not_ready");
+  const immutable=await readImmutableAnalysis(context.repository,{ownerId:context.ownerId,opportunityId:request.scope.opportunityId!,analysisVersionId:request.scope.analysisVersionId!});
+  if(!immutable)throw new Error("report_source_not_ready");
+  const snapshot = immutable.snapshot, confidenceLevel = confidence(snapshot.confidence.level);
   const comparisonIds=(request.sourceContext.comparedScenarioIds??"").split(",").filter(Boolean);
   const comparedScenarios=comparisonIds.flatMap(id=>{const item=result.workspace.scenarios.find(candidate=>candidate.id===id);return item?[item]:[]});
-  const comparison=comparedScenarios.length>=2?compareInvestmentScenarios(comparedScenarios,new Date(scenario.snapshot.capturedAt)):null;
-  const learningResult=await getInvestmentScenarioLearningRequest(request.scope.opportunityId!,scenario.id);
-  const learning=learningResult.ok&&learningResult.projection?.state!=="no-outcome"?learningResult.projection:null;
+  const comparison=comparedScenarios.length>=2?compareInvestmentScenarios(comparedScenarios,new Date(snapshot.analyzedAt)):null;
+  const learningResult=scenario?await getInvestmentScenarioLearningRequest(request.scope.opportunityId!,scenario.id):null;
+  const learning=learningResult?.ok&&learningResult.projection?.state!=="no-outcome"?learningResult.projection:null;
   const money = (key: string, label: string, value?: { amount: number; currency: string }): ReportMetric => metric(key, label, value ? new Intl.NumberFormat("en-US", { style: "currency", currency: value.currency }).format(value.amount) : "Unavailable", "projected");
   const comparisonSection=comparison?section("scenario-comparison","Scenario Comparison",comparison.executiveSummary.decision,comparison.metrics.map(item=>metric(`comparison-${item.key}`,item.label,item.bestScenarioIds.length?`${comparedScenarios.find(scenario=>scenario.id===item.bestScenarioIds[0])?.name??"Unavailable"} leads`:"Unavailable",item.bestScenarioIds.length?"projected":"unavailable")),confidenceLevel,comparison.tradeoffs.map(item=>({Scenario:comparedScenarios.find(scenario=>scenario.id===item.scenarioId)?.name??"Unavailable",Benefits:item.benefits.join(" ")||"None identified",Tradeoffs:item.tradeoffs.join(" ")||"None identified",Risks:item.risks.join(" ")||"None identified"}))):null;
-  return projection(request, `${result.workspace.opportunity.name} — Investment Decision`, comparison?.executiveSummary.decision??snapshot.recommendation.summary, confidenceLevel, snapshot.dataGaps.length ? "partial" : "current", scenario.snapshot.calculationVersion, [
+  return projection(request, `${result.workspace.opportunity.name} — Investment Decision`, comparison?.executiveSummary.decision??snapshot.recommendation.summary, confidenceLevel, snapshot.dataGaps.length ? "partial" : "current", request.scope.analysisVersionId!, [
     section("decision-summary","Decision Summary",snapshot.recommendation.summary,[metric("recommendation","Recommendation",snapshot.recommendation.recommendation.replaceAll("-"," "),"projected")],confidenceLevel),
     ...(comparisonSection?[comparisonSection]:[]),
     ...(learning?[section("scenario-learning","Historical Accuracy and Learning",learning.summary.overallLearning,learning.metrics.map(item=>metric(`learning-${item.key}`,item.label,item.percentageVariance===undefined?"Unavailable":`${item.percentageVariance>=0?"+":""}${item.percentageVariance.toFixed(1)}% variance`,item.actual===undefined?"unavailable":"actual")),confidenceLevel,learning.lessons.map(item=>({Category:item.category,Lesson:item.statement,Evidence:item.evidence.join(", ")||"Unavailable"})))]:[]),
@@ -470,8 +480,8 @@ async function investmentProjection(request: ReportRequest): Promise<ReportProje
     section("risk-analysis","Risk Analysis",`${snapshot.risks.length} identified risks.`,[],confidenceLevel,snapshot.risks.map((risk)=>({Risk:risk.title,Severity:risk.severity,Mitigation:risk.mitigation??"Not documented"}))),
     section("investment-score","Investment Score","Canonical scenario score.",[metric("score","Score",`${snapshot.score.value} of ${snapshot.score.scaleMaximum}`,"projected")],confidenceLevel),
     section("recommendation","Recommendation",snapshot.recommendation.rationale.join(" "),[],confidenceLevel),
-    section("evidence-methodology","Evidence and Methodology",`${snapshot.dataGaps.length?`Missing evidence: ${snapshot.dataGaps.map((gap)=>gap.description).join("; ")}`:"No material evidence gaps were recorded."}${scenario.notes?` Operator notes: ${scenario.notes}`:""}`,[],confidenceLevel),
-  ], scenario.snapshot.capturedAt.toISOString());
+    section("evidence-methodology","Evidence and Methodology",`${snapshot.dataGaps.length?`Missing evidence: ${snapshot.dataGaps.map((gap)=>gap.description).join("; ")}`:"No material evidence gaps were recorded."}${scenario?.notes?` Operator notes: ${scenario.notes}`:""}`,[],confidenceLevel),
+  ], new Date(snapshot.analyzedAt).toISOString());
 }
 
 async function financialProjection(request: ReportRequest): Promise<ReportProjection> {
@@ -508,8 +518,8 @@ function section(key:string,title:string,narrative:string,metrics:readonly Repor
 function metric(key:string,label:string,displayValue:string,qualificationValue:ReportMetric["qualification"],rawValue?:number|string):ReportMetric{return Object.freeze({key,label,displayValue,...(rawValue!==undefined?{rawValue}:{}),qualification:qualificationValue,accessibleDescription:`${label}: ${displayValue}. ${qualificationValue} value.`});}
 function confidence(value:string):ReportConfidence{return value==="high"?"high":value==="moderate"||value==="medium"?"moderate":value==="low"?"low":"insufficient-evidence";}
 function qualification(value:string):ReportMetric["qualification"]{return value==="measured"?"actual":value==="forecast"?"forecast":value==="estimated"?"estimated":value==="projected"?"projected":"unavailable";}
-function scopeFor(type:ReportType,workspaceId:string,sourceId:string,scenarioId:string,scenarioName?:string):ReportScope{if(!workspaceId)throw new Error("report_scope_invalid");if(type==="investment-decision")return Object.freeze({type:"investment-scenario",workspaceId,opportunityId:sourceId,scenarioId,label:scenarioName??"Selected Investment Scenario",partial:false});if(type==="property-performance")return Object.freeze({type:"property",workspaceId,propertyId:sourceId,label:"Selected Property",partial:false});if(type==="portfolio-performance")return Object.freeze({type:"workspace",workspaceId,label:"Authorized Portfolio",partial:false});return Object.freeze({type:"financial-scope",workspaceId,label:"Authorized Financial Scope",partial:false});}
-function sourceContext(type:ReportType,sourceId:string,scenarioId:string,scenario?:{name:string;version:number;notes?:string},comparisonIds:readonly string[]=[]):Readonly<Record<string,string>>{return type==="investment-decision"?{type:"investment-scenario",opportunityId:sourceId,scenarioId,...(comparisonIds.length?{comparedScenarioIds:comparisonIds.join(",")} :{}),...(scenario?{scenarioName:scenario.name,scenarioVersion:String(scenario.version),...(scenario.notes?{scenarioNotes:scenario.notes}:{})}:{})}:type==="property-performance"?{type:"property",propertyId:sourceId}:type==="portfolio-performance"?{type:"portfolio"}:{type:"financial-scope"};}
+function scopeFor(type:ReportType,workspaceId:string,sourceId:string,analysisVersionId:string,scenarioId:string,scenarioName?:string):ReportScope{if(!workspaceId)throw new Error("report_scope_invalid");if(type==="investment-decision")return Object.freeze({type:"investment-scenario",workspaceId,opportunityId:sourceId,analysisVersionId,...(scenarioId?{scenarioId}:{}),label:scenarioName??"Saved Investment Analysis",partial:false});if(type==="property-performance")return Object.freeze({type:"property",workspaceId,propertyId:sourceId,label:"Selected Property",partial:false});if(type==="portfolio-performance")return Object.freeze({type:"workspace",workspaceId,label:"Authorized Portfolio",partial:false});return Object.freeze({type:"financial-scope",workspaceId,label:"Authorized Financial Scope",partial:false});}
+function sourceContext(type:ReportType,sourceId:string,analysisVersionId:string,scenarioId:string,scenario?:{name:string;version:number;notes?:string},comparisonIds:readonly string[]=[]):Readonly<Record<string,string>>{return type==="investment-decision"?{type:"investment-analysis-version",opportunityId:sourceId,analysisVersionId,...(scenarioId?{scenarioId}:{}),...(comparisonIds.length?{comparedScenarioIds:comparisonIds.join(",")} :{}),...(scenario?{scenarioName:scenario.name,scenarioVersion:String(scenario.version),...(scenario.notes?{scenarioNotes:scenario.notes}:{})}:{})}:type==="property-performance"?{type:"property",propertyId:sourceId}:type==="portfolio-performance"?{type:"portfolio"}:{type:"financial-scope"};}
 function periodFor(type:ReportType,preset:string):ReportPeriod|undefined{const today=new Date().toISOString().slice(0,10);if(type==="investment-decision")return Object.freeze({preset:"analysis-as-of",end:today,label:`Analysis as of ${today}`});const start=`${today.slice(0,7)}-01`;return Object.freeze({preset:(["current-month","year-to-date","trailing-12-months"].includes(preset)?preset:"current-month")as ReportPeriod["preset"],start,end:today,label:`${start} to ${today}`});}
 function templateFor(type:ReportType):ReportTemplate{const definition=getReportDefinition(type)!;return Object.freeze({id:definition.defaultTemplateId,key:`${type}-editorial`,name:`Luxe Haven ${definition.name}`,reportType:type,version:1,status:"active",sectionKeys:definition.requiredSections,brand:Object.freeze({name:"Luxe Haven Collective",accent:"#8a6b22",confidentiality:"Confidential"}),createdAt:"2026-07-25T00:00:00.000Z",activatedAt:"2026-07-25T00:00:00.000Z"});}
 function toRequestRow(request:ReportRequest,entitlementVersion:string){return{id:request.id,workspace_id:request.workspaceId,requested_by_profile_id:request.requestedByProfileId,report_type:request.reportType,scope_type:request.scope.type,scope_snapshot:request.scope,period_snapshot:request.period,source_context:request.sourceContext,template_id:request.templateId,title:request.title,subtitle:request.subtitle,section_configuration:request.sectionConfiguration,status:"generating",idempotency_key:request.idempotencyKey,entitlement_version:entitlementVersion,permission_snapshot:{resolved:true,profileId:request.requestedByProfileId}};}

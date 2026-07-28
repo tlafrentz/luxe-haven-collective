@@ -39,6 +39,7 @@ export type InvestmentScenarioSnapshot = Readonly<{
 export type InvestmentScenario = Readonly<{
   id: string;
   opportunityId: string;
+  sourceAnalysisVersionId: string;
   name: string;
   description?: string;
   type: InvestmentScenarioType;

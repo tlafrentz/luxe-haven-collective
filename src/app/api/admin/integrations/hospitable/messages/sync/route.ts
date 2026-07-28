@@ -16,7 +16,7 @@ export async function POST(request:Request){
     return NextResponse.json({success:false,error:status===401?"Authentication required.":"Administrator access required."},{status,headers:{"Cache-Control":"no-store"}});
   }
   try{
-    const result=await syncHospitableMessages({mode:"manual"});
+    const result=await syncHospitableMessages({mode:"manual",signal:request.signal});
     return NextResponse.json({success:true,result},{headers:{"Cache-Control":"no-store"}});
   }catch(error){
     const conflict=error instanceof Error&&error.message===MESSAGE_SYNC_ALREADY_RUNNING_ERROR;

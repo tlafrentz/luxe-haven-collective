@@ -12,25 +12,30 @@ type HospitableRequestOptions = {
     string | number | boolean | undefined
   >;
   timeoutMs?: number;
+  signal?: AbortSignal;
 };
 
 export class HospitableApiError extends Error {
   readonly status: number;
   readonly retryable: boolean;
+  readonly retryAfterMs?: number;
 
   constructor({
     message,
     status,
     retryable,
+    retryAfterMs,
   }: {
     message: string;
     status: number;
     retryable: boolean;
+    retryAfterMs?: number;
   }) {
     super(message);
     this.name = "HospitableApiError";
     this.status = status;
     this.retryable = retryable;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -164,7 +169,7 @@ export async function hospitableRequest<T>(
       },
       ...(options.body===undefined?{}:{body:JSON.stringify(options.body)}),
       cache: "no-store",
-      signal: controller.signal,
+      signal: options.signal ? AbortSignal.any([controller.signal, options.signal]) : controller.signal,
     });
 
     if (!response.ok) {
@@ -189,6 +194,11 @@ export async function hospitableRequest<T>(
         retryable: isRetryableStatus(
           response.status,
         ),
+        ...(
+          retryAfterMilliseconds(response.headers.get("retry-after")) !== undefined
+            ? { retryAfterMs: retryAfterMilliseconds(response.headers.get("retry-after")) }
+            : {}
+        ),
       });
     }
 
@@ -210,4 +220,12 @@ export async function hospitableRequest<T>(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function retryAfterMilliseconds(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1_000;
+  const at = Date.parse(value);
+  return Number.isNaN(at) ? undefined : Math.max(0, at - Date.now());
 }

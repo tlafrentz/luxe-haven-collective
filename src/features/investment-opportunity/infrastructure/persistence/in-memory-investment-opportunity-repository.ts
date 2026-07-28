@@ -4,15 +4,20 @@ import type { InvestmentOpportunityPage, InvestmentOpportunityRepository, Invest
 
 export class InMemoryInvestmentOpportunityRepository implements InvestmentOpportunityRepository {
   private readonly records = new Map<string, InvestmentOpportunity>();
-  private readonly idempotency = new Map<string, string>();
+  private readonly idempotency = new Map<string, Readonly<{payloadHash?:string;result:import("../../application").InvestmentOpportunitySaveResult}>>();
   async findById(id: InvestmentOpportunityId, ownerId: OpportunityOwnerId) { const item = this.records.get(id.value); return item?.ownerId.equals(ownerId) ? clone(item) : null; }
-  async save(opportunity: InvestmentOpportunity, expectedVersion?: number, idempotencyKey?: string) {
+  async save(opportunity: InvestmentOpportunity, expectedVersion?: number, idempotencyKey?: string, options?: import("../../application").InvestmentOpportunitySaveOptions) {
     const key = idempotencyKey ? `${opportunity.ownerId.value}:${idempotencyKey}` : undefined;
-    if (key && this.idempotency.has(key)) return;
+    const replay = key ? this.idempotency.get(key) : undefined;
+    if (replay) {if(replay.payloadHash!==options?.payloadHash)throw new InvestmentOpportunityError("OPPORTUNITY_PERSISTENCE_FAILED","Investment Opportunity command payload conflict.");return { ...replay.result, idempotent: true };}
     const existing = this.records.get(opportunity.id.value);
     if (existing && (expectedVersion === undefined || existing.version !== expectedVersion || opportunity.version !== expectedVersion + 1)) throw new InvestmentOpportunityError("CONCURRENT_OPPORTUNITY_MODIFICATION", "Stale opportunity version.");
     if (!existing && expectedVersion !== undefined) throw new InvestmentOpportunityError("CONCURRENT_OPPORTUNITY_MODIFICATION", "Opportunity does not yet exist.");
-    this.records.set(opportunity.id.value, clone(opportunity)); if (key) this.idempotency.set(key, opportunity.id.value);
+    this.records.set(opportunity.id.value, clone(opportunity));
+    const analysis = opportunity.props.currentAnalysisId;
+    const result = { opportunityId: opportunity.id.value, ...(analysis ? { analysisVersionId: analysis.value, analysisVersionNumber: opportunity.props.analyses.find(item => item.id.equals(analysis))?.sequence } : {}), aggregateVersion: opportunity.version + (options?.initialNote ? 1 : 0), idempotent: false };
+    if (key) this.idempotency.set(key, {payloadHash:options?.payloadHash,result});
+    return result;
   }
   async list(query: InvestmentOpportunityRepositoryQuery): Promise<InvestmentOpportunityPage> {
     const sorted = [...this.records.values()].filter(value => value.ownerId.equals(query.ownerId)).filter(value => query.includeArchived || !value.props.archivedAt).filter(value => !query.statuses?.length || query.statuses.includes(value.props.status)).filter(value => !query.route || value.props.route === query.route).sort((a, b) => b.props.updatedAt.getTime() - a.props.updatedAt.getTime() || a.id.value.localeCompare(b.id.value));

@@ -16,6 +16,7 @@ import {
   SupabaseReservationContextRepository,
 } from "@/features/reservation-context";
 import { DEFAULT_MESSAGING_PROVIDER_REGISTRY, providerFailure } from "@/features/integrations";
+import { hydrateHospitableReservationMessageHistory } from "@/features/integrations/hospitable";
 import { buildConversationProjection, buildGuestContextProjection, createConversationAggregate, evaluateCommunicationGuidance, type CanonicalMessage, type CommunicationAttachment, type ConversationActivity, type ConversationParticipant, type ConversationReservationLink, type DeliveryEvent, type InternalCommunicationNote, type ProviderThreadReference } from "@/features/guest-communications";
 import {buildCanonicalPropertyProjection} from "@/features/property-projection";
 
@@ -237,10 +238,41 @@ export async function associateProviderReviewMessageAction(formData:FormData){
   const{data:existingThread}=await admin.from("guest_conversation_provider_threads").select("conversation_id").eq("workspace_id",review.workspace_id).eq("provider",review.provider).eq("thread_id",providerThread).maybeSingle();
   if(existingThread&&existingThread.conversation_id!==conversationId)throw new Error("provider_review_conflict");
   if(!existingThread){const{error:threadError}=await admin.from("guest_conversation_provider_threads").insert({id:`provider-thread-${crypto.randomUUID()}`,conversation_id:conversationId,workspace_id:review.workspace_id,provider:review.provider,thread_id:providerThread,reservation_reference:booking.external_reservation_id??conversation.reservation_id,last_observed_at:review.occurred_at});if(threadError)throw new Error("provider_review_thread_conflict");}
-  const messageId=`guest-message-provider-${review.provider_event_id}`,{error}=await admin.rpc("append_guest_inbound_message",{p_workspace_id:review.workspace_id,p_message_id:messageId,p_provider:review.provider,p_provider_message_id:review.provider_event_id,p_provider_thread_id:providerThread,p_reservation_id:booking.external_reservation_id??conversation.reservation_id,p_booking_id:booking.id,p_guest_id:booking.primary_guest_id,p_property_id:booking.property_id,p_guest_name:booking.guest_full_name??"Guest",p_body:review.pending_message_body,p_occurred_at:review.occurred_at});
+  const{error}=await admin.rpc("ingest_guest_provider_message",{p_workspace_id:review.workspace_id,p_property_id:booking.property_id,p_booking_id:booking.id,p_conversation_id:conversationId,p_provider:review.provider,p_provider_message_id:review.provider_event_id,p_platform_message_id:null,p_provider_reservation_id:booking.external_reservation_id??conversation.reservation_id,p_provider_conversation_id:providerThread,p_sender_type:"guest",p_sender_display_name:booking.guest_full_name??"Guest",p_body:review.pending_message_body,p_content_type:"text/plain",p_message_channel:review.provider,p_direction:"inbound",p_delivery_status:"delivered",p_occurred_at:review.occurred_at,p_ingested_at:new Date().toISOString(),p_attachments:[],p_metadata:{reviewId},p_provenance:{provider:review.provider,source:"manual-review"},p_backfill:false});
   if(error)throw new Error("provider_review_association_failed");
   await admin.from("messaging_provider_review_queue").update({status:"associated",reviewed_by:user.id,reviewed_at:new Date().toISOString(),conversation_id:conversationId,pending_message_body:null}).eq("id",reviewId).eq("status","pending");
   revalidatePath("/dashboard/communications");revalidatePath(`/dashboard/communications/${conversationId}`);
+}
+
+export async function hydrateHospitableMessageHistoryAction(formData: FormData) {
+  const conversationId = String(formData.get("conversationId") ?? "");
+  const reservationId = String(formData.get("reservationId") ?? "");
+  if (!conversationId || !reservationId) throw new Error("message_hydration_context_missing");
+  const admin = createAdminClient();
+  const { data: conversation } = await admin
+    .from("guest_conversations")
+    .select("id,workspace_id,property_id,reservation_id")
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (!conversation || conversation.reservation_id !== reservationId) {
+    throw new Error("conversation_not_found");
+  }
+  const { access } = await authorizeLegacyCommunicationWorkspace(
+    String(conversation.workspace_id),
+    "communications.manage",
+  );
+  if (!evaluatePropertyAccess(access, String(conversation.property_id))) {
+    throw new Error("permission_denied");
+  }
+  const result = await hydrateHospitableReservationMessageHistory({
+    workspaceId: access.ownerProfileId,
+    reservationId,
+    requestId: crypto.randomUUID(),
+    force: formData.get("force") === "true",
+  });
+  revalidatePath("/dashboard/communications");
+  revalidatePath(`/dashboard/communications/${conversationId}`);
+  return result;
 }
 
 export async function addGuestCommunicationNote(formData: FormData) {
@@ -396,7 +428,7 @@ function selectLocalizedTemplates(rows:Record<string,unknown>[],language:string,
 
 function mapConversationAggregate(row:ConversationRow,related:{messages:Record<string,unknown>[];notes:Record<string,unknown>[];attachments:Record<string,unknown>[];participants:Record<string,unknown>[];reservationLinks:Record<string,unknown>[];providerThreads:Record<string,unknown>[];deliveryEvents:Record<string,unknown>[];activity:Record<string,unknown>[]}){
   const attachments=related.attachments.map(item=>Object.freeze({id:String(item.id),type:String(item.attachment_type)as CommunicationAttachment["type"],name:String(item.name),...(item.url?{url:String(item.url)}:{}),...(item.storage_path?{storagePath:String(item.storage_path)}:{})}));
-  const messages:CanonicalMessage[]=related.messages.map(item=>Object.freeze({id:String(item.id),conversationId:row.id,sender:Object.freeze({type:(item.direction==="inbound"?"guest":item.direction==="system-event"?"system":"operator")as CanonicalMessage["sender"]["type"],...(item.sender_profile_id?{id:String(item.sender_profile_id)}:{}),displayName:String(item.sender_display_name)}),recipient:Object.freeze({type:String(item.recipient_type??(item.sender_type==="guest"?"operator":"guest"))as CanonicalMessage["recipient"]["type"],...(item.recipient_id?{id:String(item.recipient_id)}:{}),displayName:String(item.recipient_display_name??"Recipient")}),channel:String(item.message_channel??"internal"),direction:String(item.direction??(item.sender_type==="guest"?"inbound":"outbound"))as CanonicalMessage["direction"],body:String(item.body),sentAt:String(item.created_at),attachments:Object.freeze(attachments.filter(attachment=>related.attachments.find(candidate=>String(candidate.id)===attachment.id)?.message_id===item.id)),...(item.template_id?{templateId:String(item.template_id)}:{})}));
+  const messages:CanonicalMessage[]=related.messages.map(item=>Object.freeze({id:String(item.id),conversationId:row.id,sender:Object.freeze({type:(item.direction==="inbound"?"guest":item.direction==="system-event"?"system":item.direction==="unknown"?"unknown":"operator")as CanonicalMessage["sender"]["type"],...(item.sender_profile_id?{id:String(item.sender_profile_id)}:{}),displayName:String(item.sender_display_name)}),recipient:Object.freeze({type:String(item.recipient_type??(item.sender_type==="guest"?"operator":"guest"))as CanonicalMessage["recipient"]["type"],...(item.recipient_id?{id:String(item.recipient_id)}:{}),displayName:String(item.recipient_display_name??"Recipient")}),channel:String(item.message_channel??"internal"),direction:String(item.direction??(item.sender_type==="guest"?"inbound":"outbound"))as CanonicalMessage["direction"],body:String(item.body),sentAt:String(item.provider_occurred_at??item.created_at),attachments:Object.freeze(attachments.filter(attachment=>related.attachments.find(candidate=>String(candidate.id)===attachment.id)?.message_id===item.id)),...(item.template_id?{templateId:String(item.template_id)}:{})}));
   const notes:InternalCommunicationNote[]=related.notes.map(item=>Object.freeze({id:String(item.id),conversationId:row.id,body:String(item.body),pinned:Boolean(item.pinned),authorProfileId:String(item.author_profile_id),createdAt:String(item.created_at)}));
   const deliveryEvents:DeliveryEvent[]=related.deliveryEvents.map(item=>Object.freeze({id:String(item.id),messageId:String(item.message_id),provider:String(item.provider),status:String(item.status)as DeliveryEvent["status"],occurredAt:String(item.occurred_at),...(item.provider_message_id?{providerMessageId:String(item.provider_message_id)}:{}),...(item.failure_code?{failureCode:String(item.failure_code)}:{}),...(item.retryable!==null&&item.retryable!==undefined?{retryable:Boolean(item.retryable)}:{})}));
   return createConversationAggregate({id:row.id,workspaceId:row.workspace_id,guestId:row.guest_id,propertyId:row.property_id,...(row.active_reservation_id?{activeReservationId:row.active_reservation_id}:{}),status:(row.status==="waiting-on-host"||row.status==="needs-reply"||row.status==="unread"?"waiting-on-operator":row.status)as import("@/features/guest-communications").CanonicalConversationStatus,waitingOn:(row.waiting_on??(row.status==="waiting-on-guest"?"guest":row.status==="waiting-on-operator"?"operator":"none"))as"guest"|"operator"|"none",priority:(row.priority??"normal")as import("@/features/guest-communications").ConversationPriority,participants:Object.freeze(related.participants.map(item=>Object.freeze({id:String(item.id),type:String(item.participant_type)as ConversationParticipant["type"],displayName:String(item.display_name),...(item.guest_id?{guestId:String(item.guest_id)}:{}),...(item.profile_id?{profileId:String(item.profile_id)}:{}),joinedAt:String(item.joined_at)}))),reservationLinks:Object.freeze(related.reservationLinks.map(item=>Object.freeze({reservationId:String(item.reservation_id),bookingId:String(item.booking_id),propertyId:String(item.property_id),active:Boolean(item.active),linkedAt:String(item.linked_at)}as ConversationReservationLink))),providerThreads:Object.freeze(related.providerThreads.map(item=>Object.freeze({provider:String(item.provider),threadId:String(item.thread_id),...(item.reservation_reference?{reservationReference:String(item.reservation_reference)}:{}),lastObservedAt:String(item.last_observed_at)}as ProviderThreadReference))),messages:Object.freeze(messages),notes:Object.freeze(notes),attachments:Object.freeze(attachments),deliveryEvents:Object.freeze(deliveryEvents),activity:Object.freeze(related.activity.map(item=>Object.freeze({id:String(item.id),type:String(item.event_type)as ConversationActivity["type"],summary:String(item.safe_summary),occurredAt:String(item.occurred_at),...(item.actor_profile_id?{actorId:String(item.actor_profile_id)}:{})}))),unreadCount:row.unread_count,createdAt:String(row.created_at??row.last_activity_at),updatedAt:String(row.updated_at??row.last_activity_at),lastActivityAt:row.last_activity_at,revision:row.revision});

@@ -12,6 +12,7 @@ export type InvestmentScenarioWorkspace = Readonly<{
     route: "purchase" | "rental-arbitrage";
   }>;
   scenarios: readonly InvestmentScenario[];
+  analysisVersions: readonly Readonly<{id:string;number:number;createdAt:Date}>[];
   activeScenarios: readonly InvestmentScenario[];
   archivedScenarios: readonly InvestmentScenario[];
   preferredScenario?: InvestmentScenario;
@@ -40,15 +41,17 @@ export function getInvestmentScenarioWorkspace(
     actorId: string;
     canManage?: boolean;
     evaluatedAt?: Date;
-    records?:readonly Readonly<{scenarioId:string;name:string;scenarioType:string;description?:string;notes?:string;status:string;revision:number;createdAt:string;updatedAt:string;archivedAt?:string}>[];
+    records?:readonly ScenarioRecord[];
     events?:readonly Readonly<{id:string;scenarioId:string;eventType:string;safeSummary:string;occurredAt:string}>[];
+    preferredScenarioId?:string;
   }>,
 ): InvestmentScenarioWorkspace {
   const props = opportunity.props;
-  const records=new Map((input.records??[]).map(item=>[item.scenarioId,item]));
-  const scenarios = props.analyses.map((analysis, index) =>
-    projectScenario(analysis, props.currentAnalysisId?.value === analysis.id.value, index,records.get(analysis.id.value)),
-  );
+  const analyses=new Map<string,OpportunityAnalysis>(props.analyses.map(item=>[item.id.value,item]));
+  const scenarios = (input.records??[]).flatMap((record,index) => {
+    const source=analyses.get(record.sourceAnalysisVersionId);
+    return source?[projectScenario(source,input.preferredScenarioId===record.scenarioId,index,record)]:[];
+  });
   const evidenceLimited = scenarios.some(({ snapshot }) =>
     snapshot.result.dataGaps.length > 0,
   );
@@ -60,6 +63,7 @@ export function getInvestmentScenarioWorkspace(
       route: props.route,
     },
     scenarios,
+    analysisVersions:Object.freeze([...props.analyses].sort((a,b)=>b.sequence-a.sequence).map(item=>Object.freeze({id:item.id.value,number:item.sequence,createdAt:item.createdAt}))),
     activeScenarios: scenarios.filter(({ status }) => status !== "archived"),
     archivedScenarios: scenarios.filter(({ status }) => status === "archived"),
     preferredScenario: scenarios.find(({ preferred }) => preferred),
@@ -87,46 +91,49 @@ function projectScenario(
   analysis: OpportunityAnalysis,
   preferred: boolean,
   index: number,
-  record?:Readonly<{scenarioId:string;name:string;scenarioType:string;description?:string;notes?:string;status:string;revision:number;createdAt:string;updatedAt:string;archivedAt?:string}>,
+  record:ScenarioRecord,
 ): InvestmentScenario {
   const props = analysis.props;
   const versions = props.policyVersions;
   const assumptions = props.resultSnapshot.reanalysis?.userAssumptions ?? {};
   return {
-    id: props.id.value,
+    id: record.scenarioId,
     opportunityId: props.opportunityId.value,
-    name: record?.name??(index === 0 ? "Base Scenario" : `Scenario ${props.sequence}`),
-    description: record?.description??(index === 0
+    sourceAnalysisVersionId: record.sourceAnalysisVersionId,
+    name: record.name,
+    description: record.description??(index === 0
       ? "Original calculated investment strategy."
       : `Immutable revision ${props.sequence} of the opportunity strategy.`),
-    type: (record?.scenarioType??(index === 0
+    type: (record.scenarioType??(index === 0
       ? "base"
       : props.route === "rental-arbitrage"
         ? "rental-arbitrage"
         : "custom")) as InvestmentScenario["type"],
-    status: record?.status==="archived"?"archived":preferred ? "preferred" : "calculated",
+    status: record.status==="archived"?"archived":preferred ? "preferred" : "calculated",
     preferred,
     revision: props.sequence,
-    metadataRevision:record?.revision??1,
-    ...(record?.notes?{notes:record.notes}:{}),
+    metadataRevision:record.revision,
+    ...(record.notes?{notes:record.notes}:{}),
     snapshot: {
       calculationVersion: props.lineage.investmentLifecycleResultId,
       engineVersion: versions.investmentAnalysisPolicy ?? "investment-engine-v1",
       evidenceVersion: versions.marketAnalysisPolicy ?? "evidence-v1",
       recommendationVersion: versions.investmentRecommendationPolicy ?? "recommendation-v1",
       scoreVersion: versions.investmentAnalysisPolicy ?? "score-v1",
-      assumptions: { ...assumptions },
-      result: structuredClone(props.resultSnapshot),
+      assumptions: { ...assumptions, ...record.assumptions },
+      result: structuredClone(record.output),
       sourceSummary: structuredClone(props.sourceSummary),
       policyVersions: structuredClone(versions),
       capturedAt: new Date(props.createdAt),
     },
-    createdBy: props.createdBy.id,
-    createdAt: new Date(record?.createdAt??props.createdAt),
-    updatedAt: new Date(record?.updatedAt??props.createdAt),
-    ...(record?.archivedAt?{archivedAt:new Date(record.archivedAt)}:{}),
+    createdBy: record.createdBy,
+    createdAt: new Date(record.createdAt),
+    updatedAt: new Date(record.updatedAt),
+    ...(record.archivedAt?{archivedAt:new Date(record.archivedAt)}:{}),
   };
 }
+
+type ScenarioRecord=Readonly<{scenarioId:string;sourceAnalysisVersionId:string;name:string;scenarioType:string;description?:string;notes?:string;status:string;revision:number;assumptions:Readonly<Record<string,string|number|boolean>>;output:OpportunityAnalysis["props"]["resultSnapshot"];createdBy:string;createdAt:string;updatedAt:string;archivedAt?:string}>;
 
 function deepFreeze<T>(value: T): T {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {

@@ -5,11 +5,12 @@ const source = readFileSync("src/app/actions/investment-workspace.ts", "utf8");
 
 describe("Investment workspace server boundary security", () => {
   it("authorizes before validation, configuration, and provider construction", () => {
-    const authorization = source.indexOf("await requireRole");
+    const authorization = source.indexOf("await getSessionProfile");
     expect(authorization).toBeGreaterThan(0);
     expect(authorization).toBeLessThan(source.indexOf("investmentWorkspaceActionSchema.safeParse"));
     expect(authorization).toBeLessThan(source.indexOf("getMarketIntelligenceConfig()"));
     expect(authorization).toBeLessThan(source.indexOf("new RentCastClient"));
+    expect(source).toContain("resolveWorkspaceAccessContext");
   });
 
   it("uses authenticated identity and does not accept a client actor", () => {

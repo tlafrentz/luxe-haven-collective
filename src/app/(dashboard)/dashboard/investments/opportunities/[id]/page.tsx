@@ -11,7 +11,7 @@ export default async function InvestmentOpportunityDetailPage({ params }: { para
   let opportunityId;
   try { opportunityId = createInvestmentOpportunityId(id); } catch { notFound(); }
   const context = await getAcquisitionWorkspaceRequestContext();
-  if (!context.ok) notFound();
+  if (!context.ok||!await context.authorizeOpportunity(id,"opportunity.read")) notFound();
   const result = await context.handler.execute({ ownerId: context.ownerId, actor: context.actor, opportunityId });
   if (result.isFailure) {
     if (["ACQUISITION_WORKSPACE_NOT_AUTHENTICATED", "ACQUISITION_WORKSPACE_NOT_AUTHORIZED", "ACQUISITION_WORKSPACE_NOT_FOUND"].includes(result.error.code)) notFound();

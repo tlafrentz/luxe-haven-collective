@@ -13,6 +13,7 @@ export type ReportScope = Readonly<{
   workspaceId: string;
   propertyId?: string;
   opportunityId?: string;
+  analysisVersionId?: string;
   scenarioId?: string;
   portfolioScopeId?: string;
   label: string;

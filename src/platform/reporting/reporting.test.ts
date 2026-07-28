@@ -30,8 +30,8 @@ const template: ReportTemplate = Object.freeze({
 });
 const request: ReportRequest = Object.freeze({
   id: "request-1", workspaceId: "workspace-1", requestedByProfileId: "profile-1", reportType: "investment-decision",
-  scope: Object.freeze({ type: "investment-scenario", workspaceId: "workspace-1", opportunityId: "opportunity-1", scenarioId: "scenario-1", label: "650 S Main", partial: false }),
-  sourceContext: Object.freeze({ type: "investment-scenario", opportunityId: "opportunity-1", scenarioId: "scenario-1" }),
+  scope: Object.freeze({ type: "investment-scenario", workspaceId: "workspace-1", opportunityId: "opportunity-1", analysisVersionId:"analysis-version-2",scenarioId: "scenario-1", label: "650 S Main", partial: false }),
+  sourceContext: Object.freeze({ type: "investment-analysis-version", opportunityId: "opportunity-1",analysisVersionId:"analysis-version-2", scenarioId: "scenario-1" }),
   templateId: template.id, sectionConfiguration: Object.freeze([]), status: "queued", idempotencyKey: "request-key", createdAt: now,
 });
 const projection: ReportProjection = Object.freeze({

@@ -78,7 +78,7 @@ export async function getAcquisitionWorkspaceRequestContext() {
     principals: {
       getPrincipal: async () => ({
         authenticated: true,
-        actorId: opportunity.ownerId,
+        actorId: opportunity.actorId,
         ownerId: opportunity.ownerId,
         capabilities: { activate: true, manageOffers: true, recordContract: true, manageRequirements: true, prepareClosing: true, close: true, exit: true },
       }),
@@ -88,5 +88,5 @@ export async function getAcquisitionWorkspaceRequestContext() {
     metrics,
     now: () => new Date(),
   });
-  return { ok: true as const, ownerId: opportunity.ownerId, actor: { type: "user" as const, id: opportunity.ownerId }, handler: runtime.getAcquisitionWorkspace };
+  return { ok: true as const, ownerId: opportunity.ownerId, actor: { type: "user" as const, id: opportunity.actorId }, authorizeOpportunity:opportunity.authorizeOpportunity, handler: runtime.getAcquisitionWorkspace };
 }

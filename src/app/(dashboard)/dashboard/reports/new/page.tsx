@@ -7,8 +7,9 @@ export default async function NewReportPage({searchParams}:{searchParams:Promise
   const reportType=single(params.type) as ReportType|undefined;
   const sourceId=single(params.source);
   const scenarioId=single(params.scenario);
+  const analysisVersionId=single(params.analysis);
   const comparisonScenarioIds=single(params.comparison);
-  const context=await getReportComposerContext({workspaceId:single(params.workspace),reportType,sourceId,scenarioId});
+  const context=await getReportComposerContext({workspaceId:single(params.workspace),reportType,sourceId,scenarioId,analysisVersionId});
   if(!("workspaceId" in context)) return <State title="Reporting is unavailable" message={context.message} href={context.nextAction}/>;
   const selected=context.definitions.find(item=>item.key===context.selectedType)!;
   const ready=context.state==="ready";
@@ -24,7 +25,7 @@ export default async function NewReportPage({searchParams}:{searchParams:Promise
         <Field label="Report title"><input className="mt-2 w-full rounded-xl border p-3" maxLength={160} name="title" placeholder={selected.name}/></Field>
         <Field label="Optional subtitle"><input className="mt-2 w-full rounded-xl border p-3" maxLength={240} name="subtitle"/></Field>
         {context.selectedType==="property-performance"?<Field label="Property"><select className="mt-2 w-full rounded-xl border p-3" name="sourceId" defaultValue={sourceId??""} required><option value="">Choose a property</option>{context.properties.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>:null}
-        {context.selectedType==="investment-decision"?<><Field label="Opportunity"><select className="mt-2 w-full rounded-xl border p-3" name="sourceId" defaultValue={sourceId??""} required><option value="">Choose an opportunity</option>{context.opportunities.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Scenario"><select className="mt-2 w-full rounded-xl border p-3" name="scenarioId" defaultValue={context.selectedScenario??scenarioId??""}><option value="">{sourceId?"Use preferred scenario":"Choose an opportunity first"}</option>{context.scenarios.map(item=><option key={item.id} value={item.id}>{item.name}{item.preferred?" · Preferred":""} · v{item.version}</option>)}</select></Field></>:null}
+        {context.selectedType==="investment-decision"?<><Field label="Opportunity"><select className="mt-2 w-full rounded-xl border p-3" name="sourceId" defaultValue={sourceId??""} required><option value="">Choose an opportunity</option>{context.opportunities.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Analysis version"><select className="mt-2 w-full rounded-xl border p-3" name="analysisVersionId" defaultValue={context.selectedAnalysisVersion??analysisVersionId??""} required><option value="">{sourceId?"Choose a saved version":"Choose an opportunity first"}</option>{context.versions.map(item=><option key={item.id} value={item.id}>Analysis {item.sequence} · {new Date(item.createdAt).toLocaleDateString()}</option>)}</select></Field><Field label="Optional scenario branch"><select className="mt-2 w-full rounded-xl border p-3" name="scenarioId" defaultValue={context.selectedScenario??scenarioId??""}><option value="">Use the selected analysis version</option>{context.scenarios.map(item=><option key={item.id} value={item.id}>{item.name}{item.preferred?" · Preferred":""} · v{item.version}</option>)}</select></Field></>:null}
         <Field label="Reporting period"><select className="mt-2 w-full rounded-xl border p-3" name="periodPreset"><option value="current-month">Current month</option><option value="year-to-date">Year to date</option><option value="trailing-12-months">Trailing 12 months</option></select></Field>
       </div>
       <section aria-labelledby="snapshot-preview" className="rounded-2xl border bg-stone-50 p-5">

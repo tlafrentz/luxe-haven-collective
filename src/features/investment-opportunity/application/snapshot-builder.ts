@@ -1,6 +1,7 @@
 import type { InvestmentLifecycleResult, InvestmentWorkspaceAnalysisResult } from "@/features/investment-intelligence";
 import { AcquisitionType } from "@/features/investment-intelligence";
 import type { OpportunityAnalysisSnapshot, OpportunityMoneySnapshot, OpportunityMetricSnapshot } from "../domain";
+import { REANALYSIS_ASSUMPTION_CONTRACT } from "./reanalysis-hydration";
 
 const money = (value: { amount: number; currency: "USD" }, source: OpportunityMoneySnapshot["source"] = "derived"): OpportunityMoneySnapshot => Object.freeze({ ...value, source });
 const metric = (value: number, source: OpportunityMetricSnapshot["source"] = "derived"): OpportunityMetricSnapshot => Object.freeze({ value, source });
@@ -37,5 +38,7 @@ export function buildOpportunityAnalysisSnapshotFromWorkspace(result: Investment
     ...(market.longTermRent?.estimatedMonthlyRent !== undefined ? { estimatedMarketRent: money({ amount: market.longTermRent.estimatedMonthlyRent, currency: "USD" }, "market") } : {}),
   };
   const userAssumptions = Object.fromEntries(result.investmentAnalysisContext.assumptions.filter(item => item.source === "user").map(item => [item.key, item.value]));
-  return Object.freeze({ ...base, financials: Object.freeze(financials), dataGaps: Object.freeze(market.dataGaps.map(gap => Object.freeze({ code: gap.code, description: `${gap.severity}: ${gap.affectedInvestmentAssumptionKeys.join(", ") || "market evidence"}` }))), reanalysis: Object.freeze({ userAssumptions: Object.freeze(userAssumptions) }) });
+  const assumptions=Object.freeze(result.investmentAnalysisContext.assumptions.map(item=>{const definition=REANALYSIS_ASSUMPTION_CONTRACT[item.key as keyof typeof REANALYSIS_ASSUMPTION_CONTRACT];return Object.freeze({key:item.key,value:item.value,source:item.source,...(definition?.unit?{unit:definition.unit}:{}),...(definition?.currency?{currency:definition.currency}:{}),...(definition?.period?{period:definition.period}:{}),...(definition?.unit==="percentage"?{mode:"percentage" as const}:{mode:"fixed" as const}),explicitlyOverridden:item.source==="user",sourceTimestamp:analyzedAt.toISOString()});}));
+  const marketEvidence=market.evidence.map(item=>Object.freeze({id:item.evidenceId,title:item.description,source:"market-analysis",confidence:market.confidence.level,providerTimestamp:market.analyzedAt.toISOString(),freshness:market.status,observationIds:Object.freeze([...market.lineage.observationIds]),comparableIds:Object.freeze([...item.candidateIds])}));
+  return Object.freeze({ ...base, financials: Object.freeze(financials), dataGaps: Object.freeze(market.dataGaps.map(gap => Object.freeze({ code: gap.code, description: `${gap.severity}: ${gap.affectedInvestmentAssumptionKeys.join(", ") || "market evidence"}` }))),evidence:Object.freeze([...base.evidence,...marketEvidence]), assumptions, reanalysis: Object.freeze({ userAssumptions: Object.freeze(userAssumptions) }) });
 }

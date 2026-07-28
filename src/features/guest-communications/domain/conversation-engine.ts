@@ -5,18 +5,18 @@ import type { CommunicationRecommendation } from "./communication-guidance";
 
 export type CanonicalConversationStatus="open"|"waiting-on-guest"|"waiting-on-operator"|"resolved"|"archived";
 export type ConversationPriority="low"|"normal"|"high"|"urgent";
-export type ConversationParticipant=Readonly<{id:string;type:"guest"|"operator"|"system";displayName:string;guestId?:string;profileId?:string;joinedAt:string}>;
+export type ConversationParticipant=Readonly<{id:string;type:"guest"|"operator"|"system"|"unknown";displayName:string;guestId?:string;profileId?:string;joinedAt:string}>;
 export type ConversationReservationLink=Readonly<{reservationId:string;bookingId:string;propertyId:string;active:boolean;linkedAt:string}>;
 export type ProviderThreadReference=Readonly<{provider:string;threadId:string;reservationReference?:string;lastObservedAt:string}>;
-export type CanonicalMessageDirection="inbound"|"outbound"|"internal-note"|"system-event";
+export type CanonicalMessageDirection="inbound"|"outbound"|"internal-note"|"system-event"|"unknown";
 export type CanonicalMessage=Readonly<{
-  id:string;conversationId:string;sender:Readonly<{type:"guest"|"operator"|"system";id?:string;displayName:string}>;
-  recipient:Readonly<{type:"guest"|"operator"|"system";id?:string;displayName:string}>;
+  id:string;conversationId:string;sender:Readonly<{type:"guest"|"operator"|"system"|"unknown";id?:string;displayName:string}>;
+  recipient:Readonly<{type:"guest"|"operator"|"system"|"unknown";id?:string;displayName:string}>;
   channel:string;direction:CanonicalMessageDirection;body:string;sentAt:string;
   attachments:readonly CommunicationAttachment[];templateId?:string;
 }>;
 export type DeliveryEvent=Readonly<{id:string;messageId:string;provider:string;status:"queued"|"sending"|"delivered"|"read"|"failed"|"unknown";occurredAt:string;providerMessageId?:string;failureCode?:string;retryable?:boolean}>;
-export type ConversationActivity=Readonly<{id:string;type:"conversation-created"|"reply-sent"|"reply-received"|"draft-saved"|"attachment-added"|"template-applied"|"internal-note-added"|"conversation-resolved"|"conversation-archived"|"conversation-reopened"|"delivery-updated";summary:string;occurredAt:string;actorId?:string}>;
+export type ConversationActivity=Readonly<{id:string;type:"conversation-created"|"reply-sent"|"reply-received"|"draft-saved"|"attachment-added"|"template-applied"|"internal-note-added"|"conversation-resolved"|"conversation-archived"|"conversation-reopened"|"delivery-updated"|"history-imported";summary:string;occurredAt:string;actorId?:string}>;
 export type ConversationAggregate=Readonly<{
   id:string;workspaceId:string;guestId:string;propertyId:string;activeReservationId?:string;
   status:CanonicalConversationStatus;waitingOn:"guest"|"operator"|"none";priority:ConversationPriority;
@@ -80,5 +80,5 @@ export function buildConversationProjection(input:Readonly<{conversation:Convers
   ].sort((a,b)=>Date.parse(a.occurredAt)-Date.parse(b.occurredAt));
   return deepFreeze({projectionVersion:"guest-conversation-projection.v1",generatedAt:input.generatedAt??new Date().toISOString(),conversation:input.conversation,guest:input.reservation.guest,reservation:input.reservation,property:input.reservation.property,messages,...(input.draft?{draft:input.draft}:{}),attachments:input.conversation.attachments,notes:input.conversation.notes,timeline,suggestedActions:input.guidance,guestContext:input.guestContext,templates:input.templates,providerState:input.providerState,capabilities:input.capabilities,state:!input.capabilities.view?"permission-limited":input.guestContext.dataQuality.state==="stale"?"degraded":input.guestContext.dataQuality.state==="partially-available"?"partial":"ready"});
 }
-function ordered<T>(values:readonly T[],key:keyof T){return[...values].sort((a,b)=>Date.parse(String(a[key]))-Date.parse(String(b[key])));}
+function ordered<T>(values:readonly T[],key:keyof T){return[...values].sort((a,b)=>Date.parse(String(a[key]))-Date.parse(String(b[key]))||("id"in(a as object)&&"id"in(b as object)?String((a as{ id:unknown }).id).localeCompare(String((b as{ id:unknown }).id)):0));}
 function deepFreeze<T>(value:T):T{if(value&&typeof value==="object"&&!Object.isFrozen(value)){Object.freeze(value);for(const child of Object.values(value))deepFreeze(child);}return value;}
