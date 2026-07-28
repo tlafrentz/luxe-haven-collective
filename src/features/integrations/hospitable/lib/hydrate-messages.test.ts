@@ -104,6 +104,19 @@ describe("GM-001B historical message hydration", () => {
     expect(result).toMatchObject({ state: "partial", rejected: 1, inserted: 0 });
     expect(harness.messages).toHaveLength(0);
   });
+
+  it("rejects one malformed message and continues hydrating the reservation", async () => {
+    const harness = gateway();
+    const result = await hydrateHospitableReservationMessageHistory(
+      { workspaceId: context.workspaceId, reservationId: context.reservationId },
+      { gateway: harness.value, readPage: async () => page(1, [
+        { id: {}, body: "Malformed", created_at: "2026-07-01T01:00:00Z" },
+        { id: 12345, body: "Valid", created_at: "2026-07-01T02:00:00Z" },
+      ]) },
+    );
+    expect(result).toMatchObject({ state: "partial", observed: 2, rejected: 1, inserted: 1 });
+    expect(harness.messages.map(message => message.providerMessageId)).toEqual(["12345"]);
+  });
 });
 
 function page(

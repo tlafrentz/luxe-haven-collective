@@ -18,11 +18,11 @@ export type HospitableMessageAttachment = Readonly<{
 }>;
 
 export type HospitableReservationMessage = Readonly<{
-  id?: string;
+  id?: unknown;
   platform?: string;
-  platform_id?: string | number;
-  conversation_id?: string;
-  reservation_id?: string;
+  platform_id?: unknown;
+  conversation_id?: unknown;
+  reservation_id?: unknown;
   content_type?: string;
   body?: string | null;
   attachments?: readonly HospitableMessageAttachment[];
@@ -34,7 +34,7 @@ export type HospitableReservationMessage = Readonly<{
   updated_at?: string;
   source?: string;
   integration?: string;
-  sent_reference_id?: string;
+  sent_reference_id?: unknown;
   reactions?: unknown;
 }>;
 
@@ -138,24 +138,28 @@ export function normalizeHospitableMessage(
   input: Readonly<{ reservationId: string; ingestedAt?: string }>,
 ): NormalizedHospitableMessage | null {
   const providerMessageId =
-    message.id?.trim() ||
-    message.sent_reference_id?.trim() ||
-    (message.platform && message.platform_id !== undefined
-      ? `${message.platform}:${message.platform_id}`
-      : "");
+    normalizeProviderIdentifier(message.id) ??
+    normalizeProviderIdentifier(message.sent_reference_id) ??
+    normalizeProviderIdentifier(message.platform_id);
   const occurredAt = message.created_at ?? "";
-  const providerReservationId = message.reservation_id?.trim() || input.reservationId.trim();
+  const providerReservationId =
+    normalizeProviderIdentifier(message.reservation_id) ??
+    normalizeProviderIdentifier(input.reservationId);
+  const messageReservationId = normalizeProviderIdentifier(message.reservation_id);
+  const inputReservationId = normalizeProviderIdentifier(input.reservationId);
+  const platformMessageId = normalizeProviderIdentifier(message.platform_id);
+  const providerConversationId = normalizeProviderIdentifier(message.conversation_id);
   if (!providerMessageId || !providerReservationId || !isTimestamp(occurredAt)) return null;
-  if (message.reservation_id && message.reservation_id !== input.reservationId) return null;
+  if (messageReservationId && messageReservationId !== inputReservationId) return null;
   const body = typeof message.body === "string" ? message.body : "";
   if (body.length > 10_000) return null;
   const sender = classifySender(message.sender_type, message.sender_role, message.source);
   return Object.freeze({
     provider: "hospitable",
     providerMessageId,
-    ...(message.platform_id !== undefined ? { platformMessageId: String(message.platform_id) } : {}),
+    ...(platformMessageId ? { platformMessageId } : {}),
     providerReservationId,
-    ...(message.conversation_id ? { providerConversationId: message.conversation_id } : {}),
+    ...(providerConversationId ? { providerConversationId } : {}),
     body,
     contentType: message.content_type?.trim() || "text/plain",
     occurredAt: new Date(occurredAt).toISOString(),
@@ -181,6 +185,22 @@ export function normalizeHospitableMessage(
       ...(message.integration ? { integration: message.integration } : {}),
     }),
   });
+}
+
+function normalizeProviderIdentifier(value: unknown): string | null {
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    return normalized || null;
+  }
+
+  if (
+    typeof value === "number" &&
+    Number.isFinite(value)
+  ) {
+    return String(value);
+  }
+
+  return null;
 }
 
 /** Provider adapter boundary for Hospitable's reservation conversation API. */

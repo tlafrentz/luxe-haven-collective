@@ -31,6 +31,15 @@ describe("Hospitable messaging adapter",()=>{
     expect(normalizeHospitableMessage({sent_reference_id:"guest-1",body:" Need towels ",sender_type:"guest",sender:{full_name:"Jin Kim"},platform:"airbnb",created_at:"2026-07-26T12:00:00Z"},{reservationId:"reservation-1",ingestedAt:"2026-07-27T00:00:00Z"})).toMatchObject({providerMessageId:"guest-1",body:" Need towels ",occurredAt:"2026-07-26T12:00:00.000Z",direction:"inbound",senderType:"guest",senderDisplayName:"Jin Kim",platform:"airbnb",providerReservationId:"reservation-1"});
     expect(normalizeHospitableMessage({id:"provider-native-42",platform:"vrbo",platform_id:42,body:"On the way",sender_role:"host",user:{name:"Todd"},created_at:"2026-07-26T12:01:00Z"},{reservationId:"reservation-1"})).toMatchObject({providerMessageId:"provider-native-42",platformMessageId:"42",direction:"outbound",senderType:"operator",senderDisplayName:"Todd"});
   });
+  it("normalizes numeric provider identifiers",()=>{
+    expect(normalizeHospitableMessage({id:12345,reservation_id:67890,body:"Hello",created_at:"2026-07-26T12:00:00Z"},{reservationId:"67890"})).toMatchObject({providerMessageId:"12345",providerReservationId:"67890"});
+  });
+  it("rejects non-scalar provider identifiers",()=>{
+    expect(normalizeHospitableMessage({id:{value:"message-1"},body:"Hello",created_at:"2026-07-26T12:00:00Z"},{reservationId:"reservation-1"})).toBeNull();
+  });
+  it("falls back when the primary identifier is invalid",()=>{
+    expect(normalizeHospitableMessage({id:{},sent_reference_id:12345,body:"Hello",created_at:"2026-07-26T12:00:00Z"},{reservationId:"reservation-1"})).toMatchObject({providerMessageId:"12345"});
+  });
   it("rejects messages that cannot be persisted safely",()=>{
     expect(normalizeHospitableMessage({body:"Missing identity",created_at:"2026-07-26T12:00:00Z"},{reservationId:"reservation-1"})).toBeNull();
     expect(normalizeHospitableMessage({sent_reference_id:"message-1",body:"Hello",created_at:"not-a-date"},{reservationId:"reservation-1"})).toBeNull();
