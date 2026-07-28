@@ -6,8 +6,9 @@ import { usePathname } from "next/navigation";
 const destinations = [
   { label: "Overview", href: "/dashboard/investments", match: (path: string) => path === "/dashboard/investments" },
   { label: "New Analysis", href: "/dashboard/investments/new", match: (path: string) => path.startsWith("/dashboard/investments/new") },
-  { label: "Opportunity Portfolio", href: "/dashboard/investments/opportunities", match: (path: string) => path.includes("/opportunities") || path.includes("/portfolio") },
+  { label: "Portfolio", href: "/dashboard/investments/opportunities", match: (path: string) => path.includes("/opportunities") || path.includes("/portfolio") },
   { label: "Scenarios", href: "/dashboard/investments/scenarios", match: (path: string) => path.startsWith("/dashboard/investments/scenarios") },
+  { label: "Reports", href: "/dashboard/investments/reports", match: (path: string) => path.startsWith("/dashboard/investments/reports") },
 ] as const;
 
 export function InvestmentWorkspaceShellNavigation() {

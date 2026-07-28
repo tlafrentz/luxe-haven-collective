@@ -230,4 +230,5 @@ export {
 
 export * from "./mappers";
 export * from "./types";
+export * from "./workspace-lifecycle";
 export * from "./adapters";

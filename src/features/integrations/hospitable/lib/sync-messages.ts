@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hydrateHospitableReservationMessageHistory } from "./hydrate-messages";
 import { runInBatches } from "./run-in-batches";
+import { resolveHospitableMessagingWorkspace } from "./messaging-workspace";
 
 const PROVIDER="hospitable";
 const CONNECTION_NAME="Hospitable Primary";
@@ -29,7 +30,8 @@ export async function syncHospitableMessages(options:MessageSyncOptions={}):Prom
   const{data:connection,error:connectionError}=await connectionQuery.maybeSingle();
   if(connectionError)throw new Error(`Unable to load Hospitable connection: ${connectionError.message}`);
   if(!connection)throw new Error("Hospitable connection was not found. Run the property sync first.");
-  const connectionId=String(connection.id),workspaceId=String(connection.workspace_id);
+  const messagingWorkspace=await resolveHospitableMessagingWorkspace({connectionId:String(connection.id)});
+  const connectionId=messagingWorkspace.connectionId,workspaceId=messagingWorkspace.workspaceId;
   await expireStaleRuns(connectionId);
   const syncRunId=await startRun(connectionId,options.mode??"manual");
   const result={connectionId,reservations:0,processed:0,created:0,updated:0,skipped:0,failed:0,errors:[]as string[]};

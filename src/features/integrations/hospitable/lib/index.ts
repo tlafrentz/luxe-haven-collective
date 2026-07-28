@@ -1,6 +1,11 @@
 export { hospitableRequest } from "./client";
 export { hospitableMessagingAdapter } from "./messaging-adapter";
 export {
+  assertCanonicalMessagingWorkspace,
+  resolveHospitableMessagingWorkspace,
+  type MessagingWorkspace,
+} from "./messaging-workspace";
+export {
   createSupabaseHospitableMessageHydrationGateway,
   hydrateHospitableReservationMessageHistory,
   type HospitableMessageHydrationContext,

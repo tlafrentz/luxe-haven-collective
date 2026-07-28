@@ -6,6 +6,7 @@ import {
   type HospitableMessagePage,
   type NormalizedHospitableMessage,
 } from "./messages";
+import { resolveHospitableMessagingWorkspace } from "./messaging-workspace";
 
 export type HospitableMessageHydrationContext = Readonly<{
   workspaceId: string;
@@ -157,6 +158,10 @@ export function createSupabaseHospitableMessageHydrationGateway(): HospitableMes
         .maybeSingle();
       if (bookingError) throw new Error("message_hydration_booking_lookup_failed");
       if (!booking) throw new Error("message_hydration_booking_not_found");
+      const messagingWorkspace = await resolveHospitableMessagingWorkspace({
+        workspaceId: input.workspaceId,
+        propertyId: String(booking.property_id),
+      });
       const { data: links, error: linkError } = await admin
         .from("guest_conversation_reservations")
         .select("conversation_id,booking_id,property_id")
@@ -171,13 +176,13 @@ export function createSupabaseHospitableMessageHydrationGateway(): HospitableMes
         .from("guest_conversations")
         .select("id,workspace_id,property_id")
         .eq("id", link.conversation_id)
-        .eq("workspace_id", input.workspaceId)
+        .eq("workspace_id", messagingWorkspace.workspaceId)
         .eq("property_id", booking.property_id)
         .maybeSingle();
       if (conversationError) throw new Error("message_hydration_conversation_lookup_failed");
       if (!conversation || link.property_id !== booking.property_id) throw new Error("message_hydration_scope_mismatch");
       return Object.freeze({
-        workspaceId: input.workspaceId,
+        workspaceId: messagingWorkspace.workspaceId,
         propertyId: String(booking.property_id),
         bookingId: String(booking.id),
         reservationId: String(booking.external_reservation_id),

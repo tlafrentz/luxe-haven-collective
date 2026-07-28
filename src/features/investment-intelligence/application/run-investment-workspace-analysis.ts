@@ -64,6 +64,7 @@ export async function runInvestmentWorkspaceAnalysis(
       propertyResolution.alternatives,
     );
   }
+  await dependencies.onPropertyResolved?.(propertyResolution.property.id);
 
   const propertyType = mapPropertyType(
     propertyResolution.property.characteristics.propertyType,

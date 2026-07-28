@@ -17,6 +17,7 @@ import {
 } from "@/features/reservation-context";
 import { DEFAULT_MESSAGING_PROVIDER_REGISTRY, providerFailure } from "@/features/integrations";
 import { hydrateHospitableReservationMessageHistory } from "@/features/integrations/hospitable";
+import { assertCanonicalMessagingWorkspace, resolveHospitableMessagingWorkspace } from "@/features/integrations/hospitable/lib/messaging-workspace";
 import { buildConversationProjection, buildGuestContextProjection, createConversationAggregate, evaluateCommunicationGuidance, type CanonicalMessage, type CommunicationAttachment, type ConversationActivity, type ConversationParticipant, type ConversationReservationLink, type DeliveryEvent, type InternalCommunicationNote, type ProviderThreadReference } from "@/features/guest-communications";
 import {buildCanonicalPropertyProjection} from "@/features/property-projection";
 
@@ -37,11 +38,11 @@ async function authorize(workspaceId?: string, permission: "communications.view"
 }
 
 async function authorizeLegacyCommunicationWorkspace(
-  ownerProfileId: string,
+  messagingWorkspaceId: string,
   permission: "communications.view" | "communications.reply" | "communications.manage" = "communications.view",
 ) {
   const result = await authorize(undefined, permission);
-  if (result.access.ownerProfileId !== ownerProfileId) throw new Error("permission_denied");
+  assertCanonicalMessagingWorkspace(result.access.workspaceId, messagingWorkspaceId);
   return result;
 }
 
@@ -50,7 +51,7 @@ export async function getGuestCommunicationInbox(input: { workspaceId?: string; 
     const { access } = await authorize(input.workspaceId);
     const admin = createAdminClient();
     const page=Math.max(1,input.page??1),pageSize=50,from=(page-1)*pageSize;
-    const { data, error } = await admin.from("guest_conversations").select("*").eq("workspace_id", access.ownerProfileId).order("last_activity_at", { ascending: false }).range(from,from+pageSize-1);
+    const { data, error } = await admin.from("guest_conversations").select("*").eq("workspace_id", access.workspaceId).order("last_activity_at", { ascending: false }).range(from,from+pageSize-1);
     if (error) throw error;
     const allowed = (data as ConversationRow[]).filter(row => evaluatePropertyAccess(access, row.property_id));
     const guestIds = [...new Set(allowed.map(row => row.guest_id))];
@@ -265,7 +266,10 @@ export async function hydrateHospitableMessageHistoryAction(formData: FormData) 
     throw new Error("permission_denied");
   }
   const result = await hydrateHospitableReservationMessageHistory({
-    workspaceId: access.ownerProfileId,
+    workspaceId: (await resolveHospitableMessagingWorkspace({
+      workspaceId: access.workspaceId,
+      propertyId: String(conversation.property_id),
+    })).workspaceId,
     reservationId,
     requestId: crypto.randomUUID(),
     force: formData.get("force") === "true",

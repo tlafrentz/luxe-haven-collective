@@ -9,7 +9,7 @@ import type { MarketAnalysisReport, MarketPropertyResolutionResult } from "@/fea
 import { AcquisitionType, MarketTrend, PropertyType } from "../domain";
 import type { InvestmentDecisionAnalysis, InvestmentLifecycleResult } from "../domain";
 import type { InvestmentAnalysisContext, InvestmentMarketContext, InvestmentWorkspaceStage, RunInvestmentAnalysisCommand } from "../application";
-import { applyStrategyTransition, buildStrategyTransitionPlan, type StrategyTransitionPlan } from "../application";
+import { applyStrategyTransition, buildStrategyTransitionPlan, classifyInvestmentWorkspaceFailure, type InvestmentWorkspaceLifecycleState, type StrategyTransitionPlan } from "../application";
 import { buildInvestmentWorkspaceReadiness } from "./investment-workspace-readiness";
 import type { DecisionReadinessGroup } from "./investment-workspace-readiness";
 
@@ -57,6 +57,7 @@ type InvestmentWorkspaceState = Readonly<{
   hasStaleAnalysis: boolean;
   isAnalyzing: boolean;
   analysisError: string | null;
+  lifecycle: InvestmentWorkspaceLifecycleState<Extract<CurrentInvestmentAnalysisState, { status: "completed" }>>;
   currentAnalysis: CurrentInvestmentAnalysisState;
   analyzeInvestment: () => Promise<void>;
 }>;
@@ -174,6 +175,15 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
     if (!result || isAnalysisStale || !analysisId || !analysisSaveToken || !analyzedAt || !expiresAt) return { status: "idle" };
     return { status: "completed", analysisId, saveToken: analysisSaveToken, analyzedAt: analyzedAt.toISOString(), expiresAt: expiresAt.toISOString(), route: result.lifecycleResult.acquisitionType, result: result.lifecycleResult };
   }, [analysisError, stage, result, isAnalysisStale, analysisId, analysisSaveToken, analyzedAt, expiresAt]);
+  const lifecycle = useMemo<InvestmentWorkspaceState["lifecycle"]>(() => {
+    if (currentAnalysis.status === "completed") return { status: "succeeded", analysis: currentAnalysis };
+    if (currentAnalysis.status === "running") return { status: "running", stage };
+    if (currentAnalysis.status === "failed") {
+      const code = currentAnalysis.error.toLowerCase().includes("market") ? "MARKET_INTELLIGENCE_UNAVAILABLE" : "UNKNOWN";
+      return { status: "failed", kind: classifyInvestmentWorkspaceFailure(code), code, message: currentAnalysis.error };
+    }
+    return isReadyForAnalysis ? { status: "ready" } : { status: "idle" };
+  }, [currentAnalysis, stage, isReadyForAnalysis]);
 
   const contextValue = useMemo<InvestmentWorkspaceState>(() => ({
     values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount,
@@ -189,8 +199,8 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
     analyzedAt,
     hasStaleAnalysis: result !== null && isAnalysisStale,
     isAnalyzing: stage === "resolving-property" || stage === "running-market-analysis" || stage === "running-investment-analysis",
-    analysisError, currentAnalysis, analyzeInvestment,
-  }), [values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, currentAnalysis, analyzeInvestment]);
+    analysisError, lifecycle, currentAnalysis, analyzeInvestment,
+  }), [values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, lifecycle, currentAnalysis, analyzeInvestment]);
 
   return <InvestmentWorkspaceContext.Provider value={contextValue}>{children}</InvestmentWorkspaceContext.Provider>;
 }

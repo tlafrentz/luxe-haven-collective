@@ -15,6 +15,7 @@ import { RentCastClient } from "@/features/market-intelligence/infrastructure/re
 import { RentCastComparableProvider } from "@/features/market-intelligence/infrastructure/rentcast/rentcast-comparable-provider";
 import { RentCastPropertyProvider } from "@/features/market-intelligence/infrastructure/rentcast/rentcast-property-provider";
 import { getMarketIntelligenceConfig, MarketIntelligenceConfigurationError } from "@/features/market-intelligence/infrastructure/market-intelligence-config";
+import { startMarketAnalysisRun, type MarketAnalysisRunRecorder } from "@/features/market-intelligence/infrastructure/provider-diagnostics";
 import { investmentWorkspaceActionSchema } from "./investment-workspace-schema";
 import {
   assertWorkspaceRateLimit,
@@ -38,9 +39,11 @@ export async function analyzeInvestmentWorkspace(
 ): Promise<InvestmentWorkspaceServerActionResult> {
   const { user } = await getSessionProfile();
   if (!user) return { ok: false, error: { code: "INVALID_INPUT", message: "Sign in before analyzing an investment.", retryable: false } };
+  let workspaceId: string;
   try {
     const access = await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(), user.id);
     if (!["owner", "administrator"].includes(access.role)) return { ok: false, error: { code: "INVALID_INPUT", message: "You are not authorized to analyze investments in this workspace.", retryable: false } };
+    workspaceId = access.workspaceId;
   } catch {
     return { ok: false, error: { code: "INVALID_INPUT", message: "You are not authorized to analyze investments in this workspace.", retryable: false } };
   }
@@ -48,18 +51,39 @@ export async function analyzeInvestmentWorkspace(
   if (!parsed.success) {
     return { ok: false, error: { code: "INVALID_INPUT", message: "Review the workspace fields and try again.", retryable: false } };
   }
+  const requestedAt = new Date();
+  const runId = `MI-${requestedAt.toISOString().replace(/\D/g, "").slice(0, 14)}-${crypto.randomUUID()}`;
+  let diagnostics: MarketAnalysisRunRecorder | undefined;
+  try {
+    diagnostics = await startMarketAnalysisRun({
+      runId,
+      workspaceId,
+      userId: user.id,
+      acquisitionRoute: parsed.data.investmentInput.acquisitionType,
+      address: `${parsed.data.address.streetAddress}, ${parsed.data.address.city}, ${parsed.data.address.state} ${parsed.data.address.postalCode}`,
+      propertyType: parsed.data.investmentInput.property.propertyType,
+      startedAt: requestedAt,
+    });
+    await diagnostics.event("analysis", "started", { route: parsed.data.investmentInput.acquisitionType });
+  } catch {
+    console.error(JSON.stringify({ event: "market_diagnostics_initialization_failed", runId }));
+  }
   let config;
   try { config = getMarketIntelligenceConfig(); } catch (error) {
     setWorkspaceHealthStatus("misconfigured");
+    await diagnostics?.complete("failed", "MARKET_PROVIDER_UNAVAILABLE");
     return { ok: false, error: safeError(error) };
   }
   if (!config.providerEnabled) {
     setWorkspaceHealthStatus("disabled");
+    await diagnostics?.complete("failed", "MARKET_PROVIDER_DISABLED");
     return { ok: false, error: { code: "MARKET_PROVIDER_DISABLED", message: "Live Market analysis is currently disabled. Your assumptions were preserved.", retryable: false } };
   }
-  try { assertWorkspaceRateLimit(user.id, config.rateLimitPerMinute); } catch (error) { return { ok: false, error: safeError(error) }; }
-  const requestedAt = new Date();
-  const runId = crypto.randomUUID();
+  try { assertWorkspaceRateLimit(user.id, config.rateLimitPerMinute); } catch (error) {
+    const safe = safeError(error);
+    await diagnostics?.complete("failed", safe.code);
+    return { ok: false, error: safe };
+  }
   const requestFingerprint = fingerprint({
     actorId: user.id,
     address: parsed.data.address,
@@ -69,9 +93,16 @@ export async function analyzeInvestmentWorkspace(
   });
   const startedAt = Date.now();
   recordWorkspaceOperation("started", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType });
+  await diagnostics?.event("provider-selection", "completed", { provider: "rentcast", fallback: false });
   try {
     const result = await coalesceWorkspaceRequest(requestFingerprint, async () => {
-      const client = new RentCastClient({ apiKey: config.rentCastApiKey ?? "", baseUrl: config.rentCastBaseUrl, timeoutMs: config.requestTimeoutMs });
+      const client = new RentCastClient({
+        apiKey: config.rentCastApiKey ?? "",
+        baseUrl: config.rentCastBaseUrl,
+        timeoutMs: config.requestTimeoutMs,
+        diagnosticsObserver: diagnostics?.observer,
+        acquisitionRoute: parsed.data.investmentInput.acquisitionType,
+      });
       const providers = buildCachedMarketProviders(
         new RentCastPropertyProvider({ client }),
         new RentCastComparableProvider({ client }),
@@ -83,29 +114,36 @@ export async function analyzeInvestmentWorkspace(
         userProvidedAssumptionKeys: parsed.data.userProvidedAssumptionKeys,
         marketRequest: parsed.data.marketRequest,
         context: {
-          workspaceRunId: `workspace:${runId}`,
+          workspaceRunId: runId,
           propertyResolutionId: `resolution:${runId}`,
           marketAnalysisId: `market:${runId}`,
           requestedAt,
           requestedBy: user.id,
         },
-      }, providers);
+      }, {
+        ...providers,
+        onPropertyResolved: propertyId => diagnostics?.setPropertyId(propertyId),
+      });
     });
     const durationMs = Date.now() - startedAt;
     updateWorkspaceHealth({ success: true, durationMs });
     recordWorkspaceOperation("completed", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType, durationMs, reportStatus: result.marketReport.status, confidence: result.marketReport.confidence.level, saleComparableCount: result.marketReport.summary.saleComparableCount, rentalComparableCount: result.marketReport.summary.rentalComparableCount });
+    await diagnostics?.event("market-report", "completed", { status: result.marketReport.status });
+    await diagnostics?.event("investment-decision", "completed", { route: result.lifecycleResult.acquisitionType });
     const issuedSaveToken = await storeInvestmentAnalysis(user.id, result, {
       address: parsed.data.address,
       investmentInput: parsed.data.investmentInput,
       userProvidedAssumptionKeys: parsed.data.userProvidedAssumptionKeys,
       marketRequest: parsed.data.marketRequest,
     }, requestedAt);
+    await diagnostics?.complete("succeeded");
     return { ok: true, result, analysisId: result.lineage.workspaceRunId, analysisSaveToken: issuedSaveToken.token, analyzedAt: requestedAt, expiresAt: issuedSaveToken.expiresAt };
   } catch (error) {
     const safe = safeError(error);
     const durationMs = Date.now() - startedAt;
     updateWorkspaceHealth({ success: false, durationMs, errorCode: safe.code });
     recordWorkspaceOperation("failed", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType, durationMs, errorCode: safe.code });
+    await diagnostics?.complete("failed", safe.code);
     return { ok: false, error: safe };
   }
 }

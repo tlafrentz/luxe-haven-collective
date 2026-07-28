@@ -2,72 +2,48 @@
 
 ## Outcome
 
-The Investment Intelligence workspace now exposes canonical Saved Analysis and
-Scenario persistence. A completed analysis is represented by one client-facing
-discriminated state containing the server-issued analysis identity, save token,
-analysis timestamp, token expiry, acquisition route, and canonical result.
-Save readiness is derived only from that completed state and an unexpired token.
+The Investment Workspace exposes the existing canonical lifecycle: setup, analysis, immutable opportunity version, scenario, comparison, report, and history. Presentation surfaces link to persisted commands and snapshots; they do not introduce underwriting, market, score, or financial calculations.
 
-The `Scenarios` navigation destination is live at
-`/dashboard/investments/scenarios`; no release-placeholder badge is used.
+## State machine
 
-## Save Opportunity
+The application state vocabulary is `idle`, `ready`, `running`, `succeeded`, `saved`, `scenario`, and `archived`. Failures carry exactly one category: validation, provider, authorization, persistence, concurrency, expired save token, or unknown.
 
-- The analysis server action stores the immutable calculation payload and
-  returns the opaque token with its authoritative expiration.
-- Idle, running, failed, completed, expired, and saving states have distinct
-  operator feedback.
-- New saves and compatible opportunity appends continue through the SA-001
-  atomic persistence boundary.
-- Initial notes remain part of the initial opportunity transaction.
-- Idempotency receipts prevent replay from creating another version.
-- Successful saves navigate to the canonical Opportunity route and refresh
-  server data.
-- Domain and persistence errors are mapped to safe, actionable messages; raw
-  database messages are not rendered.
+Save readiness is a domain predicate. A successful canonical analysis and an unexpired server-issued save token are required. Completed forms and rendered metrics do not enable saving.
 
-## Scenario read model
+## Navigation and lifecycle
 
-The workspace-wide route queries persisted scenarios under Supabase RLS and
-joins only accessible opportunity and immutable analysis metadata. It supports
-active/archive, acquisition route, scenario type, opportunity, and preferred
-filters. Financial metrics, recommendation, and confidence are read directly
-from `output_snapshot`; React does not run the investment calculator.
+Investment navigation is:
 
-Opportunity-scoped routes remain the mutation and comparison boundary:
+1. Overview
+2. New Analysis
+3. Portfolio
+4. Scenarios
+5. Reports
 
-- `/dashboard/investments/opportunities/[id]/scenarios`
-- `/dashboard/investments/opportunities/[id]/scenarios/[scenarioId]`
-- `/dashboard/investments/opportunities/[id]/compare`
+Analysis history contains immutable opportunity analysis versions only. Each version links to reanalysis, scenario creation, and report generation. Scenario comparisons consume persisted output snapshots. Investment reports are filtered to `investment-decision` reports and are generated from a saved analysis version or scenario.
 
-Scenario detail includes source-analysis lineage and parent-scenario lineage.
-Metadata mutations use the scenario RPC and do not modify source lineage,
-assumption snapshots, output snapshots, or creation provenance. Comparison
-reads persisted snapshots and the existing persisted comparison selection.
+## Authorization
 
-## Authorization and integrity
+Server actions and query handlers remain the authority. UI visibility is convenience, never authorization. Read access is available to authorized viewers; mutation commands require the operator/admin permissions enforced by opportunity, scenario, and reporting handlers.
 
-Workspace scenario reads rely on RLS for workspace/property visibility.
-Opportunity-scoped reads and mutations additionally use the canonical
-application authorization operations (`scenario.read`, `scenario.create`, and
-`scenario.modify`). Viewers therefore receive readable persisted results when
-policy permits but do not pass mutation authorization. The database remains the
-authoritative enforcement layer.
+## Lineage
 
-Analysis versions and scenarios remain separate tables and projections.
-Scenario records are never inserted into immutable analysis history.
+The durable chain is:
 
-## Verification
+`Opportunity → Analysis Version → Scenario → Comparison/Report`
 
-Run:
+Reanalysis creates a new version. Historical analysis and scenario output snapshots are not modified or recomputed when reopened.
 
-```text
-npm run lint
-npm run typecheck
-npm test
-npm run build
-git diff --check
-```
+## Error handling
 
-The production build must include `/dashboard/investments/scenarios` and the
-opportunity-scoped scenario detail and comparison routes.
+Provider, validation, authorization, persistence, concurrency, expired-token, and unknown failures retain their canonical application classification. User-facing provider language remains safe. Mutations refresh server-rendered state after success.
+
+## Testing strategy
+
+- State-machine unit tests cover failure classification and save eligibility.
+- Opportunity application tests cover sequential immutable versions and authorization.
+- Scenario tests cover creation, duplication, preferred selection, archive/restore, persisted comparison, and lineage.
+- Reporting tests verify analysis/scenario source validation and immutable projection snapshots.
+- Route/build validation confirms the investment Reports destination is in the production manifest.
+
+No formulas, provider selection, provider behavior, retry policy, or user-facing provider messaging changed in IA-001D.

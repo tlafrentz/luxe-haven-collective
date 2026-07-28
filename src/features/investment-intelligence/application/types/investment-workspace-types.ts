@@ -46,6 +46,7 @@ export type RunInvestmentWorkspaceAnalysisCommand = Readonly<{
 export type RunInvestmentWorkspaceAnalysisDependencies = Readonly<{
   propertyProvider: MarketPropertyResolutionProvider;
   comparableProvider: MarketComparableProvider;
+  onPropertyResolved?: (propertyId: string) => void | Promise<void>;
 }>;
 
 export type InvestmentWorkspaceLineage = Readonly<{

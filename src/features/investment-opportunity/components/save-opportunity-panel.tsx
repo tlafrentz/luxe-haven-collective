@@ -9,7 +9,24 @@ export function SaveOpportunityPanel() {
   const { currentAnalysis } = useInvestmentWorkspaceState(), router = useRouter(), searchParams = useSearchParams(), reanalysisOpportunityId = searchParams.get("mode") === "reanalyze" ? searchParams.get("opportunity") : null, sourceAnalysisVersionId=searchParams.get("analysis");
   const [open, setOpen] = useState(false), [mode, setMode] = useState<"new" | "existing">(reanalysisOpportunityId ? "existing" : "new"), [name, setName] = useState(""), [tags, setTags] = useState(""), [note, setNote] = useState(""), [candidates, setCandidates] = useState<readonly Candidate[]>([]), [selected, setSelected] = useState(reanalysisOpportunityId ?? ""), [feedback, setFeedback] = useState<{ code?: string; message: string } | null>(null), [pending, startTransition] = useTransition();
   const completed = currentAnalysis.status === "completed" ? currentAnalysis : null;
-  const expired = completed ? new Date(completed.expiresAt).getTime() <= Date.now() : false;
+  const [expired, setExpired] = useState(false);
+
+useEffect(() => {
+  if (!completed) {
+    return;
+  }
+
+  const expiresAt = new Date(completed.expiresAt).getTime();
+  const delay = Math.max(0, expiresAt - Date.now());
+
+  const timeoutId = window.setTimeout(() => {
+    setExpired(true);
+  }, delay);
+
+  return () => {
+    window.clearTimeout(timeoutId);
+  };
+}, [completed]);
   useEffect(() => { if (!open || mode !== "existing" || !completed || expired) return; void listCompatibleOpportunitiesAction(completed.saveToken).then(result => { if (result.ok) setCandidates(result.data); else setFeedback(result); }); }, [open, mode, completed, expired]);
   if (!completed || expired) {
     const message = expired ? "This analysis is no longer available to save. Run the analysis again." : currentAnalysis.status === "running" ? "The Investment Analysis is still running." : currentAnalysis.status === "failed" ? "The Investment Analysis failed. Resolve the error and run it again." : "Complete an Investment Analysis before saving an opportunity.";

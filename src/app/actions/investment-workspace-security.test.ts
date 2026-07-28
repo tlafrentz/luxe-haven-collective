@@ -26,4 +26,10 @@ describe("Investment workspace server boundary security", () => {
     expect(source).not.toMatch(/\.stack|cause:/);
     expect(source).toContain("safeError(error)");
   });
+
+  it("keeps provider diagnostics internal without changing the safe user message", () => {
+    expect(source).toContain("startMarketAnalysisRun");
+    expect(source).toContain("Market data is temporarily unavailable. Your assumptions were preserved and you can retry.");
+    expect(source).not.toMatch(/responseBody|authorizationHeader|rawProviderPayload/);
+  });
 });

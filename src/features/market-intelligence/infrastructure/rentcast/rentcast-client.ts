@@ -10,6 +10,14 @@ import {
 import type {
   RentCastPropertyResponse,
 } from "./rentcast-types";
+import { createHash } from "node:crypto";
+import type { MarketProviderDiagnosticsObserver } from "../provider-diagnostics";
+import {
+  fingerprintSafeProviderRequest,
+  operationFromRentCastUrl,
+  providerErrorCompletion,
+  safeRequestMetadataFromUrl,
+} from "../provider-diagnostics";
 
 const DEFAULT_BASE_URL =
   "https://api.rentcast.io/v1";
@@ -21,6 +29,8 @@ export interface RentCastClientOptions {
   readonly baseUrl?: string;
   readonly timeoutMs?: number;
   readonly fetchImplementation?: typeof fetch;
+  readonly diagnosticsObserver?: MarketProviderDiagnosticsObserver;
+  readonly acquisitionRoute?: string;
 }
 
 export interface RentCastPropertySearchInput {
@@ -48,6 +58,8 @@ export class RentCastClient {
   private readonly timeoutMs: number;
   private readonly fetchImplementation:
     typeof fetch;
+  private readonly diagnosticsObserver?: MarketProviderDiagnosticsObserver;
+  private readonly acquisitionRoute: string;
 
   constructor(
     options: RentCastClientOptions,
@@ -76,6 +88,8 @@ export class RentCastClient {
     this.fetchImplementation =
       options.fetchImplementation ??
       fetch;
+    this.diagnosticsObserver = options.diagnosticsObserver;
+    this.acquisitionRoute = options.acquisitionRoute ?? "unknown";
   }
 
   async searchProperties(
@@ -262,6 +276,16 @@ export class RentCastClient {
       this.timeoutMs,
     );
 
+    const operation = operationFromRentCastUrl(url);
+    const requestMetadata = safeRequestMetadataFromUrl(url, this.acquisitionRoute);
+    const attempt = this.diagnosticsObserver
+      ? await this.diagnosticsObserver.start({
+          operation,
+          requestMetadata,
+          requestFingerprint: fingerprintSafeProviderRequest(operation, requestMetadata),
+        })
+      : undefined;
+    let diagnosticsCompleted = false;
     try {
       const response =
         await this.fetchImplementation(
@@ -279,16 +303,38 @@ export class RentCastClient {
           },
         );
 
+      const body = await response.text();
+      const payloadSize = Buffer.byteLength(body);
+      const responseHash = createHash("sha256").update(body).digest("hex");
       if (!response.ok) {
-        throw createHttpProviderError(
-          response.status,
-        );
+        const providerError = createHttpProviderError(response.status);
+        if (attempt) {
+          await this.diagnosticsObserver!.complete(attempt, {
+            ...providerErrorCompletion(providerError),
+            payloadSize,
+            responseHash,
+          });
+          diagnosticsCompleted = true;
+        }
+        throw providerError;
       }
-
       try {
-        return await response.json() as T;
+        const parsed = JSON.parse(body) as T;
+        if (attempt) {
+          await this.diagnosticsObserver!.complete(attempt, {
+            result: "succeeded",
+            httpStatus: response.status,
+            classification: "SUCCESS",
+            retryable: false,
+            payloadSize,
+            responseHash,
+          });
+          diagnosticsCompleted = true;
+        }
+        return parsed;
       } catch (error) {
-        throw new ProviderError({
+        if (error instanceof ProviderError) throw error;
+        const providerError = new ProviderError({
           provider:
             ProviderType.RentCast,
           code:
@@ -298,12 +344,26 @@ export class RentCastClient {
             "RentCast returned an invalid JSON response.",
           cause: error,
         });
+        if (attempt) {
+          await this.diagnosticsObserver!.complete(attempt, {
+            ...providerErrorCompletion(providerError),
+            httpStatus: response.status,
+            payloadSize,
+            responseHash,
+          });
+          diagnosticsCompleted = true;
+        }
+        throw providerError;
       }
     } catch (error) {
       if (
         error instanceof
         ProviderError
       ) {
+        if (attempt && !diagnosticsCompleted) {
+          await this.diagnosticsObserver!.complete(attempt, providerErrorCompletion(error));
+          diagnosticsCompleted = true;
+        }
         throw error;
       }
 
@@ -311,7 +371,7 @@ export class RentCastClient {
         error instanceof Error &&
         error.name === "AbortError"
       ) {
-        throw new ProviderError({
+        const providerError = new ProviderError({
           provider:
             ProviderType.RentCast,
           code:
@@ -322,9 +382,14 @@ export class RentCastClient {
           retryable: true,
           cause: error,
         });
+        if (attempt && !diagnosticsCompleted) {
+          await this.diagnosticsObserver!.complete(attempt, providerErrorCompletion(providerError));
+          diagnosticsCompleted = true;
+        }
+        throw providerError;
       }
 
-      throw new ProviderError({
+      const providerError = new ProviderError({
         provider:
           ProviderType.RentCast,
         code:
@@ -335,6 +400,11 @@ export class RentCastClient {
         retryable: true,
         cause: error,
       });
+      if (attempt && !diagnosticsCompleted) {
+        await this.diagnosticsObserver!.complete(attempt, providerErrorCompletion(providerError));
+        diagnosticsCompleted = true;
+      }
+      throw providerError;
     } finally {
       clearTimeout(timeout);
     }
