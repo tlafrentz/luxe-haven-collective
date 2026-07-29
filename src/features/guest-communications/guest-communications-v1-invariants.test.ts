@@ -25,6 +25,10 @@ const conversationPage = readFileSync(
   "src/app/(dashboard)/dashboard/communications/[conversationId]/page.tsx",
   "utf8",
 );
+const relationshipTimelineAction = readFileSync(
+  "src/app/actions/guest-relationship-timeline.ts",
+  "utf8",
+);
 
 describe("GC-005 / GC-006 provider coexistence and manual review", () => {
   it("routes unknown reservations into review before message persistence", () => {
@@ -75,6 +79,15 @@ describe("GC-007 UI contract", () => {
     expect(conversationPage).toContain("result.projection.attachments.map");
     expect(conversationPage).toContain(
       "View complete relationship history",
+    );
+  });
+
+  it("authorizes legacy guest ownership with the workspace owner's profile identity", () => {
+    expect(relationshipTimelineAction).toContain(
+      '.eq("owner_id",access.ownerProfileId)',
+    );
+    expect(relationshipTimelineAction).not.toContain(
+      '.eq("owner_id",access.workspaceId)',
     );
   });
 });

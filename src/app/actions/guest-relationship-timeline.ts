@@ -6,7 +6,9 @@ export async function getGuestRelationshipTimeline(input:{guestId:string;workspa
   const{user}=await getSessionProfile();if(!user)return{ok:false as const,code:"permission_denied"};
   const admin=createAdminClient(),access=await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(),user.id,input.workspaceId);
   if(!evaluateWorkspacePermission(access,"communications.view"))return{ok:false as const,code:"permission_denied"};
-  const{data:guest,error:guestError}=await admin.from("guests").select("id,owner_id,display_name,language,last_observed_at,created_at").eq("id",input.guestId).eq("owner_id",access.workspaceId).maybeSingle();
+  // guests.owner_id still references profiles.id, while communication
+  // workspaces and relationship events use the canonical owners.id.
+  const{data:guest,error:guestError}=await admin.from("guests").select("id,owner_id,display_name,language,last_observed_at,created_at").eq("id",input.guestId).eq("owner_id",access.ownerProfileId).maybeSingle();
   if(guestError)throw guestError;
   if(!guest){const{data:foreignGuest}=await admin.from("guests").select("id").eq("id",input.guestId).maybeSingle();return{ok:false as const,code:foreignGuest?"permission_denied":"guest_not_found"};}
   const page=Math.max(1,input.page??1),pageSize=50,from=(page-1)*pageSize,ascending=input.order==="oldest";
