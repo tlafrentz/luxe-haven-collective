@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import { buildPreliminaryFinancialPreview, type LiveMetricStatus } from "../application/preview";
 import { useInvestmentWorkspaceState } from "./investment-workspace-state";
 
-const STATUS_LABELS: Record<LiveMetricStatus, string> = { healthy: "Healthy", caution: "Watch", weak: "Weak", neutral: "Awaiting analysis" };
-const STATUS_CLASSES: Record<LiveMetricStatus, string> = { healthy: "border-emerald-300/20 bg-emerald-300/10 text-emerald-100", caution: "border-amber-300/20 bg-amber-300/10 text-amber-100", weak: "border-rose-300/20 bg-rose-300/10 text-rose-100", neutral: "border-white/10 bg-white/[0.05] text-white/60" };
+const STATUS_LABELS: Record<LiveMetricStatus, string> = { healthy: "Healthy", caution: "Watch", weak: "Weak", calculated: "Calculated", neutral: "Awaiting inputs" };
+const STATUS_CLASSES: Record<LiveMetricStatus, string> = { healthy: "border-emerald-300/20 bg-emerald-300/10 text-emerald-100", caution: "border-amber-300/20 bg-amber-300/10 text-amber-100", weak: "border-rose-300/20 bg-rose-300/10 text-rose-100", calculated: "border-sky-300/20 bg-sky-300/10 text-sky-100", neutral: "border-white/10 bg-white/[0.05] text-white/60" };
 
 export function LiveInvestmentSummary() {
   const { values } = useInvestmentWorkspaceState();

@@ -8,6 +8,7 @@ export type LiveMetricStatus =
   | "healthy"
   | "caution"
   | "weak"
+  | "calculated"
   | "neutral";
 
 export const PRELIMINARY_PREVIEW_THRESHOLDS = Object.freeze({

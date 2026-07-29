@@ -7,6 +7,7 @@ import { DataProvenance } from "@/features/market-intelligence/domain/value-obje
 import type { MarketComparableProvider, MarketComparableProviderCandidate } from "@/features/market-intelligence/application/providers/market-comparable-provider";
 import type { MarketPropertyResolutionProvider } from "@/features/market-intelligence/application/providers/market-property-resolution-provider";
 import { providerSuccess } from "@/features/market-intelligence/application/providers/provider-result";
+import { buildSuppliedAssumptionMarketProviders } from "@/app/actions/investment-workspace-runtime";
 
 import { AcquisitionType, PropertyType } from "../domain";
 import { InvestmentWorkspaceAnalysisError, runInvestmentWorkspaceAnalysis } from "./run-investment-workspace-analysis";
@@ -109,6 +110,24 @@ describe("runInvestmentWorkspaceAnalysis", () => {
     expect(result.investmentAnalysisContext.assumptions.find(({ key }) => key === "market-monthly-rent-estimate")?.source).toBe("market");
     expect(result.decisionAnalysis.identity.acquisitionType).toBe(AcquisitionType.RentalArbitrage);
     expect("capRate" in result.decisionAnalysis.lifecycleResult.analysis.financialPerformance).toBe(false);
+  });
+
+  it("completes a savable canonical result from supplied assumptions when live Market evidence is unavailable", async () => {
+    const input = command(rentalInput());
+    const result = await runInvestmentWorkspaceAnalysis(
+      input,
+      buildSuppliedAssumptionMarketProviders(input),
+    );
+
+    expect(result.propertyResolution.status).toBe("resolved");
+    expect(result.propertyResolution.provenance[0]?.provider).toBe(ProviderType.Manual);
+    expect(result.marketReport.status).toBe("insufficient");
+    expect(result.marketReport.summary.rentalComparableCount).toBe(0);
+    expect(result.investmentAnalysisContext.input.revenue.projectedAdr).toBe(210);
+    if (result.lifecycleResult.acquisitionType === AcquisitionType.RentalArbitrage) {
+      expect(result.lifecycleResult.analysis.financialPerformance.annualGrossRevenue.amount).toBeGreaterThan(0);
+    }
+    expect(result.decisionAnalysis.status).not.toBe("complete");
   });
 
   it("rejects ambiguous properties without calling comparable acquisition", async () => {

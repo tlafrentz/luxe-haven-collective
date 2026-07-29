@@ -20,6 +20,7 @@ import { investmentWorkspaceActionSchema } from "./investment-workspace-schema";
 import {
   assertWorkspaceRateLimit,
   buildCachedMarketProviders,
+  buildSuppliedAssumptionMarketProviders,
   coalesceWorkspaceRequest,
   fingerprint,
   InvestmentWorkspaceRateLimitError,
@@ -108,7 +109,7 @@ export async function analyzeInvestmentWorkspace(
         new RentCastComparableProvider({ client }),
         { ttlMs: config.cacheTtlMs, retryCount: config.retryCount },
       );
-      return runInvestmentWorkspaceAnalysis({
+      const command = {
         address: parsed.data.address,
         investmentInput: parsed.data.investmentInput,
         userProvidedAssumptionKeys: parsed.data.userProvidedAssumptionKeys,
@@ -120,14 +121,31 @@ export async function analyzeInvestmentWorkspace(
           requestedAt,
           requestedBy: user.id,
         },
-      }, {
-        ...providers,
-        onPropertyResolved: propertyId => diagnostics?.setPropertyId(propertyId),
-      });
+      };
+      try {
+        return await runInvestmentWorkspaceAnalysis(command, {
+          ...providers,
+          onPropertyResolved: propertyId => diagnostics?.setPropertyId(propertyId),
+        });
+      } catch (error) {
+        if (!(error instanceof ProviderError)) throw error;
+        await diagnostics?.event("provider-selection", "completed", {
+          provider: "manual-supplied-assumptions",
+          fallback: true,
+          providerErrorCode: error.code,
+        });
+        return runInvestmentWorkspaceAnalysis(command, {
+          ...buildSuppliedAssumptionMarketProviders(command),
+          onPropertyResolved: propertyId => diagnostics?.setPropertyId(propertyId),
+        });
+      }
     });
     const durationMs = Date.now() - startedAt;
-    updateWorkspaceHealth({ success: true, durationMs });
-    recordWorkspaceOperation("completed", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType, durationMs, reportStatus: result.marketReport.status, confidence: result.marketReport.confidence.level, saleComparableCount: result.marketReport.summary.saleComparableCount, rentalComparableCount: result.marketReport.summary.rentalComparableCount });
+    const usedFallback = result.propertyResolution.provenance.some(({ provider }) => provider === "manual");
+    updateWorkspaceHealth(usedFallback
+      ? { success: false, durationMs, errorCode: "MARKET_PROVIDER_UNAVAILABLE" }
+      : { success: true, durationMs });
+    recordWorkspaceOperation("completed", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType, durationMs, reportStatus: result.marketReport.status, confidence: result.marketReport.confidence.level, saleComparableCount: result.marketReport.summary.saleComparableCount, rentalComparableCount: result.marketReport.summary.rentalComparableCount, fallback: usedFallback });
     await diagnostics?.event("market-report", "completed", { status: result.marketReport.status });
     await diagnostics?.event("investment-decision", "completed", { route: result.lifecycleResult.acquisitionType });
     const issuedSaveToken = await storeInvestmentAnalysis(user.id, result, {

@@ -4,6 +4,12 @@ import type { MarketComparableProvider } from "@/features/market-intelligence/ap
 import type { MarketPropertyResolutionProvider } from "@/features/market-intelligence/application/providers/market-property-resolution-provider";
 import type { ProviderResult } from "@/features/market-intelligence/application/providers/provider-result";
 import { ProviderErrorCode } from "@/features/market-intelligence/application/providers/provider-error";
+import { providerSuccess } from "@/features/market-intelligence/application/providers/provider-result";
+import { PropertyRecord } from "@/features/market-intelligence/domain/entities/property-record";
+import { ProviderType } from "@/features/market-intelligence/domain/enums/provider-type";
+import { ConfidenceScore } from "@/features/market-intelligence/domain/value-objects/confidence-score";
+import { DataProvenance } from "@/features/market-intelligence/domain/value-objects/data-provenance";
+import type { RunInvestmentWorkspaceAnalysisCommand } from "@/features/investment-intelligence";
 
 type HealthStatus = "healthy" | "degraded" | "misconfigured" | "disabled" | "unknown";
 type HealthSnapshot = Readonly<{
@@ -66,6 +72,69 @@ export function buildCachedMarketProviders(
         options,
         () => comparableProvider.acquireComparables(request),
       ),
+    },
+  };
+}
+
+/**
+ * Preserves a usable, explicitly low-confidence analysis when live Market
+ * providers are unavailable. The subject facts come only from user-supplied
+ * workspace inputs and the comparable set stays empty.
+ */
+export function buildSuppliedAssumptionMarketProviders(
+  command: RunInvestmentWorkspaceAnalysisCommand,
+): Readonly<{ propertyProvider: MarketPropertyResolutionProvider; comparableProvider: MarketComparableProvider }> {
+  const address = command.address;
+  const input = command.investmentInput;
+  const formattedAddress = `${address.streetAddress.trim()}, ${address.city.trim()}, ${address.state.trim()} ${address.postalCode.trim()}`;
+  const externalId = `manual:${fingerprint({ address, property: input.property }).slice(0, 24)}`;
+  const property = new PropertyRecord(
+    externalId,
+    {
+      formatted: formattedAddress,
+      addressLine1: address.streetAddress.trim(),
+      city: address.city.trim(),
+      state: address.state.trim(),
+      postalCode: address.postalCode.trim(),
+      country: address.countryCode ?? "US",
+    },
+    {
+      propertyType: input.property.propertyType,
+      bedrooms: input.property.bedrooms,
+      bathrooms: input.property.bathrooms,
+      squareFeet: input.property.squareFeet,
+    },
+    input.acquisitionType === "purchase"
+      ? {
+          estimatedValue: input.property.purchasePrice,
+          annualPropertyTaxes: input.operating.annualTaxes,
+        }
+      : {},
+    new DataProvenance(
+      ProviderType.Manual,
+      command.context.requestedAt,
+      new ConfidenceScore(25),
+      1,
+      "Subject facts supplied in the Investment workspace; live Market evidence unavailable.",
+      "investment-workspace-fallback-v1",
+    ),
+  );
+
+  return {
+    propertyProvider: {
+      lookupPropertyCandidates: async () => providerSuccess({
+        provider: ProviderType.Manual,
+        retrievedAt: command.context.requestedAt,
+        candidates: [{ externalId, property }],
+      }),
+    },
+    comparableProvider: {
+      acquireComparables: async (request) => providerSuccess({
+        provider: ProviderType.Manual,
+        purpose: request.purpose,
+        retrievedAt: command.context.requestedAt,
+        candidates: [],
+      }),
     },
   };
 }
