@@ -24,6 +24,7 @@ export type MessageSyncResult=Readonly<{
 export async function syncHospitableMessages(options:MessageSyncOptions={}):Promise<MessageSyncResult>{
   const batchSize=options.batchSize??1;
   if(!Number.isInteger(batchSize)||batchSize!==1)throw new Error("Hospitable message hydration concurrency must be 1.");
+  const forceHydration=options.mode==="manual"||options.mode==="recovery";
   const admin=createAdminClient();
   let connectionQuery=admin.from("integration_connections").select("id,workspace_id").eq("provider",PROVIDER).eq("name",CONNECTION_NAME);
   if(options.workspaceId)connectionQuery=connectionQuery.eq("workspace_id",options.workspaceId);
@@ -47,6 +48,7 @@ export async function syncHospitableMessages(options:MessageSyncOptions={}):Prom
           workspaceId,
           reservationId:link.reservation_id,
           requestId:`${syncRunId}:${link.booking_id}`,
+          force:forceHydration,
           signal:options.signal,
         });
         result.processed+=hydrated.observed;
