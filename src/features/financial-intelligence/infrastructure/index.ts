@@ -3,6 +3,7 @@ export * from "./in-memory-repositories";
 export * from "./financial-overview-cache";
 export * from "./financial-overview-projection-adapter";
 export * from "./supabase-financial-overview-source";
+export * from "./supabase-financial-snapshot-writer";
 export * from "./income-statement-projection-adapter";
 export * from "./income-statement-cache";
 export * from "./cash-flow-projection-adapter";

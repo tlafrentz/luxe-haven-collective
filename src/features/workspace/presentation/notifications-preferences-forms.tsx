@@ -10,7 +10,13 @@ export function NotificationPreferencesForm({ settings }: { settings: EffectiveS
   const [result, setResult] = useState<SettingsActionResult | null>(null), [pending, start] = useTransition();
   const dirty = JSON.stringify(value) !== JSON.stringify(baseline);
   const subscription = (category: string) => value.subscriptions.find((item) => item.category === category);
-  const setFrequency = (category: typeof notificationCategories[number], frequency: string) => setValue((current) => ({ ...current, subscriptions: current.subscriptions.map((item) => item.category === category ? { ...item, frequency: frequency as typeof item.frequency } : item) }));
+  const setFrequency = (category: typeof notificationCategories[number], frequency: string) => setValue((current) => {
+    const existing = current.subscriptions.find((item) => item.category === category);
+    const next = existing
+      ? current.subscriptions.map((item) => item.category === category ? { ...item, frequency: frequency as typeof item.frequency } : item)
+      : [...current.subscriptions, { category, frequency: frequency as "immediate"|"daily-digest"|"weekly-digest"|"off", channels: ["in-app"] as const, propertyScope: { type: "all-accessible" as const } }];
+    return { ...current, subscriptions: next };
+  });
   return <form onSubmit={(event) => { event.preventDefault(); start(async () => { const response = await saveNotificationPreferencesAction({ value, expectedRevision: value.revision, commandId: crypto.randomUUID() }); setResult(response); if (response.ok) { const next = { ...value, revision: response.revision ?? value.revision }; setValue(next); setBaseline(next); } }); }} className="space-y-8">
     <section><h2 className="text-xl font-semibold">Delivery channels</h2><div className="mt-4 grid gap-3 sm:grid-cols-2">
       <label className="rounded-xl border p-4"><input type="checkbox" checked={value.channels.inApp} onChange={(e) => setValue({ ...value, channels: { ...value.channels, inApp: e.target.checked } })} /> <strong>In app</strong><span className="block text-sm text-stone-600">Canonical notification record and action links.</span></label>

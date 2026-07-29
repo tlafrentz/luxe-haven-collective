@@ -10,3 +10,4 @@ export * from "./learning-lineage";
 export * from "./outcome-measurement";
 export * from "./lesson-knowledge";
 export * from "./learning-calibration";
+export * from "./canonical-learning";

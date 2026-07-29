@@ -27,6 +27,7 @@ export type KnowledgeGap = Readonly<{
   id: string; type: "unvalidated-assumption" | "missing-measurement" | "overdue-review" |
   "low-confidence-lesson" | "contradiction" | "unsupported-context";
   severity: "high" | "medium" | "low"; title: string; detail: string; href: string;
+  suggestedEvidence: string; suggestedAction: string; expectedImpact: "high"|"medium"|"low";
 }>;
 export type LearningHealth = Readonly<{
   score: number; status: "healthy" | "developing" | "attention";
@@ -180,4 +181,7 @@ function ratio(value: number, total: number) { return total ? value / total : 0;
 function clamp(value: number) { return Math.max(0, Math.min(1, value)); }
 function daysBetween(first: string, second: string) { return Math.abs(Date.parse(second) - Date.parse(first)) / 86400000; }
 function gap(id: string, type: KnowledgeGap["type"], severity: KnowledgeGap["severity"],
-  title: string, detail: string, href: string): KnowledgeGap { return Object.freeze({ id, type, severity, title, detail, href }); }
+  title: string, detail: string, href: string): KnowledgeGap { return Object.freeze({id,type,severity,title,detail,href,
+    suggestedEvidence:type==="missing-measurement"?"Record the required measured outcome.":type==="contradiction"?"Collect a comparable outcome in the same operating context.":type==="unsupported-context"?"Capture observations and outcomes for this context.":"Complete the linked evidence and review records.",
+    suggestedAction:type==="overdue-review"?"Complete the overdue Outcome Review.":type==="low-confidence-lesson"?"Schedule another validation cycle.":type==="contradiction"?"Open a governed contradiction review.":"Open the Learning validation workspace.",
+    expectedImpact:severity})}

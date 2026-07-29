@@ -1,5 +1,6 @@
 export {
   ExecutiveBrief,
+  ExecutiveBusinessHealthPanel,
   ExecutiveCommandCenter,
   ExecutiveCommandHeader,
   ExecutiveAttentionCard,
@@ -13,10 +14,13 @@ export {
   RevenueRiskSummary,
   SectionHeading,
 } from "./components";
+export { SupabaseExecutiveHealthProjectionWriter } from "./infrastructure/supabase-executive-health-projection-writer";
 
 export {
   buildExecutiveAttentionItems,
   buildExecutiveIntelligenceView,
+  buildExecutiveBusinessHealth,
+  financialOverviewExecutivePillar,
   getExecutiveIntelligenceView,
   ExecutiveAttentionPolicy,
 } from "./application";
@@ -35,5 +39,6 @@ export type {
   ExecutivePerformanceSummary,
   ExecutiveMetricTrend,
   ExecutiveScopeSummary,
+  ExecutiveBusinessHealthProjection,
 } from "./domain";
 export type { ExecutiveAttentionCandidate, ExecutiveAttentionWeights } from "./application";

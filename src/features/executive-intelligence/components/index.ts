@@ -1,6 +1,7 @@
 export {
   ExecutiveBrief,
 } from "./executive-brief";
+export { ExecutiveBusinessHealthPanel } from "./executive-business-health-panel";
 
 export {
   ExecutiveCommandCenter,

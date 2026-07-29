@@ -5,6 +5,7 @@ import {
   type FinancialOverviewReader, type FinancialPlanSource, type FinancialSource,
   type GetFinancialOverviewQuery,
 } from "../application";
+import type { FinancialSnapshot } from "../domain";
 
 export interface FinancialPropertyCatalog {
   list(workspaceId: string): Promise<readonly Readonly<{ propertyId: string; label: string; included: boolean; reportingEligible: boolean; market?: string; operatingModel?: string }>[]>;
@@ -13,6 +14,7 @@ export interface FinancialLiquidityReader { read(workspaceId: string, propertyId
 export interface FinancialPlanningVarianceReader { read(workspaceId: string, period: GetFinancialOverviewQuery["period"], kind: "budget" | "forecast"): Promise<FinancialPlanSource | null>; }
 export interface FinancialObligationReader { read(workspaceId: string, propertyIds: readonly string[], period: GetFinancialOverviewQuery["period"]): Promise<Readonly<{ sourceAvailable: boolean; items: readonly FinancialObligation[] }>>; }
 export interface FinancialExecutionSummaryReader { read(workspaceId: string, propertyIds: readonly string[]): Promise<FinancialExecutionSummary>; }
+export interface FinancialSnapshotWriter { put(snapshot:FinancialSnapshot,actorProfileId:string):Promise<void>; }
 
 export class FinancialOverviewProjectionAdapter implements FinancialOverviewReader {
   constructor(
@@ -22,6 +24,7 @@ export class FinancialOverviewProjectionAdapter implements FinancialOverviewRead
     private readonly dependencies: Readonly<{
       liquidity?: FinancialLiquidityReader; planning?: FinancialPlanningVarianceReader;
       obligations?: FinancialObligationReader; execution?: FinancialExecutionSummaryReader;
+      snapshots?: FinancialSnapshotWriter;
     }> = {},
   ) {}
 
@@ -51,6 +54,11 @@ export class FinancialOverviewProjectionAdapter implements FinancialOverviewRead
       propertyId: property.propertyId, label: property.label,
       snapshot: (await buildFinancialReadModel(this.source, { ...readQuery, propertyIds: undefined, propertyId: property.propertyId })).snapshot,
     })));
+    if(this.dependencies.snapshots)await Promise.all([
+      this.dependencies.snapshots.put(current.snapshot,this.access.profileId),
+      ...(comparison?[this.dependencies.snapshots.put(comparison.snapshot,this.access.profileId)]:[]),
+      ...propertySnapshots.map(item=>this.dependencies.snapshots!.put(item.snapshot,this.access.profileId)),
+    ]);
     const canViewCash = evaluateWorkspacePermission(this.access, "financial.cash.view");
     const canViewDetail = evaluateWorkspacePermission(this.access, "financial.details.view");
     const [cash, plan, obligations, execution] = await Promise.all([

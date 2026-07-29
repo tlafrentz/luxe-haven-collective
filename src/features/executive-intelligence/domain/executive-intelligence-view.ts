@@ -2,6 +2,7 @@ import type { LegacyActionPriority as ActionPriority, LegacyActionStatus as Acti
 import type { RecommendationPriority } from "@/platform/recommendations";
 
 import type { ExecutiveAttentionItem } from "./executive-attention";
+import type { ExecutiveBusinessHealthProjection } from "./executive-business-health";
 
 export type ExecutiveHealthSummary = Readonly<{
   score: number | null;
@@ -114,6 +115,7 @@ export type ExecutivePerformanceSummary = Readonly<{
 
 export type ExecutiveIntelligenceView = Readonly<{
   generatedAt: Date;
+  businessHealth: ExecutiveBusinessHealthProjection;
   scope: ExecutiveScopeSummary;
   performance: ExecutivePerformanceSummary;
   health: ExecutiveHealthSummary;
@@ -126,6 +128,7 @@ export type ExecutiveIntelligenceView = Readonly<{
     headline: string;
     summary: string;
     recommendedFocus: string;
+    recommendedFocusDestination: string | null;
     highlights: readonly string[];
     concerns: readonly string[];
   }>;

@@ -33,14 +33,23 @@ function query(overrides: Partial<GetFinancialSnapshotQuery> = {}): GetFinancial
 describe("canonical financial read model", () => {
   it("builds workspace/property snapshots only from posted ledger transactions", async () => {
     const model = await buildFinancialReadModel(source(), query());
-    expect(model.snapshot.revenue.amount).toBe(4_620);
-    expect(model.snapshot.expenses.amount).toBe(1_480);
-    expect(model.snapshot.assets.amount).toBe(8_000);
+    expect(model.snapshot.revenue!.amount).toBe(4_120);
+    expect(model.snapshot.expenses!.amount).toBe(1_480);
+    expect(model.snapshot.assets!.amount).toBe(8_000);
     expect(model.snapshot.valuesByMeasurement.measured.revenue.amount).toBe(4_120);
     expect(model.snapshot.valuesByMeasurement.projected.revenue.amount).toBe(500);
+    expect(model.snapshot.basis).toBe("actual");
+    expect(model.snapshot.valuesByBasis.forecast.revenue).toMatchObject({status:"available",value:expect.objectContaining({amount:500})});
     expect(model.confidence).toBe("high");
     expect(model.freshness).toBe("current");
     expect(model.transactions).toEqual([]);
+    expect(model.snapshot.schemaVersion).toBe("financial-snapshot.v1");
+    expect(model.snapshot.profitability.noi!.amount).toBe(2_640);
+    expect(model.snapshot.profitability.operatingMargin).toBeCloseTo(2_640/4_120);
+    expect(model.snapshot.expenseBreakdown).toEqual(expect.arrayContaining([expect.objectContaining({category:"cleaning",group:"variable"})]));
+    expect(model.snapshot.lineage.noi.inputTransactionIds).toEqual(["e1","r1"]);
+    expect(model.snapshot.health.breakdown).toHaveLength(5);
+    expect((await buildFinancialReadModel(source(), query())).snapshot.id).toBe(model.snapshot.id);
   });
 
   it("reveals transaction detail only with explicit detail authorization", async () => {
@@ -57,6 +66,9 @@ describe("canonical financial read model", () => {
     expect(model.evidence.gaps).toContain("Expense coverage incomplete.");
     expect(model.confidence).toBe("low");
     expect(model.freshness).toBe("stale");
+    expect(model.snapshot.expenses).toBeNull();
+    expect(model.snapshot.profitability.noi).toBeNull();
+    expect(model.snapshot.valuesByBasis.actual.expenses.status).toBe("unavailable");
   });
 
   it.each([

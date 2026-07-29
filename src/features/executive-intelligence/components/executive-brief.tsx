@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Focus,
 } from "lucide-react";
+import Link from "next/link";
 
 import type {
   ExecutiveIntelligenceView,
@@ -105,7 +106,7 @@ export function ExecutiveBrief({
         </div>
       </div>
 
-      <div className="mt-8 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between">
+      {brief.recommendedFocusDestination ? <Link href={brief.recommendedFocusDestination} className="mt-8 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-5 outline-none transition hover:bg-white/[0.1] focus-visible:ring-2 focus-visible:ring-amber-300 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/50">
             <Focus className="h-4 w-4" />
@@ -118,7 +119,7 @@ export function ExecutiveBrief({
         </div>
 
         <ArrowRight className="hidden h-5 w-5 shrink-0 text-white/40 sm:block" />
-      </div>
+      </Link> : <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.06] p-5"><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/50"><Focus className="h-4 w-4" />Recommended focus</p><p className="mt-2 text-sm font-medium leading-6 text-white">{brief.recommendedFocus}</p></div>}
     </section>
   );
 }

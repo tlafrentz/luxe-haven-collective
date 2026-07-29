@@ -1,5 +1,6 @@
 export * from "./contracts";
 export * from "./services";
+export * from "./canonical-consumers";
 export * from "./overview";
 export * from "./income-statement";
 export * from "./cash-flow";

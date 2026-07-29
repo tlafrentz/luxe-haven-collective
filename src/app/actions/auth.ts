@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { roleHome } from "@/lib/auth/roles";
+import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/database";
 
@@ -52,24 +53,6 @@ function toFormErrors(
     ok: false,
     errors: error.flatten().fieldErrors,
   };
-}
-
-function resolvePostLoginDestination({
-  nextPath,
-  fallback,
-}: {
-  nextPath?: string;
-  fallback: string;
-}): string {
-  if (
-    nextPath &&
-    nextPath.startsWith("/") &&
-    !nextPath.startsWith("//")
-  ) {
-    return nextPath;
-  }
-
-  return fallback;
 }
 
 async function getRoleForCurrentUser(): Promise<UserRole> {
@@ -153,11 +136,20 @@ export async function signInAction(
 
   const role = profile?.role ?? "guest";
 
-  const destination =
-    resolvePostLoginDestination({
-      nextPath: parsed.data.next,
-      fallback: roleHome[role],
-    });
+  const { data: preference } = await supabase
+    .from("user_workspace_preferences")
+    .select("default_landing_page,updated_at")
+    .eq("profile_id", user.id)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ default_landing_page: string | null; updated_at: string }>();
+
+  const destination = resolvePostLoginDestination({
+    nextPath: parsed.data.next,
+    savedLanding: preference?.default_landing_page,
+    role,
+    roleDefault: roleHome[role],
+  });
 
   revalidatePath("/", "layout");
   redirect(destination);

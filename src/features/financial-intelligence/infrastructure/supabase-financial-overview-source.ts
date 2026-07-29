@@ -13,6 +13,8 @@ type BookingRow = Readonly<{
   currency: string | null;
   updated_at: string;
 }>;
+type AccountRow = Readonly<{ id:string;workspace_id:string;code:string;name:string;category:FinancialAccount["category"];subcategory:string|null;active:boolean }>;
+type TransactionRow = Readonly<{ id:string;workspace_id:string;account_id:string;property_id:string|null;amount_minor:number;currency:string;measurement:FinancialTransaction["props"]["measurement"];effective_date:string;posting_date:string|null;source_provider:string;source_external_id:string|null;status:FinancialTransaction["props"]["status"];evidence_ids:string[] }>;
 
 const DAY_MS = 86_400_000;
 
@@ -42,19 +44,27 @@ export class SupabaseFinancialOverviewSource implements FinancialSource, Financi
     });
   }
   async listAccounts(workspaceId: string): Promise<readonly FinancialAccount[]> {
-    return Object.freeze([{ id: `account:${workspaceId}:recognized-revenue`, workspaceId, code: "4000", name: "Recognized Accommodation Revenue", category: "revenue", subcategory: "Accommodation", active: true }]);
+    const client=await createClient(),{data,error}=await client.from("financial_accounts").select("id,workspace_id,code,name,category,subcategory,active").eq("workspace_id",workspaceId);
+    if(error)throw new Error(`Unable to read canonical financial accounts: ${error.message}`);
+    return Object.freeze([
+      { id: `account:${workspaceId}:recognized-revenue`, workspaceId, code: "4000", name: "Recognized Accommodation Revenue", category: "revenue", subcategory: "accommodation", active: true } as const,
+      ...((data??[])as AccountRow[]).map(row=>Object.freeze({id:row.id,workspaceId:row.workspace_id,code:row.code,name:row.name,category:row.category,subcategory:row.subcategory??undefined,active:row.active})),
+    ]);
   }
   async listTransactions(scope: Parameters<FinancialSource["listTransactions"]>[0]) {
     const propertyIds = scope.propertyId ? [scope.propertyId] : [...(scope.propertyIds ?? [])];
     if (!propertyIds.length) return Object.freeze([]);
     const client = await createClient();
-    const { data, error } = await client.from("bookings")
-      .select("id,property_id,check_in,check_out,total_amount,currency,updated_at")
-      .in("property_id", propertyIds).neq("status", "cancelled")
-      .lt("check_in", nextDate(scope.period.to)).gt("check_out", scope.period.from);
-    if (error) throw new Error(`Unable to read canonical recognized revenue: ${error.message}`);
+    const [bookingResult,transactionResult] = await Promise.all([
+      client.from("bookings").select("id,property_id,check_in,check_out,total_amount,currency,updated_at")
+        .in("property_id", propertyIds).neq("status", "cancelled")
+        .lt("check_in", nextDate(scope.period.to)).gt("check_out", scope.period.from),
+      client.from("financial_transactions").select("id,workspace_id,account_id,property_id,amount_minor,currency,measurement,effective_date,posting_date,source_provider,source_external_id,status,evidence_ids")
+        .eq("workspace_id",scope.workspaceId).in("property_id",propertyIds).gte("effective_date",scope.period.from).lte("effective_date",scope.period.to),
+    ]);
+    if (bookingResult.error||transactionResult.error) throw new Error(`Unable to read canonical financial observations: ${bookingResult.error?.message??transactionResult.error?.message}`);
     const identity = await this.getIdentity(scope.workspaceId);
-    return Object.freeze(((data ?? []) as BookingRow[]).flatMap(row => {
+    const revenue=((bookingResult.data ?? []) as BookingRow[]).flatMap(row => {
       const currency = row.currency ?? identity.reportingCurrency;
       if (currency !== identity.reportingCurrency) throw new Error("FINANCIAL_CURRENCY_MISMATCH");
       const stayNights = Math.max(0, Math.round((dateValue(row.check_out) - dateValue(row.check_in)) / DAY_MS));
@@ -65,11 +75,18 @@ export class SupabaseFinancialOverviewSource implements FinancialSource, Financi
         id: `booking-revenue:${row.id}`, accountId: `account:${scope.workspaceId}:recognized-revenue`,
         workspaceId: scope.workspaceId, propertyId: row.property_id,
         amount: Money.of(Number(row.total_amount) * (recognizedNights / stayNights), currency),
-        category: "accommodation", measurement: "measured", effectiveDate, postingDate: effectiveDate,
+        category: "accommodation", measurement: "actual", effectiveDate, postingDate: effectiveDate,
         source: { provider: "canonical-bookings", externalId: row.id }, status: "posted",
         evidenceIds: [`booking:${row.id}`],
       })];
+    });
+    const observations=((transactionResult.data??[])as TransactionRow[]).map(row=>FinancialTransaction.create({
+      id:row.id,accountId:row.account_id,workspaceId:row.workspace_id,propertyId:row.property_id??undefined,
+      amount:Money.fromMinorUnits(Number(row.amount_minor),row.currency),category:row.account_id,measurement:row.measurement,
+      effectiveDate:row.effective_date,postingDate:row.posting_date??undefined,
+      source:{provider:row.source_provider,externalId:row.source_external_id??undefined},status:row.status,evidenceIds:Object.freeze(row.evidence_ids??[]),
     }));
+    return Object.freeze([...revenue,...observations]);
   }
   async getSynchronization(workspaceId: string) {
     const client = await createClient();

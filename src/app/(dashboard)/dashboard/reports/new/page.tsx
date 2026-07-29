@@ -30,13 +30,13 @@ export default async function NewReportPage({searchParams}:{searchParams:Promise
       </div>
       <section aria-labelledby="snapshot-preview" className="rounded-2xl border bg-stone-50 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="snapshot-preview" className="font-semibold">Snapshot preflight</h2><span className={`rounded-full px-3 py-1 text-xs font-semibold ${ready?"bg-emerald-100 text-emerald-900":"bg-amber-100 text-amber-950"}`}>{label(context.state)}</span></div>
-        <p className="mt-3 text-sm text-stone-700">{context.message}</p>
+        <p id="report-preflight-message" className="mt-3 text-sm text-stone-700">{context.message}</p>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3"><Meta label="Projection" value={`${context.selectedType}.report.v1`}/><Meta label="Template" value="Luxe Haven v1"/><Meta label="Evaluated" value={new Date(context.evaluatedAt).toLocaleString()}/></dl>
         <div className="mt-5"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Required sections</p><ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2">{selected.requiredSections.map(section=><li key={section}>✓ {section.replaceAll("-"," ")}</li>)}</ul></div>
         {comparisonScenarioIds?<p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-950">The immutable report will include the canonical comparison projection for {comparisonScenarioIds.split(",").length} selected scenarios.</p>:null}
       </section>
       <Field label="Internal notes (not included in the report)"><textarea className="mt-2 min-h-24 w-full rounded-xl border p-3" name="internalNotes" maxLength={2000}/></Field>
-      <div className="flex flex-wrap items-center gap-4"><button disabled={!ready} className="rounded-full bg-stone-950 px-6 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40" type="submit">Generate immutable report</button>{context.nextAction?<Link className="font-semibold underline" href={context.nextAction}>Review access options</Link>:null}</div>
+      <div className="flex flex-wrap items-center gap-4"><button disabled={!ready} aria-describedby={!ready?"report-preflight-message":undefined} className="rounded-full bg-stone-950 px-6 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40" type="submit">Generate Report</button>{context.nextAction?<Link className="font-semibold underline" href={context.nextAction}>Review access options</Link>:null}</div>
     </form>
   </main>;
 }

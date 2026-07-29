@@ -15,6 +15,7 @@ export type GetFinancialSnapshotQuery = Readonly<{
   propertyIds?: readonly string[];
   reportingCurrency?: string;
   projectionVersion?: number;
+  basis?: import("../domain").FinancialBasis;
   authorizationLevel?: FinancialAuthorizationLevel;
   evaluatedAt?: string;
 }>;

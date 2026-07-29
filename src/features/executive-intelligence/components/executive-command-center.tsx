@@ -9,6 +9,7 @@ import { PortfolioHealthOverview } from "./portfolio-health-overview";
 import { PortfolioSnapshotGrid } from "./portfolio-snapshot-grid";
 import { RecentChangesFeed } from "./recent-changes-feed";
 import { RevenueRiskSummary } from "./revenue-risk-summary";
+import { ExecutiveBusinessHealthPanel } from "./executive-business-health-panel";
 
 type ExecutiveCommandCenterProps = Readonly<{ view: ExecutiveIntelligenceView }>;
 
@@ -18,6 +19,7 @@ export function ExecutiveCommandCenter({ view }: ExecutiveCommandCenterProps) {
       <div className="mx-auto max-w-[1480px] space-y-8">
         <ExecutiveCommandHeader scope={view.scope} />
         <ExecutiveScopeControls scope={view.scope} />
+        <ExecutiveBusinessHealthPanel projection={view.businessHealth} />
         <ExecutiveBrief brief={view.briefing} healthStatus={view.health.status} />
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.8fr)]">
           <ExecutiveAttentionList attention={view.attention} />

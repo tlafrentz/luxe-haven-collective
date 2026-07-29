@@ -11,14 +11,14 @@ import {
 } from "./policies";
 
 function operating(model: FinancialReadModel) {
-  const values = model.snapshot.valuesByMeasurement;
-  const revenue = values.measured.revenue;
-  const expenses = values.measured.expenses;
-  const expenseReliable = model.evidence.expenseCoverage >= FINANCIAL_OVERVIEW_THRESHOLDS.minimumExpenseCoverage;
-  const revenueReliable = model.evidence.revenueCoverage > 0;
+  const values=model.snapshot.valuesByMeasurement,actual=model.snapshot.valuesByBasis.actual;
+  const revenue=actual.revenue.status==="available"?actual.revenue.value:null;
+  const expenses=actual.expenses.status==="available"?actual.expenses.value:null;
+  const expenseReliable = expenses!==null&&model.evidence.expenseCoverage >= FINANCIAL_OVERVIEW_THRESHOLDS.minimumExpenseCoverage;
+  const revenueReliable = revenue!==null&&model.evidence.revenueCoverage > 0;
   const noi = expenseReliable && revenueReliable ? revenue.subtract(expenses) : null;
-  const margin = noi && revenue.amount !== 0 ? noi.amount / revenue.amount : null;
-  return { revenue, expenses, noi, margin, expenseReliable, revenueReliable, qualification: qualification(values.measured.revenue, values.estimated.revenue, values.projected.revenue, values.forecast.revenue) };
+  const margin = noi && revenue && revenue.amount !== 0 ? noi.amount / revenue.amount : null;
+  return {revenue,expenses,noi,margin,expenseReliable,revenueReliable,qualification:revenue?qualification(revenue,values.estimated.revenue,values.projected.revenue,values.forecast.revenue):"unavailable" as const};
 }
 
 function valueMetric(metric: FinancialMetricSummary["metric"], current: Money | null, previous: Money | null, input: FinancialOverviewBuildInput, favorable: boolean, limitation?: string): FinancialMetricSummary {
@@ -37,7 +37,7 @@ export function buildFinancialMetricSummaries(input: FinancialOverviewBuildInput
   const current = operating(input.current);
   const previous = input.comparison ? operating(input.comparison) : undefined;
   const metrics: FinancialMetricSummary[] = [
-    { ...valueMetric("revenue", current.revenueReliable ? current.revenue : null, previous?.revenueReliable ? previous.revenue : null, input, true, "Recognized revenue is unavailable."), current: current.revenueReliable ? { money: current.revenue, qualification: current.qualification } : { qualification: "unavailable", limitation: "Recognized revenue is unavailable." } },
+    { ...valueMetric("revenue", current.revenueReliable ? current.revenue : null, previous?.revenueReliable ? previous.revenue : null, input, true, "Recognized revenue is unavailable."), current: current.revenueReliable&&current.revenue ? { money: current.revenue, qualification: current.qualification } : { qualification: "unavailable", limitation: "Recognized revenue is unavailable." } },
     valueMetric("operating-expenses", current.expenseReliable ? current.expenses : null, previous?.expenseReliable ? previous.expenses : null, input, false, "Operating expenses unavailable because coverage is incomplete."),
     valueMetric("noi", current.noi, previous?.noi ?? null, input, true, "NOI requires reliable recognized revenue and operating expenses."),
     {
@@ -69,7 +69,7 @@ function groupedDrivers(model: FinancialReadModel, categories: readonly Financia
   const totals = new Map<string, Money>();
   for (const transaction of model.ledger.transactions) {
     const account = accounts.get(transaction.props.accountId);
-    if (transaction.props.status !== "posted" || transaction.props.measurement !== "measured" || !account || !categories.includes(account.category)) continue;
+    if (transaction.props.status !== "posted" || !["actual","measured"].includes(transaction.props.measurement) || !account || !categories.includes(account.category)) continue;
     const key = account.subcategory ?? account.name;
     totals.set(key, (totals.get(key) ?? Money.zero(transaction.props.amount.currency)).add(transaction.props.amount));
   }
@@ -82,11 +82,12 @@ function groupedDrivers(model: FinancialReadModel, categories: readonly Financia
 }
 
 export function buildFinancialPropertyContributionPreview(input: FinancialOverviewBuildInput): readonly FinancialPropertyContribution[] {
-  const values = (input.propertySnapshots ?? []).map(({ propertyId, label, snapshot }) => {
-    const revenue = snapshot.valuesByMeasurement.measured.revenue;
-    const expenses = snapshot.valuesByMeasurement.measured.expenses;
-    const reliable = snapshot.evidence.expenseCoverage >= FINANCIAL_OVERVIEW_THRESHOLDS.minimumExpenseCoverage;
-    return { propertyId, label, revenue, noi: reliable ? revenue.subtract(expenses) : null, expenseCoverage: snapshot.evidence.expenseCoverage, confidence: snapshot.confidence };
+  const values = (input.propertySnapshots ?? []).flatMap(({ propertyId, label, snapshot }) => {
+    const actual=snapshot.valuesByBasis.actual;
+    if(actual.revenue.status!=="available")return[];
+    const expenses=actual.expenses.status==="available"?actual.expenses.value:null;
+    const reliable = expenses!==null&&snapshot.evidence.expenseCoverage >= FINANCIAL_OVERVIEW_THRESHOLDS.minimumExpenseCoverage;
+    return [{propertyId,label,revenue:actual.revenue.value,noi:reliable?actual.revenue.value.subtract(expenses):null,expenseCoverage:snapshot.evidence.expenseCoverage,confidence:snapshot.confidence}];
   });
   const totalNoi = values.reduce((sum, value) => sum + (value.noi?.amount ?? 0), 0);
   return Object.freeze(values.map(value => ({ ...value, noiShare: value.noi && totalNoi ? value.noi.amount / totalNoi : undefined })).sort((a, b) => b.revenue.amount - a.revenue.amount).slice(0, 5));

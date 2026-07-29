@@ -4,6 +4,7 @@ import { HPM_PILLARS, type HpmLifecycleProjection } from "@/features/hpm";
 
 import type {
   ExecutiveActionItem,
+  ExecutiveAttentionItem,
   ExecutiveDataGap,
   ExecutiveDecisionItem,
   ExecutiveIntelligenceView,
@@ -12,6 +13,7 @@ import type {
   ExecutiveScopeSummary,
 } from "../domain";
 import { buildExecutiveAttentionItems } from "./build-executive-attention-items";
+import { buildExecutiveBusinessHealth } from "./build-executive-business-health";
 
 /** Pure presentation projection over the single canonical HPM lifecycle. */
 export function buildExecutiveIntelligenceView(
@@ -24,6 +26,21 @@ export function buildExecutiveIntelligenceView(
 ): ExecutiveIntelligenceView {
   const now = options.now ?? lifecycle.generatedAt;
   const priorities = buildExecutiveAttentionItems(lifecycle, { now });
+  const businessHealth=buildExecutiveBusinessHealth({
+    workspaceId:options.scope?.selectedProperty?.id??"current-workspace",
+    period:{from:options.scope?.startDate??now.toISOString().slice(0,10),to:options.scope?.endDate??now.toISOString().slice(0,10)},
+    generatedAt:now.toISOString(),
+    pillars:HPM_PILLARS.flatMap(pillar=>{
+      const score=lifecycle.health.breakdown?.components.find(item=>item.key===pillar)?.score.value;
+      if(score===undefined)return[];
+      const evidence=lifecycle.understand.evidence.toArray().filter(item=>evidencePillar(item.source.capability)===pillar).map(item=>({
+        capability:evidenceCapability(item.source.capability),artifactType:item.type,artifactId:item.id.value,
+        period:{from:item.createdAt.toISOString().slice(0,10),to:item.createdAt.toISOString().slice(0,10)},confidence:0,
+        destination:pillarDestination(pillar),summary:item.title,
+      }));
+      return[{pillar,score,confidence:null,evidence,limitations:[...(evidence.length?["Canonical source confidence is not attached to this lifecycle pillar yet."]:["No pillar-specific canonical evidence supports this lifecycle score."])]}];
+    }),
+  });
   const availablePillars = lifecycle.health.breakdown?.components.map((value) => value.key) ?? [];
   const unavailablePillars = HPM_PILLARS.filter((pillar) => !availablePillars.includes(pillar));
   const score = lifecycle.health.score?.value ?? null;
@@ -82,6 +99,7 @@ export function buildExecutiveIntelligenceView(
 
   return Object.freeze({
     generatedAt: new Date(lifecycle.generatedAt),
+    businessHealth,
     scope: options.scope ?? Object.freeze({ properties: Object.freeze([]), selectedProperty: null, propertyCount: null,
       startDate: "", endDate: "", scopeKnown: false }),
     performance: options.performance ?? unavailablePerformance(),
@@ -119,10 +137,36 @@ export function buildExecutiveIntelligenceView(
       headline: priorities[0] ? `${priorities[0].title} is the leading priority` : "No immediate priorities require attention",
       summary: `${priorities.length} item${priorities.length === 1 ? "" : "s"} prioritized from canonical Platform records.`,
       recommendedFocus: priorities[0]?.summary ?? "Continue monitoring Platform Outcomes and Intelligence.",
+      recommendedFocusDestination: priorities[0] ? executiveAttentionDestination(priorities[0]) : null,
       highlights: Object.freeze(lifecycle.see.outcomes.toArray().filter((value) => value.successful).slice(0, 3).map((value) => value.summary)),
       concerns: Object.freeze(lifecycle.see.outcomes.toArray().filter((value) => !value.successful).slice(0, 3).map((value) => value.summary)),
     }),
   });
+}
+
+function evidencePillar(capability:string):(typeof HPM_PILLARS)[number]|null{
+  const value=capability.toLowerCase();
+  if(value.includes("invest")||value.includes("market"))return"investment";
+  if(value.includes("financ"))return"financial";
+  if(value.includes("revenue")||value.includes("pricing")||value.includes("booking"))return"revenue";
+  if(value.includes("guest")||value.includes("communication")||value.includes("guidebook"))return"guest-experience";
+  if(value.includes("risk"))return"risk";
+  if(value.includes("learn"))return"growth";
+  if(value.includes("operation")||value.includes("action")||value.includes("automation"))return"operations";
+  return null;
+}
+function evidenceCapability(capability:string):"market"|"financial"|"investment"|"revenue"|"operations"|"guest"|"learning"{
+  const pillar=evidencePillar(capability);return pillar==="investment"&&capability.toLowerCase().includes("market")?"market":pillar==="investment"?"investment":pillar==="financial"?"financial":pillar==="revenue"?"revenue":pillar==="guest-experience"?"guest":pillar==="growth"?"learning":"operations";
+}
+function pillarDestination(pillar:(typeof HPM_PILLARS)[number]):string{
+  return pillar==="investment"?"/dashboard/investments":pillar==="financial"?"/dashboard/financial":pillar==="revenue"?"/dashboard/insights":pillar==="operations"?"/dashboard/actions":pillar==="guest-experience"?"/dashboard/communications":pillar==="growth"?"/dashboard/learning":"/dashboard/understand?focus=risk";
+}
+
+function executiveAttentionDestination(item: ExecutiveAttentionItem): string {
+  if (item.source === "action") return `/dashboard/actions/${encodeURIComponent(item.sourceId)}`;
+  if (item.source === "recommendation") return `/dashboard/intelligence/recommendations/${encodeURIComponent(item.sourceId)}`;
+  if (item.source === "outcome") return `/dashboard/outcomes/${encodeURIComponent(item.sourceId)}`;
+  return `/dashboard/understand?focus=${encodeURIComponent(item.sourceId)}`;
 }
 
 function unavailablePerformance(): ExecutivePerformanceSummary {

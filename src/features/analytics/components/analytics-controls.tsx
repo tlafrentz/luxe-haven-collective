@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
 import type { AnalyticsProperty } from "../types";
+import { addDays } from "../lib/date-range";
 
 type AnalyticsControlsProps = {
   properties: AnalyticsProperty[];
@@ -106,7 +107,7 @@ router.replace(
 
           <input
             type="date"
-            value={endDate}
+            value={addDays(endDate, -1)}
             disabled={isPending}
             onChange={(event) =>
               updateFilters({

@@ -1,0 +1,3 @@
+import{readFileSync}from"node:fs";import{describe,expect,it}from"vitest";
+const migration=readFileSync("supabase/migrations/20260729020000_bi002_executive_business_health.sql","utf8");
+describe("BI-002 immutable Executive Health persistence",()=>{it("uses canonical owner workspace identity and service-only immutable writes",()=>{expect(migration).toContain("workspace_id uuid not null references public.owners(id)");expect(migration).toContain("create table public.executive_health_projections");expect(migration).toContain("grant select on public.executive_health_projections to authenticated");expect(migration).not.toMatch(/grant (insert|update|delete).*authenticated/)});});

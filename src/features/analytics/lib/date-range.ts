@@ -101,8 +101,10 @@ export function resolveAnalyticsDateRange({
     ? startDate
     : defaultRange.startDate;
 
+  // Browser date inputs are an inclusive business-date contract. Analytics
+  // calculations use an exclusive upper bound, so convert exactly once here.
   const resolvedEnd = isValidDateString(endDate)
-    ? endDate
+    ? addDays(endDate, 1)
     : defaultRange.endDate;
 
   if (resolvedEnd <= resolvedStart) {

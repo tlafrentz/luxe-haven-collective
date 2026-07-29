@@ -10,3 +10,5 @@ export * from "./learning-workspace";
 export * from "./relevant-learning";
 export * from "./learning-administration";
 export * from "./calibration-services";
+export * from "./canonical-learning-engine";
+export * from "./canonical-learning-pipeline";

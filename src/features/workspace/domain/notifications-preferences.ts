@@ -100,12 +100,20 @@ export function normalizeNotificationPreferences(value: UserNotificationPreferen
   if (!validTimezone(value.timezone)) throw new PreferencePolicyError("INVALID_TIMEZONE", "Choose a valid IANA timezone.");
   minutes(value.quietHours.start); minutes(value.quietHours.end);
   const accessible = access.type === "selected" ? new Set(access.propertyIds) : null;
+  const seen = new Set<NotificationCategory>();
   for (const subscription of value.subscriptions) {
+    if (!notificationCategories.includes(subscription.category) || seen.has(subscription.category) || !["immediate", "daily-digest", "weekly-digest", "off"].includes(subscription.frequency)) {
+      throw new PreferencePolicyError("INACCESSIBLE_ROUTE", "Notification preferences contain an unsupported category or value.");
+    }
+    seen.add(subscription.category);
     if (subscription.propertyScope?.type === "selected" && (access.type === "none" || subscription.propertyScope.propertyIds.some((id) => accessible && !accessible.has(id)))) {
       throw new PreferencePolicyError("INACCESSIBLE_PROPERTY", "Notification scope contains an inaccessible property.");
     }
   }
-  return Object.freeze({ ...value, quietHours: Object.freeze({ ...value.quietHours, allowCritical: true as const }) });
+  const subscriptions = notificationCategories.map((category) => value.subscriptions.find((item) => item.category === category) ?? {
+    category, frequency: "off" as const, channels: ["in-app"] as const, propertyScope: { type: "all-accessible" as const },
+  });
+  return Object.freeze({ ...value, subscriptions: Object.freeze(subscriptions), quietHours: Object.freeze({ ...value.quietHours, allowCritical: true as const }) });
 }
 export function resolveDefaultLanding(value: UserWorkspacePreferences["defaultLandingPage"], role: WorkspaceRole) {
   if (value === "intelligence" && !["owner", "administrator", "operator", "viewer"].includes(role)) return "home";
