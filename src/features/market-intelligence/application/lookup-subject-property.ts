@@ -61,14 +61,16 @@ export async function lookupSubjectProperty(
 
   const candidates = await dependencies.provider.search(address.display);
   if (candidates.length === 0) throw new SubjectPropertyNotFoundError();
-  if (candidates.length > 1) throw new AmbiguousSubjectPropertyError(candidates);
+  const exactCandidates = candidates.filter(candidate => normalizeInput(candidate.formattedAddress).key === address.key);
+  if (candidates.length > 1 && exactCandidates.length !== 1) throw new AmbiguousSubjectPropertyError(candidates);
+  const candidate = exactCandidates[0] ?? candidates[0]!;
 
   const previous = await dependencies.snapshots.findLatestByAddress(address.key);
   const subjectPropertyId = previous?.subjectPropertyId ??
     `subject-property-${dependencies.createId?.() ?? globalThis.crypto.randomUUID()}`;
   const version = await dependencies.snapshots.nextVersion(subjectPropertyId);
   const snapshotId = `property-snapshot-${globalThis.crypto.randomUUID()}`;
-  const property = await dependencies.provider.retrieve(candidates[0]!, {
+  const property = await dependencies.provider.retrieve(candidate, {
     subjectPropertyId,
     snapshotId,
     snapshotVersion: version,

@@ -1,5 +1,8 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { RefreshCw } from "lucide-react";
+import { syncInvestmentPropertyAction } from "@/app/actions/investment-property-sync";
 import {
   AcquisitionType,
   PropertyType,
@@ -25,6 +28,8 @@ export function PropertyProfileCard() {
     values,
     setValues,
   } = useInvestmentWorkspaceState();
+  const [syncMessage, setSyncMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [syncPending, startSync] = useTransition();
 
   const isPurchase =
     values.acquisitionType ===
@@ -55,18 +60,56 @@ export function PropertyProfileCard() {
           aria-labelledby="property-location-heading"
           className="space-y-4"
         >
-          <div>
-            <h4
-              id="property-location-heading"
-              className="text-sm font-semibold text-neutral-950"
-            >
-              Location
-            </h4>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h4
+                id="property-location-heading"
+                className="text-sm font-semibold text-neutral-950"
+              >
+                Location
+              </h4>
 
-            <p className="mt-1 text-xs leading-5 text-neutral-500">
-              Identify the property and market being underwritten.
-            </p>
+              <p className="mt-1 text-xs leading-5 text-neutral-500">
+                Identify the property and market being underwritten.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={syncPending || !values.address1.trim()}
+              onClick={() => startSync(async () => {
+                setSyncMessage(null);
+                const address = [values.address1, values.city, values.state, values.postalCode].filter(Boolean).join(", ");
+                const result = await syncInvestmentPropertyAction({ address });
+                if (!result.ok) {
+                  setSyncMessage({ type: "error", text: result.message });
+                  return;
+                }
+                const propertyType = toPropertyType(result.data.propertyType);
+                setValues(current => ({
+                  ...current,
+                  ...(result.data.address1 ? { address1: result.data.address1 } : {}),
+                  ...(result.data.city ? { city: result.data.city } : {}),
+                  ...(result.data.state ? { state: result.data.state } : {}),
+                  ...(result.data.postalCode ? { postalCode: result.data.postalCode } : {}),
+                  ...(propertyType ? { propertyType } : {}),
+                  ...(result.data.bedrooms !== undefined ? { bedrooms: result.data.bedrooms } : {}),
+                  ...(result.data.bathrooms !== undefined ? { bathrooms: result.data.bathrooms } : {}),
+                  ...(result.data.squareFeet !== undefined ? { squareFeet: result.data.squareFeet } : {}),
+                  ...(result.data.purchasePrice !== undefined ? { purchasePrice: result.data.purchasePrice } : {}),
+                  ...(result.data.projectedAdr !== undefined ? { projectedAdr: result.data.projectedAdr } : {}),
+                  ...(result.data.projectedOccupancyPercentage !== undefined ? { projectedOccupancyPercentage: result.data.projectedOccupancyPercentage } : {}),
+                }));
+                const sources = [result.data.propertySource, result.data.marketSource].filter(Boolean).join(" and ");
+                const warning = result.data.warnings[0];
+                setSyncMessage({ type: "success", text: `Synced from ${sources}.${warning ? ` ${warning}` : ""}` });
+              })}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${syncPending ? "animate-spin" : ""}`} />
+              {syncPending ? "Syncing…" : "Sync property data"}
+            </button>
           </div>
+          {syncMessage ? <p role={syncMessage.type === "error" ? "alert" : "status"} className={`rounded-xl px-3 py-2 text-xs ${syncMessage.type === "error" ? "bg-rose-50 text-rose-800" : "bg-emerald-50 text-emerald-800"}`}>{syncMessage.text}</p> : null}
 
           <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
             <label className="sm:col-span-2">
@@ -262,4 +305,17 @@ export function PropertyProfileCard() {
       </div>
     </AcquisitionSectionCard>
   );
+}
+
+function toPropertyType(value?: string): PropertyType | undefined {
+  if (!value) return undefined;
+  const normalized = value.toLowerCase().replace(/[_\s]+/g, "-");
+  if (Object.values(PropertyType).includes(normalized as PropertyType)) return normalized as PropertyType;
+  if (normalized.includes("single") || normalized === "house") return PropertyType.SingleFamily;
+  if (normalized.includes("multi")) return PropertyType.MultiFamily;
+  if (normalized.includes("town")) return PropertyType.Townhome;
+  if (normalized.includes("condo")) return PropertyType.Condo;
+  if (normalized.includes("cabin")) return PropertyType.Cabin;
+  if (normalized.includes("apartment")) return PropertyType.Apartment;
+  return undefined;
 }

@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { DecisionReadinessCard } from "./decision-readiness-card";
 import { FinancingCard } from "./financing-card";
@@ -29,6 +29,7 @@ export function InvestmentAnalysisStepPages({ resultsActions }: { resultsActions
   const { currentAnalysis } = useInvestmentWorkspaceState();
   const [step, setStep] = useState<StepId>(() => readStep());
   const index = STEPS.findIndex(item => item.id === step);
+  const previousAnalysisStatus = useRef(currentAnalysis.status);
 
   useEffect(() => {
     const restore = () => setStep(readStep());
@@ -37,7 +38,9 @@ export function InvestmentAnalysisStepPages({ resultsActions }: { resultsActions
   }, []);
 
   useEffect(() => {
-    if (currentAnalysis.status === "completed" && step === "intelligence") {
+    const justCompleted = previousAnalysisStatus.current !== "completed" && currentAnalysis.status === "completed";
+    previousAnalysisStatus.current = currentAnalysis.status;
+    if (justCompleted && step === "intelligence") {
       goTo("decision-summary", setStep);
     }
   }, [currentAnalysis.status, step]);

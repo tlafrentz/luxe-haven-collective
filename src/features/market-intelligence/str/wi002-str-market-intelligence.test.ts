@@ -87,6 +87,8 @@ describe("WI-002 configuration and client policy", () => {
     await client.get("test", "/v1/test", { latitude: 1 }, "correlation");
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(String(fetcher.mock.calls[0][0])).not.toContain("secret-key");
+    expect(fetcher.mock.calls[0][1]?.headers).toMatchObject({ "X-API-KEY": "secret-key" });
+    expect(fetcher.mock.calls[0][1]?.headers).not.toHaveProperty("Authorization");
   });
 });
 

@@ -35,12 +35,13 @@ export class AirRoiClient {
     for (const [key, value] of Object.entries(parameters)) if (value !== undefined) url.searchParams.set(key, String(value));
     const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const response = await this.fetcher(url, { headers: { Accept: "application/json", Authorization: `Bearer ${this.apiKey}` }, signal: controller.signal });
+      const response = await this.fetcher(url, { headers: { Accept: "application/json", "X-API-KEY": this.apiKey }, signal: controller.signal });
       if (!response.ok) throw this.responseError(response);
       let parsed: unknown;
       try { parsed = await response.json(); } catch (cause) { throw new AirRoiError({ code: "invalid-response", message: "STR market provider returned invalid JSON.", cause }); }
       if (!parsed || typeof parsed !== "object") throw new AirRoiError({ code: "invalid-response", message: "STR market provider returned a malformed response." });
-      return parsed as AirRoiEnvelopeDto<T>;
+      const envelope = parsed as AirRoiEnvelopeDto<T>;
+      return "data" in envelope ? envelope : { data: parsed as T, request_id: response.headers.get("x-request-id") ?? undefined };
     } catch (error) {
       if (error instanceof AirRoiError) throw error;
       if (error instanceof DOMException && error.name === "AbortError") throw new AirRoiError({ code: "timed-out", message: "STR market provider request timed out.", retryable: true });

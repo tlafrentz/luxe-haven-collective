@@ -27,8 +27,8 @@ function evidence(input: { snapshotId: string; operation: string; retrievedAt: s
 }
 
 export function mapAirRoiRevenue(dto: AirRoiRevenueDto, context: { snapshotId: string; retrievedAt: string; requestId?: string }): { value: StrRevenueEstimate; evidence: readonly StrEvidence[] } {
-  const currency = text(dto.currency) ?? "USD"; const adr = number(dto.adr); const occ = occupancy(dto.occupancy);
-  let revPar = number(dto.revpar); let annual = number(dto.annual_revenue); let monthly = number(dto.monthly_revenue);
+  const currency = text(dto.currency)?.toUpperCase() ?? "USD"; const adr = number(dto.adr) ?? number(dto.average_daily_rate); const occ = occupancy(dto.occupancy);
+  let revPar = number(dto.revpar); let annual = number(dto.annual_revenue) ?? number(dto.revenue); let monthly = number(dto.monthly_revenue);
   const values = { adr, occupancy: occ, revPar, annualRevenue: annual, monthlyRevenue: monthly };
   if (Object.values(values).every((value) => value === undefined)) throw new AirRoiError({ code: "invalid-response", message: "STR revenue response contains no valid metrics." });
   const items: StrEvidence[] = []; const lineage: Record<string, { value: { amount: number; currency: string } | { value: number }; evidenceId: string; derivation: "provider-supplied" | "luxe-haven-derived" }> = {};
@@ -66,19 +66,20 @@ export function mapAirRoiRevenue(dto: AirRoiRevenueDto, context: { snapshotId: s
 export function mapAirRoiComparables(dtos: readonly AirRoiComparableDto[], context: { snapshotId: string; retrievedAt: string; requestId?: string; currency?: string }): { values: readonly StrComparable[]; evidence: readonly StrEvidence[] } {
   const allEvidence: StrEvidence[] = [];
   const values = dtos.flatMap((dto) => {
-    const listingId = text(dto.id); if (!listingId) return [];
+    const listingId = text(dto.id) ?? text(dto.listing_id) ?? (typeof dto.listing_id === "number" ? String(dto.listing_id) : undefined); if (!listingId) return [];
+    const comparableOccupancy = occupancy(dto.occupancy) ?? occupancy(dto.occupancy_rate);
     const item = evidence({ ...context, operation: "comparables", reference: listingId }); allEvidence.push(item);
     const missingFields = ["latitude", "longitude", "property_type", "bedrooms", "bathrooms", "adr", "occupancy", "active_days"].filter((field) => dto[field as keyof AirRoiComparableDto] === undefined);
     const currency = context.currency ?? "USD"; const amenities = Array.isArray(dto.amenities) ? dto.amenities.filter((value): value is string => typeof value === "string") : [];
     return [{
       id: `strc_${createHash("sha256").update(`airroi:${listingId}`).digest("hex").slice(0, 24)}`,
-      providerReference: { provider: "airroi", listingId, ...(text(dto.url) ? { listingUrl: text(dto.url) } : {}) },
+      providerReference: { provider: "airroi", listingId, ...((text(dto.url) ?? text(dto.listing_url)) ? { listingUrl: text(dto.url) ?? text(dto.listing_url) } : {}) },
       location: { ...(number(dto.latitude) !== undefined ? { latitude: number(dto.latitude) } : {}), ...(number(dto.longitude) !== undefined ? { longitude: number(dto.longitude) } : {}),
         ...(number(dto.distance_miles) !== undefined ? { distanceMiles: number(dto.distance_miles) } : {}), ...(text(dto.market) ? { marketLabel: text(dto.market) } : {}) },
       property: { ...(text(dto.property_type) ? { propertyType: text(dto.property_type) } : {}), ...(number(dto.bedrooms) !== undefined ? { bedrooms: number(dto.bedrooms) } : {}),
         ...(number(dto.bathrooms) !== undefined ? { bathrooms: number(dto.bathrooms) } : {}), ...(number(dto.accommodates) !== undefined ? { accommodates: number(dto.accommodates) } : {}),
         ...(text(dto.room_type) ? { roomType: text(dto.room_type) } : {}), amenities },
-      performance: { adr: money(number(dto.adr), currency), ...(occupancy(dto.occupancy) !== undefined ? { occupancy: { value: occupancy(dto.occupancy)! } } : {}),
+      performance: { adr: money(number(dto.adr), currency), ...(comparableOccupancy !== undefined ? { occupancy: { value: comparableOccupancy } } : {}),
         revPar: money(number(dto.revpar), currency), annualRevenue: money(number(dto.annual_revenue), currency),
         ...(number(dto.length_of_stay) !== undefined ? { lengthOfStay: number(dto.length_of_stay) } : {}), ...(number(dto.active_days) !== undefined ? { activeDays: number(dto.active_days) } : {}),
         ...(number(dto.review_count) !== undefined ? { reviewCount: number(dto.review_count) } : {}), ...(number(dto.rating) !== undefined ? { rating: number(dto.rating) } : {}) },
