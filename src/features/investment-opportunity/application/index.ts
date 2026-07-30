@@ -9,6 +9,7 @@ export * from "./analysis-detail";
 export * from "./immutable-analysis-projection";
 export * from "./reanalysis-hydration";
 export * from "./decision-lineage";
+export * from "./market-memo-evidence";
 export * from "./investment-authorization";
 export * from "./activity-timeline";
 export * from "./comparison";

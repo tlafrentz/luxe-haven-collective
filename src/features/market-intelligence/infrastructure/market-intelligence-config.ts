@@ -7,6 +7,8 @@ const schema = z.object({
   MARKET_PROVIDER_ENABLED: booleanValue,
   RENTCAST_API_KEY: z.string().trim().optional(),
   RENTCAST_BASE_URL: z.string().url().default("https://api.rentcast.io/v1"),
+  REALTY_API_KEY: z.string().trim().optional(),
+  REALTY_API_BASE_URL: z.string().url().default("https://realtor.realtyapi.io"),
   RENTCAST_REQUEST_TIMEOUT_MS: integer(10_000, 1_000, 30_000),
   MARKET_PROVIDER_RETRY_COUNT: integer(1, 0, 2),
   MARKET_ANALYSIS_CACHE_TTL_SECONDS: integer(300, 30, 3_600),
@@ -21,6 +23,8 @@ export type MarketIntelligenceConfig = Readonly<{
   providerEnabled: boolean;
   rentCastApiKey?: string;
   rentCastBaseUrl: string;
+  realtyApiKey?: string;
+  realtyApiBaseUrl: string;
   requestTimeoutMs: number;
   retryCount: number;
   cacheTtlMs: number;
@@ -43,6 +47,8 @@ export function getMarketIntelligenceConfig(environment: Readonly<Record<string,
     providerEnabled: result.data.MARKET_PROVIDER_ENABLED,
     ...(result.data.RENTCAST_API_KEY ? { rentCastApiKey: result.data.RENTCAST_API_KEY } : {}),
     rentCastBaseUrl: result.data.RENTCAST_BASE_URL,
+    ...(result.data.REALTY_API_KEY ? { realtyApiKey: result.data.REALTY_API_KEY } : {}),
+    realtyApiBaseUrl: result.data.REALTY_API_BASE_URL,
     requestTimeoutMs: result.data.RENTCAST_REQUEST_TIMEOUT_MS,
     retryCount: result.data.MARKET_PROVIDER_RETRY_COUNT,
     cacheTtlMs: result.data.MARKET_ANALYSIS_CACHE_TTL_SECONDS * 1_000,

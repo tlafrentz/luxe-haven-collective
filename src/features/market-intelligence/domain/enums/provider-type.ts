@@ -7,6 +7,7 @@ export enum ProviderType {
   ATTOM = "attom",
   Zillow = "zillow",
   Realtor = "realtor",
+  RealtyApi = "realtyapi",
   MLS = "mls",
 
   Airbnb = "airbnb",
@@ -41,6 +42,8 @@ const PROVIDER_DISPLAY_NAMES: Readonly<
     "Zillow",
   [ProviderType.Realtor]:
     "Realtor",
+  [ProviderType.RealtyApi]:
+    "RealtyAPI",
   [ProviderType.MLS]:
     "MLS",
   [ProviderType.Airbnb]:

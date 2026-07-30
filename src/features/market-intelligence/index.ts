@@ -94,6 +94,17 @@ export {
 export { observeComparableProviderResult, observePropertyProviderResult } from "./application/providers";
 export type { ObservedProviderResult } from "./application/providers";
 export type { MarketPlatformArtifacts } from "./domain/market-platform-artifacts";
+export {
+  lookupSubjectProperty,
+  AmbiguousSubjectPropertyError,
+  SubjectPropertyNotFoundError,
+} from "./application/lookup-subject-property";
+export type {
+  SubjectProperty,
+  PropertySnapshot,
+  PropertySnapshotRepository,
+  PropertyLookupCandidate,
+} from "./domain/subject-property";
 
 export {
   MARKET_OBSERVATION_CAPABILITY,

@@ -39,8 +39,10 @@ export type WorkspacePropertySummary = Readonly<{
 export type ConnectedSystemSummary = Readonly<{
   connectionId: string;
   workspaceId: string;
-  provider: "hospitable";
+  provider: string;
   providerLabel: string;
+  management: "workspace" | "platform";
+  connectionSummary: string;
   status: ConnectedSystemStatus;
   accountLabel?: string;
   connectedAt?: string;

@@ -8,7 +8,6 @@ const destinations = [
   { label: "Analyze", href: "/dashboard/investments/new", match: (path: string) => path.startsWith("/dashboard/investments/new") },
   { label: "Saved Scenarios", href: "/dashboard/investments/scenarios", match: (path: string) => path.startsWith("/dashboard/investments/scenarios") },
   { label: "Opportunities", href: "/dashboard/investments/opportunities", match: (path: string) => path.includes("/opportunities") || path.includes("/portfolio") },
-  { label: "Reports", href: "/dashboard/investments/reports", match: (path: string) => path.startsWith("/dashboard/investments/reports") },
 ] as const;
 
 export function InvestmentWorkspaceShellNavigation() {

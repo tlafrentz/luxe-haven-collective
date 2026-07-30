@@ -31,9 +31,13 @@ import {
   updateWorkspaceHealth,
 } from "./investment-workspace-runtime";
 import { storeInvestmentAnalysis } from "./investment-analysis-save-store";
+import { createClient } from "@/lib/supabase/server";
+import { SupabaseStrMarketSnapshotRepository } from "@/features/market-intelligence/str/infrastructure/str-market-snapshot-repository";
+import { authorizeStrMarketSnapshot, buildAuthorizedMarketSnapshotReference, MarketSnapshotAuthorizationError } from "@/features/market-intelligence/str/application/authorize-str-market-snapshot";
 
 type InvestmentWorkspaceActionInput = Omit<RunInvestmentWorkspaceAnalysisCommand, "context"> & Readonly<{
   clientRequestId: string;
+  marketSnapshotId?: string;
 }>;
 export type InvestmentWorkspaceServerActionResult = Exclude<InvestmentWorkspaceActionResult, { ok: true }> | Readonly<{ ok: true; result: InvestmentWorkspaceAnalysisTransportDto; analysisId: string; analysisSaveToken: string; analyzedAt: Date; expiresAt: Date }>;
 
@@ -61,6 +65,23 @@ export async function analyzeInvestmentWorkspace(
   const requestedAt = new Date();
   const runId = `MI-${requestedAt.toISOString().replace(/\D/g, "").slice(0, 14)}-${crypto.randomUUID()}`;
   let diagnostics: MarketAnalysisRunRecorder | undefined;
+  let authorizedMarketSnapshot: Awaited<ReturnType<typeof authorizeStrMarketSnapshot>> | undefined;
+  if (parsed.data.marketSnapshotId) {
+    try {
+      authorizedMarketSnapshot = await authorizeStrMarketSnapshot({
+        snapshotId: parsed.data.marketSnapshotId, ownerId: user.id, workspaceId,
+        property: { propertyType: parsed.data.investmentInput.property.propertyType,
+          bedrooms: parsed.data.investmentInput.property.bedrooms, bathrooms: parsed.data.investmentInput.property.bathrooms },
+      }, new SupabaseStrMarketSnapshotRepository(await createClient()));
+      console.info("market_snapshot_authorized", { marketSnapshotId: authorizedMarketSnapshot.id,
+        propertySnapshotId: authorizedMarketSnapshot.subjectPropertySnapshotId, correlationId: runId });
+    } catch (error) {
+      if (error instanceof MarketSnapshotAuthorizationError) return {
+        ok: false, error: { code: "INVALID_INPUT", message: error.message, retryable: false },
+      };
+      return { ok: false, error: { code: "MARKET_PROVIDER_UNAVAILABLE", message: "Persisted market evidence could not be loaded.", retryable: true } };
+    }
+  }
   try {
     diagnostics = await startMarketAnalysisRun({
       runId,
@@ -159,7 +180,13 @@ export async function analyzeInvestmentWorkspace(
       investmentInput: parsed.data.investmentInput,
       userProvidedAssumptionKeys: parsed.data.userProvidedAssumptionKeys,
       marketRequest: parsed.data.marketRequest,
-    }, requestedAt);
+    }, requestedAt, authorizedMarketSnapshot
+      ? buildAuthorizedMarketSnapshotReference(authorizedMarketSnapshot, result.lineage.workspaceRunId)
+      : undefined);
+    if (authorizedMarketSnapshot) console.info("analysis_saved_with_market_snapshot", {
+      analysisId: result.lineage.workspaceRunId, marketSnapshotId: authorizedMarketSnapshot.id,
+      propertySnapshotId: authorizedMarketSnapshot.subjectPropertySnapshotId, correlationId: runId,
+    });
     await diagnostics?.complete("succeeded");
     const response = {
       ok: true as const,

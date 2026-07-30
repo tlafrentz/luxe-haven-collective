@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOperationalSurfaceProjection } from "@/features/operational-surfaces";
+import { DEFAULT_INTEGRATION_PROVIDERS } from "@/features/integrations";
+import { getMarketIntelligenceConfig } from "@/features/market-intelligence/infrastructure/market-intelligence-config";
 
 import type {
   PropertiesSystemsRepository,
@@ -86,6 +88,8 @@ export class SupabasePropertiesSystemsRepository implements PropertiesSystemsRep
         });
       });
     const systems = connections.map((connection): ConnectedSystemSummary => {
+      const providerId = text(connection.provider) ?? "unknown";
+      const descriptor = DEFAULT_INTEGRATION_PROVIDERS.get(providerId);
       const discovered = references.filter((reference) => reference.connection_id === connection.id);
       const linked = discovered.filter((reference) => reference.link_status === "linked").length;
       const status = mapConnectedSystemStatus({
@@ -93,7 +97,8 @@ export class SupabasePropertiesSystemsRepository implements PropertiesSystemsRep
       });
       return Object.freeze({
         connectionId: String(connection.id), workspaceId: context.workspaceId,
-        provider: "hospitable", providerLabel: text(connection.provider) ?? "Hospitable", status,
+        provider: providerId, providerLabel: descriptor?.displayName ?? providerId, management: "workspace",
+        connectionSummary: `${linked} of ${discovered.length} properties linked`, status,
         accountLabel: text(connection.account_label), connectedAt: text(connection.connected_at),
         lastSuccessfulSyncAt: text(connection.last_successful_sync_at), lastAttemptAt: text(connection.last_attempt_at),
         propertyCount: discovered.length, linkedPropertyCount: linked,
@@ -112,6 +117,57 @@ export class SupabasePropertiesSystemsRepository implements PropertiesSystemsRep
         issues: status === "connected" ? [] : [`Connection is ${status.replaceAll("-", " ")}.`],
       });
     });
+    try {
+      const marketConfig = getMarketIntelligenceConfig();
+      if (marketConfig.providerEnabled) {
+        const provider = DEFAULT_INTEGRATION_PROVIDERS.require("rentcast");
+        systems.push(Object.freeze({
+          connectionId: "platform:rentcast",
+          workspaceId: context.workspaceId,
+          provider: provider.id,
+          providerLabel: provider.displayName,
+          management: "platform",
+          connectionSummary: "Market intelligence provider · Available workspace-wide",
+          status: "connected",
+          propertyCount: 0,
+          linkedPropertyCount: 0,
+          attentionPropertyCount: 0,
+          synchronization: {
+            status: "never-run" as const,
+            processed: 0,
+            updated: 0,
+            failed: 0,
+          },
+          capabilities: provider.capabilities.map((capability) => ({
+            name: capability.replaceAll("-", " "),
+            status: "available" as const,
+          })),
+          issues: [],
+        }));
+      }
+    } catch {
+      if (process.env.MARKET_PROVIDER_ENABLED !== "false") {
+        const provider = DEFAULT_INTEGRATION_PROVIDERS.require("rentcast");
+        systems.push(Object.freeze({
+          connectionId: "platform:rentcast",
+          workspaceId: context.workspaceId,
+          provider: provider.id,
+          providerLabel: provider.displayName,
+          management: "platform",
+          connectionSummary: "Market intelligence provider · Configuration needs attention",
+          status: "degraded",
+          propertyCount: 0,
+          linkedPropertyCount: 0,
+          attentionPropertyCount: 0,
+          synchronization: { status: "never-run" as const, processed: 0, updated: 0, failed: 0 },
+          capabilities: provider.capabilities.map((capability) => ({
+            name: capability.replaceAll("-", " "),
+            status: "unavailable" as const,
+          })),
+          issues: ["Provider configuration is incomplete."],
+        }));
+      }
+    }
     return {
       properties,
       systems,

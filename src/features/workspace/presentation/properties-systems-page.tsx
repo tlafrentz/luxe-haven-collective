@@ -90,16 +90,16 @@ export function WorkspaceConnectedSystemsPage({ overview, canManage }: Readonly<
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Provider</p>
                 <h2 className="mt-1 text-xl font-semibold">{system.providerLabel}</h2>
-                <p className="mt-2 text-sm text-stone-600">{system.linkedPropertyCount} of {system.propertyCount} properties linked</p>
+                <p className="mt-2 text-sm text-stone-600">{system.connectionSummary}</p>
               </div>
               {badge(system.status)}
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <p className="text-sm"><strong className="block">Last successful sync</strong>{system.lastSuccessfulSyncAt ? new Date(system.lastSuccessfulSyncAt).toLocaleString() : "Never"}</p>
+              <p className="text-sm"><strong className="block">{system.management === "platform" ? "Data access" : "Last successful sync"}</strong>{system.management === "platform" ? "On demand" : system.lastSuccessfulSyncAt ? new Date(system.lastSuccessfulSyncAt).toLocaleString() : "Never"}</p>
               <p className="text-sm"><strong className="block">Capabilities</strong>{system.capabilities.filter(({ status }) => status === "available").length} available</p>
               <p className="text-sm"><strong className="block">Current issues</strong>{system.issues.length || "None"}</p>
             </div>
-            {canManage ? (
+            {canManage && system.management === "workspace" ? (
               <form action={workspacePropertySystemAction} className="mt-6">
                 <input type="hidden" name="workspaceId" value={system.workspaceId} />
                 <input type="hidden" name="targetId" value={system.connectionId} />
@@ -108,6 +108,8 @@ export function WorkspaceConnectedSystemsPage({ overview, canManage }: Readonly<
                   <RefreshCw className="h-4 w-4" aria-hidden />{system.status === "disconnected" ? "Reconnect" : "Disconnect"}
                 </button>
               </form>
+            ) : system.management === "platform" ? (
+              <p className="mt-5 text-sm text-stone-600">Managed securely at the platform level. Provider credentials are never exposed here.</p>
             ) : <p className="mt-5 text-sm text-stone-600">Connection management is limited to workspace owners and administrators.</p>}
           </WorkspaceCard>
         ))}

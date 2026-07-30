@@ -1,12 +1,12 @@
-# MI-002 — Market Data Strategy Evaluation
+# MI-002 — STR Intelligence Provider Evaluation
 
 ## Status
 
-**Type:** Time-boxed investigation and architecture decision input  
-**External sprint reference:** II-007, expanded Phase 3  
-**Decision output:** ADR-001 — Market Data Strategy  
-**Status:** Ready for Execution  
-**Owner:** Market Intelligence
+- **Type:** Time-boxed provider investigation and architecture decision input
+- **Status:** Planned
+- **Owner:** Market Intelligence
+- **Priority:** P0 — Blocks Investment Intelligence v1.0
+- **Decision output:** ADR-001 — STR Intelligence Provider Strategy
 
 > Identifier note: `II-007A` through `II-007D` already identify Investment
 > Intelligence orchestration work in this repository. This investigation uses
@@ -28,6 +28,13 @@ No provider may become authoritative merely because it exposes more endpoints.
 Provider facts must continue to enter the platform as attributable canonical
 Observations and be assembled into immutable snapshots with evidence, gaps, and
 confidence.
+
+## Business objective
+
+Replace manually entered ADR, occupancy, and revenue assumptions with
+evidence-backed market intelligence. Investment Intelligence must move from
+operator assumptions to evidence-backed underwriting without importing provider
+DTOs or provider decision logic.
 
 ## Current hypothesis
 
@@ -345,6 +352,21 @@ Use a small, representative test set containing:
 - exact-address, partial-address, coordinate, and market searches;
 - active, inactive, ambiguous, and missing listings.
 
+The first three canonical cases are fixed before any provider is scored:
+
+| Case | Market archetype | Required subject |
+|---|---|---|
+| `MI002-URBAN-01` | Urban | Authorized whole-home property in a dense, year-round US market |
+| `MI002-SUBURBAN-01` | Suburban | Authorized whole-home property in a car-oriented secondary US market |
+| `MI002-VACATION-01` | Vacation/resort | Authorized whole-home property in a seasonal destination market |
+
+The case manifest must pin normalized address, coordinates, bedrooms, bathrooms,
+sleeps, property type, evaluation currency, availability assumption, acquisition
+inputs, and evaluation timestamp. Exact addresses and provider payloads remain in
+an approved non-repository evidence store when contracts or privacy require it.
+Every provider receives the identical manifest; provider defaults may be recorded
+but may not silently change it.
+
 For each provider and supported workflow:
 
 1. Save the request shape, endpoint, provider/source identity, retrieval time, HTTP
@@ -576,6 +598,65 @@ confidence, and underwriting quality. Revenue Intelligence requires stronger
 near-term pricing and availability evidence. A provider must not be treated as
 globally authoritative when it is fit for only one horizon.
 
+## Public documentation evidence baseline
+
+**Evidence checked:** 2026-07-29. These findings establish POC eligibility only.
+They do not establish accuracy, production reliability, permitted retention, or
+decision-grade fitness.
+
+| Provider | Publicly verified capability | Publicly verified commercial/technical evidence | Still blocking |
+|---|---|---|---|
+| RentCast | US property records, sale and long-term rental listings, AVMs, sale/LTR comparables, and ZIP-level sale/LTR trends | REST documentation; 50 successful requests/month on the free developer plan; paid plan and overage details require the API dashboard | No authoritative STR ADR, occupancy, RevPAR, or STR revenue surface; live baseline metrics unavailable without credentials |
+| AirROI | Listing search and details, STR comparables, trailing metrics, market ADR/occupancy/RevPAR/revenue series, revenue estimate, forward rates, and pacing | Public OpenAPI 2.1.1; standard endpoint pricing from $0.01 to $1.00; $0.20 calculator estimate; public page states 100 requests/minute while another public page states 1,000, so the contract must resolve the discrepancy | Accuracy, metric methodology, source/usage rights, schema stability, observed limits, reliability, and coverage claims |
+| AirDNA | ADR, occupancy, RevPAR, revenue, comparable sets, market history, Rentalizer, and future-demand views | Public methodology defines ADR, occupancy denominator, revenue inclusions, deduplication, update cadence, and source mix; API commercial terms are sales-gated | API schema/access, price, SLA, quotas, caching/retention rights, and common-property results |
+| Mashvisor | Property/search, STR and LTR analysis, rental rates, trends, investment analysis, and predictive scores | REST/JSON documentation; nightly metric updates; $129/500, $249/1,000, and $599/3,000 calls monthly; $0.30 overage; 12–36 months history | Exact STR schemas and semantics, market coverage, rate limits, source rights, reliability, and separation of observations from conclusions |
+| RealtyAPI | Origin-specific property and listing discovery through public OpenAPI specifications | 250 requests free; $20/20,000, $60/85,000, and $250/500,000 monthly requests; documented OpenAPI specs by origin | No public evidence that it supplies modeled STR ADR, occupancy, RevPAR, annual revenue, methodology, or confidence; origin legality and retention terms |
+| BNBCalc | Address/coordinate-based buy, arbitrage, owned, and cohost analyses with ADR, occupancy, revenue, percentile ranges, and up to 50 active comparables | Public REST examples; $0 subscription and $0.20 per successful report | Methodology, confidence, repeatability, reliability, and variance against canonical inputs; remains benchmark-only |
+| Internal Portfolio | Potentially authoritative actual booked ADR, occupancy, RevPAR, revenue, booking, and operational evidence | No incremental vendor charge | Authorized cohort size, metric alignment, data quality, privacy/secondary-use review, and selection-bias controls |
+
+The baseline exposes one immediate architectural finding: RealtyAPI is eligible for
+discovery/metadata evaluation but currently has no public evidence supporting a
+sole-source STR underwriting role. RentCast likewise remains a property/LTR
+baseline rather than an STR analytics candidate. AirROI, AirDNA, and Mashvisor
+remain the candidates for primary STR observations; BNBCalc remains a decision
+benchmark.
+
+### Normalized public-price comparison
+
+The POC cost model uses four lifecycle volumes and reports both provider invoice
+cost and engineering/operations cost:
+
+| Stage | Canonical snapshots/month | Purpose |
+|---|---:|---|
+| Development | 100 | Contract discovery and deterministic fixture creation |
+| Launch | 1,000 | Early production underwriting |
+| Growth | 10,000 | Multi-workspace underwriting and refresh |
+| Enterprise | 100,000 | High-volume analysis, refresh, and corroboration |
+
+For every provider calculate:
+
+```text
+monthly provider cost =
+  fixed plan
+  + Σ(successful calls by endpoint × endpoint price)
+  + overage
+  + required benchmark/corroboration calls
+```
+
+| Provider | Development | Launch | Growth | Enterprise |
+|---|---|---|---|---|
+| RentCast | Free allowance covers only 50 successful calls; dashboard quote required above that | Quote from current API dashboard | Quote from current API dashboard | Custom quote |
+| AirROI | Calls × published endpoint price; a candidate full snapshot must enumerate its exact endpoint recipe | Same formula | Same formula; preferred-partner eligibility cannot be assumed | Contract and SLA review |
+| AirDNA | Quote required | Quote required | Quote required | Enterprise quote required |
+| Mashvisor | At least $129/month; endpoint recipe must fit 500 included calls | At least $249/month if within 1,000 calls | $599/month includes 3,000 calls, then $0.30/call unless a better plan is contracted | Enterprise quote required |
+| RealtyAPI | Free up to 250 request credits, but not a complete STR snapshot | $20/month includes 20,000 request credits | $20 or $60 depending on endpoint credit weights | $250/month includes 500,000 request credits, subject to endpoint weights |
+| BNBCalc | $20 per 100 benchmark runs | $200 per 1,000 benchmark runs | $2,000 per 10,000 benchmark runs | $20,000 per 100,000 benchmark runs; benchmark sampling should be evaluated |
+| Internal Portfolio | No provider fee; storage, quality, privacy, and calibration compute remain | Same | Same | Same |
+
+Public tier prices are not a production cost decision. Final costs require the
+exact calls per complete snapshot, retries, refresh cadence, source corroboration,
+failed-call billing, cache/retention rights, taxes, support, and SLA terms.
+
 ## Architecture options
 
 ### Option A — One STR analytics provider
@@ -724,6 +805,21 @@ Evidence collection and contract-level proof of concept are authorized by this
 charter. Production provider adoption, canonical-model changes, and downstream
 intelligence rewrites are not.
 
+### Current execution gates
+
+| Gate | State on 2026-07-29 | Unblocking evidence |
+|---|---|---|
+| Common property manifest | Blocked | Three authorized subject properties and normalized assumptions |
+| Provider credentials | Blocked | POC keys for RentCast, AirROI, AirDNA, RealtyAPI, Mashvisor, and BNBCalc as applicable |
+| Live POC results | Blocked | Successful, failure-mode, repeatability, latency, schema, and sanitized fixture runs |
+| Internal calibration | Blocked | Authorized aligned actuals with adequate identity, period, and metric quality |
+| Commercial/legal | Blocked | Current quotes plus caching, retention, attribution, derived-data, redistribution, SLA, and exit terms |
+| Final scorecard | Blocked | Completed evidence-linked matrices after the preceding gates |
+| ADR approval | Blocked | Named cross-functional reviewers approve the completed ADR |
+
+Public documentation research is complete enough to begin credentialed contract
+discovery. It is not sufficient to select a production provider.
+
 ## Required outputs
 
 - completed capability matrix with evidence links;
@@ -789,14 +885,22 @@ are complete. Option D is the current hypothesis, not the recorded decision.
 
 ## Documentation baseline
 
-The following provider documentation establishes only the initial RealtyAPI
-investigation surface and must be rechecked on the evaluation date:
+The following first-party provider documentation establishes only the public
+evidence baseline and must be rechecked on the evaluation date:
 
+- [RentCast API introduction](https://developers.rentcast.io/reference/introduction)
+- [RentCast billing and pricing](https://developers.rentcast.io/reference/billing-and-pricing)
+- [RentCast property valuation](https://developers.rentcast.io/reference/property-valuation)
 - [RealtyAPI introduction](https://www.realtyapi.io/docs/introduction)
 - [RealtyAPI OpenAPI specifications](https://www.realtyapi.io/docs/integrations/openapi)
 - [RealtyAPI pricing](https://www.realtyapi.io/pricing)
 - [AirROI API documentation](https://www.airroi.com/api/documentation/)
 - [AirROI API pricing](https://www.airroi.com/api/pricing)
+- [AirDNA data sources](https://help.airdna.co/en/articles/15480669-where-is-our-data-sourced-from)
+- [AirDNA ADR methodology](https://help.airdna.co/en/articles/8062173-how-does-airdna-calculate-average-daily-rate-adr)
+- [AirDNA occupancy methodology](https://help.airdna.co/en/articles/8062178-how-does-airdna-calculate-occupancy-rate)
+- [AirDNA revenue methodology](https://help.airdna.co/en/articles/8374548-how-does-airdna-calculate-revenue)
+- [AirDNA Rentalizer methodology](https://help.airdna.co/en/articles/10559022-rentalizer-revenue-calculator)
 - [BNBCalc REST API](https://www.bnbcalc.com/rest-api)
 - [Mashvisor API documentation](https://www.mashvisor.com/api-doc-v2)
 - [Mashvisor API pricing](https://www.mashvisor.com/api-plans)

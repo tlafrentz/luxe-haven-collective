@@ -4,6 +4,11 @@ Workspace Properties configures canonical assets: ownership, inclusion, provider
 
 Connected Systems reports the health of external sources. A connection can be healthy while a listing is unlinked, and a disconnected source never removes canonical properties or last-known operational data.
 
+The inventory includes both workspace-managed connections (such as Hospitable)
+and enabled platform-managed providers (such as RentCast). Platform credentials
+remain server-only; the workspace shows configuration health and capabilities,
+not secrets or connection controls.
+
 ## Product states
 
 - No properties directs an administrator to the secure provider connection flow.
@@ -18,4 +23,3 @@ Inclusion is `included`, `excluded`, or `archived`. Exclusion removes an asset f
 ## Ownership
 
 All reads begin with authenticated workspace membership. Canonical properties retain their existing IDs and belong to `owners.id`, the current workspace persistence boundary. Provider listings are references, never replacement property records.
-

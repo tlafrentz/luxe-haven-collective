@@ -74,6 +74,16 @@ Used by:
 
 Never expose this value.
 
+## REALTY_API_KEY
+
+Server-only RealtyAPI credential used for canonical property discovery and
+enrichment. Requests send it in the `x-realtyapi-key` header. Never expose this
+value to browser code.
+
+## REALTY_API_BASE_URL
+
+Optional RealtyAPI origin. Defaults to `https://realtor.realtyapi.io`.
+
 ---
 
 ## RESEND_API_KEY

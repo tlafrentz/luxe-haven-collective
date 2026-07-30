@@ -32,10 +32,11 @@ import {
 import { InvestmentMarketEvidencePanel } from "./investment-market-evidence-panel";
 import type { ReactNode } from "react";
 import type { InvestmentWorkspaceValues } from "./investment-workspace-state";
+import type { InvestmentAnalysisMarketContext } from "../application";
 
-export function InvestmentWorkspace({ resultsActions, initialValues, contextNotice }: { resultsActions?: ReactNode; initialValues?: Partial<InvestmentWorkspaceValues>; contextNotice?: ReactNode } = {}) {
+export function InvestmentWorkspace({ resultsActions, initialValues, contextNotice, initialMarketContext }: { resultsActions?: ReactNode; initialValues?: Partial<InvestmentWorkspaceValues>; contextNotice?: ReactNode; initialMarketContext?: InvestmentAnalysisMarketContext } = {}) {
   return (
-    <InvestmentWorkspaceStateProvider initialValues={initialValues}>
+    <InvestmentWorkspaceStateProvider initialValues={initialValues} initialMarketContext={initialMarketContext}>
       <main className="px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <div className="mx-auto max-w-[1480px] space-y-10">
           <InvestmentWorkspaceHeader />

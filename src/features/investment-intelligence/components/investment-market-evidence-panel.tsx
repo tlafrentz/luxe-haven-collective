@@ -3,10 +3,24 @@
 import type { MarketAnalysisReport } from "@/features/market-intelligence";
 import { AcquisitionType } from "../domain";
 import { useInvestmentWorkspaceState } from "./investment-workspace-state";
+import { ComparableExplorer as StrComparableExplorer } from "./comparable-explorer";
+import { EvidenceExplorer } from "./evidence-explorer";
+import { calculateSnapshotFreshness } from "../application";
 
 export function InvestmentMarketEvidencePanel() {
-  const { values, stage, propertyResolution, propertyAlternatives, marketReport, investmentAnalysisContext } = useInvestmentWorkspaceState();
+  const { values, stage, propertyResolution, propertyAlternatives, marketReport, investmentAnalysisContext, strMarketContext } = useInvestmentWorkspaceState();
   const isLoading = stage === "resolving-property" || stage === "running-market-analysis";
+  if (strMarketContext?.snapshot) {
+    const snapshot = strMarketContext.snapshot, freshness = calculateSnapshotFreshness(snapshot);
+    return <section className="space-y-5 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+      <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">STR Market Intelligence</p>
+        <h2 className="mt-2 text-2xl font-semibold">Evidence-backed underwriting</h2><p className="mt-2 text-sm text-neutral-600">Snapshot {snapshot.id} · Retrieved {new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(snapshot.createdAt))}</p></div>
+        <span className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-semibold">{freshness} · {snapshot.confidence.level} confidence</span></header>
+      {freshness === "stale" ? <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">This evidence is stale. You can retain it, refresh into a new immutable snapshot, or continue manually.</p> : null}
+      <details className="rounded-2xl border border-neutral-200 p-5"><summary className="cursor-pointer font-semibold">Open Comparable Explorer</summary><div className="mt-6"><StrComparableExplorer snapshot={snapshot} /></div></details>
+      <details className="rounded-2xl border border-neutral-200 p-5"><summary className="cursor-pointer font-semibold">Open Evidence Explorer</summary><div className="mt-6"><EvidenceExplorer context={strMarketContext} /></div></details>
+    </section>;
+  }
   if (propertyAlternatives.length > 0) {
     return <section className="rounded-3xl border border-amber-200 bg-amber-50 p-6"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-800">Ambiguous property</p><h2 className="mt-2 text-xl font-semibold text-amber-950">Refine the address to select one subject.</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{propertyAlternatives.map(({ property }) => <article key={property.providerReferences.map(({ externalId }) => externalId).join(":")} className="rounded-xl border border-amber-200 bg-white p-4"><p className="font-semibold text-neutral-950">{property.address.formatted}</p><p className="mt-1 text-xs text-neutral-600">{property.characteristics.propertyType ?? "Property type unavailable"} · {property.characteristics.bedrooms ?? "?"} bd · {property.characteristics.bathrooms ?? "?"} ba · {property.characteristics.squareFeet?.toLocaleString() ?? "?"} sq ft</p></article>)}</div></section>;
   }

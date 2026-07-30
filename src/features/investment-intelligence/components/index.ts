@@ -53,6 +53,9 @@ export {
 export {
   calculateLiveInvestmentSummary,
 } from "./live-investment-summary-calculations";
+export { MarketAssumptionCard } from "./market-assumption-card";
+export { ComparableExplorer } from "./comparable-explorer";
+export { EvidenceExplorer } from "./evidence-explorer";
 
 export type {
   LiveInvestmentSummaryMetrics,

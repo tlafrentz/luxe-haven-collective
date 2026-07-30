@@ -35,6 +35,7 @@ const rental = z.object({
 
 export const investmentWorkspaceActionSchema = z.object({
   clientRequestId: z.string().trim().min(1).max(160),
+  marketSnapshotId: z.string().uuid().optional(),
   address: z.object({ streetAddress: shortText, city: shortText, state: z.string().trim().min(2).max(40), postalCode: z.string().trim().min(3).max(16), countryCode: z.literal("US").optional() }).strict(),
   investmentInput: z.discriminatedUnion("acquisitionType", [purchase, rental]),
   userProvidedAssumptionKeys: z.array(z.string().trim().min(1).max(100)).max(40).refine((values) => new Set(values).size === values.length, "Assumption keys must be unique."),

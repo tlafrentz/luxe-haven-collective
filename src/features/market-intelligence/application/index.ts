@@ -22,4 +22,14 @@ export { assessMarketComparableEligibility } from "./assess-market-comparable-el
 export { calculateMarketComparableSimilarity } from "./calculate-market-comparable-similarity";
 export { runMarketAnalysis } from "./run-market-analysis";
 export type { RunMarketAnalysisDependencies } from "./run-market-analysis";
+export {
+  lookupSubjectProperty,
+  AmbiguousSubjectPropertyError,
+  SubjectPropertyNotFoundError,
+} from "./lookup-subject-property";
+export type {
+  CanonicalPropertyProvider,
+  LookupSubjectPropertyDependencies,
+  LookupSubjectPropertyInput,
+} from "./lookup-subject-property";
 export { buildDefaultMarketAnalysisPolicies } from "./market-analysis-policies";

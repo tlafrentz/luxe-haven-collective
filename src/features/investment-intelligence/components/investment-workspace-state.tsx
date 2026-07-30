@@ -9,6 +9,8 @@ import type { MarketAnalysisReport, MarketPropertyResolutionResult } from "@/fea
 import { AcquisitionType, MarketTrend, PropertyType } from "../domain";
 import type { InvestmentLifecycleResult } from "../domain";
 import type { InvestmentAnalysisContext, InvestmentDecisionAnalysisTransportDto, InvestmentMarketContext, InvestmentWorkspaceStage, RunInvestmentAnalysisCommand } from "../application";
+import { acceptMarketAssumption, overrideMarketAssumption, proposeMarketAssumptions, restoreMarketAssumption } from "../application";
+import type { InvestmentAnalysisMarketContext, MarketAssumptionSelections } from "../application";
 import { applyStrategyTransition, buildStrategyTransitionPlan, classifyInvestmentWorkspaceFailure, type InvestmentWorkspaceLifecycleState, type StrategyTransitionPlan } from "../application";
 import { buildInvestmentWorkspaceReadiness } from "./investment-workspace-readiness";
 import type { DecisionReadinessGroup } from "./investment-workspace-readiness";
@@ -59,6 +61,11 @@ type InvestmentWorkspaceState = Readonly<{
   analysisError: string | null;
   lifecycle: InvestmentWorkspaceLifecycleState<Extract<CurrentInvestmentAnalysisState, { status: "completed" }>>;
   currentAnalysis: CurrentInvestmentAnalysisState;
+  strMarketContext: InvestmentAnalysisMarketContext | null;
+  strAssumptions: MarketAssumptionSelections | null;
+  acceptStrAssumption: (key: keyof MarketAssumptionSelections) => void;
+  overrideStrAssumption: (key: keyof MarketAssumptionSelections, value: number) => void;
+  restoreStrAssumption: (key: keyof MarketAssumptionSelections) => void;
   analyzeInvestment: () => Promise<void>;
 }>;
 
@@ -77,7 +84,7 @@ export const DEFAULT_INVESTMENT_WORKSPACE_VALUES: InvestmentWorkspaceValues = {
 
 const InvestmentWorkspaceContext = createContext<InvestmentWorkspaceState | null>(null);
 
-export function InvestmentWorkspaceStateProvider({ children, initialValues }: { children: ReactNode; initialValues?: Partial<InvestmentWorkspaceValues> }) {
+export function InvestmentWorkspaceStateProvider({ children, initialValues, initialMarketContext }: { children: ReactNode; initialValues?: Partial<InvestmentWorkspaceValues>; initialMarketContext?: InvestmentAnalysisMarketContext }) {
   const [values, setWorkspaceValues] = useState<InvestmentWorkspaceValues>({ ...DEFAULT_INVESTMENT_WORKSPACE_VALUES, ...initialValues });
   const [result, setResult] = useState<Extract<Awaited<ReturnType<typeof analyzeInvestmentWorkspace>>, { ok: true }>["result"] | null>(null);
   const [analysisSaveToken, setAnalysisSaveToken] = useState<string | null>(null);
@@ -89,6 +96,8 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [propertyAlternatives, setPropertyAlternatives] = useState<MarketPropertyResolutionResult["alternatives"]>([]);
   const [pendingStrategyTransition, setPendingStrategyTransition] = useState<StrategyTransitionPlan | null>(null);
+  const [strMarketContext] = useState<InvestmentAnalysisMarketContext | null>(initialMarketContext ?? null);
+  const [strAssumptions, setStrAssumptions] = useState<MarketAssumptionSelections | null>(() => initialMarketContext?.snapshot ? proposeMarketAssumptions(initialMarketContext.snapshot) : null);
   const requestSequence = useRef(0);
   useEffect(() => {
     const restoreRouteFromHistory = () => {
@@ -134,6 +143,21 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
   const completedReadinessCount = readinessGroups.filter(({ isComplete }) => isComplete).length;
   const totalReadinessCount = readinessGroups.length;
   const isReadyForAnalysis = completedReadinessCount === totalReadinessCount;
+  const updateStrAssumption = useCallback((key: keyof MarketAssumptionSelections, operation: "accept" | "restore" | "override", value?: number) => {
+    setStrAssumptions(current => {
+      if (!current) return current;
+      const next = operation === "accept" ? acceptMarketAssumption(current[key])
+        : operation === "restore" ? restoreMarketAssumption(current[key])
+          : overrideMarketAssumption(current[key], value!);
+      if ((key === "adr" || key === "occupancy") && next.value !== undefined) setWorkspaceValues(values => ({
+        ...values, ...(key === "adr" ? { projectedAdr: next.value! } : { projectedOccupancyPercentage: next.value! }),
+      }));
+      return { ...current, [key]: next };
+    });
+  }, []);
+  const acceptStrAssumption = useCallback((key: keyof MarketAssumptionSelections) => updateStrAssumption(key, "accept"), [updateStrAssumption]);
+  const overrideStrAssumption = useCallback((key: keyof MarketAssumptionSelections, value: number) => updateStrAssumption(key, "override", value), [updateStrAssumption]);
+  const restoreStrAssumption = useCallback((key: keyof MarketAssumptionSelections) => updateStrAssumption(key, "restore"), [updateStrAssumption]);
 
   const analyzeInvestment = useCallback(async () => {
     if (!isReadyForAnalysis) {
@@ -147,6 +171,7 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
     try {
       response = await analyzeInvestmentWorkspace({
         clientRequestId: `client:${sequence}`,
+        ...(strMarketContext?.marketSnapshotId ? { marketSnapshotId: strMarketContext.marketSnapshotId } : {}),
         address: { streetAddress: values.address1, city: values.city, state: values.state, postalCode: values.postalCode, countryCode: "US" },
         investmentInput: buildInvestmentInput(values),
         userProvidedAssumptionKeys: userAssumptionKeys(values.acquisitionType),
@@ -176,7 +201,7 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
     setExpiresAt(response.expiresAt);
     setStage("decision-review");
     setIsAnalysisStale(false);
-  }, [isReadyForAnalysis, values]);
+  }, [isReadyForAnalysis, values, strMarketContext]);
 
   const currentAnalysis = useMemo<CurrentInvestmentAnalysisState>(() => {
     if (analysisError) return { status: "failed", error: analysisError };
@@ -208,8 +233,8 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
     analyzedAt,
     hasStaleAnalysis: result !== null && isAnalysisStale,
     isAnalyzing: stage === "resolving-property" || stage === "running-market-analysis" || stage === "running-investment-analysis",
-    analysisError, lifecycle, currentAnalysis, analyzeInvestment,
-  }), [values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, lifecycle, currentAnalysis, analyzeInvestment]);
+    analysisError, lifecycle, currentAnalysis, strMarketContext, strAssumptions, acceptStrAssumption, overrideStrAssumption, restoreStrAssumption, analyzeInvestment,
+  }), [values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, lifecycle, currentAnalysis, strMarketContext, strAssumptions, acceptStrAssumption, overrideStrAssumption, restoreStrAssumption, analyzeInvestment]);
 
   return <InvestmentWorkspaceContext.Provider value={contextValue}>{children}</InvestmentWorkspaceContext.Provider>;
 }
