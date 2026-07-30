@@ -118,6 +118,9 @@ export async function resolveInvestmentMarketContext(
         snapshots: dependencies.propertySnapshots,
         now: () => input.requestedAt,
         snapshotTtlDays: dependencies.propertySnapshotTtlDays,
+        diagnostic(stage, status, metadata) {
+          emit(`subject_property_${stage.replaceAll("-", "_")}_${status}`, metadata);
+        },
       },
     );
     emit("subject_property_resolution_completed", {

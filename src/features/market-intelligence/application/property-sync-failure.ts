@@ -7,6 +7,7 @@ import { ProviderError } from "@/features/market-intelligence/application/provid
 export type PropertySyncFailureCode =
   | "INVALID_ADDRESS_INPUT"
   | "PROPERTY_NOT_FOUND"
+  | "PROPERTY_AMBIGUOUS"
   | "PROPERTY_PROVIDER_UNAUTHORIZED"
   | "PROPERTY_PROVIDER_UNAVAILABLE"
   | "PROPERTY_PROVIDER_RATE_LIMITED"
@@ -40,7 +41,7 @@ export function classifyPropertyFailure(
     (error instanceof Error &&
       error.name === "AmbiguousSubjectPropertyError")
   ) {
-    return "PROPERTY_MAPPING_FAILED";
+    return "PROPERTY_AMBIGUOUS";
   }
 
   const code =
@@ -87,6 +88,10 @@ export function propertyFailureMessage(
 
   if (code === "PROPERTY_NOT_FOUND") {
     return "Property could not be resolved. Confirm the address and try again.";
+  }
+
+  if (code === "PROPERTY_AMBIGUOUS") {
+    return "Multiple properties matched this address. Refine the address and try again.";
   }
 
   if (code === "PROPERTY_PROVIDER_RATE_LIMITED") {
@@ -142,6 +147,7 @@ export function propertySyncDiagnostic(
   if (
     code === "PROPERTY_RESPONSE_INVALID" ||
     code === "PROPERTY_MAPPING_FAILED" ||
+    code === "PROPERTY_AMBIGUOUS" ||
     code === "PROPERTY_NOT_FOUND"
   ) {
     return {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { SubjectPropertyNotFoundError } from "@/features/market-intelligence/application/lookup-subject-property";
+import { AmbiguousSubjectPropertyError, SubjectPropertyNotFoundError } from "@/features/market-intelligence/application/lookup-subject-property";
 import {
   classifyPropertyFailure,
   propertyFailureMessage,
@@ -24,6 +24,12 @@ describe("investment property sync failure boundaries", () => {
     [
       "PROPERTY_NOT_FOUND",
       "Confirm the address",
+      "response-mapping",
+      true,
+    ],
+    [
+      "PROPERTY_AMBIGUOUS",
+      "Multiple properties matched",
       "response-mapping",
       true,
     ],
@@ -91,6 +97,13 @@ describe("investment property sync failure boundaries", () => {
     ).toBe("PROPERTY_NOT_FOUND");
   });
 
+  it("classifies genuinely ambiguous candidates separately", () => {
+    expect(classifyPropertyFailure(new AmbiguousSubjectPropertyError([
+      { providerPropertyId: "1", formattedAddress: "3108 Bideker Ave, Fort Worth, TX 76105" },
+      { providerPropertyId: "2", formattedAddress: "3108 Bideker Avenue, Fort Worth, TX 76105" },
+    ]))).toBe("PROPERTY_AMBIGUOUS");
+  });
+
   it("distinguishes adapter activation from outbound request execution", () => {
     const error = new ProviderError({
       provider: ProviderType.RealtyApi,
@@ -113,6 +126,7 @@ describe("investment property sync failure boundaries", () => {
     const codes: readonly PropertySyncFailureCode[] = [
       "INVALID_ADDRESS_INPUT",
       "PROPERTY_NOT_FOUND",
+      "PROPERTY_AMBIGUOUS",
       "PROPERTY_PROVIDER_UNAUTHORIZED",
       "PROPERTY_PROVIDER_UNAVAILABLE",
       "PROPERTY_PROVIDER_RATE_LIMITED",

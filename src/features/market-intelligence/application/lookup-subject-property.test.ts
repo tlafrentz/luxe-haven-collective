@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { InMemoryPropertySnapshotRepository } from "../infrastructure/property-snapshot-repository";
 import { RealtyApiClient } from "../infrastructure/realtyapi/client";
@@ -53,8 +55,8 @@ describe("lookupSubjectProperty", () => {
 
   it("returns candidates rather than guessing when lookup is ambiguous", async () => {
     const test = harness({ suggestions: [
-      { property_id: "111", display_name: "650 S Main St Unit 1, Fort Worth, TX 76104" },
-      { property_id: "222", display_name: "650 S Main St Unit 2, Fort Worth, TX 76104" },
+      { property_id: "111", display_name: address },
+      { property_id: "222", display_name: "650 South Main Street, Fort Worth, TX 76104" },
     ] });
     try {
       await lookupSubjectProperty({ address, ...scope }, { provider: test.provider, snapshots: test.snapshots });
@@ -64,6 +66,59 @@ describe("lookupSubjectProperty", () => {
       expect((error as AmbiguousSubjectPropertyError).candidates).toHaveLength(2);
     }
     expect(test.fetchImplementation).toHaveBeenCalledOnce();
+  });
+
+  it("selects, maps, and persists the live-envelope candidate in sequence", async () => {
+    const autocomplete = JSON.parse(readFileSync(
+      resolve(process.cwd(), "src/features/market-intelligence/infrastructure/realtyapi/fixtures/3108-bideker-ave.autocomplete.json"),
+      "utf8",
+    ));
+    const detailsResponse = {
+      detail: {
+        property_id: "7039944051",
+        status: "for_sale",
+        list_price: 219000,
+        details: { type: "single_family", beds: 4, baths: "2", sqft: 1320, year_built: 1935 },
+        address: { line: "3108 Bideker Ave", city: "Fort Worth", state_code: "TX", postal_code: "76105", latitude: 32.718749, longitude: -97.280627 },
+      },
+    };
+    const fetchImplementation = vi.fn(async (input: RequestInfo | URL) =>
+      new Response(JSON.stringify(String(input).includes("/autocomplete") ? autocomplete : detailsResponse), { status: 200 }));
+    const snapshots = new InMemoryPropertySnapshotRepository();
+    const diagnostics: string[] = [];
+
+    const property = await lookupSubjectProperty({
+      address: "3108 Bideker Avenue, Fort Worth, TX 76105",
+      ...scope,
+    }, {
+      provider: new RealtyApiPropertyProvider(new RealtyApiClient({ apiKey: "key", fetchImplementation })),
+      snapshots,
+      now: () => new Date("2026-07-30T12:00:00Z"),
+      createId: () => "bideker",
+      diagnostic(stage, status) { diagnostics.push(`${stage}:${status}`); },
+    });
+
+    expect(fetchImplementation.mock.calls.map(([input]) => String(input))).toEqual([
+      expect.stringContaining("/autocomplete"),
+      expect.stringContaining("property_id=7039944051"),
+    ]);
+    expect(property).toMatchObject({
+      id: "subject-property-bideker",
+      providerPropertyId: "7039944051",
+      snapshotVersion: 1,
+      address: { formatted: { value: "3108 Bideker Ave, Fort Worth, TX 76105" } },
+    });
+    await expect(snapshots.findById(property.snapshotId, scope)).resolves.toMatchObject({
+      subjectPropertyId: property.id,
+      normalizedAddressKey: "3108 bideker avenue fort worth tx 76105",
+      property,
+    });
+    expect(diagnostics).toEqual([
+      "autocomplete:completed",
+      "candidate-selection:completed",
+      "property-detail-mapping:completed",
+      "canonical-persistence:completed",
+    ]);
   });
 
   it("returns the normalized missing-property failure", async () => {

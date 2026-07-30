@@ -1,4 +1,5 @@
 import { normalizeMarketAddress } from "./normalize-market-address";
+import { areCanonicalAddressesCompatible } from "./canonical-address-comparison";
 import type { MarketPropertyLookupAddress } from "../domain/property-resolution";
 import {
   freezeSubjectProperty,
@@ -25,6 +26,11 @@ export interface LookupSubjectPropertyDependencies {
   readonly now?: () => Date;
   readonly createId?: () => string;
   readonly snapshotTtlDays?: number;
+  readonly diagnostic?: (
+    stage: "autocomplete" | "candidate-selection" | "property-detail-mapping" | "canonical-persistence",
+    status: "completed" | "failed",
+    metadata?: Readonly<Record<string, number>>,
+  ) => void;
 }
 
 export interface LookupSubjectPropertyInput {
@@ -62,24 +68,44 @@ export async function lookupSubjectProperty(
     if (cached) return cached.property;
   }
 
-  const candidates = await dependencies.provider.search(address.display);
+  let candidates: readonly PropertyLookupCandidate[];
+  try {
+    candidates = await dependencies.provider.search(address.display);
+    dependencies.diagnostic?.("autocomplete", "completed", { candidateCount: candidates.length });
+  } catch (error) {
+    dependencies.diagnostic?.("autocomplete", "failed");
+    throw error;
+  }
   if (candidates.length === 0) throw new SubjectPropertyNotFoundError();
-  const exactCandidates = candidates.filter(candidate => normalizeInput(candidate.formattedAddress).key === address.key);
-  if (candidates.length > 1 && exactCandidates.length !== 1) throw new AmbiguousSubjectPropertyError(candidates);
-  const candidate = exactCandidates[0] ?? candidates[0]!;
+  const compatibleCandidates = candidates.filter(candidate =>
+    areCanonicalAddressesCompatible(address.display, candidate.formattedAddress));
+  dependencies.diagnostic?.("candidate-selection", compatibleCandidates.length === 1 ? "completed" : "failed", {
+    candidateCount: candidates.length,
+    compatibleCandidateCount: compatibleCandidates.length,
+  });
+  if (compatibleCandidates.length === 0) throw new SubjectPropertyNotFoundError();
+  if (compatibleCandidates.length > 1) throw new AmbiguousSubjectPropertyError(compatibleCandidates);
+  const candidate = compatibleCandidates[0]!;
 
   const previous = await dependencies.snapshots.findLatestByAddress(address.key, scope);
   const subjectPropertyId = previous?.subjectPropertyId ??
     `subject-property-${dependencies.createId?.() ?? globalThis.crypto.randomUUID()}`;
   const version = await dependencies.snapshots.nextVersion(subjectPropertyId, scope);
   const snapshotId = `property-snapshot-${globalThis.crypto.randomUUID()}`;
-  const property = await dependencies.provider.retrieve(candidate, {
-    subjectPropertyId,
-    snapshotId,
-    snapshotVersion: version,
-    retrievedAt: now,
-    requestedAddressKey: address.key,
-  });
+  let property: SubjectProperty;
+  try {
+    property = await dependencies.provider.retrieve(candidate, {
+      subjectPropertyId,
+      snapshotId,
+      snapshotVersion: version,
+      retrievedAt: now,
+      requestedAddressKey: address.key,
+    });
+    dependencies.diagnostic?.("property-detail-mapping", "completed");
+  } catch (error) {
+    dependencies.diagnostic?.("property-detail-mapping", "failed");
+    throw error;
+  }
   const snapshot: PropertySnapshot = freezeSubjectProperty({
     id: snapshotId,
     ownerId: input.ownerId,
@@ -92,7 +118,13 @@ export async function lookupSubjectProperty(
     listingFreshUntil: new Date(now.getTime() + 24 * 60 * 60 * 1_000),
     expiresAt: new Date(now.getTime() + (dependencies.snapshotTtlDays ?? 7) * 24 * 60 * 60 * 1_000),
   });
-  await dependencies.snapshots.save(snapshot);
+  try {
+    await dependencies.snapshots.save(snapshot);
+    dependencies.diagnostic?.("canonical-persistence", "completed", { snapshotVersion: version });
+  } catch (error) {
+    dependencies.diagnostic?.("canonical-persistence", "failed", { snapshotVersion: version });
+    throw error;
+  }
   return property;
 }
 

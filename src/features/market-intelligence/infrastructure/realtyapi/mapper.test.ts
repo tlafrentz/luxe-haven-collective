@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { mapRealtyApiCandidates, mapRealtyApiProperty } from "./mapper";
-import type { RealtyApiPropertyResponseDto } from "./types";
+import type { RealtyApiAutocompleteResponseDto, RealtyApiPropertyResponseDto } from "./types";
 
 const candidate = {
   providerPropertyId: "987654321",
@@ -34,6 +34,34 @@ describe("RealtyAPI canonical mapper", () => {
       latitude: 32.72,
       longitude: -97.33,
     }]);
+  });
+
+  it("maps only address candidates from the sanitized live Bideker envelope", () => {
+    const response = JSON.parse(readFileSync(
+      resolve(process.cwd(), "src/features/market-intelligence/infrastructure/realtyapi/fixtures/3108-bideker-ave.autocomplete.json"),
+      "utf8",
+    )) as RealtyApiAutocompleteResponseDto;
+
+    expect(mapRealtyApiCandidates(response)).toEqual([
+      {
+        providerPropertyId: "7039944051",
+        formattedAddress: "3108 Bideker Ave, Fort Worth, TX 76105",
+        latitude: 32.718749,
+        longitude: -97.280627,
+      },
+      {
+        providerPropertyId: "7967975892",
+        formattedAddress: "3108 Avenue H, Fort Worth, TX 76105",
+      },
+      {
+        providerPropertyId: "8667666707",
+        formattedAddress: "3108 Avenue M, Fort Worth, TX 76105",
+      },
+      {
+        providerPropertyId: "7348510365",
+        formattedAddress: "3108 Avenue N, Fort Worth, TX 76105",
+      },
+    ]);
   });
 
   it("maps nested property details, lineage on every field, and partial data gaps", () => {
@@ -101,5 +129,49 @@ describe("RealtyAPI canonical mapper", () => {
     expect(property.missingFields).not.toContain("address.latitude");
     expect(property.missingFields).not.toContain("address.longitude");
     expect(property.missingFields).not.toContain("physical.yearBuilt");
+  });
+
+  it("maps the proven Bideker property-detail fields", () => {
+    const property = mapRealtyApiProperty({
+      message: "Success",
+      detail: {
+        property_id: "7039944051",
+        listing_id: "2998917610",
+        status: "for_sale",
+        list_price: 219000,
+        details: { type: "single_family", beds: 4, baths: "2", sqft: 1320, lot_sqft: 7013, year_built: 1935 },
+        address: {
+          line: "3108 Bideker Ave",
+          city: "Fort Worth",
+          state_code: "TX",
+          postal_code: "76105",
+          latitude: 32.718749,
+          longitude: -97.280627,
+        },
+      },
+    }, {
+      providerPropertyId: "7039944051",
+      formattedAddress: "3108 Bideker Ave, Fort Worth, TX 76105",
+    }, {
+      ...context,
+      requestedAddressKey: "3108 bideker ave fort worth tx 76105",
+    });
+
+    expect(property).toMatchObject({
+      providerPropertyId: "7039944051",
+      address: {
+        street: { value: "3108 Bideker Ave" },
+        city: { value: "Fort Worth" },
+        state: { value: "TX" },
+        postalCode: { value: "76105" },
+      },
+      physical: {
+        bedrooms: { value: 4 },
+        bathrooms: { value: 2 },
+        livingAreaSquareFeet: { value: 1320 },
+        yearBuilt: { value: 1935 },
+      },
+      listing: { status: { value: "for_sale" }, listPrice: { value: 219000 } },
+    });
   });
 });

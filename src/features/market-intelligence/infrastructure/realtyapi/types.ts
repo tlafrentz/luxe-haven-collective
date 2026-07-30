@@ -9,8 +9,14 @@ export type RealtyApiJsonObject = Readonly<Record<string, unknown>>;
 export interface RealtyApiSuggestionDto extends RealtyApiJsonObject {
   readonly property_id?: string | number;
   readonly listing_id?: string | number;
+  readonly id?: string | number;
+  readonly area_type?: string;
   readonly display_name?: string;
   readonly full_address?: string;
+  readonly line?: string;
+  readonly city?: string;
+  readonly state_code?: string;
+  readonly postal_code?: string;
   readonly address?: unknown;
   readonly centroid?: unknown;
 }

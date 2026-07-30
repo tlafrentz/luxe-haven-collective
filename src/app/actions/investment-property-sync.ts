@@ -155,6 +155,11 @@ export async function syncInvestmentPropertyAction(
       correlationId,
       requestedAt: new Date(),
       forceRefresh: true,
+    }, {
+      emit(event, attributes) {
+        if (!event.startsWith("subject_property_")) return;
+        recordSubjectPropertyStageDiagnostic(correlationId, event, attributes);
+      },
     });
 
     const property = context.subjectProperty;
@@ -311,4 +316,25 @@ function recordPropertySyncDiagnostic(
       outboundRequest,
     }),
   );
+}
+
+function recordSubjectPropertyStageDiagnostic(
+  correlationId: string,
+  stage: string,
+  attributes: Readonly<Record<string, unknown>>,
+): void {
+  console.info(JSON.stringify({
+    event: "investment_property_sync_stage",
+    correlationId,
+    stage,
+    ...(typeof attributes.candidateCount === "number"
+      ? { candidateCount: attributes.candidateCount }
+      : {}),
+    ...(typeof attributes.compatibleCandidateCount === "number"
+      ? { compatibleCandidateCount: attributes.compatibleCandidateCount }
+      : {}),
+    ...(typeof attributes.snapshotVersion === "number"
+      ? { snapshotVersion: attributes.snapshotVersion }
+      : {}),
+  }));
 }

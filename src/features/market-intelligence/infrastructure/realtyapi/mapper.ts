@@ -14,7 +14,8 @@ import type { RealtyApiAutocompleteResponseDto, RealtyApiPropertyResponseDto } f
 export function mapRealtyApiCandidates(response: RealtyApiAutocompleteResponseDto): readonly PropertyLookupCandidate[] {
   const records = findCollection(response);
   const candidates = records.flatMap((record): PropertyLookupCandidate[] => {
-    const providerPropertyId = text(record.property_id, record.propertyId, record.id);
+    if (text(record.area_type) && text(record.area_type)?.toLowerCase() !== "address") return [];
+    const providerPropertyId = propertyId(record);
     const formattedAddress = addressText(record);
     if (!providerPropertyId || !formattedAddress || !looksLikeStreetAddress(formattedAddress)) return [];
     const coordinates = coordinatePair(record);
@@ -175,8 +176,15 @@ function formatAddress(address: Record<string, unknown>): string | undefined {
 
 function addressText(record: Record<string, unknown>): string | undefined {
   const address = object(record.address);
-  return text(record.display_name, record.full_address, record.formatted_address,
-    address?.formatted_address, address?.formattedAddress, address?.line);
+  return text(record.full_address, record.formatted_address,
+    address?.formatted_address, address?.formattedAddress)
+    ?? formatAddress(record)
+    ?? text(record.display_name, address?.line);
+}
+
+function propertyId(record: Record<string, unknown>): string | undefined {
+  const value = text(record.property_id, record.propertyId, record.id);
+  return value?.replace(/^addr:/i, "");
 }
 
 function coordinatePair(value: Record<string, unknown>): { latitude: number; longitude: number } | undefined {

@@ -1,0 +1,65 @@
+{
+  "message": "Success",
+  "source": "realtor.com",
+  "total": 6,
+  "resultCount": 6,
+  "searchResults": [
+    {
+      "id": "addr:7039944051",
+      "area_type": "address",
+      "city": "Fort Worth",
+      "state_code": "TX",
+      "postal_code": "76105",
+      "country": "USA",
+      "centroid": { "lon": -97.280627, "lat": 32.718749 },
+      "line": "3108 Bideker Ave",
+      "display_name": "3108 Bideker Ave"
+    },
+    {
+      "id": "street:usa_tx_fort-worth_bideker-ave",
+      "area_type": "street",
+      "city": "Fort Worth",
+      "state_code": "TX",
+      "country": "USA"
+    },
+    {
+      "id": "ps:tx_76105",
+      "area_type": "postal_code",
+      "city": "Fort Worth",
+      "state_code": "TX",
+      "postal_code": "76105",
+      "country": "USA",
+      "display_name": "76105 (TX)"
+    },
+    {
+      "id": "addr:7967975892",
+      "area_type": "address",
+      "city": "Fort Worth",
+      "state_code": "TX",
+      "postal_code": "76105",
+      "country": "USA",
+      "line": "3108 Avenue H",
+      "display_name": "3108 Avenue H"
+    },
+    {
+      "id": "addr:8667666707",
+      "area_type": "address",
+      "city": "Fort Worth",
+      "state_code": "TX",
+      "postal_code": "76105",
+      "country": "USA",
+      "line": "3108 Avenue M",
+      "display_name": "3108 Avenue M"
+    },
+    {
+      "id": "addr:7348510365",
+      "area_type": "address",
+      "city": "Fort Worth",
+      "state_code": "TX",
+      "postal_code": "76105",
+      "country": "USA",
+      "line": "3108 Avenue N",
+      "display_name": "3108 Avenue N"
+    }
+  ]
+}
