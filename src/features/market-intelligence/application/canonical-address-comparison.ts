@@ -7,22 +7,28 @@ export interface CanonicalAddress {
 }
 
 const STREET_SUFFIXES: Readonly<Record<string, string>> = Object.freeze({
-  alley: "aly", avenue: "ave", boulevard: "blvd", circle: "cir", court: "ct",
-  drive: "dr", highway: "hwy", lane: "ln", parkway: "pkwy", place: "pl",
-  road: "rd", street: "st", terrace: "ter", trail: "trl", way: "way",
+  alley: "aly", aly: "aly", avenue: "ave", ave: "ave", boulevard: "blvd", blvd: "blvd",
+  circle: "cir", cir: "cir", court: "ct", ct: "ct", drive: "dr", dr: "dr",
+  highway: "hwy", hwy: "hwy", lane: "ln", ln: "ln", parkway: "pkwy", pkwy: "pkwy",
+  place: "pl", pl: "pl", road: "rd", rd: "rd", street: "st", st: "st",
+  terrace: "ter", ter: "ter", trail: "trl", trl: "trl", way: "way",
 });
 
 const DIRECTIONALS: Readonly<Record<string, string>> = Object.freeze({
-  north: "n", south: "s", east: "e", west: "w",
-  northeast: "ne", northwest: "nw", southeast: "se", southwest: "sw",
+  north: "n", n: "n", south: "s", s: "s", east: "e", e: "e", west: "w", w: "w",
+  northeast: "ne", ne: "ne", northwest: "nw", nw: "nw",
+  southeast: "se", se: "se", southwest: "sw", sw: "sw",
 });
 
 export function canonicalAddress(value: string): CanonicalAddress | undefined {
-  const parts = value.split(",").map((part) => part.trim()).filter(Boolean);
-  if (parts.length < 3) return undefined;
+  const normalized = value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").trim();
+  const statePostal = normalized.match(/\b([a-z]{2})[\s,]+(\d{5})(?:-\d{4})?\s*$/i);
+  if (!statePostal || statePostal.index === undefined) return undefined;
+  const beforeState = normalized.slice(0, statePostal.index).replace(/[\s,]+$/, "");
+  const parts = beforeState.split(/\s*,\s*/).filter(Boolean);
+  if (parts.length < 2) return undefined;
   const streetInput = parts[0]!;
-  const cityInput = parts[1]!;
-  const statePostal = parts.slice(2).join(" ").match(/\b([a-z]{2})\s+(\d{5})(?:-\d{4})?\b/i);
+  const cityInput = parts.slice(1).join(" ");
   const houseNumber = streetInput.match(/^\s*(\d+[a-z]?(?:-\d+[a-z]?)?)\b/i)?.[1];
   if (!houseNumber || !cityInput || !statePostal) return undefined;
 
@@ -53,7 +59,7 @@ function normalizeStreet(value: string): string {
 }
 
 function normalizeWords(value: string): string {
-  return value.toLowerCase().replace(/[.,#]/g, " ").replace(/\s+/g, " ").trim();
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function normalizeToken(value: string): string {

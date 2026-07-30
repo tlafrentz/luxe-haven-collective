@@ -28,7 +28,7 @@ export interface LookupSubjectPropertyDependencies {
   readonly snapshotTtlDays?: number;
   readonly diagnostic?: (
     stage: "autocomplete" | "candidate-selection" | "property-detail-mapping" | "canonical-persistence",
-    status: "completed" | "failed",
+    status: "started" | "completed" | "failed",
     metadata?: Readonly<Record<string, number>>,
   ) => void;
 }
@@ -48,6 +48,7 @@ export class SubjectPropertyNotFoundError extends Error {
 }
 
 export class AmbiguousSubjectPropertyError extends Error {
+  readonly code = "PROPERTY_AMBIGUOUS" as const;
   readonly candidates: readonly PropertyLookupCandidate[];
   constructor(candidates: readonly PropertyLookupCandidate[]) {
     super("Multiple matching properties found. Select a property before continuing.");
@@ -77,15 +78,19 @@ export async function lookupSubjectProperty(
     throw error;
   }
   if (candidates.length === 0) throw new SubjectPropertyNotFoundError();
-  const compatibleCandidates = candidates.filter(candidate =>
-    areCanonicalAddressesCompatible(address.display, candidate.formattedAddress));
-  dependencies.diagnostic?.("candidate-selection", compatibleCandidates.length === 1 ? "completed" : "failed", {
+  dependencies.diagnostic?.("candidate-selection", "started", {
     candidateCount: candidates.length,
-    compatibleCandidateCount: compatibleCandidates.length,
+    exactCandidateCount: 0,
   });
-  if (compatibleCandidates.length === 0) throw new SubjectPropertyNotFoundError();
-  if (compatibleCandidates.length > 1) throw new AmbiguousSubjectPropertyError(compatibleCandidates);
-  const candidate = compatibleCandidates[0]!;
+  const exactCandidates = candidates.filter(candidate =>
+    areCanonicalAddressesCompatible(address.display, candidate.formattedAddress));
+  dependencies.diagnostic?.("candidate-selection", "completed", {
+    candidateCount: candidates.length,
+    exactCandidateCount: exactCandidates.length,
+  });
+  if (exactCandidates.length === 0) throw new SubjectPropertyNotFoundError();
+  if (exactCandidates.length > 1) throw new AmbiguousSubjectPropertyError(exactCandidates);
+  const candidate = exactCandidates[0]!;
 
   const previous = await dependencies.snapshots.findLatestByAddress(address.key, scope);
   const subjectPropertyId = previous?.subjectPropertyId ??

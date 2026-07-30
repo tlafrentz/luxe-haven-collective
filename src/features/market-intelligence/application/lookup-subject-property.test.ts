@@ -58,14 +58,31 @@ describe("lookupSubjectProperty", () => {
       { property_id: "111", display_name: address },
       { property_id: "222", display_name: "650 South Main Street, Fort Worth, TX 76104" },
     ] });
+    const diagnostics: Array<{
+      stage: string;
+      status: string;
+      metadata?: Readonly<Record<string, number>>;
+    }> = [];
     try {
-      await lookupSubjectProperty({ address, ...scope }, { provider: test.provider, snapshots: test.snapshots });
+      await lookupSubjectProperty({ address, ...scope }, {
+        provider: test.provider,
+        snapshots: test.snapshots,
+        diagnostic(stage, status, metadata) {
+          diagnostics.push({ stage, status, metadata });
+        },
+      });
       throw new Error("Expected ambiguity");
     } catch (error) {
       expect(error).toBeInstanceOf(AmbiguousSubjectPropertyError);
+      expect(error).toMatchObject({ code: "PROPERTY_AMBIGUOUS" });
       expect((error as AmbiguousSubjectPropertyError).candidates).toHaveLength(2);
     }
     expect(test.fetchImplementation).toHaveBeenCalledOnce();
+    expect(diagnostics).toContainEqual({
+      stage: "candidate-selection",
+      status: "completed",
+      metadata: { candidateCount: 2, exactCandidateCount: 2 },
+    });
   });
 
   it("selects, maps, and persists the live-envelope candidate in sequence", async () => {
@@ -85,7 +102,11 @@ describe("lookupSubjectProperty", () => {
     const fetchImplementation = vi.fn(async (input: RequestInfo | URL) =>
       new Response(JSON.stringify(String(input).includes("/autocomplete") ? autocomplete : detailsResponse), { status: 200 }));
     const snapshots = new InMemoryPropertySnapshotRepository();
-    const diagnostics: string[] = [];
+    const diagnostics: Array<{
+      stage: string;
+      status: string;
+      metadata?: Readonly<Record<string, number>>;
+    }> = [];
 
     const property = await lookupSubjectProperty({
       address: "3108 Bideker Avenue, Fort Worth, TX 76105",
@@ -95,7 +116,7 @@ describe("lookupSubjectProperty", () => {
       snapshots,
       now: () => new Date("2026-07-30T12:00:00Z"),
       createId: () => "bideker",
-      diagnostic(stage, status) { diagnostics.push(`${stage}:${status}`); },
+      diagnostic(stage, status, metadata) { diagnostics.push({ stage, status, metadata }); },
     });
 
     expect(fetchImplementation.mock.calls.map(([input]) => String(input))).toEqual([
@@ -114,10 +135,19 @@ describe("lookupSubjectProperty", () => {
       property,
     });
     expect(diagnostics).toEqual([
-      "autocomplete:completed",
-      "candidate-selection:completed",
-      "property-detail-mapping:completed",
-      "canonical-persistence:completed",
+      { stage: "autocomplete", status: "completed", metadata: { candidateCount: 4 } },
+      {
+        stage: "candidate-selection",
+        status: "started",
+        metadata: { candidateCount: 4, exactCandidateCount: 0 },
+      },
+      {
+        stage: "candidate-selection",
+        status: "completed",
+        metadata: { candidateCount: 4, exactCandidateCount: 1 },
+      },
+      { stage: "property-detail-mapping", status: "completed", metadata: undefined },
+      { stage: "canonical-persistence", status: "completed", metadata: { snapshotVersion: 1 } },
     ]);
   });
 
