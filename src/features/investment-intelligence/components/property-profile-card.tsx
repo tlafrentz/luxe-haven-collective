@@ -2,7 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { RefreshCw } from "lucide-react";
-import { syncInvestmentPropertyAction } from "@/app/actions/investment-property-sync";
+import {
+  syncInvestmentPropertyAction,
+  type InvestmentPropertySyncResult,
+} from "@/app/actions/investment-property-sync";
 import {
   AcquisitionType,
   PropertyType,
@@ -80,10 +83,8 @@ export function PropertyProfileCard() {
                 setSyncMessage(null);
                 const address = [values.address1, values.city, values.state, values.postalCode].filter(Boolean).join(", ");
                 const result = await syncInvestmentPropertyAction({ address });
-                if (!result.ok) {
-                  setSyncMessage({ type: "error", text: result.message });
-                  return;
-                }
+                const feedback = propertySyncFeedback(result);
+                if (!result.ok) return setSyncMessage(feedback);
                 const propertyType = toPropertyType(result.data.propertyType);
                 setValues(current => ({
                   ...current,
@@ -99,8 +100,7 @@ export function PropertyProfileCard() {
                   ...(result.data.projectedAdr !== undefined ? { projectedAdr: result.data.projectedAdr } : {}),
                   ...(result.data.projectedOccupancyPercentage !== undefined ? { projectedOccupancyPercentage: result.data.projectedOccupancyPercentage } : {}),
                 }));
-                const text = propertySyncMessage(result.status);
-                setSyncMessage({ type: "success", text });
+                setSyncMessage(feedback);
               })}
               className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -317,6 +317,14 @@ export function propertySyncMessage(status: "complete" | "str-limited" | "str-un
     return "Property and STR market data synced with limited comparable evidence. Review the evidence limitations before relying on provider estimates.";
   }
   return "Property and STR market data synced successfully.";
+}
+
+export function propertySyncFeedback(
+  result: InvestmentPropertySyncResult,
+): { type: "success" | "error"; text: string } {
+  return result.ok
+    ? { type: "success", text: propertySyncMessage(result.status) }
+    : { type: "error", text: result.message };
 }
 
 function toPropertyType(value?: string): PropertyType | undefined {

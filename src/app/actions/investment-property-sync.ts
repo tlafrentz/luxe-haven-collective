@@ -6,6 +6,11 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { resolveWorkspaceAccessContext, SupabaseTeamAccessRepository } from "@/features/workspace";
 import { resolveInvestmentMarketContextAtRuntime } from "@/features/market-intelligence/str/infrastructure/investment-market-context-runtime";
 import type { StrMarketContextFailureCode } from "@/features/market-intelligence/str/application/resolve-investment-market-context";
+import { ProviderError } from "@/features/market-intelligence/application/providers/provider-error";
+import {
+  AmbiguousSubjectPropertyError,
+  SubjectPropertyNotFoundError,
+} from "@/features/market-intelligence/application/lookup-subject-property";
 
 const inputSchema = z.object({
   address: z.string().trim().min(5).max(300),
@@ -21,6 +26,15 @@ export type PropertySyncFailureCode =
   | "PROPERTY_MAPPING_FAILED"
   | "SUBJECT_PERSISTENCE_FAILED"
   | "SUBJECT_AUTHORIZATION_FAILED";
+
+export type PropertySyncDiagnosticBoundary =
+  | "adapter-activation"
+  | "configuration"
+  | "request-execution"
+  | "response-mapping"
+  | "authorization"
+  | "canonical-persistence"
+  | "resolved";
 
 export type InvestmentPropertySyncResult =
   | Readonly<{
@@ -52,20 +66,32 @@ export type InvestmentPropertySyncResult =
   | Readonly<{ ok: false; code: PropertySyncFailureCode; message: string; manualFallbackAvailable: true }>;
 
 export async function syncInvestmentPropertyAction(input: unknown): Promise<InvestmentPropertySyncResult> {
+  const correlationId = `property-sync:${crypto.randomUUID()}`;
   const parsed = inputSchema.safeParse(input);
-  if (!parsed.success) return failure("INVALID_ADDRESS_INPUT", "Enter a complete street address before syncing.");
+  if (!parsed.success) {
+    recordPropertySyncDiagnostic(correlationId, "response-mapping", "INVALID_ADDRESS_INPUT", false);
+    return failure("INVALID_ADDRESS_INPUT", propertyFailureMessage("INVALID_ADDRESS_INPUT"));
+  }
   const { user } = await getSessionProfile();
-  if (!user) return failure("SUBJECT_AUTHORIZATION_FAILED", "Sign in before syncing property data.");
-  if (!process.env.REALTY_API_KEY) return failure("PROPERTY_PROVIDER_UNAVAILABLE", "Property intelligence is not configured.");
+  if (!user) {
+    recordPropertySyncDiagnostic(correlationId, "authorization", "SUBJECT_AUTHORIZATION_FAILED", false);
+    return failure("SUBJECT_AUTHORIZATION_FAILED", propertyFailureMessage("SUBJECT_AUTHORIZATION_FAILED"));
+  }
+  if (!process.env.REALTY_API_KEY?.trim()) {
+    recordPropertySyncDiagnostic(correlationId, "configuration", "PROPERTY_PROVIDER_UNAVAILABLE", false);
+    return failure("PROPERTY_PROVIDER_UNAVAILABLE", "Property intelligence is not configured.");
+  }
 
   let workspaceId: string;
   try {
     const access = await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(), user.id);
     if (!["owner", "administrator"].includes(access.role)) {
+      recordPropertySyncDiagnostic(correlationId, "authorization", "SUBJECT_AUTHORIZATION_FAILED", false);
       return failure("SUBJECT_AUTHORIZATION_FAILED", "You are not authorized to sync this workspace.");
     }
     workspaceId = access.workspaceId;
   } catch {
+    recordPropertySyncDiagnostic(correlationId, "authorization", "SUBJECT_AUTHORIZATION_FAILED", false);
     return failure("SUBJECT_AUTHORIZATION_FAILED", "You are not authorized to sync this workspace.");
   }
 
@@ -75,12 +101,13 @@ export async function syncInvestmentPropertyAction(input: unknown): Promise<Inve
       workspaceId,
       address: parsed.data.address,
       property: {},
-      correlationId: `property-sync:${crypto.randomUUID()}`,
+      correlationId,
       requestedAt: new Date(),
       forceRefresh: true,
     });
     const property = context.subjectProperty;
     if (!property || !context.subjectPropertySnapshotId) {
+      recordPropertySyncDiagnostic(correlationId, "response-mapping", "PROPERTY_MAPPING_FAILED", true);
       return failure("PROPERTY_MAPPING_FAILED", "Property data could not be resolved. Confirm the address and try again.");
     }
     const market = context.marketSnapshot;
@@ -91,7 +118,7 @@ export async function syncInvestmentPropertyAction(input: unknown): Promise<Inve
         : context.failureCode
           ? "str-unavailable"
           : "complete";
-    return {
+    const result = {
       ok: true,
       status,
       data: {
@@ -117,9 +144,13 @@ export async function syncInvestmentPropertyAction(input: unknown): Promise<Inve
         ...(context.failureCode ? { limitationCode: context.failureCode } : {}),
         warnings: context.warnings,
       },
-    };
+    } satisfies InvestmentPropertySyncResult;
+    recordPropertySyncDiagnostic(correlationId, "resolved", "SUCCESS", true);
+    return result;
   } catch (error) {
     const code = classifyPropertyFailure(error);
+    const diagnostic = propertySyncDiagnostic(code, error);
+    recordPropertySyncDiagnostic(correlationId, diagnostic.boundary, code, diagnostic.outboundRequest);
     return failure(code, propertyFailureMessage(code));
   }
 }
@@ -128,7 +159,13 @@ function failure(code: PropertySyncFailureCode, message: string): Extract<Invest
   return { ok: false, code, message: `${message} Manual analysis remains available.`, manualFallbackAvailable: true };
 }
 
-function classifyPropertyFailure(error: unknown): PropertySyncFailureCode {
+export function classifyPropertyFailure(error: unknown): PropertySyncFailureCode {
+  if (error instanceof SubjectPropertyNotFoundError || (error instanceof Error && error.name === "SubjectPropertyNotFoundError")) {
+    return "PROPERTY_NOT_FOUND";
+  }
+  if (error instanceof AmbiguousSubjectPropertyError || (error instanceof Error && error.name === "AmbiguousSubjectPropertyError")) {
+    return "PROPERTY_MAPPING_FAILED";
+  }
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
   if (code === "not-found") return "PROPERTY_NOT_FOUND";
   if (code === "authentication-failed" || code === "access-denied") return "PROPERTY_PROVIDER_UNAUTHORIZED";
@@ -139,11 +176,47 @@ function classifyPropertyFailure(error: unknown): PropertySyncFailureCode {
   return "PROPERTY_PROVIDER_UNAVAILABLE";
 }
 
-function propertyFailureMessage(code: PropertySyncFailureCode): string {
+export function propertyFailureMessage(code: PropertySyncFailureCode): string {
+  if (code === "INVALID_ADDRESS_INPUT") return "Enter a complete street address before syncing.";
+  if (code === "SUBJECT_AUTHORIZATION_FAILED") return "You are not authorized to sync property data.";
   if (code === "PROPERTY_NOT_FOUND") return "Property could not be resolved. Confirm the address and try again.";
   if (code === "PROPERTY_PROVIDER_RATE_LIMITED") return "Property intelligence is temporarily rate limited.";
-  if (code === "PROPERTY_PROVIDER_UNAUTHORIZED") return "Property intelligence authentication is unavailable.";
+  if (code === "PROPERTY_PROVIDER_UNAUTHORIZED") return "Property intelligence could not be authorized.";
   if (code === "PROPERTY_RESPONSE_INVALID" || code === "PROPERTY_MAPPING_FAILED") return "Property data was returned but could not be mapped.";
   if (code === "SUBJECT_PERSISTENCE_FAILED") return "Property data was resolved but canonical persistence failed.";
   return "Property intelligence is temporarily unavailable.";
+}
+
+export function propertySyncDiagnostic(
+  code: PropertySyncFailureCode,
+  error?: unknown,
+): Readonly<{ boundary: PropertySyncDiagnosticBoundary; outboundRequest: boolean }> {
+  if (code === "SUBJECT_AUTHORIZATION_FAILED") return { boundary: "authorization", outboundRequest: false };
+  if (code === "INVALID_ADDRESS_INPUT") return { boundary: "response-mapping", outboundRequest: false };
+  if (code === "SUBJECT_PERSISTENCE_FAILED") return { boundary: "canonical-persistence", outboundRequest: true };
+  if (code === "PROPERTY_RESPONSE_INVALID" || code === "PROPERTY_MAPPING_FAILED" || code === "PROPERTY_NOT_FOUND") {
+    return { boundary: "response-mapping", outboundRequest: true };
+  }
+  if (code === "PROPERTY_PROVIDER_UNAUTHORIZED" || code === "PROPERTY_PROVIDER_RATE_LIMITED") {
+    return { boundary: "authorization", outboundRequest: true };
+  }
+  const providerCode = error instanceof ProviderError ? error.code : undefined;
+  return providerCode === "not-configured"
+    ? { boundary: "adapter-activation", outboundRequest: false }
+    : { boundary: "request-execution", outboundRequest: true };
+}
+
+function recordPropertySyncDiagnostic(
+  correlationId: string,
+  boundary: PropertySyncDiagnosticBoundary,
+  classification: PropertySyncFailureCode | "SUCCESS",
+  outboundRequest: boolean,
+): void {
+  console.info(JSON.stringify({
+    event: "investment_property_sync_diagnostic",
+    correlationId,
+    boundary,
+    classification,
+    outboundRequest,
+  }));
 }

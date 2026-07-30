@@ -143,7 +143,7 @@ function findCollection(value: unknown): readonly Record<string, unknown>[] {
   if (Array.isArray(value)) return value.filter(isObject);
   const root = object(value);
   if (!root) return [];
-  for (const key of ["autocomplete", "results", "suggestions", "data", "properties"]) {
+  for (const key of ["autocomplete", "searchResults", "results", "suggestions", "data", "properties"]) {
     const candidate = root[key];
     if (Array.isArray(candidate)) return candidate.filter(isObject);
     if (isObject(candidate)) {

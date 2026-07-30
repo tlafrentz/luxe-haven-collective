@@ -25,6 +25,17 @@ describe("RealtyAPI canonical mapper", () => {
     ] } })).toEqual([{ ...candidate, latitude: 32.72, longitude: -97.33 }]);
   });
 
+  it("maps the current RealtyAPI searchResults autocomplete envelope", () => {
+    expect(mapRealtyApiCandidates({ searchResults: [
+      { id: 987654321, display_name: candidate.formattedAddress, centroid: { lat: 32.72, lon: -97.33 } },
+    ] })).toEqual([{
+      providerPropertyId: "987654321",
+      formattedAddress: candidate.formattedAddress,
+      latitude: 32.72,
+      longitude: -97.33,
+    }]);
+  });
+
   it("maps nested property details, lineage on every field, and partial data gaps", () => {
     const property = mapRealtyApiProperty({ data: { home: {
       property_id: "987654321",
