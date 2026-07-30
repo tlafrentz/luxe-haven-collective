@@ -7,8 +7,8 @@ import { analyzeInvestmentWorkspace } from "@/app/actions/investment-workspace";
 import type { MarketAnalysisReport, MarketPropertyResolutionResult } from "@/features/market-intelligence";
 
 import { AcquisitionType, MarketTrend, PropertyType } from "../domain";
-import type { InvestmentDecisionAnalysis, InvestmentLifecycleResult } from "../domain";
-import type { InvestmentAnalysisContext, InvestmentMarketContext, InvestmentWorkspaceStage, RunInvestmentAnalysisCommand } from "../application";
+import type { InvestmentLifecycleResult } from "../domain";
+import type { InvestmentAnalysisContext, InvestmentDecisionAnalysisTransportDto, InvestmentMarketContext, InvestmentWorkspaceStage, RunInvestmentAnalysisCommand } from "../application";
 import { applyStrategyTransition, buildStrategyTransitionPlan, classifyInvestmentWorkspaceFailure, type InvestmentWorkspaceLifecycleState, type StrategyTransitionPlan } from "../application";
 import { buildInvestmentWorkspaceReadiness } from "./investment-workspace-readiness";
 import type { DecisionReadinessGroup } from "./investment-workspace-readiness";
@@ -51,7 +51,7 @@ type InvestmentWorkspaceState = Readonly<{
   investmentMarketContext: InvestmentMarketContext | null;
   investmentAnalysisContext: InvestmentAnalysisContext | null;
   analysis: WorkspaceInvestmentAnalysis | null;
-  decisionAnalysis: InvestmentDecisionAnalysis | null;
+  decisionAnalysis: InvestmentDecisionAnalysisTransportDto | null;
   analysisSaveToken: string | null;
   analyzedAt: Date | null;
   hasStaleAnalysis: boolean;
@@ -143,16 +143,25 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues }: { 
     const sequence = ++requestSequence.current;
     setStage("resolving-property");
     setAnalysisError(null);
-    const response = await analyzeInvestmentWorkspace({
-      clientRequestId: `client:${sequence}`,
-      address: { streetAddress: values.address1, city: values.city, state: values.state, postalCode: values.postalCode, countryCode: "US" },
-      investmentInput: buildInvestmentInput(values),
-      userProvidedAssumptionKeys: userAssumptionKeys(values.acquisitionType),
-      marketRequest: {
-        saleValuation: values.acquisitionType === AcquisitionType.Purchase,
-        longTermRent: true,
-      },
-    });
+    let response: Awaited<ReturnType<typeof analyzeInvestmentWorkspace>>;
+    try {
+      response = await analyzeInvestmentWorkspace({
+        clientRequestId: `client:${sequence}`,
+        address: { streetAddress: values.address1, city: values.city, state: values.state, postalCode: values.postalCode, countryCode: "US" },
+        investmentInput: buildInvestmentInput(values),
+        userProvidedAssumptionKeys: userAssumptionKeys(values.acquisitionType),
+        marketRequest: {
+          saleValuation: values.acquisitionType === AcquisitionType.Purchase,
+          longTermRent: true,
+        },
+      });
+    } catch {
+      if (sequence !== requestSequence.current) return;
+      setStage("error");
+      setAnalysisError("The analysis response could not be received. Your previous analysis and assumptions were preserved. Try again.");
+      setPropertyAlternatives([]);
+      return;
+    }
     if (sequence !== requestSequence.current) return;
     if (!response.ok) {
       setStage("error");

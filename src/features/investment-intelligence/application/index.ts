@@ -193,6 +193,15 @@ export {
   getInvestmentDecisionAnalysis,
 } from "./get-investment-decision-analysis";
 
+export {
+  projectInvestmentWorkspaceTransport,
+} from "./project-investment-workspace-transport";
+
+export type {
+  InvestmentDecisionAnalysisTransportDto,
+  InvestmentWorkspaceAnalysisTransportDto,
+} from "./project-investment-workspace-transport";
+
 export type {
   RunInvestmentAnalysisCommand,
   RunPurchaseInvestmentAnalysisCommand,

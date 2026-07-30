@@ -4,9 +4,11 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { resolveWorkspaceAccessContext, SupabaseTeamAccessRepository } from "@/features/workspace";
 import {
   InvestmentWorkspaceAnalysisError,
+  projectInvestmentWorkspaceTransport,
   runInvestmentWorkspaceAnalysis,
 } from "@/features/investment-intelligence";
 import type {
+  InvestmentWorkspaceAnalysisTransportDto,
   InvestmentWorkspaceActionResult,
   RunInvestmentWorkspaceAnalysisCommand,
 } from "@/features/investment-intelligence";
@@ -33,11 +35,15 @@ import { storeInvestmentAnalysis } from "./investment-analysis-save-store";
 type InvestmentWorkspaceActionInput = Omit<RunInvestmentWorkspaceAnalysisCommand, "context"> & Readonly<{
   clientRequestId: string;
 }>;
-export type InvestmentWorkspaceServerActionResult = Exclude<InvestmentWorkspaceActionResult, { ok: true }> | Readonly<{ ok: true; result: Extract<InvestmentWorkspaceActionResult, { ok: true }>["result"]; analysisId: string; analysisSaveToken: string; analyzedAt: Date; expiresAt: Date }>;
+export type InvestmentWorkspaceServerActionResult = Exclude<InvestmentWorkspaceActionResult, { ok: true }> | Readonly<{ ok: true; result: InvestmentWorkspaceAnalysisTransportDto; analysisId: string; analysisSaveToken: string; analyzedAt: Date; expiresAt: Date }>;
 
 export async function analyzeInvestmentWorkspace(
   input: InvestmentWorkspaceActionInput,
 ): Promise<InvestmentWorkspaceServerActionResult> {
+  console.info(JSON.stringify({
+    event: "investment_workspace_action_entered",
+    payloadType: typeof input,
+  }));
   const { user } = await getSessionProfile();
   if (!user) return { ok: false, error: { code: "INVALID_INPUT", message: "Sign in before analyzing an investment.", retryable: false } };
   let workspaceId: string;
@@ -155,13 +161,31 @@ export async function analyzeInvestmentWorkspace(
       marketRequest: parsed.data.marketRequest,
     }, requestedAt);
     await diagnostics?.complete("succeeded");
-    return { ok: true, result, analysisId: result.lineage.workspaceRunId, analysisSaveToken: issuedSaveToken.token, analyzedAt: requestedAt, expiresAt: issuedSaveToken.expiresAt };
+    const response = {
+      ok: true as const,
+      result: projectInvestmentWorkspaceTransport(result),
+      analysisId: result.lineage.workspaceRunId,
+      analysisSaveToken: issuedSaveToken.token,
+      analyzedAt: requestedAt,
+      expiresAt: issuedSaveToken.expiresAt,
+    };
+    console.info(JSON.stringify({
+      event: "investment_workspace_action_completed",
+      payloadType: "InvestmentWorkspaceServerActionResult",
+      payloadBytes: new TextEncoder().encode(JSON.stringify(response)).byteLength,
+    }));
+    return response;
   } catch (error) {
     const safe = safeError(error);
     const durationMs = Date.now() - startedAt;
     updateWorkspaceHealth({ success: false, durationMs, errorCode: safe.code });
     recordWorkspaceOperation("failed", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType, durationMs, errorCode: safe.code });
     await diagnostics?.complete("failed", safe.code);
+    console.error(JSON.stringify({
+      event: "investment_workspace_action_failed",
+      payloadType: error instanceof Error ? error.constructor.name : typeof error,
+      errorCode: safe.code,
+    }));
     return { ok: false, error: safe };
   }
 }

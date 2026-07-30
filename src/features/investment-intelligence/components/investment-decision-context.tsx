@@ -1,9 +1,9 @@
-import type { InvestmentDecisionAnalysis } from "../domain";
+import type { InvestmentDecisionAnalysisTransportDto } from "../application";
 
 const label = (value: string) => value.split("-").map((part) => part ? part[0].toUpperCase() + part.slice(1) : part).join(" ");
 const dateTime = (value: Date) => new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(value);
 
-export function InvestmentDecisionContext({ analysis }: { analysis: InvestmentDecisionAnalysis }) {
+export function InvestmentDecisionContext({ analysis }: { analysis: InvestmentDecisionAnalysisTransportDto }) {
   const brief = buildDecisionBrief(analysis);
   return <div className="space-y-6">
     <section className="rounded-3xl border border-stone-200 bg-stone-50 p-6 sm:p-8" aria-labelledby="decision-context-title">
@@ -78,7 +78,7 @@ function BriefCard({ eyebrow, title, items, empty, tone = "neutral" }: { eyebrow
   </article>;
 }
 
-export function buildDecisionBrief(analysis: InvestmentDecisionAnalysis) {
+export function buildDecisionBrief(analysis: InvestmentDecisionAnalysisTransportDto) {
   const decision = analysis.lifecycleResult.analysis;
   const evidence = decision.supportingEvidence.slice(0, 3).map((item) => `${item.title}: ${item.description}`);
   const upside = [

@@ -11,6 +11,7 @@ import { buildSuppliedAssumptionMarketProviders } from "@/app/actions/investment
 
 import { AcquisitionType, PropertyType } from "../domain";
 import { InvestmentWorkspaceAnalysisError, runInvestmentWorkspaceAnalysis } from "./run-investment-workspace-analysis";
+import { projectInvestmentWorkspaceTransport } from "./project-investment-workspace-transport";
 import type { RunInvestmentAnalysisCommand } from "./run-investment-analysis";
 
 const now = new Date("2026-07-21T18:00:00.000Z");
@@ -100,6 +101,7 @@ describe("runInvestmentWorkspaceAnalysis", () => {
     expect(result.decisionAnalysis.score.components.reduce((sum, component) => sum + component.weight, 0)).toBe(100);
     expect(result.decisionAnalysis.timeline.map(({ type }) => type)).toEqual(["analysis-created", "evidence-evaluated", "decision-generated"]);
     expect(result.decisionAnalysis.lineage.marketEvidenceIds).toEqual(result.lineage.marketEvidenceIds);
+    expect("workspaceView" in projectInvestmentWorkspaceTransport(result).decisionAnalysis).toBe(false);
   });
 
   it("keeps a rental lease separate from the Market rent benchmark", async () => {
