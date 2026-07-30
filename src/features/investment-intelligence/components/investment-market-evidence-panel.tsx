@@ -43,7 +43,7 @@ export function InvestmentMarketEvidencePanel() {
   return (
     <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Market evidence</p><h2 className="mt-2 text-2xl font-semibold text-neutral-950">{propertyResolution.property.address.formatted}</h2><p className="mt-2 text-sm text-neutral-600">Market evidence supplied by RentCast through Luxe Haven Market Intelligence.</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Market evidence</p><h2 className="mt-2 text-2xl font-semibold text-neutral-950">{propertyResolution.property.address.formatted}</h2><p className="mt-2 text-sm text-neutral-600">Canonical property and STR evidence supplied through Luxe Haven Market Intelligence.</p></div>
         <span className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-semibold text-neutral-700">{marketReport.confidence.level} confidence · {marketReport.confidence.score}/100</span>
       </div>
       <div className="mt-6 grid gap-4 md:grid-cols-2">

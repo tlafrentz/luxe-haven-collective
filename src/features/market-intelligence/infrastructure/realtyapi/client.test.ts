@@ -37,4 +37,31 @@ describe("RealtyApiClient", () => {
   it("does not expose the API key through errors", () => {
     expect(() => new RealtyApiClient({ apiKey: " " })).toThrow("REALTY_API_KEY is required");
   });
+
+  it("constructs the documented address-details request with URL encoding", async () => {
+    const fetchImplementation = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(JSON.stringify({ message: "Success" }), { status: 200 }));
+    const client = new RealtyApiClient({ apiKey: "private-key", fetchImplementation });
+    await client.getDetailsByAddress("7825 Gaston Ave, Fort Worth, TX 76116");
+    expect(String(fetchImplementation.mock.calls[0]![0]))
+      .toBe("https://realtor.realtyapi.io/details/byaddress?address=7825+Gaston+Ave%2C+Fort+Worth%2C+TX+76116");
+  });
+
+  it("classifies malformed success responses", async () => {
+    const client = new RealtyApiClient({
+      apiKey: "key",
+      fetchImplementation: vi.fn(async () => new Response("{", { status: 200 })),
+    });
+    await expect(client.getDetailsByAddress("7825 Gaston Ave"))
+      .rejects.toMatchObject({ code: ProviderErrorCode.InvalidResponse });
+  });
+
+  it("classifies provider timeouts without exposing credentials", async () => {
+    const client = new RealtyApiClient({
+      apiKey: "secret-never-log",
+      fetchImplementation: vi.fn(async () => { throw new DOMException("aborted", "AbortError"); }),
+    });
+    await expect(client.getDetailsByAddress("7825 Gaston Ave"))
+      .rejects.toMatchObject({ code: ProviderErrorCode.TimedOut, retryable: true });
+  });
 });

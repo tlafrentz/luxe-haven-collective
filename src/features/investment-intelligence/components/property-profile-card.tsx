@@ -99,13 +99,7 @@ export function PropertyProfileCard() {
                   ...(result.data.projectedAdr !== undefined ? { projectedAdr: result.data.projectedAdr } : {}),
                   ...(result.data.projectedOccupancyPercentage !== undefined ? { projectedOccupancyPercentage: result.data.projectedOccupancyPercentage } : {}),
                 }));
-                const text = result.status === "coordinates-missing"
-                  ? "Property synced, but coordinates were unavailable. STR market enrichment could not run; manual analysis remains available."
-                  : result.status === "str-unavailable"
-                    ? "Property synced from RealtyAPI, but STR market data was unavailable. Manual assumptions were preserved."
-                    : result.status === "str-limited"
-                      ? "Property and STR market data synced with limited comparable evidence. Review the evidence limitations before relying on provider estimates."
-                      : "Property and STR market data synced successfully.";
+                const text = propertySyncMessage(result.status);
                 setSyncMessage({ type: "success", text });
               })}
               className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -310,6 +304,19 @@ export function PropertyProfileCard() {
       </div>
     </AcquisitionSectionCard>
   );
+}
+
+export function propertySyncMessage(status: "complete" | "str-limited" | "str-unavailable" | "coordinates-missing"): string {
+  if (status === "coordinates-missing") {
+    return "Property synced, but coordinates were unavailable. STR market enrichment could not run; manual analysis remains available.";
+  }
+  if (status === "str-unavailable") {
+    return "Property synced from RealtyAPI, but STR market data was unavailable. Manual assumptions were preserved.";
+  }
+  if (status === "str-limited") {
+    return "Property and STR market data synced with limited comparable evidence. Review the evidence limitations before relying on provider estimates.";
+  }
+  return "Property and STR market data synced successfully.";
 }
 
 function toPropertyType(value?: string): PropertyType | undefined {

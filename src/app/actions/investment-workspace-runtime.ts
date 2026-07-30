@@ -60,7 +60,7 @@ export function buildCachedMarketProviders(
     propertyProvider: {
       lookupPropertyCandidates: (request) => cachedProviderCall(
         resolutionCache,
-        fingerprint({ provider: "rentcast-property-v1", request }),
+        fingerprint({ boundary: "property-intelligence", request }),
         options,
         () => propertyProvider.lookupPropertyCandidates(request),
       ),
@@ -68,7 +68,7 @@ export function buildCachedMarketProviders(
     comparableProvider: {
       acquireComparables: (request) => cachedProviderCall(
         comparableCache,
-        fingerprint({ provider: "rentcast-comparables-v1", request: comparableCacheKey(request) }),
+        fingerprint({ boundary: "market-comparables", request: comparableCacheKey(request) }),
         options,
         () => comparableProvider.acquireComparables(request),
       ),

@@ -125,10 +125,10 @@ export async function analyzeInvestmentWorkspace(
         };
       }
       authorizedMarketSnapshot = marketContext.marketSnapshot;
-      const snapshotProviders = marketContext.subjectProperty && marketContext.marketSnapshot
+      const snapshotProviders = marketContext.subjectProperty
         ? buildMarketSnapshotAnalysisProviders({
           subjectProperty: marketContext.subjectProperty,
-          marketSnapshot: marketContext.marketSnapshot,
+          ...(marketContext.marketSnapshot ? { marketSnapshot: marketContext.marketSnapshot } : {}),
         })
         : undefined;
       const investmentInput = applyMarketSnapshotProposals(

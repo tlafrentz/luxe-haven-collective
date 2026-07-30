@@ -10,13 +10,13 @@ import type { StrMarketSnapshot } from "../domain";
 
 export function buildMarketSnapshotAnalysisProviders(input: {
   readonly subjectProperty: SubjectProperty;
-  readonly marketSnapshot: StrMarketSnapshot;
+  readonly marketSnapshot?: StrMarketSnapshot;
 }): Readonly<{
   propertyProvider: MarketPropertyResolutionProvider;
   comparableProvider: MarketComparableProvider;
 }> {
   const subject = input.subjectProperty;
-  const retrievedAt = new Date(input.marketSnapshot.createdAt);
+  const retrievedAt = input.marketSnapshot ? new Date(input.marketSnapshot.createdAt) : subject.retrievedAt;
   const property = new PropertyRecord(
     subject.id,
     {
