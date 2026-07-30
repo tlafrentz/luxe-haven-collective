@@ -2,6 +2,7 @@ import {
   freezeSubjectProperty,
   type PropertySnapshot,
   type PropertySnapshotRepository,
+  type PropertySnapshotScope,
   type SourcedPropertyField,
   type SubjectProperty,
 } from "../domain/subject-property";
@@ -9,21 +10,21 @@ import {
 export class InMemoryPropertySnapshotRepository implements PropertySnapshotRepository {
   private readonly snapshots: PropertySnapshot[] = [];
 
-  async findById(id: string): Promise<PropertySnapshot | null> {
-    return this.snapshots.find((item) => item.id === id) ?? null;
+  async findById(id: string, scope: PropertySnapshotScope): Promise<PropertySnapshot | null> {
+    return this.snapshots.find((item) => item.id === id && inScope(item, scope)) ?? null;
   }
 
-  async findFreshByAddress(key: string, now: Date): Promise<PropertySnapshot | null> {
-    const snapshot = this.latest(key, (item) => item.expiresAt.getTime() > now.getTime());
+  async findFreshByAddress(key: string, now: Date, scope: PropertySnapshotScope): Promise<PropertySnapshot | null> {
+    const snapshot = this.latest(key, scope, (item) => item.expiresAt.getTime() > now.getTime());
     return snapshot ?? null;
   }
 
-  async findLatestByAddress(key: string): Promise<PropertySnapshot | null> {
-    return this.latest(key) ?? null;
+  async findLatestByAddress(key: string, scope: PropertySnapshotScope): Promise<PropertySnapshot | null> {
+    return this.latest(key, scope) ?? null;
   }
 
-  async nextVersion(subjectPropertyId: string): Promise<number> {
-    return Math.max(0, ...this.snapshots.filter((item) => item.subjectPropertyId === subjectPropertyId).map((item) => item.version)) + 1;
+  async nextVersion(subjectPropertyId: string, scope: PropertySnapshotScope): Promise<number> {
+    return Math.max(0, ...this.snapshots.filter((item) => item.subjectPropertyId === subjectPropertyId && inScope(item, scope)).map((item) => item.version)) + 1;
   }
 
   async save(snapshot: PropertySnapshot): Promise<void> {
@@ -31,8 +32,8 @@ export class InMemoryPropertySnapshotRepository implements PropertySnapshotRepos
     this.snapshots.push(snapshot);
   }
 
-  private latest(key: string, predicate: (item: PropertySnapshot) => boolean = () => true): PropertySnapshot | undefined {
-    return this.snapshots.filter((item) => item.normalizedAddressKey === key && predicate(item))
+  private latest(key: string, scope: PropertySnapshotScope, predicate: (item: PropertySnapshot) => boolean = () => true): PropertySnapshot | undefined {
+    return this.snapshots.filter((item) => item.normalizedAddressKey === key && inScope(item, scope) && predicate(item))
       .sort((a, b) => b.version - a.version)[0];
   }
 }
@@ -53,27 +54,31 @@ export interface PropertySnapshotDatabase {
 export class SupabasePropertySnapshotRepository implements PropertySnapshotRepository {
   constructor(private readonly database: PropertySnapshotDatabase) {}
 
-  async findById(id: string): Promise<PropertySnapshot | null> {
+  async findById(id: string, scope: PropertySnapshotScope): Promise<PropertySnapshot | null> {
     const query = this.database.from("property_snapshots").select("*").eq("id", id)
+      .eq("owner_id", scope.ownerId).eq("workspace_id", scope.workspaceId)
       .order("version", { ascending: false });
     return this.one(await query.limit(1));
   }
 
-  async findFreshByAddress(key: string, now: Date): Promise<PropertySnapshot | null> {
+  async findFreshByAddress(key: string, now: Date, scope: PropertySnapshotScope): Promise<PropertySnapshot | null> {
     const query = this.database.from("property_snapshots").select("*")
+      .eq("owner_id", scope.ownerId).eq("workspace_id", scope.workspaceId)
       .eq("normalized_address_key", key).gt("expires_at", now.toISOString())
       .order("version", { ascending: false });
     return this.one(await query.limit(1));
   }
 
-  async findLatestByAddress(key: string): Promise<PropertySnapshot | null> {
+  async findLatestByAddress(key: string, scope: PropertySnapshotScope): Promise<PropertySnapshot | null> {
     const query = this.database.from("property_snapshots").select("*")
+      .eq("owner_id", scope.ownerId).eq("workspace_id", scope.workspaceId)
       .eq("normalized_address_key", key).order("version", { ascending: false });
     return this.one(await query.limit(1));
   }
 
-  async nextVersion(subjectPropertyId: string): Promise<number> {
+  async nextVersion(subjectPropertyId: string, scope: PropertySnapshotScope): Promise<number> {
     const query = this.database.from("property_snapshots").select("version")
+      .eq("owner_id", scope.ownerId).eq("workspace_id", scope.workspaceId)
       .eq("subject_property_id", subjectPropertyId).order("version", { ascending: false });
     const result = await query.limit(1);
     if (result.error) throw new Error(`Property snapshot lookup failed: ${result.error.message}`);
@@ -84,6 +89,8 @@ export class SupabasePropertySnapshotRepository implements PropertySnapshotRepos
   async save(snapshot: PropertySnapshot): Promise<void> {
     const { error } = await this.database.from("property_snapshots").insert({
       id: snapshot.id,
+      owner_id: snapshot.ownerId,
+      workspace_id: snapshot.workspaceId,
       subject_property_id: snapshot.subjectPropertyId,
       provider: snapshot.property.provider,
       provider_property_id: snapshot.property.providerPropertyId,
@@ -107,6 +114,10 @@ export class SupabasePropertySnapshotRepository implements PropertySnapshotRepos
     const row = result.data?.[0] as { payload?: unknown } | undefined;
     return row?.payload ? hydrateSnapshot(row.payload) : null;
   }
+}
+
+function inScope(snapshot: PropertySnapshot, scope: PropertySnapshotScope): boolean {
+  return snapshot.ownerId === scope.ownerId && snapshot.workspaceId === scope.workspaceId;
 }
 
 function serializeSnapshot(snapshot: PropertySnapshot): unknown {

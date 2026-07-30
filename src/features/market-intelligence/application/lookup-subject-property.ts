@@ -29,6 +29,8 @@ export interface LookupSubjectPropertyDependencies {
 
 export interface LookupSubjectPropertyInput {
   readonly address: string | MarketPropertyLookupAddress;
+  readonly ownerId: string;
+  readonly workspaceId: string;
   readonly refresh?: boolean;
 }
 
@@ -53,9 +55,10 @@ export async function lookupSubjectProperty(
   dependencies: LookupSubjectPropertyDependencies,
 ): Promise<SubjectProperty> {
   const address = normalizeInput(input.address);
+  const scope = { ownerId: input.ownerId, workspaceId: input.workspaceId };
   const now = dependencies.now?.() ?? new Date();
   if (!input.refresh) {
-    const cached = await dependencies.snapshots.findFreshByAddress(address.key, now);
+    const cached = await dependencies.snapshots.findFreshByAddress(address.key, now, scope);
     if (cached) return cached.property;
   }
 
@@ -65,10 +68,10 @@ export async function lookupSubjectProperty(
   if (candidates.length > 1 && exactCandidates.length !== 1) throw new AmbiguousSubjectPropertyError(candidates);
   const candidate = exactCandidates[0] ?? candidates[0]!;
 
-  const previous = await dependencies.snapshots.findLatestByAddress(address.key);
+  const previous = await dependencies.snapshots.findLatestByAddress(address.key, scope);
   const subjectPropertyId = previous?.subjectPropertyId ??
     `subject-property-${dependencies.createId?.() ?? globalThis.crypto.randomUUID()}`;
-  const version = await dependencies.snapshots.nextVersion(subjectPropertyId);
+  const version = await dependencies.snapshots.nextVersion(subjectPropertyId, scope);
   const snapshotId = `property-snapshot-${globalThis.crypto.randomUUID()}`;
   const property = await dependencies.provider.retrieve(candidate, {
     subjectPropertyId,
@@ -79,6 +82,8 @@ export async function lookupSubjectProperty(
   });
   const snapshot: PropertySnapshot = freezeSubjectProperty({
     id: snapshotId,
+    ownerId: input.ownerId,
+    workspaceId: input.workspaceId,
     subjectPropertyId,
     normalizedAddressKey: address.key,
     version,

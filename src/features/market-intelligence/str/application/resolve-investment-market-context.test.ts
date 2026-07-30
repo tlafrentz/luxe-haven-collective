@@ -26,6 +26,8 @@ function subject(snapshotId = "property-snapshot-1") {
 function propertySnapshot(property = subject()): PropertySnapshot {
   return {
     id: property.snapshotId,
+    ownerId: "owner-1",
+    workspaceId: "workspace-1",
     subjectPropertyId: property.id,
     normalizedAddressKey: "650 s main st fort worth tx 76104",
     version: 1,
@@ -128,16 +130,47 @@ describe("resolveInvestmentMarketContext", () => {
   });
 
   it("keeps historical retrieval available while new retrieval is disabled", async () => {
+    const property = subject();
+    const properties = new InMemoryPropertySnapshotRepository();
+    await properties.save(propertySnapshot(property));
     const result = await resolveInvestmentMarketContext({
       ownerId: "owner-1", workspaceId: "workspace-1", address, property: {},
       correlationId: "correlation-1", requestedAt: now,
     }, {
-      propertySnapshots: new InMemoryPropertySnapshotRepository(),
+      propertyProvider: { search: vi.fn(), retrieve: vi.fn() },
+      propertySnapshots: properties,
       marketSnapshots: new InMemoryStrMarketSnapshotRepository(),
       providerVersion: "airroi-api.v1",
       enabled: false,
     });
-    expect(result).toMatchObject({ source: "manual-fallback" });
-    expect(result.warnings[0]).toContain("disabled");
+    expect(result).toMatchObject({
+      source: "manual-fallback",
+      subjectProperty: property,
+      failureCode: "STR_PROVIDER_UNAVAILABLE",
+    });
+    expect(result.warnings[0]).toContain("not configured");
+  });
+
+  it("preserves the canonical subject when STR retrieval fails", async () => {
+    const property = subject();
+    const properties = new InMemoryPropertySnapshotRepository();
+    await properties.save(propertySnapshot(property));
+    const result = await resolveInvestmentMarketContext({
+      ownerId: "owner-1", workspaceId: "workspace-1", address, property: {},
+      correlationId: "correlation-1", requestedAt: now,
+    }, {
+      propertyProvider: { search: vi.fn(), retrieve: vi.fn() },
+      propertySnapshots: properties,
+      marketProvider: { retrieve: vi.fn(async () => { throw new Error("temporary outage"); }) },
+      marketSnapshots: new InMemoryStrMarketSnapshotRepository(),
+      providerVersion: "airroi-api.v1",
+      enabled: true,
+      classifyMarketFailure: () => "STR_PROVIDER_UNAVAILABLE",
+    });
+    expect(result).toMatchObject({
+      source: "manual-fallback",
+      subjectProperty: property,
+      failureCode: "STR_PROVIDER_UNAVAILABLE",
+    });
   });
 });

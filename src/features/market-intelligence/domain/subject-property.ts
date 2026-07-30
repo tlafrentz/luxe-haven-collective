@@ -75,6 +75,8 @@ export interface PropertyLookupCandidate {
 
 export interface PropertySnapshot {
   readonly id: string;
+  readonly ownerId: string;
+  readonly workspaceId: string;
   readonly subjectPropertyId: string;
   readonly normalizedAddressKey: string;
   readonly version: number;
@@ -85,11 +87,16 @@ export interface PropertySnapshot {
 }
 
 export interface PropertySnapshotRepository {
-  findById(id: string): Promise<PropertySnapshot | null>;
-  findFreshByAddress(normalizedAddressKey: string, now: Date): Promise<PropertySnapshot | null>;
-  findLatestByAddress(normalizedAddressKey: string): Promise<PropertySnapshot | null>;
-  nextVersion(subjectPropertyId: string): Promise<number>;
+  findById(id: string, scope: PropertySnapshotScope): Promise<PropertySnapshot | null>;
+  findFreshByAddress(normalizedAddressKey: string, now: Date, scope: PropertySnapshotScope): Promise<PropertySnapshot | null>;
+  findLatestByAddress(normalizedAddressKey: string, scope: PropertySnapshotScope): Promise<PropertySnapshot | null>;
+  nextVersion(subjectPropertyId: string, scope: PropertySnapshotScope): Promise<number>;
   save(snapshot: PropertySnapshot): Promise<void>;
+}
+
+export interface PropertySnapshotScope {
+  readonly ownerId: string;
+  readonly workspaceId: string;
 }
 
 export function freezeSubjectProperty<T>(value: T): T {

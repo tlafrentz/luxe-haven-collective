@@ -11,6 +11,7 @@ import {
 import { AirRoiClient } from "./airroi/airroi-client";
 import { getAirRoiConfig } from "./airroi/airroi-config";
 import { AirRoiProvider } from "./airroi/airroi-provider";
+import { AirRoiError } from "./airroi/airroi-errors";
 import { SupabaseStrMarketSnapshotRepository } from "./str-market-snapshot-repository";
 
 export async function resolveInvestmentMarketContextAtRuntime(
@@ -29,7 +30,7 @@ export async function resolveInvestmentMarketContextAtRuntime(
     });
   }
   const config = getAirRoiConfig();
-  const propertyProvider = config.enabled && process.env.REALTY_API_KEY
+  const propertyProvider = process.env.REALTY_API_KEY
     ? createRealtyApiPropertyProvider({
       apiKey: process.env.REALTY_API_KEY,
       ...(process.env.REALTY_API_BASE_URL ? { baseUrl: process.env.REALTY_API_BASE_URL } : {}),
@@ -55,5 +56,16 @@ export async function resolveInvestmentMarketContextAtRuntime(
     propertySnapshotTtlDays: config.propertySnapshotTtlDays,
     marketSnapshotTtlDays: config.marketSnapshotTtlDays,
     telemetry,
+    classifyMarketFailure(error) {
+      if (error instanceof AirRoiError) {
+        if (error.code === "rate-limited") return "STR_PROVIDER_RATE_LIMITED";
+        if (error.code === "invalid-request" || error.code === "unsupported-geography" || error.code === "not-found") return "STR_REQUEST_REJECTED";
+        if (error.code === "invalid-response") return "STR_RESPONSE_INVALID";
+      }
+      if (error instanceof Error && error.message.startsWith("STR market snapshot persistence failed")) {
+        return "MARKET_SNAPSHOT_PERSISTENCE_FAILED";
+      }
+      return "STR_PROVIDER_UNAVAILABLE";
+    },
   });
 }

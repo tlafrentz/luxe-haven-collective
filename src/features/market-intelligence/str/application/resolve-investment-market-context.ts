@@ -42,8 +42,19 @@ export interface ResolvedInvestmentMarketContext {
   readonly marketSnapshot?: StrMarketSnapshot;
   readonly marketSnapshotReference?: AuthorizedMarketSnapshotReference;
   readonly source: "persisted-snapshot" | "live-provider" | "manual-fallback";
+  readonly failureCode?: StrMarketContextFailureCode;
   readonly warnings: readonly string[];
 }
+
+export type StrMarketContextFailureCode =
+  | "COORDINATES_MISSING"
+  | "STR_PROVIDER_UNAVAILABLE"
+  | "STR_PROVIDER_RATE_LIMITED"
+  | "STR_REQUEST_REJECTED"
+  | "STR_RESPONSE_INVALID"
+  | "STR_MAPPING_FAILED"
+  | "INSUFFICIENT_COMPARABLE_COVERAGE"
+  | "MARKET_SNAPSHOT_PERSISTENCE_FAILED";
 
 export interface ResolveInvestmentMarketContextDependencies {
   readonly propertyProvider?: CanonicalPropertyProvider;
@@ -55,6 +66,7 @@ export interface ResolveInvestmentMarketContextDependencies {
   readonly propertySnapshotTtlDays?: number;
   readonly marketSnapshotTtlDays?: number;
   readonly telemetry?: StrWorkflowTelemetry;
+  readonly classifyMarketFailure?: (error: unknown) => StrMarketContextFailureCode;
 }
 
 export async function resolveInvestmentMarketContext(
@@ -72,7 +84,10 @@ export async function resolveInvestmentMarketContext(
       workspaceId: input.workspaceId,
       property: input.property,
     }, dependencies.marketSnapshots);
-    const propertySnapshot = await dependencies.propertySnapshots.findById(snapshot.subjectPropertySnapshotId);
+    const propertySnapshot = await dependencies.propertySnapshots.findById(
+      snapshot.subjectPropertySnapshotId,
+      { ownerId: input.ownerId, workspaceId: input.workspaceId },
+    );
     if (!propertySnapshot || propertySnapshot.subjectPropertyId !== snapshot.subjectPropertyId) {
       throw new Error("The selected market evidence references a missing or incompatible property snapshot.");
     }
@@ -86,21 +101,18 @@ export async function resolveInvestmentMarketContext(
     };
   }
 
-  if (!dependencies.enabled) {
-    return {
-      source: "manual-fallback",
-      warnings: ["Live market intelligence is disabled. Supplied assumptions were preserved."],
-    };
-  }
-  if (!dependencies.propertyProvider || !dependencies.marketProvider) {
-    throw new Error("Canonical market providers are not configured.");
-  }
+  if (!dependencies.propertyProvider) throw new Error("Canonical property intelligence is not configured.");
 
   emit("subject_property_resolution_started");
   let subjectProperty: SubjectProperty;
   try {
     subjectProperty = await lookupSubjectProperty(
-      { address: input.address, refresh: input.forceRefresh },
+      {
+        address: input.address,
+        ownerId: input.ownerId,
+        workspaceId: input.workspaceId,
+        refresh: input.forceRefresh,
+      },
       {
         provider: dependencies.propertyProvider,
         snapshots: dependencies.propertySnapshots,
@@ -115,6 +127,16 @@ export async function resolveInvestmentMarketContext(
   } catch (error) {
     emit("subject_property_resolution_failed", { errorName: error instanceof Error ? error.name : "UnknownError" });
     throw error;
+  }
+
+  if (!dependencies.enabled || !dependencies.marketProvider) {
+    return {
+      subjectProperty,
+      subjectPropertySnapshotId: subjectProperty.snapshotId,
+      source: "manual-fallback",
+      failureCode: "STR_PROVIDER_UNAVAILABLE",
+      warnings: ["Property data was synced. STR market intelligence is not configured; supplied assumptions were preserved."],
+    };
   }
 
   try {
@@ -150,15 +172,28 @@ export async function resolveInvestmentMarketContext(
       property: input.property,
     }, dependencies.marketSnapshots);
     emit("market_snapshot_authorized", { marketSnapshotId: authorized.id });
+    const limitedCoverage = authorized.completeness !== "complete";
     return {
       subjectProperty,
       subjectPropertySnapshotId: subjectProperty.snapshotId,
       marketSnapshot: authorized,
       source: cacheHit && !created ? "persisted-snapshot" : "live-provider",
+      ...(limitedCoverage ? { failureCode: "INSUFFICIENT_COMPARABLE_COVERAGE" as const } : {}),
       warnings: [...new Set([...subjectProperty.missingFields.map((field) => `Property field unavailable: ${field}.`), ...authorized.warnings])],
     };
   } catch (error) {
     emit("market_snapshot_resolution_failed", { errorName: error instanceof Error ? error.name : "UnknownError" });
-    throw error;
+    const failureCode = subjectProperty.address.latitude.value === null || subjectProperty.address.longitude.value === null
+      ? "COORDINATES_MISSING"
+      : dependencies.classifyMarketFailure?.(error) ?? "STR_PROVIDER_UNAVAILABLE";
+    return {
+      subjectProperty,
+      subjectPropertySnapshotId: subjectProperty.snapshotId,
+      source: "manual-fallback",
+      failureCode,
+      warnings: [failureCode === "COORDINATES_MISSING"
+        ? "Property data was synced, but coordinates were unavailable. Supplied assumptions were preserved."
+        : "Property data was synced, but STR market intelligence was unavailable. Supplied assumptions were preserved."],
+    };
   }
 }

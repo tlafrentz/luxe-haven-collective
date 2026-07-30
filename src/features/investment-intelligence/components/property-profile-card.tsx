@@ -99,9 +99,14 @@ export function PropertyProfileCard() {
                   ...(result.data.projectedAdr !== undefined ? { projectedAdr: result.data.projectedAdr } : {}),
                   ...(result.data.projectedOccupancyPercentage !== undefined ? { projectedOccupancyPercentage: result.data.projectedOccupancyPercentage } : {}),
                 }));
-                const sources = [result.data.propertySource, result.data.marketSource].filter(Boolean).join(" and ");
-                const warning = result.data.warnings[0];
-                setSyncMessage({ type: "success", text: `Synced from ${sources}.${warning ? ` ${warning}` : ""}` });
+                const text = result.status === "coordinates-missing"
+                  ? "Property synced, but coordinates were unavailable. STR market enrichment could not run; manual analysis remains available."
+                  : result.status === "str-unavailable"
+                    ? "Property synced from RealtyAPI, but STR market data was unavailable. Manual assumptions were preserved."
+                    : result.status === "str-limited"
+                      ? "Property and STR market data synced with limited comparable evidence. Review the evidence limitations before relying on provider estimates."
+                      : "Property and STR market data synced successfully.";
+                setSyncMessage({ type: "success", text });
               })}
               className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
