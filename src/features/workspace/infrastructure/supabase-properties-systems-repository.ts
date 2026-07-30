@@ -168,6 +168,43 @@ export class SupabasePropertiesSystemsRepository implements PropertiesSystemsRep
         }));
       }
     }
+    const platformProviders = [
+      {
+        id: "realtyapi",
+        enabled: process.env.MARKET_PROVIDER_ENABLED !== "false",
+        configured: Boolean(process.env.REALTY_API_KEY?.trim()),
+        summary: "Property intelligence provider",
+      },
+      {
+        id: "airroi",
+        enabled: process.env.MARKET_INTELLIGENCE_ENABLED !== "false",
+        configured: Boolean(process.env.AIRROI_API_KEY?.trim()),
+        summary: "STR market intelligence provider",
+      },
+    ] as const;
+    for (const item of platformProviders) {
+      if (!item.enabled || systems.some(({ provider }) => provider === item.id)) continue;
+      const provider = DEFAULT_INTEGRATION_PROVIDERS.require(item.id);
+      const configured = item.configured;
+      systems.push(Object.freeze({
+        connectionId: `platform:${provider.id}`,
+        workspaceId: context.workspaceId,
+        provider: provider.id,
+        providerLabel: provider.displayName,
+        management: "platform",
+        connectionSummary: `${item.summary} · ${configured ? "Available workspace-wide" : "Configuration needs attention"}`,
+        status: configured ? "connected" : "degraded",
+        propertyCount: 0,
+        linkedPropertyCount: 0,
+        attentionPropertyCount: 0,
+        synchronization: { status: "never-run" as const, processed: 0, updated: 0, failed: 0 },
+        capabilities: provider.capabilities.map((capability) => ({
+          name: capability.replaceAll("-", " "),
+          status: configured ? "available" as const : "unavailable" as const,
+        })),
+        issues: configured ? [] : ["Provider configuration is incomplete."],
+      }));
+    }
     return {
       properties,
       systems,

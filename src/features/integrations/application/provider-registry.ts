@@ -20,4 +20,6 @@ export class IntegrationProviderRegistry implements Iterable<ProviderDescriptor>
 
 export const DEFAULT_INTEGRATION_PROVIDERS = new IntegrationProviderRegistry()
   .register({ id: "hospitable", displayName: "Hospitable", capabilities: ["read-properties", "read-reservations","send-messages","receive-webhooks"], normalizationVersion: "hospitable-v1" })
-  .register({ id: "rentcast", displayName: "RentCast", capabilities: ["read-properties", "provide-comparables", "provide-valuations"], normalizationVersion: "rentcast-v1" });
+  .register({ id: "rentcast", displayName: "RentCast", capabilities: ["read-properties", "provide-comparables", "provide-valuations"], normalizationVersion: "rentcast-v1" })
+  .register({ id: "realtyapi", displayName: "Realty API", capabilities: ["read-properties", "provide-comparables", "provide-valuations"], normalizationVersion: "realtyapi-realtor-property.v1" })
+  .register({ id: "airroi", displayName: "AirROI", capabilities: ["read-properties", "provide-comparables", "provide-valuations"], normalizationVersion: "airroi.v1" });

@@ -10,7 +10,7 @@ import { DEFAULT_INTEGRATION_PROVIDERS, IntegrationProviderRegistry } from "./pr
 describe("Integration provider boundaries", () => {
   it("declares and resolves transport capabilities without business policy", () => {
     expect(DEFAULT_INTEGRATION_PROVIDERS.supporting("read-reservations").map((value) => value.id)).toEqual(["hospitable"]);
-    expect(DEFAULT_INTEGRATION_PROVIDERS.supporting("provide-valuations").map((value) => value.id)).toEqual(["rentcast"]);
+    expect(DEFAULT_INTEGRATION_PROVIDERS.supporting("provide-valuations").map((value) => value.id)).toEqual(["rentcast", "realtyapi", "airroi"]);
     expect(() => new IntegrationProviderRegistry().register({ id: "provider", displayName: "One", capabilities: [], normalizationVersion: "v1" }).register({ id: "provider", displayName: "Two", capabilities: [], normalizationVersion: "v1" })).toThrow(/already registered/);
   });
 
