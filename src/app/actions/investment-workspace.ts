@@ -13,27 +13,25 @@ import type {
   RunInvestmentWorkspaceAnalysisCommand,
 } from "@/features/investment-intelligence";
 import { ProviderError, ProviderErrorCode } from "@/features/market-intelligence/application/providers/provider-error";
-import { RentCastClient } from "@/features/market-intelligence/infrastructure/rentcast/rentcast-client";
-import { RentCastComparableProvider } from "@/features/market-intelligence/infrastructure/rentcast/rentcast-comparable-provider";
-import { RentCastPropertyProvider } from "@/features/market-intelligence/infrastructure/rentcast/rentcast-property-provider";
-import { getMarketIntelligenceConfig, MarketIntelligenceConfigurationError } from "@/features/market-intelligence/infrastructure/market-intelligence-config";
 import { startMarketAnalysisRun, type MarketAnalysisRunRecorder } from "@/features/market-intelligence/infrastructure/provider-diagnostics";
 import { investmentWorkspaceActionSchema } from "./investment-workspace-schema";
 import {
   assertWorkspaceRateLimit,
-  buildCachedMarketProviders,
   buildSuppliedAssumptionMarketProviders,
   coalesceWorkspaceRequest,
   fingerprint,
   InvestmentWorkspaceRateLimitError,
   recordWorkspaceOperation,
-  setWorkspaceHealthStatus,
   updateWorkspaceHealth,
 } from "./investment-workspace-runtime";
 import { storeInvestmentAnalysis } from "./investment-analysis-save-store";
-import { createClient } from "@/lib/supabase/server";
-import { SupabaseStrMarketSnapshotRepository } from "@/features/market-intelligence/str/infrastructure/str-market-snapshot-repository";
-import { authorizeStrMarketSnapshot, buildAuthorizedMarketSnapshotReference, MarketSnapshotAuthorizationError } from "@/features/market-intelligence/str/application/authorize-str-market-snapshot";
+import {
+  buildAuthorizedMarketSnapshotReference,
+  buildMarketSnapshotAnalysisProviders,
+  MarketSnapshotAuthorizationError,
+} from "@/features/market-intelligence/str/application";
+import { resolveInvestmentMarketContextAtRuntime } from "@/features/market-intelligence/str/infrastructure/investment-market-context-runtime";
+import type { StrMarketSnapshot } from "@/features/market-intelligence/str/domain";
 
 type InvestmentWorkspaceActionInput = Omit<RunInvestmentWorkspaceAnalysisCommand, "context"> & Readonly<{
   clientRequestId: string;
@@ -65,23 +63,7 @@ export async function analyzeInvestmentWorkspace(
   const requestedAt = new Date();
   const runId = `MI-${requestedAt.toISOString().replace(/\D/g, "").slice(0, 14)}-${crypto.randomUUID()}`;
   let diagnostics: MarketAnalysisRunRecorder | undefined;
-  let authorizedMarketSnapshot: Awaited<ReturnType<typeof authorizeStrMarketSnapshot>> | undefined;
-  if (parsed.data.marketSnapshotId) {
-    try {
-      authorizedMarketSnapshot = await authorizeStrMarketSnapshot({
-        snapshotId: parsed.data.marketSnapshotId, ownerId: user.id, workspaceId,
-        property: { propertyType: parsed.data.investmentInput.property.propertyType,
-          bedrooms: parsed.data.investmentInput.property.bedrooms, bathrooms: parsed.data.investmentInput.property.bathrooms },
-      }, new SupabaseStrMarketSnapshotRepository(await createClient()));
-      console.info("market_snapshot_authorized", { marketSnapshotId: authorizedMarketSnapshot.id,
-        propertySnapshotId: authorizedMarketSnapshot.subjectPropertySnapshotId, correlationId: runId });
-    } catch (error) {
-      if (error instanceof MarketSnapshotAuthorizationError) return {
-        ok: false, error: { code: "INVALID_INPUT", message: error.message, retryable: false },
-      };
-      return { ok: false, error: { code: "MARKET_PROVIDER_UNAVAILABLE", message: "Persisted market evidence could not be loaded.", retryable: true } };
-    }
-  }
+  let authorizedMarketSnapshot: StrMarketSnapshot | undefined;
   try {
     diagnostics = await startMarketAnalysisRun({
       runId,
@@ -96,18 +78,7 @@ export async function analyzeInvestmentWorkspace(
   } catch {
     console.error(JSON.stringify({ event: "market_diagnostics_initialization_failed", runId }));
   }
-  let config;
-  try { config = getMarketIntelligenceConfig(); } catch (error) {
-    setWorkspaceHealthStatus("misconfigured");
-    await diagnostics?.complete("failed", "MARKET_PROVIDER_UNAVAILABLE");
-    return { ok: false, error: safeError(error) };
-  }
-  if (!config.providerEnabled) {
-    setWorkspaceHealthStatus("disabled");
-    await diagnostics?.complete("failed", "MARKET_PROVIDER_DISABLED");
-    return { ok: false, error: { code: "MARKET_PROVIDER_DISABLED", message: "Live Market analysis is currently disabled. Your assumptions were preserved.", retryable: false } };
-  }
-  try { assertWorkspaceRateLimit(user.id, config.rateLimitPerMinute); } catch (error) {
+  try { assertWorkspaceRateLimit(user.id, 6); } catch (error) {
     const safe = safeError(error);
     await diagnostics?.complete("failed", safe.code);
     return { ok: false, error: safe };
@@ -121,24 +92,53 @@ export async function analyzeInvestmentWorkspace(
   });
   const startedAt = Date.now();
   recordWorkspaceOperation("started", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType });
-  await diagnostics?.event("provider-selection", "completed", { provider: "rentcast", fallback: false });
   try {
     const result = await coalesceWorkspaceRequest(requestFingerprint, async () => {
-      const client = new RentCastClient({
-        apiKey: config.rentCastApiKey ?? "",
-        baseUrl: config.rentCastBaseUrl,
-        timeoutMs: config.requestTimeoutMs,
-        diagnosticsObserver: diagnostics?.observer,
-        acquisitionRoute: parsed.data.investmentInput.acquisitionType,
-      });
-      const providers = buildCachedMarketProviders(
-        new RentCastPropertyProvider({ client }),
-        new RentCastComparableProvider({ client }),
-        { ttlMs: config.cacheTtlMs, retryCount: config.retryCount },
+      let marketContext;
+      try {
+        marketContext = await resolveInvestmentMarketContextAtRuntime({
+          ownerId: user.id,
+          workspaceId,
+          address: `${parsed.data.address.streetAddress}, ${parsed.data.address.city}, ${parsed.data.address.state} ${parsed.data.address.postalCode}`,
+          property: {
+            propertyType: parsed.data.investmentInput.property.propertyType,
+            bedrooms: parsed.data.investmentInput.property.bedrooms,
+            bathrooms: parsed.data.investmentInput.property.bathrooms,
+          },
+          marketSnapshotId: parsed.data.marketSnapshotId,
+          correlationId: runId,
+          requestedAt,
+        }, {
+          emit(event, attributes) { console.info(JSON.stringify({ event: canonicalEvent(event), ...attributes })); },
+        });
+      } catch (error) {
+        if (parsed.data.marketSnapshotId || error instanceof MarketSnapshotAuthorizationError) throw error;
+        console.warn(JSON.stringify({
+          event: "market_snapshot_resolution_failed",
+          errorName: error instanceof Error ? error.name : "UnknownError",
+          errorCode: providerErrorCode(error),
+          correlationId: runId,
+        }));
+        marketContext = {
+          source: "manual-fallback" as const,
+          warnings: [`Live market evidence is unavailable (${providerErrorCode(error)}). Supplied assumptions were preserved.`],
+        };
+      }
+      authorizedMarketSnapshot = marketContext.marketSnapshot;
+      const snapshotProviders = marketContext.subjectProperty && marketContext.marketSnapshot
+        ? buildMarketSnapshotAnalysisProviders({
+          subjectProperty: marketContext.subjectProperty,
+          marketSnapshot: marketContext.marketSnapshot,
+        })
+        : undefined;
+      const investmentInput = applyMarketSnapshotProposals(
+        parsed.data.investmentInput,
+        parsed.data.userProvidedAssumptionKeys,
+        marketContext.marketSnapshot,
       );
       const command = {
         address: parsed.data.address,
-        investmentInput: parsed.data.investmentInput,
+        investmentInput,
         userProvidedAssumptionKeys: parsed.data.userProvidedAssumptionKeys,
         marketRequest: parsed.data.marketRequest,
         context: {
@@ -149,13 +149,33 @@ export async function analyzeInvestmentWorkspace(
           requestedBy: user.id,
         },
       };
+      const providers = snapshotProviders ?? buildSuppliedAssumptionMarketProviders(command);
+      const selection = marketContext.source === "manual-fallback"
+        ? "manual-supplied-assumptions"
+        : marketContext.source === "persisted-snapshot"
+          ? "persisted-market-snapshot"
+          : "airroi";
+      await diagnostics?.event("provider-selection", "completed", {
+        provider: selection,
+        propertyProvider: snapshotProviders ? "realtyapi" : "manual-supplied-assumptions",
+        fallback: marketContext.source === "manual-fallback",
+        warningCount: marketContext.warnings.length,
+      });
+      console.info(JSON.stringify({
+        event: "provider_selection_completed",
+        provider: selection,
+        propertyProvider: snapshotProviders ? "realtyapi" : "manual-supplied-assumptions",
+        fallback: marketContext.source === "manual-fallback",
+        correlationId: runId,
+      }));
       try {
+        console.info(JSON.stringify({ event: "investment_workspace_analysis_started", correlationId: runId }));
         return await runInvestmentWorkspaceAnalysis(command, {
           ...providers,
           onPropertyResolved: propertyId => diagnostics?.setPropertyId(propertyId),
         });
       } catch (error) {
-        if (!(error instanceof ProviderError)) throw error;
+        if (!(error instanceof ProviderError) || !snapshotProviders) throw error;
         await diagnostics?.event("provider-selection", "completed", {
           provider: "manual-supplied-assumptions",
           fallback: true,
@@ -175,6 +195,7 @@ export async function analyzeInvestmentWorkspace(
     recordWorkspaceOperation("completed", { workspaceRunId: runId, requestFingerprint: requestFingerprint.slice(0, 16), route: parsed.data.investmentInput.acquisitionType, durationMs, reportStatus: result.marketReport.status, confidence: result.marketReport.confidence.level, saleComparableCount: result.marketReport.summary.saleComparableCount, rentalComparableCount: result.marketReport.summary.rentalComparableCount, fallback: usedFallback });
     await diagnostics?.event("market-report", "completed", { status: result.marketReport.status });
     await diagnostics?.event("investment-decision", "completed", { route: result.lifecycleResult.acquisitionType });
+    console.info(JSON.stringify({ event: "investment_workspace_analysis_completed", correlationId: runId }));
     const issuedSaveToken = await storeInvestmentAnalysis(user.id, result, {
       address: parsed.data.address,
       investmentInput: parsed.data.investmentInput,
@@ -210,8 +231,11 @@ export async function analyzeInvestmentWorkspace(
     await diagnostics?.complete("failed", safe.code);
     console.error(JSON.stringify({
       event: "investment_workspace_action_failed",
-      payloadType: error instanceof Error ? error.constructor.name : typeof error,
+      errorName: error instanceof Error ? error.name : "UnknownError",
       errorCode: safe.code,
+      message: safe.message,
+      stage: "analysis",
+      correlationId: runId,
     }));
     return { ok: false, error: safe };
   }
@@ -237,10 +261,50 @@ function safeError(error: unknown): Extract<InvestmentWorkspaceActionResult, { o
     };
   }
   if (error instanceof InvestmentWorkspaceRateLimitError) return { code: "WORKSPACE_RATE_LIMITED", message: "Too many analyses were submitted. Wait a moment and try again.", retryable: true };
-  if (error instanceof MarketIntelligenceConfigurationError) return { code: "MARKET_PROVIDER_UNAVAILABLE", message: "Current Market evidence is unavailable, so the full decision analysis cannot be completed. Your assumptions were preserved.", retryable: false };
+  if (error instanceof MarketSnapshotAuthorizationError) return { code: "INVALID_INPUT", message: error.message, retryable: false };
   return {
     code: "UNEXPECTED_ERROR",
     message: "The workspace analysis could not be completed. Your assumptions were preserved.",
     retryable: true,
   };
+}
+
+function canonicalEvent(event: string): string {
+  return event
+    .replace("str_market_snapshot_cache_hit", "market_snapshot_cache_hit")
+    .replace("str_market_snapshot_cache_miss", "market_snapshot_cache_miss")
+    .replace("str_market_snapshot_created", "market_snapshot_created");
+}
+
+function providerErrorCode(error: unknown): string {
+  if (error && typeof error === "object" && "code" in error && typeof error.code === "string") return error.code;
+  return error instanceof Error ? error.name : "UNKNOWN";
+}
+
+function applyMarketSnapshotProposals<T extends RunInvestmentWorkspaceAnalysisCommand["investmentInput"]>(
+  input: T,
+  userKeys: readonly string[],
+  snapshot?: StrMarketSnapshot,
+): T {
+  if (!snapshot) return input;
+  const estimate = snapshot.revenueEstimate;
+  const marketAdr = estimate?.projectedAdr?.amount ?? snapshot.marketMetrics?.adr?.amount;
+  const marketOccupancy = estimate?.projectedOccupancy?.value ?? snapshot.marketMetrics?.occupancy?.value;
+  const provided = new Set(userKeys);
+  return {
+    ...input,
+    revenue: {
+      ...input.revenue,
+      ...(!provided.has("projected-adr") && marketAdr !== undefined ? { projectedAdr: marketAdr } : {}),
+      ...(!provided.has("projected-occupancy-percentage") && marketOccupancy !== undefined
+        ? { projectedOccupancyPercentage: marketOccupancy } : {}),
+      confidencePercentage: Math.round(snapshot.confidence.score),
+    },
+    market: {
+      ...input.market,
+      ...(!provided.has("market-median-adr") && marketAdr !== undefined ? { medianAdr: marketAdr } : {}),
+      ...(!provided.has("market-median-occupancy-percentage") && marketOccupancy !== undefined
+        ? { medianOccupancyPercentage: marketOccupancy } : {}),
+    },
+  } as T;
 }

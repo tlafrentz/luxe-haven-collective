@@ -4,12 +4,11 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync("src/app/actions/investment-workspace.ts", "utf8");
 
 describe("Investment workspace server boundary security", () => {
-  it("authorizes before validation, configuration, and provider construction", () => {
+  it("authorizes before validation and canonical orchestration", () => {
     const authorization = source.indexOf("await getSessionProfile");
     expect(authorization).toBeGreaterThan(0);
     expect(authorization).toBeLessThan(source.indexOf("investmentWorkspaceActionSchema.safeParse"));
-    expect(authorization).toBeLessThan(source.indexOf("getMarketIntelligenceConfig()"));
-    expect(authorization).toBeLessThan(source.indexOf("new RentCastClient"));
+    expect(authorization).toBeLessThan(source.indexOf("resolveInvestmentMarketContextAtRuntime({"));
     expect(source).toContain("resolveWorkspaceAccessContext");
   });
 
@@ -20,6 +19,10 @@ describe("Investment workspace server boundary security", () => {
 
   it("does not access environment variables outside the typed configuration boundary", () => {
     expect(source).not.toContain("process.env");
+  });
+
+  it("does not construct or select RentCast providers", () => {
+    expect(source).not.toMatch(/rentcast-client|RentCastPropertyProvider|RentCastComparableProvider|provider:\s*"rentcast"/);
   });
 
   it("returns safe errors rather than stack traces", () => {

@@ -24,6 +24,7 @@ export interface LookupSubjectPropertyDependencies {
   readonly snapshots: PropertySnapshotRepository;
   readonly now?: () => Date;
   readonly createId?: () => string;
+  readonly snapshotTtlDays?: number;
 }
 
 export interface LookupSubjectPropertyInput {
@@ -82,7 +83,7 @@ export async function lookupSubjectProperty(
     property,
     capturedAt: new Date(now),
     listingFreshUntil: new Date(now.getTime() + 24 * 60 * 60 * 1_000),
-    expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1_000),
+    expiresAt: new Date(now.getTime() + (dependencies.snapshotTtlDays ?? 7) * 24 * 60 * 60 * 1_000),
   });
   await dependencies.snapshots.save(snapshot);
   return property;

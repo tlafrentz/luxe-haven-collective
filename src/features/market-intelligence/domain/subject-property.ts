@@ -85,6 +85,7 @@ export interface PropertySnapshot {
 }
 
 export interface PropertySnapshotRepository {
+  findById(id: string): Promise<PropertySnapshot | null>;
   findFreshByAddress(normalizedAddressKey: string, now: Date): Promise<PropertySnapshot | null>;
   findLatestByAddress(normalizedAddressKey: string): Promise<PropertySnapshot | null>;
   nextVersion(subjectPropertyId: string): Promise<number>;

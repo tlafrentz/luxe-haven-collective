@@ -9,6 +9,10 @@ import {
 export class InMemoryPropertySnapshotRepository implements PropertySnapshotRepository {
   private readonly snapshots: PropertySnapshot[] = [];
 
+  async findById(id: string): Promise<PropertySnapshot | null> {
+    return this.snapshots.find((item) => item.id === id) ?? null;
+  }
+
   async findFreshByAddress(key: string, now: Date): Promise<PropertySnapshot | null> {
     const snapshot = this.latest(key, (item) => item.expiresAt.getTime() > now.getTime());
     return snapshot ?? null;
@@ -48,6 +52,12 @@ export interface PropertySnapshotDatabase {
 
 export class SupabasePropertySnapshotRepository implements PropertySnapshotRepository {
   constructor(private readonly database: PropertySnapshotDatabase) {}
+
+  async findById(id: string): Promise<PropertySnapshot | null> {
+    const query = this.database.from("property_snapshots").select("*").eq("id", id)
+      .order("version", { ascending: false });
+    return this.one(await query.limit(1));
+  }
 
   async findFreshByAddress(key: string, now: Date): Promise<PropertySnapshot | null> {
     const query = this.database.from("property_snapshots").select("*")
