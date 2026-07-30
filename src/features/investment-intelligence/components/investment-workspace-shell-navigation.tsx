@@ -6,7 +6,7 @@ import { ChartNoAxesCombined, House, PanelsTopLeft } from "lucide-react";
 
 const destinations = [
   { label: "Analyze", icon: ChartNoAxesCombined, href: "/dashboard/investments", match: (path: string) => path === "/dashboard/investments" || path.startsWith("/dashboard/investments/new") },
-  { label: "Scenarios", icon: PanelsTopLeft, href: "/dashboard/investments/scenarios", match: (path: string) => path.startsWith("/dashboard/investments/scenarios") },
+  { label: "Saved Scenarios", icon: PanelsTopLeft, href: "/dashboard/investments/scenarios", match: (path: string) => path.startsWith("/dashboard/investments/scenarios") },
   { label: "Opportunities", icon: House, href: "/dashboard/investments/opportunities", match: (path: string) => path.includes("/opportunities") || path.includes("/portfolio") },
 ] as const;
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { convertScenarioToOpportunityAction } from "@/app/actions/investment-opportunity-workflow";
 
 type Params = Readonly<Record<string, string | string[] | undefined>>;
 type Row = Record<string, unknown>;
@@ -28,7 +29,7 @@ export default async function InvestmentScenariosPage({ searchParams }: { search
   const opportunityIds = [...new Set(rows.map(row => String(row.opportunity_id)))];
   const [{ data: opportunities }, { data: analyses }] = opportunityIds.length
     ? await Promise.all([
-        client.from("investment_opportunities").select("id,name,route,property_snapshot,preferred_scenario_id").in("id", opportunityIds),
+        client.from("investment_opportunities").select("id,name,route,property_snapshot,preferred_scenario_id,scenario_only").in("id", opportunityIds),
         client.from("investment_opportunity_analyses").select("id,sequence").in("opportunity_id", opportunityIds),
       ])
     : [{ data: [] }, { data: [] }];
@@ -68,7 +69,7 @@ function ScenarioCard({ row, parent, preferred, sourceSequence }: { row: Row; pa
   const route = String(parent.route);
   return <Card className="p-6"><div className="flex items-start justify-between gap-3"><div><p className="eyebrow">{title(String(row.scenario_type))}</p><h2 className="mt-2 text-xl font-semibold">{String(row.name)}</h2><p className="mt-1 text-sm text-stone-500">{String(parent.name)} · {String(property.displayAddress ?? property.display_address ?? "Property address unavailable")}</p></div>{preferred ? <Badge tone="success">Preferred</Badge> : <Badge>{title(String(row.status))}</Badge>}</div>
     <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3"><Fact label="Route" value={title(route)} /><Fact label="Source" value={`Analysis ${sourceSequence ?? "—"}`} /><Fact label="Updated" value={date(String(row.updated_at))} /><Fact label="Annual revenue" value={money(amount(financials.projectedAnnualRevenue))} /><Fact label="NOI" value={money(amount(financials.netOperatingIncome))} /><Fact label="Annual cash flow" value={money(amount(financials.annualCashFlow))} />{route === "purchase" ? <><Fact label="Cap rate" value={percent(financials.capRate)} /><Fact label="Cash-on-cash" value={percent(financials.cashOnCashReturn)} /></> : <Fact label="Lease coverage" value={ratio(financials.leaseCoverageRatio ?? financials.leaseCoverage)} />}<Fact label="Recommendation" value={title(String(recommendation.recommendation ?? "Unavailable"))} /><Fact label="Confidence" value={title(String(confidence.level ?? "Unavailable"))} /></dl>
-    <div className="mt-5 flex gap-4 text-sm font-semibold"><Link className="underline" href={`/dashboard/investments/opportunities/${String(row.opportunity_id)}/scenarios/${String(row.scenario_id)}`}>Open</Link><Link className="underline" href={`/dashboard/investments/opportunities/${String(row.opportunity_id)}/scenarios`}>Manage</Link></div></Card>;
+    <div className="mt-5 flex flex-wrap items-center gap-4 text-sm font-semibold"><Link className="underline" href={`/dashboard/investments/opportunities/${String(row.opportunity_id)}/scenarios/${String(row.scenario_id)}`}>Open</Link><Link className="underline" href={`/dashboard/investments/opportunities/${String(row.opportunity_id)}/scenarios`}>Manage</Link>{parent.scenario_only === true ? <form action={convertScenarioToOpportunityAction}><input type="hidden" name="opportunityId" value={String(row.opportunity_id)} /><button className="rounded-full bg-stone-950 px-4 py-2 text-white">Convert to Opportunity</button></form> : <Badge tone="success">Opportunity</Badge>}</div></Card>;
 }
 function Filter({ name, label, value, options }: { name: string; label: string; value: string; options: readonly (readonly [string, string])[] }) { return <label className="text-xs font-semibold text-stone-600">{label}<select name={name} defaultValue={value} className="mt-1 block w-full rounded-xl border p-2 text-sm">{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>; }
 function Fact({ label, value }: { label: string; value: string }) { return <div><dt className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">{label}</dt><dd className="mt-1 text-sm font-semibold text-stone-800">{value}</dd></div>; }

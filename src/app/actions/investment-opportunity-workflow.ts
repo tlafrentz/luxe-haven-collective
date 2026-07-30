@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { addOpportunityNote, archiveInvestmentOpportunity, buildOpportunityAnalysisSnapshotFromWorkspace, buildOpportunityPropertyReference, buildOpportunitySourceSummary, createInvestmentOpportunityWithResult, createInvestmentOpportunityId, InvestmentOpportunityError, listCompatibleInvestmentOpportunities, requireInvestmentAuthorization, restoreInvestmentOpportunity, saveOpportunityAnalysisWithResult, updateInvestmentOpportunity, updateOpportunityStatus, type InvestmentAuthorizationOperation,type OpportunityStatus } from "@/features/investment-opportunity";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +12,49 @@ type WorkflowFailure = Extract<OpportunityMutationResult<never>, { ok: false }>;
 const saveSchema = z.object({ analysisToken: z.string().min(1), name: z.string().trim().max(120).optional(), tags: z.array(z.string().max(40)).max(20), idempotencyKey: z.string().min(8).max(160), note: z.string().trim().max(5000).optional() });
 const existingSchema = saveSchema.pick({ analysisToken: true, idempotencyKey: true }).extend({ opportunityId: z.string().min(1), expectedVersion: z.number().int().positive(), sourceAnalysisVersionId:z.string().min(1).optional() });
 const preferredScenarioSchema = z.object({ opportunityId: z.string().min(1), scenarioId: z.string().min(1), expectedVersion: z.number().int().positive(), idempotencyKey: z.string().min(8).max(160) });
+
+export async function saveAnalysisAsScenarioAction(input: unknown): Promise<OpportunityMutationResult<{ opportunityId: string; analysisId: string; scenarioId: string; redirectPath: string }>> {
+  const parsed = saveSchema.safeParse(input);
+  if (!parsed.success) return invalid(parsed.error.flatten().fieldErrors);
+  const saved = await saveAnalysisAsNewOpportunityAction(parsed.data);
+  if (!saved.ok) return saved;
+  try {
+    const client = await createClient();
+    const scenarioId = `scenario-${crypto.randomUUID()}`;
+    const { error: visibilityError } = await client.from("investment_opportunities").update({ scenario_only: true }).eq("id", saved.data.opportunityId);
+    if (visibilityError) throw visibilityError;
+    const { error } = await client.rpc("create_investment_scenario", {
+      p_opportunity_id: saved.data.opportunityId,
+      p_source_analysis_version_id: saved.data.analysisId,
+      p_source_scenario_id: "",
+      p_scenario_id: scenarioId,
+      p_name: parsed.data.name || "Base scenario",
+      p_scenario_type: "base",
+      p_description: "Saved from Investment Analysis.",
+      p_notes: parsed.data.note || "",
+      p_expected_version: saved.data.aggregateVersion,
+      p_command_id: `${parsed.data.idempotencyKey}:scenario`,
+    });
+    if (error) throw error;
+    revalidatePath("/dashboard/investments/scenarios");
+    revalidatePath("/dashboard/investments/opportunities");
+    return { ok: true, data: { opportunityId: saved.data.opportunityId, analysisId: saved.data.analysisId, scenarioId, redirectPath: "/dashboard/investments/scenarios" } };
+  } catch {
+    return failure("SCENARIO_PERSISTENCE_FAILED", "The analysis was retained, but the saved scenario could not be finalized. Try again.");
+  }
+}
+
+export async function convertScenarioToOpportunityAction(formData: FormData) {
+  const opportunityId = String(formData.get("opportunityId") ?? "");
+  const context = await workflowContext();
+  if (!opportunityId || !context.ok || !await context.authorizeOpportunity(opportunityId, "opportunity.modify")) throw new Error("OPPORTUNITY_ACCESS_DENIED");
+  const client = await createClient();
+  const { error } = await client.from("investment_opportunities").update({ scenario_only: false }).eq("id", opportunityId).eq("workspace_id", context.workspaceId);
+  if (error) throw new Error("OPPORTUNITY_PROMOTION_FAILED");
+  revalidatePath("/dashboard/investments/scenarios");
+  revalidatePath("/dashboard/investments/opportunities");
+  redirect(`/dashboard/investments/opportunities/${opportunityId}`);
+}
 
 export async function markPreferredScenarioAction(input: unknown) {
   const parsed = preferredScenarioSchema.safeParse(input);

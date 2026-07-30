@@ -36,7 +36,7 @@ class ServerSupabaseOpportunityGateway implements SupabaseInvestmentOpportunityG
     return receipt;
   }
   async listBundles(query: Readonly<{ ownerId: string; statuses?: readonly string[]; includeArchived: boolean; route?: string; limit: number; cursor?: string }>) {
-    let request = this.client.from("investment_opportunities").select("*").eq("workspace_id", query.ownerId).order("updated_at", { ascending: false }).order("id", { ascending: true });
+    let request = this.client.from("investment_opportunities").select("*").eq("workspace_id", query.ownerId).eq("scenario_only", false).order("updated_at", { ascending: false }).order("id", { ascending: true });
     if (!query.includeArchived) request = request.is("archived_at", null);
     if (query.statuses?.length) request = request.in("status", [...query.statuses]);
     if (query.route) request = request.eq("route", query.route);

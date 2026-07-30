@@ -13,11 +13,20 @@ describe("INV-UX-001 investment lifecycle information architecture", () => {
     expect(navigation).not.toContain('label: "Portfolio"');
   });
 
-  it("presents the existing persistence command as an intentional opportunity promotion", () => {
+  it("saves a new analysis as a scenario before opportunity promotion", () => {
     const panel = source("src/features/investment-opportunity/components/save-opportunity-panel.tsx");
-    expect(panel).toContain("Create Opportunity");
-    expect(panel).toContain("not an operating portfolio property");
-    expect(panel).toContain("saveAnalysisAsNewOpportunityAction");
+    expect(panel).toContain("Save Scenario");
+    expect(panel).toContain("convert it to an Opportunity");
+    expect(panel).toContain("saveAnalysisAsScenarioAction");
+    expect(panel).not.toContain("saveAnalysisAsNewOpportunityAction");
+  });
+
+  it("promotes saved scenarios explicitly from the scenario workspace", () => {
+    const scenarios = source("src/app/(dashboard)/dashboard/investments/scenarios/page.tsx");
+    const workflow = source("src/app/actions/investment-opportunity-workflow.ts");
+    expect(scenarios).toContain("Convert to Opportunity");
+    expect(scenarios).toContain("convertScenarioToOpportunityAction");
+    expect(workflow).toContain("scenario_only: false");
   });
 
   it("keeps opportunity saving outside the operating Portfolio boundary", () => {
@@ -34,5 +43,18 @@ describe("INV-UX-001 investment lifecycle information architecture", () => {
     const overview = source("src/features/investment-intelligence/components/investment-intelligence-overview.tsx");
     expect(overview).not.toContain("Entire Portfolio");
     expect(overview).not.toContain("Investment scope:");
+  });
+
+  it("uses five navigable analysis pages without repeating the strategy selector", () => {
+    const workspace = source("src/features/investment-intelligence/components/investment-workspace.tsx");
+    const pages = source("src/features/investment-intelligence/components/investment-analysis-step-pages.tsx");
+    expect(workspace).toContain("InvestmentAnalysisStepPages");
+    expect(workspace).not.toContain("AcquisitionSetup");
+    for (const label of ["Property", "Capital Structure", "Revenue & Operations", "Intelligence", "Decision Summary"]) {
+      expect(pages).toContain(`label: "${label}"`);
+    }
+    expect(pages).toContain("Continue");
+    expect(pages).toContain("Back");
+    expect(pages).not.toContain("AcquisitionTypeSelector");
   });
 });

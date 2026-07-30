@@ -1,35 +1,12 @@
 import {
-  AcquisitionSetup,
-} from "./acquisition-setup";
-
-import {
-  DecisionReadinessCard,
-} from "./decision-readiness-card";
-
-import {
-  GenerateInvestmentAnalysisCard,
-} from "./generate-investment-analysis-card";
-
-import {
-  InvestmentAnalysisResults,
-} from "./investment-analysis-results";
-
-import {
   InvestmentWorkspaceHeader,
 } from "./investment-workspace-header";
-
-import {
-  InvestmentWorkspaceNavigation,
-} from "./investment-workspace-navigation";
 
 import {
   InvestmentWorkspaceStateProvider,
 } from "./investment-workspace-state";
 
-import {
-  LiveInvestmentSummary,
-} from "./live-investment-summary";
-import { InvestmentMarketEvidencePanel } from "./investment-market-evidence-panel";
+import { InvestmentAnalysisStepPages } from "./investment-analysis-step-pages";
 import type { ReactNode } from "react";
 import type { InvestmentWorkspaceValues } from "./investment-workspace-state";
 import type { InvestmentAnalysisMarketContext } from "../application";
@@ -42,62 +19,7 @@ export function InvestmentWorkspace({ resultsActions, initialValues, contextNoti
           <InvestmentWorkspaceHeader />
           {contextNotice}
 
-          <InvestmentWorkspaceNavigation />
-
-          <AcquisitionSetup />
-
-          <InvestmentMarketEvidencePanel />
-
-          <LiveInvestmentSummary />
-
-          <section
-            id="analysis"
-            className="space-y-6 scroll-mt-6"
-          >
-            <header className="border-b border-neutral-200 pb-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                Full analysis readiness
-              </p>
-
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
-                Run Full Investment Analysis
-              </h2>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">
-                Confirm the workspace is ready, then generate the complete
-                analysis across financial performance, market position,
-                risks, evidence, and acquisition strategy.
-              </p>
-            </header>
-
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,0.7fr)_minmax(0,1.5fr)]">
-              <DecisionReadinessCard />
-              <GenerateInvestmentAnalysisCard />
-            </div>
-          </section>
-
-          <section
-            id="results"
-            className="space-y-6 scroll-mt-6"
-          >
-            <header className="border-b border-neutral-200 pb-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                Canonical result
-              </p>
-
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
-                Full Investment Decision Analysis
-              </h2>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">
-                Review the recommendation, score, financial performance,
-                supporting evidence, risks, scenarios, and failure points.
-              </p>
-            </header>
-
-            <InvestmentAnalysisResults />
-            {resultsActions}
-          </section>
+          <InvestmentAnalysisStepPages resultsActions={resultsActions} />
         </div>
       </main>
     </InvestmentWorkspaceStateProvider>
