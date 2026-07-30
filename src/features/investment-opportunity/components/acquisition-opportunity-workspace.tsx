@@ -59,7 +59,7 @@ function WorkspaceBreadcrumb({ opportunityName }: { opportunityName: string }) {
   return <nav aria-label="Breadcrumb"><ol className="flex flex-wrap items-center gap-2 text-sm text-stone-500">
     <li><Link className="rounded-sm hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href="/dashboard">Home</Link></li><li aria-hidden="true">/</li>
     <li><Link className="rounded-sm hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href="/dashboard/investments">Investment Intelligence</Link></li><li aria-hidden="true">/</li>
-    <li><Link className="rounded-sm hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href="/dashboard/investments/opportunities">Opportunity Portfolio</Link></li><li aria-hidden="true">/</li>
+    <li><Link className="rounded-sm hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href="/dashboard/investments/opportunities">Opportunities</Link></li><li aria-hidden="true">/</li>
     <li aria-current="page" className="max-w-52 truncate font-medium text-stone-800">{opportunityName}</li>
   </ol></nav>;
 }

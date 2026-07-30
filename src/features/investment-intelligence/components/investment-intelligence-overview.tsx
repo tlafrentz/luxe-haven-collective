@@ -4,7 +4,7 @@ import type { PortfolioWorkspaceView } from "@/features/investment-opportunity";
 type Props = Readonly<{ view?: PortfolioWorkspaceView; failed?: boolean }>;
 const actions = [
   { title: "New Analysis", description: "Start a new acquisition analysis from scratch.", href: "/dashboard/investments/new", icon: "+" },
-  { title: "Opportunity Portfolio", description: "View and manage saved investment opportunities.", href: "/dashboard/investments/opportunities", icon: "◇" },
+  { title: "Opportunities", description: "View and manage properties under active investment consideration.", href: "/dashboard/investments/opportunities", icon: "◇" },
   { title: "Scenarios", description: "Review saved underwriting scenarios and comparisons.", href: "/dashboard/investments/scenarios", icon: "□" },
 ] as const;
 
@@ -12,7 +12,7 @@ export function InvestmentIntelligenceOverview({ view, failed = false }: Props) 
   const recent = view?.opportunities.slice(0, 5) ?? [];
   return <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
     <section className="border-b border-stone-200 pb-9">
-      <div className="flex flex-wrap items-start justify-between gap-6"><div className="max-w-4xl"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">Decide</p><h1 className="mt-4 font-serif text-4xl leading-tight text-stone-950 sm:text-5xl">Investment Intelligence</h1><p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">Evaluate opportunities, model scenarios, and make better investment decisions with confidence.</p></div><div aria-label="Investment scope: Entire Portfolio" className="min-w-56 rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm"><span className="block text-xs font-medium text-stone-500">Scope</span><span className="mt-0.5 block text-sm font-semibold text-stone-950">Entire Portfolio</span></div></div>
+      <div className="max-w-4xl"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">Decide</p><h1 className="mt-4 font-serif text-4xl leading-tight text-stone-950 sm:text-5xl">Investment Intelligence</h1><p className="mt-4 max-w-3xl text-base leading-7 text-stone-600">Evaluate opportunities, model scenarios, and make better investment decisions with confidence.</p></div>
     </section>
     <section aria-labelledby="workspace-actions" className="py-8"><h2 id="workspace-actions" className="sr-only">Workspace actions</h2><div className="grid gap-4 md:grid-cols-3">{actions.map(action => <Link key={action.href} href={action.href} className="group rounded-2xl border border-stone-200 bg-white p-6 shadow-sm outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 motion-reduce:transform-none"><span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-xl text-teal-700">{action.icon}</span><h3 className="mt-5 text-base font-semibold text-stone-950">{action.title}</h3><p className="mt-2 text-sm leading-6 text-stone-600">{action.description}</p></Link>)}</div></section>
     <section aria-labelledby="recent-opportunities" className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm"><div className="border-b border-stone-200 px-5 py-5 sm:px-7"><h2 id="recent-opportunities" className="font-serif text-2xl text-stone-950">Recent Opportunities</h2></div>

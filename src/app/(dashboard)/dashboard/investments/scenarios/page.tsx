@@ -44,8 +44,8 @@ export default async function InvestmentScenariosPage({ searchParams }: { search
 
   return <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
     <header className="flex flex-col gap-4 border-b border-stone-200 pb-7 sm:flex-row sm:items-end sm:justify-between">
-      <div><p className="eyebrow">Investment Intelligence</p><h1 className="mt-2 font-serif text-4xl text-stone-950">Scenarios</h1><p className="mt-2 max-w-2xl text-sm text-stone-600">Persisted alternative assumptions and immutable calculation outputs across accessible opportunities.</p></div>
-      <Link href="/dashboard/investments/opportunities" className="rounded-full bg-stone-950 px-5 py-2.5 text-sm font-semibold text-white">Opportunity Portfolio</Link>
+      <div><p className="eyebrow">Investment Intelligence</p><h1 className="mt-2 font-serif text-4xl text-stone-950">Saved Scenarios</h1><p className="mt-2 max-w-2xl text-sm text-stone-600">Persisted alternative assumptions and immutable calculation outputs retained for comparison and future reference.</p></div>
+      <Link href="/dashboard/investments/opportunities" className="rounded-full bg-stone-950 px-5 py-2.5 text-sm font-semibold text-white">Opportunities</Link>
     </header>
     <form className="grid gap-3 rounded-2xl border bg-white p-4 sm:grid-cols-5">
       <Filter name="status" label="Status" value={status} options={[["", "All"], ["active", "Active"], ["archived", "Archived"]]} />
@@ -55,7 +55,7 @@ export default async function InvestmentScenariosPage({ searchParams }: { search
       <label className="flex items-center gap-2 self-end pb-2 text-sm"><input type="checkbox" name="preferred" value="true" defaultChecked={scalar(filters.preferred) === "true"} /> Preferred only</label>
       <button className="w-fit rounded-full border px-4 py-2 text-sm font-semibold">Apply filters</button>
     </form>
-    {projected.length ? <section className="grid gap-5 lg:grid-cols-2">{projected.map(({ row, parent, preferred }) => <ScenarioCard key={String(row.scenario_id)} row={row} parent={parent} preferred={preferred} sourceSequence={sequenceById.get(String(row.source_analysis_version_id))} />)}</section> : <Card className="border-dashed p-10 text-center"><h2 className="text-xl font-semibold">No saved scenarios yet</h2><p className="mx-auto mt-2 max-w-xl text-sm text-stone-600">Create a scenario from a saved Investment Opportunity to compare alternative assumptions without changing the original analysis.</p><Link href="/dashboard/investments/opportunities" className="mt-5 inline-flex font-semibold underline">Open Opportunity Portfolio</Link></Card>}
+    {projected.length ? <section className="grid gap-5 lg:grid-cols-2">{projected.map(({ row, parent, preferred }) => <ScenarioCard key={String(row.scenario_id)} row={row} parent={parent} preferred={preferred} sourceSequence={sequenceById.get(String(row.source_analysis_version_id))} />)}</section> : <Card className="border-dashed p-10 text-center"><h2 className="text-xl font-semibold">No saved scenarios yet</h2><p className="mx-auto mt-2 max-w-xl text-sm text-stone-600">Create a scenario from a saved investment opportunity to compare alternative assumptions without changing the original analysis.</p><Link href="/dashboard/investments/opportunities" className="mt-5 inline-flex font-semibold underline">Open Opportunities</Link></Card>}
   </main>;
 }
 

@@ -140,7 +140,7 @@ describe("AcquisitionOpportunityWorkspace", () => {
   it("uses canonical breadcrumbs and historical-analysis navigation", () => {
     const html = renderToStaticMarkup(<AcquisitionOpportunityWorkspace workspace={view(null)} />);
     expect(html).toContain("Investment Intelligence");
-    expect(html).toContain("Opportunity Portfolio");
+    expect(html).toContain("Opportunities");
     expect(html).toContain(`/dashboard/investments/opportunities/${opportunityId.value}/analyses/${analysis.analysisId.value}`);
   });
 });
