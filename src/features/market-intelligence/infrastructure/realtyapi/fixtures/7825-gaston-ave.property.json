@@ -1,0 +1,33 @@
+{
+  "message": "Success",
+  "source": "realtor.com",
+  "detail": {
+    "property_id": "8814016880",
+    "listing_id": "2998950893",
+    "status": "for_sale",
+    "href": "https://www.realtor.com/realestateandhomes-detail/7825-Gaston-Ave_Fort-Worth_TX_76116_M88140-16880",
+    "list_date": "2026-07-28T02:28:22Z",
+    "last_update_date": "2026-07-28T11:10:50Z",
+    "list_price": 185000,
+    "price_per_sqft": 155,
+    "details": {
+      "beds": 3,
+      "baths": "2",
+      "sqft": 1194,
+      "lot_sqft": 9801,
+      "stories": 1,
+      "year_built": 1958,
+      "garage": 2,
+      "type": "single_family"
+    },
+    "address": {
+      "line": "7825 Gaston Ave",
+      "city": "Fort Worth",
+      "state_code": "TX",
+      "state": "Texas",
+      "postal_code": "76116",
+      "latitude": 32.710249,
+      "longitude": -97.451834
+    }
+  }
+}

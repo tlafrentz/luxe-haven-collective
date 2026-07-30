@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { mapRealtyApiCandidates, mapRealtyApiProperty } from "./mapper";
+import type { RealtyApiPropertyResponseDto } from "./types";
 
 const candidate = {
   providerPropertyId: "987654321",
@@ -48,5 +51,44 @@ describe("RealtyAPI canonical mapper", () => {
     expect(property.missingFields).toContain("physical.lotSizeSquareFeet");
     expect(property.confidence.completeness).toBeGreaterThan(80);
     expect(Object.isFrozen(property)).toBe(true);
+  });
+
+  it("maps the sanitized known-successful RealtyAPI response", () => {
+    const response = JSON.parse(readFileSync(
+      resolve(process.cwd(), "src/features/market-intelligence/infrastructure/realtyapi/fixtures/7825-gaston-ave.property.json"),
+      "utf8",
+    )) as RealtyApiPropertyResponseDto;
+    const property = mapRealtyApiProperty(response, {
+      providerPropertyId: "8814016880",
+      listingId: "2998950893",
+      formattedAddress: "7825 Gaston Ave, Fort Worth, TX 76116",
+    }, {
+      ...context,
+      requestedAddressKey: "7825 gaston ave fort worth tx 76116",
+    });
+
+    expect(property).toMatchObject({
+      providerPropertyId: "8814016880",
+      address: {
+        street: { value: "7825 Gaston Ave" },
+        city: { value: "Fort Worth" },
+        state: { value: "TX" },
+        postalCode: { value: "76116" },
+        latitude: { value: 32.710249 },
+        longitude: { value: -97.451834 },
+      },
+      physical: {
+        propertyType: { value: "single_family" },
+        bedrooms: { value: 3 },
+        bathrooms: { value: 2 },
+        livingAreaSquareFeet: { value: 1194 },
+        lotSizeSquareFeet: { value: 9801 },
+        yearBuilt: { value: 1958 },
+      },
+      listing: { status: { value: "for_sale" }, listPrice: { value: 185000 } },
+    });
+    expect(property.missingFields).not.toContain("address.latitude");
+    expect(property.missingFields).not.toContain("address.longitude");
+    expect(property.missingFields).not.toContain("physical.yearBuilt");
   });
 });

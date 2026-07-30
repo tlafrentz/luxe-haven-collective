@@ -47,7 +47,7 @@ export function mapRealtyApiProperty(
   if (!providerPropertyId) invalid("RealtyAPI returned a property without an id.");
 
   const address = object(record.address) ?? object(object(record.location)?.address) ?? {};
-  const description = object(record.description) ?? {};
+  const description = object(record.details) ?? object(record.description) ?? {};
   const location = object(record.location) ?? {};
   const coordinates = coordinatePair(record) ?? coordinatePair(location) ?? coordinatePair(address);
   const sourceEndpoint = REALTY_API_ENDPOINTS.detailsById;
@@ -58,7 +58,9 @@ export function mapRealtyApiProperty(
     sourceEndpoint,
   });
   const sourced = <T>(value: T | undefined) => freezeSubjectProperty({ value: value ?? null, lineage });
-  const formatted = text(address.formatted_address, address.formattedAddress, address.line, record.formatted_address, record.full_address) ?? candidate.formattedAddress;
+  const formatted = text(address.formatted_address, address.formattedAddress, record.formatted_address, record.full_address)
+    ?? formatAddress(address)
+    ?? candidate.formattedAddress;
   const fields = {
     formatted,
     street: text(address.line, address.street, address.address_line, address.addressLine1),
@@ -155,11 +157,20 @@ function findCollection(value: unknown): readonly Record<string, unknown>[] {
 function unwrapProperty(value: unknown): Record<string, unknown> {
   const root = object(value);
   if (!root) invalid("RealtyAPI returned an invalid property response.");
-  for (const key of ["data", "home", "property", "result"]) {
+  for (const key of ["detail", "data", "home", "property", "result"]) {
     const nested = object(root[key]);
     if (nested) return unwrapProperty(nested);
   }
   return root;
+}
+
+function formatAddress(address: Record<string, unknown>): string | undefined {
+  const street = text(address.line, address.street, address.address_line, address.addressLine1);
+  const city = text(address.city, address.locality);
+  const state = text(address.state_code, address.state, address.region);
+  const postalCode = text(address.postal_code, address.zip_code, address.zip, address.postalCode);
+  if (!street) return undefined;
+  return [street, city, [state, postalCode].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 }
 
 function addressText(record: Record<string, unknown>): string | undefined {
