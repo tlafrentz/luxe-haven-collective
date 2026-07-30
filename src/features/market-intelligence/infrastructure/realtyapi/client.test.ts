@@ -39,8 +39,11 @@ describe("RealtyApiClient", () => {
   });
 
   it("constructs the documented address-details request with URL encoding", async () => {
-    const fetchImplementation = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
-      new Response(JSON.stringify({ message: "Success" }), { status: 200 }));
+    const fetchImplementation = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      void input;
+      void init;
+      return new Response(JSON.stringify({ message: "Success" }), { status: 200 });
+    });
     const client = new RealtyApiClient({ apiKey: "private-key", fetchImplementation });
     await client.getDetailsByAddress("7825 Gaston Ave, Fort Worth, TX 76116");
     expect(String(fetchImplementation.mock.calls[0]![0]))
