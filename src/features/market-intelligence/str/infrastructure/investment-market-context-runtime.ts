@@ -29,7 +29,17 @@ export async function resolveInvestmentMarketContextAtRuntime(
       telemetry,
     });
   }
-  const config = getAirRoiConfig();
+  let config;
+  try {
+    config = getAirRoiConfig();
+  } catch (error) {
+    telemetry?.emit("str_adapter_activation_failed", {
+      correlationId: input.correlationId,
+      provider: "airroi",
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    config = getAirRoiConfig({ MARKET_INTELLIGENCE_ENABLED: "false" });
+  }
   const propertyProvider = process.env.REALTY_API_KEY
     ? createRealtyApiPropertyProvider({
       apiKey: process.env.REALTY_API_KEY,
@@ -43,7 +53,8 @@ export async function resolveInvestmentMarketContextAtRuntime(
       baseUrl: config.baseUrl,
       timeoutMs: config.timeoutMs,
       maxRetries: config.maxRetries,
-    }), config)
+      telemetry,
+    }), config, () => new Date(), telemetry)
     : undefined;
 
   return resolveInvestmentMarketContext(input, {

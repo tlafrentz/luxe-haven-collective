@@ -4,9 +4,15 @@ import type { AirRoiComparableDto, AirRoiRevenueDto } from "./airroi-types";
 import { mapAirRoiRequest } from "./airroi-request-mapper";
 import { mapAirRoiComparables, mapAirRoiRevenue } from "./airroi-response-mapper";
 import type { AirRoiConfig } from "./airroi-config";
+import type { AirRoiTelemetry } from "./airroi-client";
 
 export class AirRoiProvider implements StrMarketIntelligenceProvider {
-  constructor(private readonly client: AirRoiClient, private readonly config: AirRoiConfig, private readonly now: () => Date = () => new Date()) {}
+  constructor(
+    private readonly client: AirRoiClient,
+    private readonly config: AirRoiConfig,
+    private readonly now: () => Date = () => new Date(),
+    private readonly telemetry?: AirRoiTelemetry,
+  ) {}
   async retrieve(query: Parameters<StrMarketIntelligenceProvider["retrieve"]>[0], context: Parameters<StrMarketIntelligenceProvider["retrieve"]>[1]): Promise<StrProviderResult> {
     const parameters = mapAirRoiRequest(query, query.filters?.radiusMiles ?? this.config.defaultRadiusMiles);
     const revenueResult: PromiseSettledResult<Awaited<ReturnType<AirRoiClient["get"]>>> = await Promise.resolve(
@@ -21,22 +27,39 @@ export class AirRoiProvider implements StrMarketIntelligenceProvider {
       ...envelope,
       data: (Array.isArray(payload) ? payload : collection?.listings ?? collection?.comparables ?? []).map(normalizeComparable),
     };
-    const retrievedAt = this.now().toISOString(); const evidence = []; const warnings: string[] = [];
-    let revenueEstimate;
-    if (revenueResult.status === "fulfilled" && revenueResult.value.data) {
-      const mapped = mapAirRoiRevenue(revenueResult.value.data, { snapshotId: context.snapshotId, retrievedAt, requestId: revenueResult.value.request_id });
-      revenueEstimate = mapped.value; evidence.push(...mapped.evidence);
-    } else warnings.push("Revenue estimate is unavailable.");
-    warnings.push("Aggregated market metrics are unavailable; property estimates and comparable listings were synced.");
-    const comparableMapping = mapAirRoiComparables(comparableEnvelope.data, { snapshotId: context.snapshotId, retrievedAt, requestId: comparableEnvelope.request_id, currency: revenueEstimate?.currency });
-    evidence.push(...comparableMapping.evidence);
-    if (!comparableMapping.values.length) warnings.push("No comparable listings were returned.");
-    return {
-      providerVersion: "airroi-api.v1", providerSnapshotReferences: [revenueResult.status === "fulfilled" ? revenueResult.value.request_id : undefined,
-        comparableEnvelope.request_id].filter((value): value is string => Boolean(value)),
-      revenueEstimate, comparables: comparableMapping.values, evidence, warnings,
-      appliedFilters: [`providerRankedComparables:true`, `entirePlaceOnly:${query.filters?.entirePlaceOnly ?? false}`, `maximumComparableCount:${query.filters?.maximumComparableCount ?? this.config.maxComparables}`],
-    };
+    this.telemetry?.emit("airroi_response_mapping_started", {
+      correlationId: context.correlationId,
+      operation: "revenue-and-comparables",
+    });
+    try {
+      const retrievedAt = this.now().toISOString(); const evidence = []; const warnings: string[] = [];
+      let revenueEstimate;
+      if (revenueResult.status === "fulfilled" && revenueResult.value.data) {
+        const mapped = mapAirRoiRevenue(revenueResult.value.data, { snapshotId: context.snapshotId, retrievedAt, requestId: revenueResult.value.request_id });
+        revenueEstimate = mapped.value; evidence.push(...mapped.evidence);
+      } else warnings.push("Revenue estimate is unavailable.");
+      warnings.push("Aggregated market metrics are unavailable; property estimates and comparable listings were synced.");
+      const comparableMapping = mapAirRoiComparables(comparableEnvelope.data, { snapshotId: context.snapshotId, retrievedAt, requestId: comparableEnvelope.request_id, currency: revenueEstimate?.currency });
+      evidence.push(...comparableMapping.evidence);
+      if (!comparableMapping.values.length) warnings.push("No comparable listings were returned.");
+      this.telemetry?.emit("airroi_response_mapping_completed", {
+        correlationId: context.correlationId,
+        comparableCount: comparableMapping.values.length,
+        hasRevenueEstimate: Boolean(revenueEstimate),
+      });
+      return {
+        providerVersion: "airroi-api.v1", providerSnapshotReferences: [revenueResult.status === "fulfilled" ? revenueResult.value.request_id : undefined,
+          comparableEnvelope.request_id].filter((value): value is string => Boolean(value)),
+        revenueEstimate, comparables: comparableMapping.values, evidence, warnings,
+        appliedFilters: [`providerRankedComparables:true`, `entirePlaceOnly:${query.filters?.entirePlaceOnly ?? false}`, `maximumComparableCount:${query.filters?.maximumComparableCount ?? this.config.maxComparables}`],
+      };
+    } catch (error) {
+      this.telemetry?.emit("airroi_response_mapping_failed", {
+        correlationId: context.correlationId,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+      throw error;
+    }
   }
 }
 

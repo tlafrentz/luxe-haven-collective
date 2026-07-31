@@ -132,7 +132,19 @@ export async function resolveInvestmentMarketContext(
     throw error;
   }
 
+  const hasCoordinates =
+    subjectProperty.address.latitude.value !== null &&
+    subjectProperty.address.longitude.value !== null;
+  emit(
+    hasCoordinates
+      ? "str_coordinate_resolution_completed"
+      : "str_coordinate_resolution_failed",
+    { hasCoordinates },
+  );
+
   if (!dependencies.enabled || !dependencies.marketProvider) {
+    emit("str_adapter_activation_skipped", { reasonCode: "STR_PROVIDER_UNAVAILABLE" });
+    emit("str_limitation_finalized", { limitationCode: "STR_PROVIDER_UNAVAILABLE" });
     return {
       subjectProperty,
       subjectPropertySnapshotId: subjectProperty.snapshotId,
@@ -144,6 +156,7 @@ export async function resolveInvestmentMarketContext(
 
   try {
     const query = buildStrMarketQuery(subjectProperty, { requestedAt: input.requestedAt });
+    emit("str_adapter_activation_completed", { provider: "airroi" });
     let cacheHit = false;
     let created = false;
     const serviceTelemetry: StrWorkflowTelemetry = {
@@ -176,6 +189,11 @@ export async function resolveInvestmentMarketContext(
     }, dependencies.marketSnapshots);
     emit("market_snapshot_authorized", { marketSnapshotId: authorized.id });
     const limitedCoverage = authorized.completeness !== "complete";
+    emit("str_limitation_finalized", {
+      limitationCode: limitedCoverage
+        ? "INSUFFICIENT_COMPARABLE_COVERAGE"
+        : "NONE",
+    });
     return {
       subjectProperty,
       subjectPropertySnapshotId: subjectProperty.snapshotId,
@@ -189,6 +207,10 @@ export async function resolveInvestmentMarketContext(
     const failureCode = subjectProperty.address.latitude.value === null || subjectProperty.address.longitude.value === null
       ? "COORDINATES_MISSING"
       : dependencies.classifyMarketFailure?.(error) ?? "STR_PROVIDER_UNAVAILABLE";
+    if (failureCode === "COORDINATES_MISSING") {
+      emit("str_coordinate_resolution_failed", { hasCoordinates: false });
+    }
+    emit("str_limitation_finalized", { limitationCode: failureCode });
     return {
       subjectProperty,
       subjectPropertySnapshotId: subjectProperty.snapshotId,

@@ -157,8 +157,7 @@ export async function syncInvestmentPropertyAction(
       forceRefresh: true,
     }, {
       emit(event, attributes) {
-        if (!event.startsWith("subject_property_")) return;
-        recordSubjectPropertyStageDiagnostic(correlationId, event, attributes);
+        recordPropertySyncStageDiagnostic(correlationId, event, attributes);
       },
     });
 
@@ -318,7 +317,7 @@ function recordPropertySyncDiagnostic(
   );
 }
 
-function recordSubjectPropertyStageDiagnostic(
+function recordPropertySyncStageDiagnostic(
   correlationId: string,
   stage: string,
   attributes: Readonly<Record<string, unknown>>,
@@ -335,6 +334,51 @@ function recordSubjectPropertyStageDiagnostic(
       : {}),
     ...(typeof attributes.snapshotVersion === "number"
       ? { snapshotVersion: attributes.snapshotVersion }
+      : {}),
+    ...(typeof attributes.snapshotId === "string"
+      ? { snapshotId: attributes.snapshotId }
+      : {}),
+    ...(typeof attributes.provider === "string"
+      ? { provider: attributes.provider }
+      : {}),
+    ...(typeof attributes.operation === "string"
+      ? { operation: attributes.operation }
+      : {}),
+    ...(typeof attributes.attempt === "number"
+      ? { attempt: attributes.attempt }
+      : {}),
+    ...(typeof attributes.durationMs === "number"
+      ? { durationMs: attributes.durationMs }
+      : {}),
+    ...(typeof attributes.code === "string"
+      ? { code: attributes.code }
+      : {}),
+    ...(typeof attributes.errorName === "string"
+      ? { errorName: attributes.errorName }
+      : {}),
+    ...(typeof attributes.hasCoordinates === "boolean"
+      ? { hasCoordinates: attributes.hasCoordinates }
+      : {}),
+    ...(typeof attributes.hasRevenueEstimate === "boolean"
+      ? { hasRevenueEstimate: attributes.hasRevenueEstimate }
+      : {}),
+    ...(typeof attributes.eligibleComparableCount === "number"
+      ? { eligibleComparableCount: attributes.eligibleComparableCount }
+      : {}),
+    ...(typeof attributes.minimumComparableCount === "number"
+      ? { minimumComparableCount: attributes.minimumComparableCount }
+      : {}),
+    ...(typeof attributes.sufficientCoverage === "boolean"
+      ? { sufficientCoverage: attributes.sufficientCoverage }
+      : {}),
+    ...(typeof attributes.completeness === "string"
+      ? { completeness: attributes.completeness }
+      : {}),
+    ...(typeof attributes.limitationCode === "string"
+      ? { limitationCode: attributes.limitationCode }
+      : {}),
+    ...(typeof attributes.reasonCode === "string"
+      ? { reasonCode: attributes.reasonCode }
       : {}),
   }));
 }

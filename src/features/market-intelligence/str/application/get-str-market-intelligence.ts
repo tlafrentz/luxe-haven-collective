@@ -1,6 +1,10 @@
 import type { StrMarketIntelligenceProvider, StrMarketQuery, StrMarketSnapshot, StrMarketSnapshotRepository } from "../domain";
 import { freezeStrSnapshot, STR_COMPARABLE_POLICY_VERSION, STR_MARKET_SNAPSHOT_SCHEMA_VERSION } from "../domain";
-import { assessStrMarketConfidence, qualifyAndWeightComparables } from "./str-market-policy";
+import {
+  assessStrMarketConfidence,
+  DEFAULT_STR_COMPARABLE_POLICY,
+  qualifyAndWeightComparables,
+} from "./str-market-policy";
 
 const inflight = new Map<string, Promise<StrMarketSnapshot>>();
 export interface GetStrMarketIntelligenceInput {
@@ -38,6 +42,12 @@ async function build(input: GetStrMarketIntelligenceInput, created: Date, depend
 }, telemetry: StrWorkflowTelemetry): Promise<StrMarketSnapshot> {
   const id = crypto.randomUUID(); const correlationId = input.correlationId ?? crypto.randomUUID();
   const result = await dependencies.provider.retrieve(input.query, { snapshotId: id, correlationId });
+  telemetry.emit("str_response_mapping_completed", {
+    correlationId,
+    snapshotId: id,
+    comparableCount: result.comparables.length,
+    hasRevenueEstimate: Boolean(result.revenueEstimate),
+  });
   const comparables = qualifyAndWeightComparables(result.comparables, input.query);
   const radiusFilter = result.appliedFilters.find((filter) => filter.startsWith("radiusMiles:"));
   const radius = radiusFilter ? Number(radiusFilter.split(":")[1]) : input.query.filters?.radiusMiles;
@@ -45,6 +55,16 @@ async function build(input: GetStrMarketIntelligenceInput, created: Date, depend
   const confidence = assessStrMarketConfidence({ query: input.query, comparables, hasRevenueEstimate: Boolean(result.revenueEstimate),
     hasMarketMetrics: Boolean(result.marketMetrics), hasSeasonality: Boolean(result.seasonality), relaxedRules });
   const eligibleCount = comparables.filter((item) => item.eligibility === "eligible").length;
+  telemetry.emit("str_comparable_coverage_assessed", {
+    correlationId,
+    snapshotId: id,
+    comparableCount: result.comparables.length,
+    eligibleComparableCount: eligibleCount,
+    minimumComparableCount:
+      DEFAULT_STR_COMPARABLE_POLICY.minimumComparableCount,
+    sufficientCoverage:
+      eligibleCount >= DEFAULT_STR_COMPARABLE_POLICY.minimumComparableCount,
+  });
   const warnings = [...result.warnings, ...confidence.limitations];
   const snapshot = freezeStrSnapshot<StrMarketSnapshot>({
     id, ownerId: input.ownerId, workspaceId: input.workspaceId, subjectPropertyId: input.query.subjectPropertyId,
@@ -56,7 +76,25 @@ async function build(input: GetStrMarketIntelligenceInput, created: Date, depend
     comparables, confidence, completeness: result.revenueEstimate && eligibleCount >= 5 ? "complete" : result.revenueEstimate || result.marketMetrics ? "partial" : "insufficient",
     evidence: result.evidence, evidenceIds: result.evidence.map((item) => item.id), warnings: [...new Set(warnings)], relaxedRules,
   });
-  await dependencies.repository.save(snapshot);
+  telemetry.emit("str_market_snapshot_persistence_started", {
+    correlationId,
+    snapshotId: id,
+  });
+  try {
+    await dependencies.repository.save(snapshot);
+  } catch (error) {
+    telemetry.emit("str_market_snapshot_persistence_failed", {
+      correlationId,
+      snapshotId: id,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    throw error;
+  }
+  telemetry.emit("str_market_snapshot_persistence_completed", {
+    correlationId,
+    snapshotId: id,
+    completeness: snapshot.completeness,
+  });
   telemetry.emit("str_comparables_received", { correlationId, snapshotId: id, comparableCount: result.comparables.length });
   telemetry.emit("str_comparables_qualified", { correlationId, snapshotId: id, comparableCount: eligibleCount });
   telemetry.emit("str_comparables_rejected", { correlationId, snapshotId: id, comparableCount: comparables.length - eligibleCount });

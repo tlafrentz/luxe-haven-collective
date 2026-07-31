@@ -155,6 +155,7 @@ describe("resolveInvestmentMarketContext", () => {
     const property = subject();
     const properties = new InMemoryPropertySnapshotRepository();
     await properties.save(propertySnapshot(property));
+    const events: Array<{ event: string; attributes: Readonly<Record<string, unknown>> }> = [];
     const result = await resolveInvestmentMarketContext({
       ownerId: "owner-1", workspaceId: "workspace-1", address, property: {},
       correlationId: "correlation-1", requestedAt: now,
@@ -166,11 +167,78 @@ describe("resolveInvestmentMarketContext", () => {
       providerVersion: "airroi-api.v1",
       enabled: true,
       classifyMarketFailure: () => "STR_PROVIDER_UNAVAILABLE",
+      telemetry: {
+        emit(event, attributes) {
+          events.push({ event, attributes });
+        },
+      },
     });
     expect(result).toMatchObject({
       source: "manual-fallback",
       subjectProperty: property,
       failureCode: "STR_PROVIDER_UNAVAILABLE",
     });
+    expect(events).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        event: "str_coordinate_resolution_completed",
+        attributes: expect.objectContaining({ hasCoordinates: true }),
+      }),
+      expect.objectContaining({
+        event: "str_adapter_activation_completed",
+        attributes: expect.objectContaining({ provider: "airroi" }),
+      }),
+      expect.objectContaining({
+        event: "str_limitation_finalized",
+        attributes: expect.objectContaining({
+          limitationCode: "STR_PROVIDER_UNAVAILABLE",
+        }),
+      }),
+    ]));
+    expect(result.subjectPropertySnapshotId).toBe(property.snapshotId);
+  });
+
+  it("records comparable coverage and persistence without exposing provider payloads", async () => {
+    const property = subject();
+    const properties = new InMemoryPropertySnapshotRepository();
+    await properties.save(propertySnapshot(property));
+    const events: Array<{ event: string; attributes: Readonly<Record<string, unknown>> }> = [];
+
+    const result = await resolveInvestmentMarketContext({
+      ownerId: "owner-1", workspaceId: "workspace-1", address, property: {},
+      correlationId: "property-sync:f85e8ceb-8cfe-43d9-929b-1e20d6578a7e",
+      requestedAt: now,
+    }, {
+      propertyProvider: { search: vi.fn(), retrieve: vi.fn() },
+      propertySnapshots: properties,
+      marketProvider: { retrieve: vi.fn(async () => providerResult) },
+      marketSnapshots: new InMemoryStrMarketSnapshotRepository(),
+      providerVersion: "airroi-api.v1",
+      enabled: true,
+      telemetry: {
+        emit(event, attributes) {
+          events.push({ event, attributes });
+        },
+      },
+    });
+
+    expect(result).toMatchObject({
+      subjectPropertySnapshotId: property.snapshotId,
+      failureCode: "INSUFFICIENT_COMPARABLE_COVERAGE",
+    });
+    expect(events.map(({ event }) => event)).toEqual(expect.arrayContaining([
+      "str_response_mapping_completed",
+      "str_comparable_coverage_assessed",
+      "str_market_snapshot_persistence_started",
+      "str_market_snapshot_persistence_completed",
+      "str_limitation_finalized",
+    ]));
+    expect(events.find(({ event }) => event === "str_comparable_coverage_assessed")?.attributes)
+      .toMatchObject({
+        comparableCount: 0,
+        eligibleComparableCount: 0,
+        minimumComparableCount: 5,
+        sufficientCoverage: false,
+      });
+    expect(JSON.stringify(events)).not.toContain(address);
   });
 });
