@@ -64,9 +64,22 @@ export interface ResolveInvestmentMarketContextDependencies {
   readonly providerVersion: string;
   readonly enabled: boolean;
   readonly propertySnapshotTtlDays?: number;
+  readonly subjectPropertyOperationTimeoutMs?: number;
+  readonly subjectResolutionTimeoutMs?: number;
   readonly marketSnapshotTtlDays?: number;
   readonly telemetry?: StrWorkflowTelemetry;
   readonly classifyMarketFailure?: (error: unknown) => StrMarketContextFailureCode;
+}
+
+const DEFAULT_SUBJECT_RESOLUTION_TIMEOUT_MS = 20_000;
+
+export class SubjectPropertyResolutionDeadlineError extends Error {
+  readonly code = "timed-out" as const;
+
+  constructor(readonly timeoutMs: number) {
+    super(`Subject property resolution did not settle within ${timeoutMs}ms.`);
+    this.name = "SubjectPropertyResolutionDeadlineError";
+  }
 }
 
 export async function resolveInvestmentMarketContext(
@@ -141,7 +154,11 @@ export async function resolveInvestmentMarketContext(
     stage = "subject-property-loading";
     emit("subject_property_resolution_started");
     emit("subject_property_resolution_await_started");
-    subjectProperty = await lookupSubjectProperty(
+    const subjectResolutionTimeoutMs =
+      dependencies.subjectResolutionTimeoutMs ??
+      DEFAULT_SUBJECT_RESOLUTION_TIMEOUT_MS;
+    subjectProperty = await settleSubjectResolution(
+      lookupSubjectProperty(
       {
         address: input.address,
         ownerId: input.ownerId,
@@ -153,10 +170,13 @@ export async function resolveInvestmentMarketContext(
         snapshots: dependencies.propertySnapshots,
         now: () => input.requestedAt,
         snapshotTtlDays: dependencies.propertySnapshotTtlDays,
+        operationTimeoutMs: dependencies.subjectPropertyOperationTimeoutMs,
         diagnostic(stage, status, metadata) {
           emit(`subject_property_${stage.replaceAll("-", "_")}_${status}`, metadata);
         },
       },
+      ),
+      subjectResolutionTimeoutMs,
     );
     emit("subject_property_resolution_await_completed");
     emit("subject_property_resolution_completed", {
@@ -313,4 +333,25 @@ export async function resolveInvestmentMarketContext(
       terminalEmitted,
     });
   }
+}
+
+function settleSubjectResolution<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+): Promise<T> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return Promise.reject(new SubjectPropertyResolutionDeadlineError(timeoutMs));
+  }
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    promise,
+    new Promise<never>((_resolve, reject) => {
+      timeout = setTimeout(
+        () => reject(new SubjectPropertyResolutionDeadlineError(timeoutMs)),
+        timeoutMs,
+      );
+    }),
+  ]).finally(() => {
+    if (timeout) clearTimeout(timeout);
+  });
 }

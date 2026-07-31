@@ -163,6 +163,7 @@ describe("lookupSubjectProperty", () => {
       property,
     });
     expect(diagnostics).toEqual([
+      { stage: "autocomplete", status: "started", metadata: undefined },
       { stage: "autocomplete", status: "completed", metadata: { candidateCount: 4 } },
       {
         stage: "candidate-selection",

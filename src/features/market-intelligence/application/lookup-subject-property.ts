@@ -26,11 +26,25 @@ export interface LookupSubjectPropertyDependencies {
   readonly now?: () => Date;
   readonly createId?: () => string;
   readonly snapshotTtlDays?: number;
+  readonly operationTimeoutMs?: number;
   readonly diagnostic?: (
     stage: "autocomplete" | "candidate-selection" | "property-detail-mapping" | "canonical-persistence",
     status: "started" | "completed" | "failed",
     metadata?: Readonly<Record<string, number>>,
   ) => void;
+}
+
+const DEFAULT_SUBJECT_PROPERTY_OPERATION_TIMEOUT_MS = 10_000;
+
+export class SubjectPropertyOperationTimeoutError extends Error {
+  readonly code = "timed-out" as const;
+  readonly operation: string;
+
+  constructor(operation: string, timeoutMs: number) {
+    super(`Subject property ${operation} did not settle within ${timeoutMs}ms.`);
+    this.name = "SubjectPropertyOperationTimeoutError";
+    this.operation = operation;
+  }
 }
 
 export interface LookupSubjectPropertyInput {
@@ -64,14 +78,26 @@ export async function lookupSubjectProperty(
   const address = normalizeInput(input.address);
   const scope = { ownerId: input.ownerId, workspaceId: input.workspaceId };
   const now = dependencies.now?.() ?? new Date();
+  const operationTimeoutMs =
+    dependencies.operationTimeoutMs ??
+    DEFAULT_SUBJECT_PROPERTY_OPERATION_TIMEOUT_MS;
+  const settle = <T>(operation: string, promise: Promise<T>) =>
+    settleWithin(promise, operation, operationTimeoutMs);
   if (!input.refresh) {
-    const cached = await dependencies.snapshots.findFreshByAddress(address.key, now, scope);
+    const cached = await settle(
+      "fresh-snapshot lookup",
+      dependencies.snapshots.findFreshByAddress(address.key, now, scope),
+    );
     if (cached) return cached.property;
   }
 
   let candidates: readonly PropertyLookupCandidate[];
   try {
-    candidates = await dependencies.provider.search(address.display);
+    dependencies.diagnostic?.("autocomplete", "started");
+    candidates = await settle(
+      "autocomplete",
+      dependencies.provider.search(address.display),
+    );
     dependencies.diagnostic?.("autocomplete", "completed", { candidateCount: candidates.length });
   } catch (error) {
     dependencies.diagnostic?.("autocomplete", "failed");
@@ -92,20 +118,29 @@ export async function lookupSubjectProperty(
   if (exactCandidates.length > 1) throw new AmbiguousSubjectPropertyError(exactCandidates);
   const candidate = exactCandidates[0]!;
 
-  const previous = await dependencies.snapshots.findLatestByAddress(address.key, scope);
+  const previous = await settle(
+    "latest-snapshot lookup",
+    dependencies.snapshots.findLatestByAddress(address.key, scope),
+  );
   const subjectPropertyId = previous?.subjectPropertyId ??
     `subject-property-${dependencies.createId?.() ?? globalThis.crypto.randomUUID()}`;
-  const version = await dependencies.snapshots.nextVersion(subjectPropertyId, scope);
+  const version = await settle(
+    "snapshot-version allocation",
+    dependencies.snapshots.nextVersion(subjectPropertyId, scope),
+  );
   const snapshotId = `property-snapshot-${globalThis.crypto.randomUUID()}`;
   let property: SubjectProperty;
   try {
-    property = await dependencies.provider.retrieve(candidate, {
-      subjectPropertyId,
-      snapshotId,
-      snapshotVersion: version,
-      retrievedAt: now,
-      requestedAddressKey: address.key,
-    });
+    property = await settle(
+      "property-detail retrieval and mapping",
+      dependencies.provider.retrieve(candidate, {
+        subjectPropertyId,
+        snapshotId,
+        snapshotVersion: version,
+        retrievedAt: now,
+        requestedAddressKey: address.key,
+      }),
+    );
     dependencies.diagnostic?.("property-detail-mapping", "completed");
   } catch (error) {
     dependencies.diagnostic?.("property-detail-mapping", "failed");
@@ -124,13 +159,35 @@ export async function lookupSubjectProperty(
     expiresAt: new Date(now.getTime() + (dependencies.snapshotTtlDays ?? 7) * 24 * 60 * 60 * 1_000),
   });
   try {
-    await dependencies.snapshots.save(snapshot);
+    await settle("canonical persistence", dependencies.snapshots.save(snapshot));
     dependencies.diagnostic?.("canonical-persistence", "completed", { snapshotVersion: version });
   } catch (error) {
     dependencies.diagnostic?.("canonical-persistence", "failed", { snapshotVersion: version });
     throw error;
   }
   return property;
+}
+
+function settleWithin<T>(
+  promise: Promise<T>,
+  operation: string,
+  timeoutMs: number,
+): Promise<T> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return Promise.reject(new SubjectPropertyOperationTimeoutError(operation, timeoutMs));
+  }
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    promise,
+    new Promise<never>((_resolve, reject) => {
+      timeout = setTimeout(
+        () => reject(new SubjectPropertyOperationTimeoutError(operation, timeoutMs)),
+        timeoutMs,
+      );
+    }),
+  ]).finally(() => {
+    if (timeout) clearTimeout(timeout);
+  });
 }
 
 function normalizeInput(input: string | MarketPropertyLookupAddress): { display: string; key: string } {

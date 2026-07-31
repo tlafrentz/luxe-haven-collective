@@ -86,6 +86,8 @@ export async function resolveInvestmentMarketContextAtRuntime(
     providerVersion: "airroi-api.v1",
     enabled: config.enabled,
     propertySnapshotTtlDays: config.propertySnapshotTtlDays,
+    subjectPropertyOperationTimeoutMs: config.timeoutMs,
+    subjectResolutionTimeoutMs: Math.max(config.timeoutMs * 2, 20_000),
     marketSnapshotTtlDays: config.marketSnapshotTtlDays,
     telemetry,
     classifyMarketFailure: classifyAirRoiMarketFailure,

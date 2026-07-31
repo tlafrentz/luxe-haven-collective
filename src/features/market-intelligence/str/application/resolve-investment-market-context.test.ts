@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { InMemoryPropertySnapshotRepository } from "../../infrastructure/property-snapshot-repository";
 import { mapRealtyApiProperty } from "../../infrastructure/realtyapi/mapper";
-import type { PropertySnapshot } from "../../domain/subject-property";
+import type { PropertySnapshot, PropertySnapshotRepository } from "../../domain/subject-property";
 import { InMemoryStrMarketSnapshotRepository } from "../infrastructure/str-market-snapshot-repository";
 import { resolveInvestmentMarketContext } from "./resolve-investment-market-context";
 
@@ -357,6 +357,108 @@ describe("resolveInvestmentMarketContext", () => {
         code: "timed-out",
         classification: "SUBJECT_PROPERTY_RESOLUTION_FAILED",
       });
+  });
+
+  it.each([
+    "fresh-snapshot lookup",
+    "autocomplete",
+    "latest-snapshot lookup",
+    "snapshot-version allocation",
+    "property-detail retrieval and mapping",
+    "canonical persistence",
+  ] as const)(
+    "settles the parent workflow deadline when %s never settles",
+    async (boundary) => {
+      const recorded = eventRecorder();
+      const never = () => new Promise<never>(() => {});
+      const base = new InMemoryPropertySnapshotRepository();
+      const propertySnapshots: PropertySnapshotRepository = {
+        findById: base.findById.bind(base),
+        findFreshByAddress: boundary === "fresh-snapshot lookup"
+          ? never
+          : base.findFreshByAddress.bind(base),
+        findLatestByAddress: boundary === "latest-snapshot lookup"
+          ? never
+          : base.findLatestByAddress.bind(base),
+        nextVersion: boundary === "snapshot-version allocation"
+          ? never
+          : base.nextVersion.bind(base),
+        save: boundary === "canonical persistence"
+          ? never
+          : base.save.bind(base),
+      };
+      const propertyProvider = {
+        search: boundary === "autocomplete"
+          ? never
+          : vi.fn(async () => [{ providerPropertyId: "realty-1", formattedAddress: address }]),
+        retrieve: boundary === "property-detail retrieval and mapping"
+          ? never
+          : vi.fn(async (
+            _candidate: unknown,
+            context: { snapshotId: string },
+          ) => subject(context.snapshotId)),
+      };
+      const startedAt = Date.now();
+
+      await expect(resolveInvestmentMarketContext({
+        ownerId: "owner-1",
+        workspaceId: "workspace-1",
+        address,
+        property: {},
+        correlationId: `property-sync:never-${boundary}`,
+        requestedAt: now,
+        forceRefresh: boundary !== "fresh-snapshot lookup",
+      }, {
+        propertyProvider,
+        propertySnapshots,
+        marketProvider: { retrieve: vi.fn() },
+        marketSnapshots: new InMemoryStrMarketSnapshotRepository(),
+        providerVersion: "airroi-api.v1",
+        enabled: true,
+        subjectPropertyOperationTimeoutMs: 1_000,
+        subjectResolutionTimeoutMs: 15,
+        telemetry: recorded.telemetry,
+      })).rejects.toMatchObject({
+        name: "SubjectPropertyResolutionDeadlineError",
+        code: "timed-out",
+      });
+
+      expect(Date.now() - startedAt).toBeLessThan(500);
+      expectSingleTerminal(recorded.events, "market_snapshot_resolution_failed");
+      expect(recorded.events.map(({ event }) => event)).not.toContain("airroi_request_started");
+      expect(recorded.events.at(-1)).toMatchObject({
+        event: "market_snapshot_resolution_boundary_exited",
+        attributes: expect.objectContaining({ terminalEmitted: true }),
+      });
+    },
+  );
+
+  it("settles successfully when telemetry throws", async () => {
+    const properties = new InMemoryPropertySnapshotRepository();
+    await properties.save(propertySnapshot());
+
+    await expect(resolveInvestmentMarketContext({
+      ownerId: "owner-1",
+      workspaceId: "workspace-1",
+      address,
+      property: {},
+      correlationId: "property-sync:telemetry-failure",
+      requestedAt: now,
+    }, {
+      propertyProvider: { search: vi.fn(), retrieve: vi.fn() },
+      propertySnapshots: properties,
+      marketSnapshots: new InMemoryStrMarketSnapshotRepository(),
+      providerVersion: "airroi-api.v1",
+      enabled: false,
+      telemetry: {
+        emit() {
+          throw new Error("telemetry unavailable");
+        },
+      },
+    })).resolves.toMatchObject({
+      source: "manual-fallback",
+      subjectProperty: expect.any(Object),
+    });
   });
 
   it("emits one failed terminal event when the property provider is absent", async () => {
