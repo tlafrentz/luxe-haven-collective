@@ -53,6 +53,34 @@ describe("lookupSubjectProperty", () => {
     expect(first.snapshotVersion).toBe(1);
   });
 
+  it("preserves the latest valid snapshot when detail retrieval fails during refresh", async () => {
+    const test = harness();
+    const dependencies = {
+      provider: test.provider,
+      snapshots: test.snapshots,
+      now: () => new Date("2026-07-29T12:00:00Z"),
+      createId: () => "stable-id",
+    };
+    const existing = await lookupSubjectProperty({ address, ...scope }, dependencies);
+    const failingProvider = {
+      search: vi.fn(async () => [{ providerPropertyId: "987654321", formattedAddress: address }]),
+      retrieve: vi.fn(async () => { throw new Error("detail mapping failed"); }),
+    };
+
+    await expect(lookupSubjectProperty(
+      { address, ...scope, refresh: true },
+      { ...dependencies, provider: failingProvider },
+    )).rejects.toThrow("detail mapping failed");
+
+    await expect(test.snapshots.findLatestByAddress(
+      "650 s main st fort worth tx 76104",
+      scope,
+    )).resolves.toMatchObject({
+      version: 1,
+      property: existing,
+    });
+  });
+
   it("returns candidates rather than guessing when lookup is ambiguous", async () => {
     const test = harness({ suggestions: [
       { property_id: "111", display_name: address },

@@ -72,24 +72,21 @@ export class RealtyApiClient {
     const url = new URL(`${this.baseUrl}${path}`);
     for (const [key, value] of Object.entries(parameters)) url.searchParams.set(key, String(value));
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      const response = await this.fetchImplementation(url, {
-        method: "GET",
-        headers: { Accept: "application/json", "x-realtyapi-key": this.apiKey },
-        signal: controller.signal,
-      });
-      if (!response.ok) throw await responseError(response);
-      try {
-        return await response.json() as T;
-      } catch (cause) {
-        throw new RealtyApiError({
-          code: ProviderErrorCode.InvalidResponse,
-          message: "RealtyAPI returned invalid JSON.",
-          statusCode: response.status,
-          cause,
-        });
-      }
+      return await Promise.race([
+        this.fetchAndParse<T>(url, controller.signal),
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(() => {
+            controller.abort();
+            reject(new RealtyApiError({
+              code: ProviderErrorCode.TimedOut,
+              message: "RealtyAPI request timed out.",
+              retryable: true,
+            }));
+          }, this.timeoutMs);
+        }),
+      ]);
     } catch (error) {
       if (error instanceof RealtyApiError) throw error;
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -107,7 +104,26 @@ export class RealtyApiClient {
         cause: error,
       });
     } finally {
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
+    }
+  }
+
+  private async fetchAndParse<T>(url: URL, signal: AbortSignal): Promise<T> {
+    const response = await this.fetchImplementation(url, {
+      method: "GET",
+      headers: { Accept: "application/json", "x-realtyapi-key": this.apiKey },
+      signal,
+    });
+    if (!response.ok) throw await responseError(response);
+    try {
+      return await response.json() as T;
+    } catch (cause) {
+      throw new RealtyApiError({
+        code: ProviderErrorCode.InvalidResponse,
+        message: "RealtyAPI returned invalid JSON.",
+        statusCode: response.status,
+        cause,
+      });
     }
   }
 }

@@ -316,6 +316,49 @@ describe("resolveInvestmentMarketContext", () => {
       });
   });
 
+  it("terminates a property-detail timeout without invoking AirROI", async () => {
+    const recorded = eventRecorder();
+    const timedOut = Object.assign(new Error("RealtyAPI request timed out."), {
+      name: "RealtyApiError",
+      code: "timed-out",
+    });
+    const marketRetrieve = vi.fn();
+
+    await expect(resolveInvestmentMarketContext({
+      ownerId: "owner-1", workspaceId: "workspace-1", address, property: {},
+      correlationId: "property-sync:detail-timeout", requestedAt: now, forceRefresh: true,
+    }, {
+      propertyProvider: {
+        search: vi.fn(async () => [{ providerPropertyId: "realty-1", formattedAddress: address }]),
+        retrieve: vi.fn(async () => { throw timedOut; }),
+      },
+      propertySnapshots: new InMemoryPropertySnapshotRepository(),
+      marketProvider: { retrieve: marketRetrieve },
+      marketSnapshots: new InMemoryStrMarketSnapshotRepository(),
+      providerVersion: "airroi-api.v1",
+      enabled: true,
+      telemetry: recorded.telemetry,
+    })).rejects.toBe(timedOut);
+
+    expect(recorded.events.map(({ event }) => event)).toEqual(expect.arrayContaining([
+      "subject_property_candidate_selection_completed",
+      "subject_property_property_detail_mapping_failed",
+      "subject_property_resolution_failed",
+      "market_snapshot_resolution_failed",
+      "market_snapshot_resolution_boundary_exited",
+    ]));
+    expect(recorded.events.map(({ event }) => event)).not.toContain("airroi_request_started");
+    expectSingleTerminal(recorded.events, "market_snapshot_resolution_failed");
+    expect(recorded.events.find(({ event }) => event === "market_snapshot_resolution_failed")?.attributes)
+      .toMatchObject({
+        correlationId: "property-sync:detail-timeout",
+        stage: "subject-property-loading",
+        errorName: "RealtyApiError",
+        code: "timed-out",
+        classification: "SUBJECT_PROPERTY_RESOLUTION_FAILED",
+      });
+  });
+
   it("emits one failed terminal event when the property provider is absent", async () => {
     const recorded = eventRecorder();
 

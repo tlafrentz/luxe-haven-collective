@@ -67,4 +67,37 @@ describe("RealtyApiClient", () => {
     await expect(client.getDetailsByAddress("7825 Gaston Ave"))
       .rejects.toMatchObject({ code: ProviderErrorCode.TimedOut, retryable: true });
   });
+
+  it("settles at the deadline when fetch ignores AbortController", async () => {
+    const fetchImplementation = vi.fn(() => new Promise<Response>(() => {}));
+    const client = new RealtyApiClient({
+      apiKey: "secret-never-log",
+      timeoutMs: 5,
+      fetchImplementation,
+    });
+
+    await expect(client.getDetailsByAddress("7825 Gaston Ave"))
+      .rejects.toMatchObject({
+        name: "RealtyApiError",
+        code: ProviderErrorCode.TimedOut,
+        message: "RealtyAPI request timed out.",
+        retryable: true,
+      });
+  });
+
+  it("sanitizes network failures", async () => {
+    const client = new RealtyApiClient({
+      apiKey: "secret-never-log",
+      fetchImplementation: vi.fn(async () => {
+        throw new Error("connect ECONNRESET https://secret-never-log@provider.invalid");
+      }),
+    });
+
+    await expect(client.getDetailsByAddress("7825 Gaston Ave"))
+      .rejects.toMatchObject({
+        code: ProviderErrorCode.RequestFailed,
+        message: "RealtyAPI request failed.",
+        retryable: true,
+      });
+  });
 });
