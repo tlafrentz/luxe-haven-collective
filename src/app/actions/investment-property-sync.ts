@@ -371,5 +371,32 @@ function recordPropertySyncStageDiagnostic(
     ...(typeof attributes.hasRevenueEstimate === "boolean"
       ? { hasRevenueEstimate: attributes.hasRevenueEstimate }
       : {}),
+    ...(typeof attributes.configured === "boolean"
+      ? { configured: attributes.configured }
+      : {}),
+    ...(typeof attributes.featureEnabled === "boolean"
+      ? { featureEnabled: attributes.featureEnabled }
+      : {}),
+    ...(typeof attributes.providerConfigured === "boolean"
+      ? { providerConfigured: attributes.providerConfigured }
+      : {}),
+    ...(typeof attributes.propertyApiKeyConfigured === "boolean"
+      ? { propertyApiKeyConfigured: attributes.propertyApiKeyConfigured }
+      : {}),
+    ...(typeof attributes.marketApiKeyConfigured === "boolean"
+      ? { marketApiKeyConfigured: attributes.marketApiKeyConfigured }
+      : {}),
+    ...(typeof attributes.propertyProviderConfigured === "boolean"
+      ? { propertyProviderConfigured: attributes.propertyProviderConfigured }
+      : {}),
+    ...(typeof attributes.marketProviderConfigured === "boolean"
+      ? { marketProviderConfigured: attributes.marketProviderConfigured }
+      : {}),
+    ...(typeof attributes.reasonCode === "string"
+      ? { reasonCode: attributes.reasonCode }
+      : {}),
+    ...(typeof attributes.limitationCode === "string"
+      ? { limitationCode: attributes.limitationCode }
+      : {}),
   }));
 }

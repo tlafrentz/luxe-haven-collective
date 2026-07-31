@@ -1,0 +1,53 @@
+Vercel CLI 58.4.0 (Node.js 24.18.0)
+Retrieving project…
+Finding latest production deployment
+Streaming logs for latest production deployment dpl_Nu4qTcehyFdTXobhDCDMMECkdW8o starting from 22:55:41.95
+
+waiting for new logs...
+22:55:51.25  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"str_runtime_repository_construction_started","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"str_runtime_repository_construction_started"}
+
+waiting for new logs...
+22:55:51.25  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"str_runtime_repository_construction_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"str_runtime_repository_construction_completed"}
+
+waiting for new logs...
+22:55:51.26  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"str_runtime_feature_flag_evaluation_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"str_runtime_feature_flag_evaluation_completed"}
+
+waiting for new logs...
+22:55:51.26  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"str_runtime_provider_construction_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"str_runtime_provider_construction_completed"}
+
+waiting for new logs...
+22:55:51.26  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"market_snapshot_resolution_started","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"market_snapshot_resolution_started"}
+
+waiting for new logs...
+22:55:51.26  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"subject_property_autocomplete_started","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"subject_property_autocomplete_started"}
+
+waiting for new logs...
+22:55:51.48  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"subject_property_autocomplete_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"subject_property_autocomplete_completed"}
+
+waiting for new logs...
+22:55:51.48  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"subject_property_candidate_selection_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"subject_property_candidate_selection_completed"}
+
+waiting for new logs...
+22:55:52.04  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"subject_property_property_detail_mapping_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"subject_property_property_detail_mapping_completed"}
+
+waiting for new logs...
+WARNING! Exceeded query duration limit of 5 minutes
+

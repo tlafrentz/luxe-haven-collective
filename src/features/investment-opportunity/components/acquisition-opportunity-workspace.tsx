@@ -16,12 +16,16 @@ import { AcquisitionCommercialWorkspace, isCommercialActionType } from "./acquis
 import { AcquisitionDueDiligenceWorkspace, isDiligenceActionType } from "./acquisition-due-diligence-workspace";
 import { AcquisitionClosingWorkspace, isClosingActionType } from "./acquisition-closing-workspace";
 import { AcquisitionActivityWorkspace } from "./acquisition-activity-workspace";
+import type { buildInvestmentReportView } from "@/features/investment-reports";
 
-export function AcquisitionOpportunityWorkspace({ workspace }: { workspace: AcquisitionWorkspace }) {
+type InvestmentReportView = ReturnType<typeof buildInvestmentReportView>;
+
+export function AcquisitionOpportunityWorkspace({ workspace, reports = [] }: { workspace: AcquisitionWorkspace; reports?: readonly InvestmentReportView[] }) {
   const acquisition = workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? workspace.acquisition : null;
   return <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
     <WorkspaceBreadcrumb opportunityName={workspace.opportunity.name} />
     <OpportunityWorkspaceHeader opportunity={workspace.opportunity} acquisition={acquisition} />
+    <ReportDecisionWorkspace reports={reports} opportunityId={workspace.opportunity.id} />
     {workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal"
       ? <AcquisitionLifecycleExperience workspace={workspace} />
       : null}
@@ -53,6 +57,18 @@ export function AcquisitionOpportunityWorkspace({ workspace }: { workspace: Acqu
       <NextActionsCard actions={workspace.status === "pipeline-active" ? workspace.nextActions.filter(action => action.priority !== "primary") : workspace.nextActions} capabilities={workspace.capabilities} />
     </> : null}
   </main>;
+}
+
+function ReportDecisionWorkspace({ reports, opportunityId }: { reports: readonly InvestmentReportView[]; opportunityId: string }) {
+  const latest = reports[0];
+  return <section aria-labelledby="report-decision-heading" className="space-y-4">
+    <div><h2 id="report-decision-heading" className="text-xl font-semibold text-stone-950">Immutable decision reports</h2><p className="mt-1 text-sm text-stone-500">The latest decision is prominent; every earlier report remains directly accessible and unchanged.</p></div>
+    {latest ? <Card className="border-stone-300 p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"><div><div className="flex flex-wrap gap-2"><Badge tone="success">Latest report</Badge><Badge>{latest.status === "archived" ? "Archived report" : "Active report"}</Badge><Badge>{routeLabel(latest.strategy)}</Badge></div><h3 className="mt-4 text-2xl font-semibold text-stone-950">{latest.title}</h3><p className="mt-2 text-sm text-stone-500">Analysis {latest.snapshot.lineage.analysisVersion} · Generated {dateTime(new Date(latest.generatedAt))}</p></div><Link href={`/dashboard/investments/reports/${latest.id}`} className="inline-flex min-h-11 items-center justify-center rounded-full bg-stone-950 px-5 text-sm font-semibold text-white">Open latest report</Link></div>
+      <dl className="mt-6 grid gap-5 border-t border-stone-100 pt-5 sm:grid-cols-4"><Fact term="Recommendation" value={label(latest.recommendation)} /><Fact term="Score" value={`${latest.score}/${latest.scoreMaximum}`} /><Fact term="Confidence" value={label(latest.confidence)} /><Fact term="Readiness" value={latest.decisionReadiness} /></dl>
+      {reports.length > 1 ? <div className="mt-6 border-t border-stone-100 pt-5"><h3 className="text-sm font-semibold text-stone-900">Historical reports</h3><ul className="mt-3 divide-y divide-stone-100">{reports.slice(1).map(report => <li key={report.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span><span className="block text-sm font-semibold text-stone-800">Analysis {report.snapshot.lineage.analysisVersion} · {label(report.recommendation)}</span><span className="mt-1 block text-xs text-stone-500">{dateTime(new Date(report.generatedAt))} · {label(report.status)}</span></span><Link href={`/dashboard/investments/reports/${report.id}`} className="text-sm font-semibold text-stone-900 underline">Open report</Link></li>)}</ul></div> : null}
+    </Card> : <Card className="border-dashed p-6"><p className="font-semibold text-stone-900">No immutable report yet</p><p className="mt-2 text-sm leading-6 text-stone-600">Complete and save an analysis, then generate its report to preserve the decision at that exact analysis version.</p><Link href={`/dashboard/investments/new?opportunity=${opportunityId}&mode=reanalyze`} className="mt-4 inline-flex text-sm font-semibold text-stone-950 underline">Analyze opportunity</Link></Card>}
+  </section>;
 }
 
 function WorkspaceBreadcrumb({ opportunityName }: { opportunityName: string }) {

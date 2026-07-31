@@ -13,10 +13,11 @@ describe("Investment Intelligence overview", () => {
     expect(html).toContain("Saved Scenarios");
     expect(html).toContain("12 Saved Scenarios");
     expect(html).toContain("No active analysis");
-    expect(html).toContain("Recent Drafts");
+    expect(html).toContain("Recent Opportunities");
     expect(html).not.toContain('href="/dashboard/investments/reports"');
     expect(html).not.toContain("Soon");
-    expect(html).toContain("No drafts yet");
+    expect(html).toContain("No opportunities yet");
+    expect((html.match(/Start New Analysis/g) ?? [])).toHaveLength(1);
   });
 
   it("keeps actions available when recent opportunities fail", () => {

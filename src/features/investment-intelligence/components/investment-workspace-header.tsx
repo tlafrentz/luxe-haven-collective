@@ -1,26 +1,47 @@
+"use client";
+
+import { RotateCcw } from "lucide-react";
+
+import { useInvestmentWorkspaceState } from "./investment-workspace-state";
+
 export function InvestmentWorkspaceHeader() {
+  const { values, draftPersistence, clearDraft } = useInvestmentWorkspaceState();
+  const strategy = values.acquisitionType === "purchase" ? "Purchase" : "Rental Arbitrage";
+
+  const startOver = () => {
+    if (!window.confirm("Start over with a new draft? Unsaved inputs in this current draft will be cleared. Saved scenarios, opportunities, analysis versions, reports, exports, and shares will not be changed.")) return;
+    clearDraft();
+    const url = new URL(window.location.href);
+    url.searchParams.delete("step");
+    url.searchParams.delete("strategy");
+    window.history.pushState({}, "", url);
+  };
+
   return (
     <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500">
-          Investment Intelligence
-        </p>
-
-        <h1 className="mt-2 max-w-4xl text-3xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">
-          Evaluate the acquisition before committing capital.
-        </h1>
-
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral-600">
-          Model the property, operating plan, market position,
-          financial performance, risks, and supporting evidence
-          behind an explainable acquisition recommendation.
-        </p>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500">Investment Workspace</p>
+        <h1 className="mt-2 max-w-4xl text-3xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">Build an investment decision you can preserve.</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral-600">Move from strategy and assumptions to an immutable analysis, report, export, and controlled share.</p>
       </div>
-
-      <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800">
-        <span className="h-2 w-2 rounded-full bg-amber-500" />
-        Acquisition workspace
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <div aria-live="polite" className="text-right text-xs text-neutral-600">
+          <p className="font-semibold text-neutral-900">{strategy} draft</p>
+          <p>{draftStatus(draftPersistence)}</p>
+        </div>
+        <button type="button" onClick={startOver} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+          <RotateCcw aria-hidden="true" className="h-4 w-4" /> Start over
+        </button>
       </div>
     </header>
   );
+}
+
+function draftStatus(state: ReturnType<typeof useInvestmentWorkspaceState>["draftPersistence"]) {
+  if (state.status === "restoring") return "Restoring saved draft…";
+  if (state.status === "saving") return "Saving draft…";
+  if (state.status === "failed") return "Draft could not be saved. You can continue editing.";
+  if (state.status === "unavailable") return "This analysis is not stored as a draft.";
+  if (state.savedAt) return `Saved ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(state.savedAt)}`;
+  return "Draft ready";
 }

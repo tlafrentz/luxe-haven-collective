@@ -67,6 +67,8 @@ type InvestmentWorkspaceState = Readonly<{
   overrideStrAssumption: (key: keyof MarketAssumptionSelections, value: number) => void;
   restoreStrAssumption: (key: keyof MarketAssumptionSelections) => void;
   analyzeInvestment: () => Promise<void>;
+  draftPersistence: Readonly<{ status: "restoring" | "saving" | "saved" | "failed" | "unavailable"; savedAt: Date | null }>;
+  clearDraft: () => void;
 }>;
 
 export const DEFAULT_INVESTMENT_WORKSPACE_VALUES: InvestmentWorkspaceValues = {
@@ -84,8 +86,12 @@ export const DEFAULT_INVESTMENT_WORKSPACE_VALUES: InvestmentWorkspaceValues = {
 
 const InvestmentWorkspaceContext = createContext<InvestmentWorkspaceState | null>(null);
 
-export function InvestmentWorkspaceStateProvider({ children, initialValues, initialMarketContext }: { children: ReactNode; initialValues?: Partial<InvestmentWorkspaceValues>; initialMarketContext?: InvestmentAnalysisMarketContext }) {
+const DRAFT_SCHEMA_VERSION = "investment-workspace-draft.v1";
+
+export function InvestmentWorkspaceStateProvider({ children, initialValues, initialMarketContext, draftScope }: { children: ReactNode; initialValues?: Partial<InvestmentWorkspaceValues>; initialMarketContext?: InvestmentAnalysisMarketContext; draftScope?: string }) {
   const [values, setWorkspaceValues] = useState<InvestmentWorkspaceValues>({ ...DEFAULT_INVESTMENT_WORKSPACE_VALUES, ...initialValues });
+  const [draftReady, setDraftReady] = useState(!draftScope || Boolean(initialValues));
+  const [draftPersistence, setDraftPersistence] = useState<InvestmentWorkspaceState["draftPersistence"]>({ status: draftScope ? "restoring" : "unavailable", savedAt: null });
   const [result, setResult] = useState<Extract<Awaited<ReturnType<typeof analyzeInvestmentWorkspace>>, { ok: true }>["result"] | null>(null);
   const [analysisSaveToken, setAnalysisSaveToken] = useState<string | null>(null);
   const [analyzedAt, setAnalyzedAt] = useState<Date | null>(null);
@@ -99,6 +105,47 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues, init
   const [strMarketContext] = useState<InvestmentAnalysisMarketContext | null>(initialMarketContext ?? null);
   const [strAssumptions, setStrAssumptions] = useState<MarketAssumptionSelections | null>(() => initialMarketContext?.snapshot ? proposeMarketAssumptions(initialMarketContext.snapshot) : null);
   const requestSequence = useRef(0);
+  const draftKey = draftScope ? `luxe-haven:${DRAFT_SCHEMA_VERSION}:${draftScope}` : null;
+
+  useEffect(() => {
+    if (!draftKey || !draftScope || initialValues) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem(draftKey);
+        if (raw) {
+          const stored = JSON.parse(raw) as { schemaVersion?: string; ownerScope?: string; savedAt?: string; values?: Partial<InvestmentWorkspaceValues> };
+          if (stored.schemaVersion === DRAFT_SCHEMA_VERSION && stored.ownerScope === draftScope && stored.values && isDraftValues(stored.values)) {
+            setWorkspaceValues({ ...DEFAULT_INVESTMENT_WORKSPACE_VALUES, ...stored.values });
+            setDraftPersistence({ status: "saved", savedAt: stored.savedAt ? new Date(stored.savedAt) : null });
+          } else {
+            window.localStorage.removeItem(draftKey);
+            setDraftPersistence({ status: "failed", savedAt: null });
+          }
+        } else {
+          setDraftPersistence({ status: "saved", savedAt: null });
+        }
+      } catch {
+        setDraftPersistence({ status: "failed", savedAt: null });
+      } finally {
+        setDraftReady(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [draftKey, draftScope, initialValues]);
+
+  useEffect(() => {
+    if (!draftKey || !draftScope || !draftReady) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const savedAt = new Date();
+        window.localStorage.setItem(draftKey, JSON.stringify({ schemaVersion: DRAFT_SCHEMA_VERSION, ownerScope: draftScope, savedAt: savedAt.toISOString(), values }));
+        setDraftPersistence({ status: "saved", savedAt });
+      } catch {
+        setDraftPersistence(current => ({ ...current, status: "failed" }));
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [draftKey, draftScope, draftReady, values]);
   useEffect(() => {
     const restoreRouteFromHistory = () => {
       const route = new URL(window.location.href).searchParams.get("strategy");
@@ -112,13 +159,14 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues, init
 
   const setValues = useCallback<Dispatch<SetStateAction<InvestmentWorkspaceValues>>>((next) => {
     requestSequence.current += 1;
+    if (draftKey) setDraftPersistence(current => ({ ...current, status: "saving" }));
     setWorkspaceValues(next);
     setIsAnalysisStale(true);
     setAnalysisSaveToken(null);
     setAnalysisError(null);
     setPropertyAlternatives([]);
     setStage("setup");
-  }, []);
+  }, [draftKey]);
   const setAcquisitionType = useCallback((acquisitionType: AcquisitionType) => {
     if (acquisitionType === values.acquisitionType) return;
     const plan = buildStrategyTransitionPlan(values, acquisitionType, DEFAULT_INVESTMENT_WORKSPACE_VALUES, result !== null);
@@ -203,6 +251,17 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues, init
     setIsAnalysisStale(false);
   }, [isReadyForAnalysis, values, strMarketContext]);
 
+  const clearDraft = useCallback(() => {
+    requestSequence.current += 1;
+    if (draftKey) {
+      try { window.localStorage.removeItem(draftKey); } catch { /* The in-memory draft can still be cleared. */ }
+    }
+    setWorkspaceValues(DEFAULT_INVESTMENT_WORKSPACE_VALUES);
+    setResult(null); setAnalysisId(null); setAnalysisSaveToken(null); setAnalyzedAt(null); setExpiresAt(null);
+    setStage("setup"); setIsAnalysisStale(false); setAnalysisError(null); setPropertyAlternatives([]); setPendingStrategyTransition(null);
+    setDraftPersistence({ status: draftKey ? "saved" : "unavailable", savedAt: null });
+  }, [draftKey]);
+
   const currentAnalysis = useMemo<CurrentInvestmentAnalysisState>(() => {
     if (analysisError) return { status: "failed", error: analysisError };
     if (stage === "resolving-property" || stage === "running-market-analysis" || stage === "running-investment-analysis") return { status: "running" };
@@ -233,10 +292,17 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues, init
     analyzedAt,
     hasStaleAnalysis: result !== null && isAnalysisStale,
     isAnalyzing: stage === "resolving-property" || stage === "running-market-analysis" || stage === "running-investment-analysis",
-    analysisError, lifecycle, currentAnalysis, strMarketContext, strAssumptions, acceptStrAssumption, overrideStrAssumption, restoreStrAssumption, analyzeInvestment,
-  }), [values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, lifecycle, currentAnalysis, strMarketContext, strAssumptions, acceptStrAssumption, overrideStrAssumption, restoreStrAssumption, analyzeInvestment]);
+    analysisError, lifecycle, currentAnalysis, strMarketContext, strAssumptions, acceptStrAssumption, overrideStrAssumption, restoreStrAssumption, analyzeInvestment, draftPersistence, clearDraft,
+  }), [values, setValues, setAcquisitionType, pendingStrategyTransition, confirmStrategyTransition, cancelStrategyTransition, readinessGroups, completedReadinessCount, totalReadinessCount, isReadyForAnalysis, stage, result, analysisSaveToken, analyzedAt, propertyAlternatives, isAnalysisStale, analysisError, lifecycle, currentAnalysis, strMarketContext, strAssumptions, acceptStrAssumption, overrideStrAssumption, restoreStrAssumption, analyzeInvestment, draftPersistence, clearDraft]);
 
   return <InvestmentWorkspaceContext.Provider value={contextValue}>{children}</InvestmentWorkspaceContext.Provider>;
+}
+
+function isDraftValues(values: Partial<InvestmentWorkspaceValues>): boolean {
+  return (values.acquisitionType === AcquisitionType.Purchase || values.acquisitionType === AcquisitionType.RentalArbitrage)
+    && (values.address1 === undefined || typeof values.address1 === "string")
+    && (values.projectedAdr === undefined || typeof values.projectedAdr === "number")
+    && (values.projectedOccupancyPercentage === undefined || typeof values.projectedOccupancyPercentage === "number");
 }
 
 function buildInvestmentInput(values: InvestmentWorkspaceValues): RunInvestmentAnalysisCommand {

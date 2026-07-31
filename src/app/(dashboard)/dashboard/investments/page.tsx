@@ -1,6 +1,7 @@
 import { loadInvestmentOverviewPageData } from "@/app/actions/investment-overview-query";
 import { InvestmentIntelligenceOverview } from "@/features/investment-intelligence/components/investment-intelligence-overview";
 import { redirect } from "next/navigation";
+import { getInvestmentOpportunityRequestContext } from "@/app/actions/investment-opportunity-runtime";
 
 export default async function InvestmentIntelligencePage({
   searchParams,
@@ -21,7 +22,7 @@ export default async function InvestmentIntelligencePage({
     redirect(`/dashboard/investments/new?${query}`);
   }
 
-  const result = await loadInvestmentOverviewPageData();
+  const [result, context] = await Promise.all([loadInvestmentOverviewPageData(), getInvestmentOpportunityRequestContext()]);
 
   if (!result.ok) {
     return <InvestmentIntelligenceOverview failed />;
@@ -31,6 +32,7 @@ export default async function InvestmentIntelligencePage({
     <InvestmentIntelligenceOverview
       view={result.view}
       scenarioCount={result.scenarioCount}
+      draftScope={context.ok ? context.actorId : undefined}
     />
   );
 }

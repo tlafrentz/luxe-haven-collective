@@ -14,11 +14,12 @@ export default async function InvestmentScenariosPage({ searchParams }: { search
   const { data: { user } } = await client.auth.getUser();
   if (!user) redirect("/login");
 
-  let request = client.from("investment_scenarios").select("*").order("updated_at", { ascending: false });
+  let request = client.from("investment_scenarios").select("*").order("updated_at", { ascending: false }).limit(50);
   const status = scalar(filters.status);
   const route = scalar(filters.route);
   const type = scalar(filters.type);
   const opportunity = scalar(filters.opportunity);
+  const search = scalar(filters.q).trim().toLocaleLowerCase();
   if (status === "active") request = request.neq("status", "archived");
   if (status === "archived") request = request.eq("status", "archived");
   if (type) request = request.eq("scenario_type", type);
@@ -37,7 +38,9 @@ export default async function InvestmentScenariosPage({ searchParams }: { search
   const sequenceById = new Map((analyses ?? []).map(item => [String(item.id), Number(item.sequence)]));
   const projected = rows.flatMap(row => {
     const parent = opportunityById.get(String(row.opportunity_id));
-    if (!parent || (route && String(parent.route) !== route)) return [];
+    const property = object(parent?.property_snapshot);
+    const searchable = `${String(row.name ?? "")} ${String(parent?.name ?? "")} ${String(property.displayAddress ?? property.display_address ?? "")}`.toLocaleLowerCase();
+    if (!parent || (route && String(parent.route) !== route) || (search && !searchable.includes(search))) return [];
     const preferred = String(parent.preferred_scenario_id ?? "") === String(row.scenario_id);
     if (scalar(filters.preferred) === "true" && !preferred) return [];
     return [{ row, parent, preferred }];
@@ -48,7 +51,8 @@ export default async function InvestmentScenariosPage({ searchParams }: { search
       <div><p className="eyebrow">Investment Intelligence</p><h1 className="mt-2 font-serif text-4xl text-stone-950">Saved Scenarios</h1><p className="mt-2 max-w-2xl text-sm text-stone-600">Persisted alternative assumptions and immutable calculation outputs retained for comparison and future reference.</p></div>
       <Link href="/dashboard/investments/opportunities" className="rounded-full bg-stone-950 px-5 py-2.5 text-sm font-semibold text-white">Opportunities</Link>
     </header>
-    <form className="grid gap-3 rounded-2xl border bg-white p-4 sm:grid-cols-5">
+    <form className="grid gap-3 rounded-2xl border bg-white p-4 sm:grid-cols-6">
+      <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Search<input name="q" defaultValue={scalar(filters.q)} placeholder="Scenario, property, or location" className="mt-1 block w-full rounded-xl border p-2 text-sm" /></label>
       <Filter name="status" label="Status" value={status} options={[["", "All"], ["active", "Active"], ["archived", "Archived"]]} />
       <Filter name="route" label="Route" value={route} options={[["", "All routes"], ["purchase", "Purchase"], ["rental-arbitrage", "Rental arbitrage"]]} />
       <Filter name="type" label="Scenario type" value={type} options={[["", "All types"], ["base", "Base"], ["cash-purchase", "Cash purchase"], ["rental-arbitrage", "Rental arbitrage"], ["seller-financing", "Seller financing"], ["custom", "Custom"]]} />
@@ -69,7 +73,7 @@ function ScenarioCard({ row, parent, preferred, sourceSequence }: { row: Row; pa
   const route = String(parent.route);
   return <Card className="p-6"><div className="flex items-start justify-between gap-3"><div><p className="eyebrow">{title(String(row.scenario_type))}</p><h2 className="mt-2 text-xl font-semibold">{String(row.name)}</h2><p className="mt-1 text-sm text-stone-500">{String(parent.name)} · {String(property.displayAddress ?? property.display_address ?? "Property address unavailable")}</p></div>{preferred ? <Badge tone="success">Preferred</Badge> : <Badge>{title(String(row.status))}</Badge>}</div>
     <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3"><Fact label="Route" value={title(route)} /><Fact label="Source" value={`Analysis ${sourceSequence ?? "—"}`} /><Fact label="Updated" value={date(String(row.updated_at))} /><Fact label="Annual revenue" value={money(amount(financials.projectedAnnualRevenue))} /><Fact label="NOI" value={money(amount(financials.netOperatingIncome))} /><Fact label="Annual cash flow" value={money(amount(financials.annualCashFlow))} />{route === "purchase" ? <><Fact label="Cap rate" value={percent(financials.capRate)} /><Fact label="Cash-on-cash" value={percent(financials.cashOnCashReturn)} /></> : <Fact label="Lease coverage" value={ratio(financials.leaseCoverageRatio ?? financials.leaseCoverage)} />}<Fact label="Recommendation" value={title(String(recommendation.recommendation ?? "Unavailable"))} /><Fact label="Confidence" value={title(String(confidence.level ?? "Unavailable"))} /></dl>
-    <div className="mt-5 flex flex-wrap items-center gap-4 text-sm font-semibold"><Link className="underline" href={`/dashboard/investments/opportunities/${String(row.opportunity_id)}/scenarios/${String(row.scenario_id)}`}>Open</Link><Link className="underline" href={`/dashboard/investments/opportunities/${String(row.opportunity_id)}/scenarios`}>Manage</Link>{parent.scenario_only === true ? <form action={convertScenarioToOpportunityAction}><input type="hidden" name="opportunityId" value={String(row.opportunity_id)} /><button className="rounded-full bg-stone-950 px-4 py-2 text-white">Convert to Opportunity</button></form> : <Badge tone="success">Opportunity</Badge>}</div></Card>;
+    <div className="mt-5 flex flex-wrap items-center gap-4 text-sm font-semibold"><Link className="rounded-full bg-stone-950 px-4 py-2 text-white" href={`/dashboard/investments/new?mode=reanalyze&opportunity=${String(row.opportunity_id)}&analysis=${String(row.source_analysis_version_id)}`}>Continue analysis</Link><Link className="underline" href={`/dashboard/investments/opportunities/${String(row.opportunity_id)}/scenarios/${String(row.scenario_id)}`}>Open or rename</Link><Link className="underline" href={`/dashboard/investments/opportunities/${String(row.opportunity_id)}/scenarios`}>Duplicate or manage</Link>{parent.scenario_only === true ? <form action={convertScenarioToOpportunityAction}><input type="hidden" name="opportunityId" value={String(row.opportunity_id)} /><button className="rounded-full border border-stone-950 px-4 py-2 text-stone-950">Promote to Opportunity</button></form> : <Badge tone="success">Opportunity</Badge>}</div></Card>;
 }
 function Filter({ name, label, value, options }: { name: string; label: string; value: string; options: readonly (readonly [string, string])[] }) { return <label className="text-xs font-semibold text-stone-600">{label}<select name={name} defaultValue={value} className="mt-1 block w-full rounded-xl border p-2 text-sm">{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>; }
 function Fact({ label, value }: { label: string; value: string }) { return <div><dt className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">{label}</dt><dd className="mt-1 text-sm font-semibold text-stone-800">{value}</dd></div>; }

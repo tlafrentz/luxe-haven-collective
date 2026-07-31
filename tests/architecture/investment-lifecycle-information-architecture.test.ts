@@ -24,7 +24,7 @@ describe("INV-UX-001 investment lifecycle information architecture", () => {
   it("promotes saved scenarios explicitly from the scenario workspace", () => {
     const scenarios = source("src/app/(dashboard)/dashboard/investments/scenarios/page.tsx");
     const workflow = source("src/app/actions/investment-opportunity-workflow.ts");
-    expect(scenarios).toContain("Convert to Opportunity");
+    expect(scenarios).toContain("Promote to Opportunity");
     expect(scenarios).toContain("convertScenarioToOpportunityAction");
     expect(workflow).toContain("scenario_only: false");
   });
@@ -45,16 +45,16 @@ describe("INV-UX-001 investment lifecycle information architecture", () => {
     expect(overview).not.toContain("Investment scope:");
   });
 
-  it("uses five navigable analysis pages without repeating the strategy selector", () => {
+  it("uses the canonical five-step analysis workflow with strategy first", () => {
     const workspace = source("src/features/investment-intelligence/components/investment-workspace.tsx");
     const pages = source("src/features/investment-intelligence/components/investment-analysis-step-pages.tsx");
     expect(workspace).toContain("InvestmentAnalysisStepPages");
     expect(workspace).not.toContain("AcquisitionSetup");
-    for (const label of ["Property", "Capital Structure", "Revenue & Operations", "Intelligence", "Decision Summary"]) {
+    for (const label of ["Strategy", "Property and Market", "Revenue and Operations", "Acquisition and Capital", "Review and Decision"]) {
       expect(pages).toContain(`label: "${label}"`);
     }
     expect(pages).toContain("Continue");
     expect(pages).toContain("Back");
-    expect(pages).not.toContain("AcquisitionTypeSelector");
+    expect(pages).toContain("AcquisitionTypeSelector");
   });
 });
