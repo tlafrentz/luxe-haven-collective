@@ -160,15 +160,16 @@ export async function resolveInvestmentMarketContext(
     });
 
     stage = "coordinate-validation";
-    const hasCoordinates =
-      subjectProperty.address.latitude.value !== null &&
-      subjectProperty.address.longitude.value !== null;
-    emit(
-      hasCoordinates
-        ? "str_coordinate_resolution_completed"
-        : "str_coordinate_resolution_failed",
-      { hasCoordinates },
-    );
+    const latitudeAvailable = subjectProperty.address.latitude.value !== null;
+    const longitudeAvailable = subjectProperty.address.longitude.value !== null;
+    const hasCoordinates = latitudeAvailable && longitudeAvailable;
+    emit("coordinates_validation_completed", {
+      stage,
+      snapshotVersion: subjectProperty.snapshotVersion,
+      latitudeAvailable,
+      longitudeAvailable,
+      coordinatesAvailable: hasCoordinates,
+    });
 
     stage = "market-provider-evaluation";
     emit("str_adapter_evaluation_completed", {
@@ -193,13 +194,22 @@ export async function resolveInvestmentMarketContext(
 
     stage = "market-query-construction";
     const query = buildStrMarketQuery(subjectProperty, { requestedAt: input.requestedAt });
-    emit("str_adapter_activation_completed", { provider: "airroi" });
+    emit("airroi_adapter_activated", {
+      stage: "adapter-activation",
+      snapshotVersion: subjectProperty.snapshotVersion,
+    });
     let cacheHit = false;
     let created = false;
     const serviceTelemetry: StrWorkflowTelemetry = {
       emit(event, attributes) {
         if (event === "str_market_snapshot_cache_hit") cacheHit = true;
         if (event === "str_market_snapshot_created") created = true;
+        if (event === "str_provider_invocation_started") {
+          emit("airroi_request_started", {
+            stage: "market-provider-request",
+            snapshotVersion: subjectProperty!.snapshotVersion,
+          });
+        }
         dependencies.telemetry?.emit(event, attributes);
       },
     };

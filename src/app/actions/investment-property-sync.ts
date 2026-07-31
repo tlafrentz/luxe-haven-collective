@@ -319,36 +319,15 @@ function recordPropertySyncDiagnostic(
 
 function recordPropertySyncStageDiagnostic(
   correlationId: string,
-  stage: string,
+  event: string,
   attributes: Readonly<Record<string, unknown>>,
 ): void {
   console.info(JSON.stringify({
-    event: "investment_property_sync_stage",
+    event,
     correlationId,
-    stage,
-    ...(typeof attributes.candidateCount === "number"
-      ? { candidateCount: attributes.candidateCount }
-      : {}),
-    ...(typeof attributes.compatibleCandidateCount === "number"
-      ? { compatibleCandidateCount: attributes.compatibleCandidateCount }
-      : {}),
+    stage: typeof attributes.stage === "string" ? attributes.stage : event,
     ...(typeof attributes.snapshotVersion === "number"
       ? { snapshotVersion: attributes.snapshotVersion }
-      : {}),
-    ...(typeof attributes.snapshotId === "string"
-      ? { snapshotId: attributes.snapshotId }
-      : {}),
-    ...(typeof attributes.provider === "string"
-      ? { provider: attributes.provider }
-      : {}),
-    ...(typeof attributes.operation === "string"
-      ? { operation: attributes.operation }
-      : {}),
-    ...(typeof attributes.attempt === "number"
-      ? { attempt: attributes.attempt }
-      : {}),
-    ...(typeof attributes.durationMs === "number"
-      ? { durationMs: attributes.durationMs }
       : {}),
     ...(typeof attributes.code === "string"
       ? { code: attributes.code }
@@ -356,50 +335,17 @@ function recordPropertySyncStageDiagnostic(
     ...(typeof attributes.errorName === "string"
       ? { errorName: attributes.errorName }
       : {}),
-    ...(typeof attributes.hasCoordinates === "boolean"
-      ? { hasCoordinates: attributes.hasCoordinates }
+    ...(typeof attributes.latitudeAvailable === "boolean"
+      ? { latitudeAvailable: attributes.latitudeAvailable }
       : {}),
-    ...(typeof attributes.hasRevenueEstimate === "boolean"
-      ? { hasRevenueEstimate: attributes.hasRevenueEstimate }
+    ...(typeof attributes.longitudeAvailable === "boolean"
+      ? { longitudeAvailable: attributes.longitudeAvailable }
       : {}),
-    ...(typeof attributes.eligibleComparableCount === "number"
-      ? { eligibleComparableCount: attributes.eligibleComparableCount }
-      : {}),
-    ...(typeof attributes.minimumComparableCount === "number"
-      ? { minimumComparableCount: attributes.minimumComparableCount }
-      : {}),
-    ...(typeof attributes.sufficientCoverage === "boolean"
-      ? { sufficientCoverage: attributes.sufficientCoverage }
-      : {}),
-    ...(typeof attributes.completeness === "string"
-      ? { completeness: attributes.completeness }
-      : {}),
-    ...(typeof attributes.limitationCode === "string"
-      ? { limitationCode: attributes.limitationCode }
-      : {}),
-    ...(typeof attributes.reasonCode === "string"
-      ? { reasonCode: attributes.reasonCode }
+    ...(typeof attributes.coordinatesAvailable === "boolean"
+      ? { coordinatesAvailable: attributes.coordinatesAvailable }
       : {}),
     ...(typeof attributes.classification === "string"
       ? { classification: attributes.classification }
-      : {}),
-    ...(typeof attributes.source === "string"
-      ? { source: attributes.source }
-      : {}),
-    ...(typeof attributes.featureEnabled === "boolean"
-      ? { featureEnabled: attributes.featureEnabled }
-      : {}),
-    ...(typeof attributes.providerConfigured === "boolean"
-      ? { providerConfigured: attributes.providerConfigured }
-      : {}),
-    ...(typeof attributes.cacheHit === "boolean"
-      ? { cacheHit: attributes.cacheHit }
-      : {}),
-    ...(typeof attributes.snapshotCreated === "boolean"
-      ? { snapshotCreated: attributes.snapshotCreated }
-      : {}),
-    ...(typeof attributes.terminalEmitted === "boolean"
-      ? { terminalEmitted: attributes.terminalEmitted }
       : {}),
   }));
 }

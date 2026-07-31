@@ -212,12 +212,18 @@ describe("resolveInvestmentMarketContext", () => {
     });
     expect(events).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        event: "str_coordinate_resolution_completed",
-        attributes: expect.objectContaining({ hasCoordinates: true }),
+        event: "coordinates_validation_completed",
+        attributes: expect.objectContaining({
+          latitudeAvailable: true,
+          longitudeAvailable: true,
+          coordinatesAvailable: true,
+        }),
       }),
       expect.objectContaining({
-        event: "str_adapter_activation_completed",
-        attributes: expect.objectContaining({ provider: "airroi" }),
+        event: "airroi_adapter_activated",
+      }),
+      expect.objectContaining({
+        event: "airroi_request_started",
       }),
       expect.objectContaining({
         event: "str_limitation_finalized",
@@ -235,6 +241,50 @@ describe("resolveInvestmentMarketContext", () => {
         errorName: "Error",
         classification: "STR_PROVIDER_UNAVAILABLE",
       });
+  });
+
+  it("continues from successful canonical persistence into awaited STR resolution", async () => {
+    const recorded = eventRecorder();
+    const retrieve = vi.fn(async (
+      _candidate: unknown,
+      context: { snapshotId: string },
+    ) => subject(context.snapshotId));
+    const marketRetrieve = vi.fn(async () => providerResult);
+
+    await resolveInvestmentMarketContext({
+      ownerId: "owner-1", workspaceId: "workspace-1", address, property: {},
+      correlationId: "correlation-handoff", requestedAt: now, forceRefresh: true,
+    }, {
+      propertyProvider: {
+        search: vi.fn(async () => [{ providerPropertyId: "realty-1", formattedAddress: address }]),
+        retrieve,
+      },
+      propertySnapshots: new InMemoryPropertySnapshotRepository(),
+      marketProvider: { retrieve: marketRetrieve },
+      marketSnapshots: new InMemoryStrMarketSnapshotRepository(),
+      providerVersion: "airroi-api.v1",
+      enabled: true,
+      telemetry: recorded.telemetry,
+    });
+
+    const sequence = recorded.events.map(({ event }) => event);
+    const required = [
+      "subject_property_property_detail_mapping_completed",
+      "subject_property_canonical_persistence_completed",
+      "coordinates_validation_completed",
+      "airroi_adapter_activated",
+      "airroi_request_started",
+      "market_snapshot_resolution_limited",
+    ];
+    expect(sequence.indexOf(required[0]!)).toBeGreaterThanOrEqual(0);
+    for (let index = 1; index < required.length; index += 1) {
+      expect(sequence.indexOf(required[index]!)).toBeGreaterThan(sequence.indexOf(required[index - 1]!));
+    }
+    expect(retrieve).toHaveBeenCalledOnce();
+    expect(marketRetrieve).toHaveBeenCalledOnce();
+    expect(recorded.events.find(({ event }) => event === "subject_property_canonical_persistence_completed")?.attributes)
+      .toMatchObject({ snapshotVersion: 1 });
+    expectSingleTerminal(recorded.events, "market_snapshot_resolution_limited");
   });
 
   it("emits one failed terminal event when subject loading throws", async () => {
