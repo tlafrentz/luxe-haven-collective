@@ -105,6 +105,7 @@ export async function resolveInvestmentMarketContext(
   };
   const errorDetails = (error: unknown, classification: string) => ({
     errorName: error instanceof Error ? error.name : "UnknownError",
+    ...(error instanceof Error ? { errorMessage: error.message } : {}),
     ...(typeof error === "object" && error !== null && "code" in error &&
       typeof error.code === "string" ? { code: error.code } : {}),
     classification,

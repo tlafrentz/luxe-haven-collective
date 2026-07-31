@@ -57,6 +57,7 @@ async function build(input: GetStrMarketIntelligenceInput, created: Date, depend
     telemetry.emit("str_provider_invocation_failed", {
       correlationId,
       errorName: error instanceof Error ? error.name : "UnknownError",
+      ...(error instanceof Error ? { errorMessage: error.message } : {}),
       ...(typeof error === "object" && error !== null && "code" in error &&
         typeof error.code === "string" ? { code: error.code } : {}),
     });
@@ -107,6 +108,7 @@ async function build(input: GetStrMarketIntelligenceInput, created: Date, depend
       correlationId,
       snapshotId: id,
       errorName: error instanceof Error ? error.name : "UnknownError",
+      ...(error instanceof Error ? { errorMessage: error.message } : {}),
     });
     throw error;
   }

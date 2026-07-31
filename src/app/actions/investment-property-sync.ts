@@ -335,6 +335,9 @@ function recordPropertySyncStageDiagnostic(
     ...(typeof attributes.errorName === "string"
       ? { errorName: attributes.errorName }
       : {}),
+    ...(typeof attributes.errorMessage === "string"
+      ? { errorMessage: attributes.errorMessage }
+      : {}),
     ...(typeof attributes.latitudeAvailable === "boolean"
       ? { latitudeAvailable: attributes.latitudeAvailable }
       : {}),
