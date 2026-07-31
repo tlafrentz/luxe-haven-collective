@@ -347,5 +347,29 @@ function recordPropertySyncStageDiagnostic(
     ...(typeof attributes.classification === "string"
       ? { classification: attributes.classification }
       : {}),
+    ...(typeof attributes.operation === "string"
+      ? { operation: attributes.operation }
+      : {}),
+    ...(typeof attributes.phase === "string"
+      ? { phase: attributes.phase }
+      : {}),
+    ...(typeof attributes.outcome === "string"
+      ? { outcome: attributes.outcome }
+      : {}),
+    ...(typeof attributes.attempt === "number"
+      ? { attempt: attributes.attempt }
+      : {}),
+    ...(typeof attributes.durationMs === "number"
+      ? { durationMs: attributes.durationMs }
+      : {}),
+    ...(typeof attributes.statusCode === "number"
+      ? { statusCode: attributes.statusCode }
+      : {}),
+    ...(typeof attributes.comparableCount === "number"
+      ? { comparableCount: attributes.comparableCount }
+      : {}),
+    ...(typeof attributes.hasRevenueEstimate === "boolean"
+      ? { hasRevenueEstimate: attributes.hasRevenueEstimate }
+      : {}),
   }));
 }

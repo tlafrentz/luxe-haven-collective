@@ -73,8 +73,13 @@ export async function resolveInvestmentMarketContext(
   input: ResolveInvestmentMarketContextInput,
   dependencies: ResolveInvestmentMarketContextDependencies,
 ): Promise<ResolvedInvestmentMarketContext> {
-  const emit = (event: string, attributes: Record<string, string | number | boolean | undefined> = {}) =>
-    dependencies.telemetry?.emit(event, { correlationId: input.correlationId, ...attributes });
+  const emit = (event: string, attributes: Record<string, string | number | boolean | undefined> = {}) => {
+    try {
+      dependencies.telemetry?.emit(event, { correlationId: input.correlationId, ...attributes });
+    } catch {
+      // Observability must not alter persistence or resolution behavior.
+    }
+  };
   let stage = "resolver-boundary";
   let terminalEmitted = false;
   const terminal = (
@@ -210,7 +215,11 @@ export async function resolveInvestmentMarketContext(
             snapshotVersion: subjectProperty!.snapshotVersion,
           });
         }
-        dependencies.telemetry?.emit(event, attributes);
+        try {
+          dependencies.telemetry?.emit(event, attributes);
+        } catch {
+          // Observability must not alter persistence or resolution behavior.
+        }
       },
     };
     const service = createStrMarketIntelligenceService({
@@ -280,7 +289,11 @@ export async function resolveInvestmentMarketContext(
     const failureCode = subjectProperty.address.latitude.value === null || subjectProperty.address.longitude.value === null
       ? "COORDINATES_MISSING"
       : dependencies.classifyMarketFailure?.(error) ?? "STR_PROVIDER_UNAVAILABLE";
-    terminal("market_snapshot_resolution_failed", errorDetails(error, failureCode));
+    const terminalEvent = failureCode === "MARKET_SNAPSHOT_PERSISTENCE_FAILED" ||
+      failureCode === "STR_MAPPING_FAILED"
+      ? "market_snapshot_resolution_failed"
+      : "market_snapshot_resolution_limited";
+    terminal(terminalEvent, errorDetails(error, failureCode));
     if (failureCode === "COORDINATES_MISSING") {
       emit("str_coordinate_resolution_failed", { hasCoordinates: false });
     }

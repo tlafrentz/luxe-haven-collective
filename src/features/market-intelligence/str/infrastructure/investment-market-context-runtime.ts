@@ -6,6 +6,7 @@ import {
   resolveInvestmentMarketContext,
   type ResolveInvestmentMarketContextInput,
   type ResolvedInvestmentMarketContext,
+  type StrMarketContextFailureCode,
   type StrWorkflowTelemetry,
 } from "../application";
 import { AirRoiClient } from "./airroi/airroi-client";
@@ -87,16 +88,21 @@ export async function resolveInvestmentMarketContextAtRuntime(
     propertySnapshotTtlDays: config.propertySnapshotTtlDays,
     marketSnapshotTtlDays: config.marketSnapshotTtlDays,
     telemetry,
-    classifyMarketFailure(error) {
-      if (error instanceof AirRoiError) {
-        if (error.code === "rate-limited") return "STR_PROVIDER_RATE_LIMITED";
-        if (error.code === "invalid-request" || error.code === "unsupported-geography" || error.code === "not-found") return "STR_REQUEST_REJECTED";
-        if (error.code === "invalid-response") return "STR_RESPONSE_INVALID";
-      }
-      if (error instanceof Error && error.message.startsWith("STR market snapshot persistence failed")) {
-        return "MARKET_SNAPSHOT_PERSISTENCE_FAILED";
-      }
-      return "STR_PROVIDER_UNAVAILABLE";
-    },
+    classifyMarketFailure: classifyAirRoiMarketFailure,
   });
+}
+
+export function classifyAirRoiMarketFailure(
+  error: unknown,
+): StrMarketContextFailureCode {
+  if (error instanceof AirRoiError) {
+    if (error.code === "rate-limited") return "STR_PROVIDER_RATE_LIMITED";
+    if (error.code === "invalid-request" || error.code === "unsupported-geography" || error.code === "not-found") return "STR_REQUEST_REJECTED";
+    if (error.code === "invalid-response") return "STR_RESPONSE_INVALID";
+    if (error.code === "mapping-failed") return "STR_MAPPING_FAILED";
+  }
+  if (error instanceof Error && error.message.startsWith("STR market snapshot persistence failed")) {
+    return "MARKET_SNAPSHOT_PERSISTENCE_FAILED";
+  }
+  return "STR_PROVIDER_UNAVAILABLE";
 }

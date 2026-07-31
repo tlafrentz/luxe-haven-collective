@@ -1,5 +1,6 @@
 export type AirRoiErrorCode = "not-configured" | "authentication" | "invalid-request" | "not-found"
-  | "unsupported-geography" | "rate-limited" | "timed-out" | "unavailable" | "invalid-response" | "unknown";
+  | "unsupported-geography" | "rate-limited" | "timed-out" | "unavailable" | "invalid-response"
+  | "mapping-failed" | "unknown";
 
 export class AirRoiError extends Error {
   readonly code: AirRoiErrorCode; readonly retryable: boolean; readonly statusCode?: number; readonly retryAfterSeconds?: number;

@@ -5,6 +5,7 @@ import { mapAirRoiRequest } from "./airroi-request-mapper";
 import { mapAirRoiComparables, mapAirRoiRevenue } from "./airroi-response-mapper";
 import type { AirRoiConfig } from "./airroi-config";
 import type { AirRoiTelemetry } from "./airroi-client";
+import { AirRoiError } from "./airroi-errors";
 
 export class AirRoiProvider implements StrMarketIntelligenceProvider {
   constructor(
@@ -15,24 +16,48 @@ export class AirRoiProvider implements StrMarketIntelligenceProvider {
   ) {}
   async retrieve(query: Parameters<StrMarketIntelligenceProvider["retrieve"]>[0], context: Parameters<StrMarketIntelligenceProvider["retrieve"]>[1]): Promise<StrProviderResult> {
     const parameters = mapAirRoiRequest(query, query.filters?.radiusMiles ?? this.config.defaultRadiusMiles);
-    const revenueResult: PromiseSettledResult<Awaited<ReturnType<AirRoiClient["get"]>>> = await Promise.resolve(
+    const [revenueResult, comparableResult] = await Promise.allSettled([
       this.client.get<AirRoiRevenueDto>("revenue-estimate", "/calculator/estimate", calculatorParameters(parameters), context.correlationId),
-    ).then(value => ({ status: "fulfilled" as const, value }), reason => ({ status: "rejected" as const, reason }));
-    const envelope = await this.client.get<readonly AirRoiComparableDto[] | { listings?: readonly AirRoiComparableDto[]; comparables?: readonly AirRoiComparableDto[] }>("comparables", "/listings/comparables", comparableParameters(parameters), context.correlationId);
+      this.client.get<readonly AirRoiComparableDto[] | { listings?: readonly AirRoiComparableDto[]; comparables?: readonly AirRoiComparableDto[] }>(
+        "comparables",
+        "/listings/comparables",
+        comparableParameters(parameters),
+        context.correlationId,
+      ),
+    ]);
+    if (comparableResult.status === "rejected") throw comparableResult.reason;
+    const envelope = comparableResult.value;
     const payload = envelope.data;
     const collection = payload && !Array.isArray(payload)
       ? payload as { listings?: readonly AirRoiComparableDto[]; comparables?: readonly AirRoiComparableDto[] }
       : undefined;
-    const comparableEnvelope = {
-      ...envelope,
-      data: (Array.isArray(payload) ? payload : collection?.listings ?? collection?.comparables ?? []).map(normalizeComparable),
-    };
-    this.telemetry?.emit("airroi_response_mapping_started", {
+    if (payload === undefined || (!Array.isArray(payload) &&
+      !Array.isArray(collection?.listings) && !Array.isArray(collection?.comparables))) {
+      this.emit("airroi_provider_result", {
+        correlationId: context.correlationId,
+        operation: "comparables",
+        phase: "response",
+        outcome: "malformed-response",
+        code: "invalid-response",
+      });
+      throw new AirRoiError({
+        code: "invalid-response",
+        message: "STR comparable response contains no listing collection.",
+      });
+    }
+    const comparableDtos = Array.isArray(payload)
+      ? payload
+      : collection?.listings ?? collection?.comparables ?? [];
+    this.emit("airroi_response_mapping_started", {
       correlationId: context.correlationId,
       operation: "revenue-and-comparables",
     });
     try {
       const retrievedAt = this.now().toISOString(); const evidence = []; const warnings: string[] = [];
+      const comparableEnvelope = {
+        ...envelope,
+        data: comparableDtos.map(normalizeComparable),
+      };
       let revenueEstimate;
       if (revenueResult.status === "fulfilled" && revenueResult.value.data) {
         const mapped = mapAirRoiRevenue(revenueResult.value.data, { snapshotId: context.snapshotId, retrievedAt, requestId: revenueResult.value.request_id });
@@ -42,8 +67,16 @@ export class AirRoiProvider implements StrMarketIntelligenceProvider {
       const comparableMapping = mapAirRoiComparables(comparableEnvelope.data, { snapshotId: context.snapshotId, retrievedAt, requestId: comparableEnvelope.request_id, currency: revenueEstimate?.currency });
       evidence.push(...comparableMapping.evidence);
       if (!comparableMapping.values.length) warnings.push("No comparable listings were returned.");
-      this.telemetry?.emit("airroi_response_mapping_completed", {
+      this.emit("airroi_response_mapping_completed", {
         correlationId: context.correlationId,
+        comparableCount: comparableMapping.values.length,
+        hasRevenueEstimate: Boolean(revenueEstimate),
+      });
+      this.emit("airroi_provider_result", {
+        correlationId: context.correlationId,
+        operation: "revenue-and-comparables",
+        phase: "mapping",
+        outcome: "success",
         comparableCount: comparableMapping.values.length,
         hasRevenueEstimate: Boolean(revenueEstimate),
       });
@@ -54,11 +87,37 @@ export class AirRoiProvider implements StrMarketIntelligenceProvider {
         appliedFilters: [`providerRankedComparables:true`, `entirePlaceOnly:${query.filters?.entirePlaceOnly ?? false}`, `maximumComparableCount:${query.filters?.maximumComparableCount ?? this.config.maxComparables}`],
       };
     } catch (error) {
-      this.telemetry?.emit("airroi_response_mapping_failed", {
+      const normalized = error instanceof AirRoiError
+        ? error
+        : new AirRoiError({
+            code: "mapping-failed",
+            message: "STR provider response mapping failed.",
+            cause: error,
+          });
+      this.emit("airroi_response_mapping_failed", {
         correlationId: context.correlationId,
-        errorName: error instanceof Error ? error.name : "UnknownError",
+        errorName: normalized.name,
+        code: normalized.code,
       });
-      throw error;
+      this.emit("airroi_provider_result", {
+        correlationId: context.correlationId,
+        operation: "revenue-and-comparables",
+        phase: "mapping",
+        outcome: "mapping-failure",
+        code: normalized.code,
+      });
+      throw normalized;
+    }
+  }
+
+  private emit(
+    event: string,
+    attributes: Readonly<Record<string, string | number | boolean | undefined>>,
+  ): void {
+    try {
+      this.telemetry?.emit(event, attributes);
+    } catch {
+      // Diagnostic transport must never change the provider outcome.
     }
   }
 }

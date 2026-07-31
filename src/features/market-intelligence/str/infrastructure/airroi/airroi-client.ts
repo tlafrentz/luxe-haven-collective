@@ -5,6 +5,12 @@ export interface AirRoiTelemetry {
   emit(event: string, attributes: Readonly<Record<string, string | number | boolean | undefined>>): void;
 }
 const noTelemetry: AirRoiTelemetry = { emit() {} };
+type AirRoiProviderOutcome =
+  | "success"
+  | "timeout"
+  | "network-failure"
+  | "http-error"
+  | "malformed-response";
 
 export class AirRoiClient {
   private readonly baseUrl: string; private readonly apiKey: string; private readonly timeoutMs: number;
@@ -16,16 +22,31 @@ export class AirRoiClient {
   }
   async get<T>(operation: string, path: string, parameters: Readonly<Record<string, string | number | boolean | undefined>>, correlationId: string): Promise<AirRoiEnvelopeDto<T>> {
     for (let attempt = 0; ; attempt += 1) {
-      const started = Date.now(); this.telemetry.emit("airroi_request_started", { correlationId, operation, attempt });
+      const started = Date.now();
+      this.emit("airroi_request_started", { correlationId, operation, attempt });
       try {
         const value = await this.request<T>(path, parameters);
-        this.telemetry.emit("airroi_request_succeeded", { correlationId, operation, attempt, durationMs: Date.now() - started });
+        const durationMs = Date.now() - started;
+        this.emit("airroi_request_succeeded", { correlationId, operation, attempt, durationMs });
+        this.emitProviderResult({ correlationId, operation, attempt, durationMs, outcome: "success" });
         return value;
       } catch (error) {
         const normalized = normalizeAirRoiError(error);
-        this.telemetry.emit("airroi_request_failed", { correlationId, operation, attempt, durationMs: Date.now() - started, code: normalized.code });
-        if (!normalized.retryable || attempt >= this.maxRetries) throw normalized;
-        this.telemetry.emit("airroi_request_retried", { correlationId, operation, attempt: attempt + 1 });
+        const durationMs = Date.now() - started;
+        this.emit("airroi_request_failed", { correlationId, operation, attempt, durationMs, code: normalized.code });
+        if (!normalized.retryable || attempt >= this.maxRetries) {
+          this.emitProviderResult({
+            correlationId,
+            operation,
+            attempt,
+            durationMs,
+            outcome: providerOutcome(normalized),
+            code: normalized.code,
+            statusCode: normalized.statusCode,
+          });
+          throw normalized;
+        }
+        this.emit("airroi_request_retried", { correlationId, operation, attempt: attempt + 1 });
         await new Promise((resolve) => setTimeout(resolve, Math.min(2_000, 200 * 2 ** attempt) + Math.floor(Math.random() * 100)));
       }
     }
@@ -33,9 +54,22 @@ export class AirRoiClient {
   private async request<T>(path: string, parameters: Readonly<Record<string, string | number | boolean | undefined>>): Promise<AirRoiEnvelopeDto<T>> {
     const url = new URL(`${this.baseUrl}${path}`);
     for (const [key, value] of Object.entries(parameters)) if (value !== undefined) url.searchParams.set(key, String(value));
-    const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      const response = await this.fetcher(url, { headers: { Accept: "application/json", "X-API-KEY": this.apiKey }, signal: controller.signal });
+      const response = await Promise.race([
+        this.fetcher(url, { headers: { Accept: "application/json", "X-API-KEY": this.apiKey }, signal: controller.signal }),
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(() => {
+            controller.abort();
+            reject(new AirRoiError({
+              code: "timed-out",
+              message: "STR market provider request timed out.",
+              retryable: true,
+            }));
+          }, this.timeoutMs);
+        }),
+      ]);
       if (!response.ok) throw this.responseError(response);
       let parsed: unknown;
       try { parsed = await response.json(); } catch (cause) { throw new AirRoiError({ code: "invalid-response", message: "STR market provider returned invalid JSON.", cause }); }
@@ -46,7 +80,9 @@ export class AirRoiClient {
       if (error instanceof AirRoiError) throw error;
       if (error instanceof DOMException && error.name === "AbortError") throw new AirRoiError({ code: "timed-out", message: "STR market provider request timed out.", retryable: true });
       throw new AirRoiError({ code: "unavailable", message: "STR market provider is unavailable.", retryable: true, cause: error });
-    } finally { clearTimeout(timeout); }
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
   }
   private responseError(response: Response): AirRoiError {
     const status = response.status;
@@ -56,4 +92,43 @@ export class AirRoiClient {
       retryAfterSeconds: Number(response.headers.get("retry-after")) || undefined, message: status === 401 || status === 403
         ? "STR market provider authentication failed." : `STR market provider request failed with HTTP ${status}.` });
   }
+
+  private emitProviderResult(input: {
+    correlationId: string;
+    operation: string;
+    attempt: number;
+    durationMs: number;
+    outcome: AirRoiProviderOutcome;
+    code?: AirRoiError["code"];
+    statusCode?: number;
+  }): void {
+    this.emit("airroi_provider_result", {
+      correlationId: input.correlationId,
+      operation: input.operation,
+      phase: "request",
+      outcome: input.outcome,
+      attempt: input.attempt,
+      durationMs: input.durationMs,
+      code: input.code,
+      statusCode: input.statusCode,
+    });
+  }
+
+  private emit(
+    event: string,
+    attributes: Readonly<Record<string, string | number | boolean | undefined>>,
+  ): void {
+    try {
+      this.telemetry.emit(event, attributes);
+    } catch {
+      // Diagnostic transport must never change the provider outcome.
+    }
+  }
+}
+
+function providerOutcome(error: AirRoiError): AirRoiProviderOutcome {
+  if (error.code === "timed-out") return "timeout";
+  if (error.statusCode !== undefined) return "http-error";
+  if (error.code === "invalid-response") return "malformed-response";
+  return "network-failure";
 }

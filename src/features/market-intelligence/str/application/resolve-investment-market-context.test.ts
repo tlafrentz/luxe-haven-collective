@@ -233,8 +233,8 @@ describe("resolveInvestmentMarketContext", () => {
       }),
     ]));
     expect(result.subjectPropertySnapshotId).toBe(property.snapshotId);
-    expectSingleTerminal(events, "market_snapshot_resolution_failed");
-    expect(events.find(({ event }) => event === "market_snapshot_resolution_failed")?.attributes)
+    expectSingleTerminal(events, "market_snapshot_resolution_limited");
+    expect(events.find(({ event }) => event === "market_snapshot_resolution_limited")?.attributes)
       .toMatchObject({
         correlationId: "correlation-1",
         stage: "market-cache-and-provider-resolution",
