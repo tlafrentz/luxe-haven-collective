@@ -380,5 +380,26 @@ function recordPropertySyncStageDiagnostic(
     ...(typeof attributes.reasonCode === "string"
       ? { reasonCode: attributes.reasonCode }
       : {}),
+    ...(typeof attributes.classification === "string"
+      ? { classification: attributes.classification }
+      : {}),
+    ...(typeof attributes.source === "string"
+      ? { source: attributes.source }
+      : {}),
+    ...(typeof attributes.featureEnabled === "boolean"
+      ? { featureEnabled: attributes.featureEnabled }
+      : {}),
+    ...(typeof attributes.providerConfigured === "boolean"
+      ? { providerConfigured: attributes.providerConfigured }
+      : {}),
+    ...(typeof attributes.cacheHit === "boolean"
+      ? { cacheHit: attributes.cacheHit }
+      : {}),
+    ...(typeof attributes.snapshotCreated === "boolean"
+      ? { snapshotCreated: attributes.snapshotCreated }
+      : {}),
+    ...(typeof attributes.terminalEmitted === "boolean"
+      ? { terminalEmitted: attributes.terminalEmitted }
+      : {}),
   }));
 }

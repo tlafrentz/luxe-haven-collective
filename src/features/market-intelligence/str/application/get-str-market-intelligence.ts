@@ -22,9 +22,16 @@ export function createStrMarketIntelligenceService(dependencies: {
   return async (input: GetStrMarketIntelligenceInput): Promise<StrMarketSnapshot> => {
     const key = fingerprint(input); const current = now();
     if (!input.refresh) {
+      telemetry.emit("str_market_snapshot_cache_lookup_started", {
+        correlationId: input.correlationId,
+      });
       const cached = await dependencies.repository.findCompatible({
         ownerId: input.ownerId, workspaceId: input.workspaceId, query: input.query,
         comparablePolicyVersion: STR_COMPARABLE_POLICY_VERSION, providerVersion: dependencies.providerVersion, now: current,
+      });
+      telemetry.emit("str_market_snapshot_cache_lookup_completed", {
+        correlationId: input.correlationId,
+        cacheHit: Boolean(cached),
       });
       if (cached) { telemetry.emit("str_market_snapshot_cache_hit", { correlationId: input.correlationId, subjectPropertyId: input.query.subjectPropertyId, snapshotId: cached.id }); return cached; }
       telemetry.emit("str_market_snapshot_cache_miss", { correlationId: input.correlationId, subjectPropertyId: input.query.subjectPropertyId });
@@ -41,7 +48,20 @@ async function build(input: GetStrMarketIntelligenceInput, created: Date, depend
   snapshotTtlDays?: number;
 }, telemetry: StrWorkflowTelemetry): Promise<StrMarketSnapshot> {
   const id = crypto.randomUUID(); const correlationId = input.correlationId ?? crypto.randomUUID();
-  const result = await dependencies.provider.retrieve(input.query, { snapshotId: id, correlationId });
+  telemetry.emit("str_provider_invocation_started", { correlationId });
+  let result: Awaited<ReturnType<StrMarketIntelligenceProvider["retrieve"]>>;
+  try {
+    result = await dependencies.provider.retrieve(input.query, { snapshotId: id, correlationId });
+    telemetry.emit("str_provider_invocation_completed", { correlationId });
+  } catch (error) {
+    telemetry.emit("str_provider_invocation_failed", {
+      correlationId,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      ...(typeof error === "object" && error !== null && "code" in error &&
+        typeof error.code === "string" ? { code: error.code } : {}),
+    });
+    throw error;
+  }
   telemetry.emit("str_response_mapping_completed", {
     correlationId,
     snapshotId: id,

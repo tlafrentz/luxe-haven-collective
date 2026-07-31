@@ -18,9 +18,14 @@ export async function resolveInvestmentMarketContextAtRuntime(
   input: ResolveInvestmentMarketContextInput,
   telemetry?: StrWorkflowTelemetry,
 ): Promise<ResolvedInvestmentMarketContext> {
+  const emit = (event: string, attributes: Record<string, string | number | boolean | undefined> = {}) =>
+    telemetry?.emit(event, { correlationId: input.correlationId, ...attributes });
+  emit("str_runtime_repository_construction_started");
   const marketSnapshots = new SupabaseStrMarketSnapshotRepository(await createClient());
   const propertySnapshots = new SupabasePropertySnapshotRepository(createAdminClient() as never);
+  emit("str_runtime_repository_construction_completed");
   if (input.marketSnapshotId) {
+    emit("str_runtime_historical_snapshot_branch_selected");
     return resolveInvestmentMarketContext(input, {
       propertySnapshots,
       marketSnapshots,
@@ -31,7 +36,9 @@ export async function resolveInvestmentMarketContextAtRuntime(
   }
   let config;
   try {
+    emit("str_runtime_feature_flag_evaluation_started");
     config = getAirRoiConfig();
+    emit("str_runtime_feature_flag_evaluation_completed", { featureEnabled: config.enabled });
   } catch (error) {
     telemetry?.emit("str_adapter_activation_failed", {
       correlationId: input.correlationId,
@@ -39,7 +46,16 @@ export async function resolveInvestmentMarketContextAtRuntime(
       errorName: error instanceof Error ? error.name : "UnknownError",
     });
     config = getAirRoiConfig({ MARKET_INTELLIGENCE_ENABLED: "false" });
+    emit("str_runtime_feature_flag_evaluation_failed", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      featureEnabled: false,
+    });
   }
+  emit("str_runtime_api_key_evaluation_completed", {
+    propertyApiKeyConfigured: Boolean(process.env.REALTY_API_KEY?.trim()),
+    marketApiKeyConfigured: Boolean(config.apiKey),
+  });
+  emit("str_runtime_provider_construction_started");
   const propertyProvider = process.env.REALTY_API_KEY
     ? createRealtyApiPropertyProvider({
       apiKey: process.env.REALTY_API_KEY,
@@ -56,6 +72,10 @@ export async function resolveInvestmentMarketContextAtRuntime(
       telemetry,
     }), config, () => new Date(), telemetry)
     : undefined;
+  emit("str_runtime_provider_construction_completed", {
+    propertyProviderConfigured: Boolean(propertyProvider),
+    marketProviderConfigured: Boolean(marketProvider),
+  });
 
   return resolveInvestmentMarketContext(input, {
     propertyProvider,

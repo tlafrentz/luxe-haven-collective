@@ -58,6 +58,32 @@ const providerResult = {
   appliedFilters: ["radiusMiles:3"],
 };
 
+const terminalEvents = [
+  "market_snapshot_resolution_completed",
+  "market_snapshot_resolution_limited",
+  "market_snapshot_resolution_failed",
+] as const;
+
+function eventRecorder() {
+  const events: Array<{ event: string; attributes: Readonly<Record<string, unknown>> }> = [];
+  return {
+    events,
+    telemetry: {
+      emit(event: string, attributes: Readonly<Record<string, unknown>>) {
+        events.push({ event, attributes });
+      },
+    },
+  };
+}
+
+function expectSingleTerminal(
+  events: Array<{ event: string }>,
+  expected: typeof terminalEvents[number],
+) {
+  expect(events.filter(({ event }) => terminalEvents.includes(event as typeof terminalEvents[number])))
+    .toEqual([expect.objectContaining({ event: expected })]);
+}
+
 describe("resolveInvestmentMarketContext", () => {
   it("creates a canonical snapshot and then reuses it without provider calls", async () => {
     const properties = new InMemoryPropertySnapshotRepository();
@@ -111,6 +137,7 @@ describe("resolveInvestmentMarketContext", () => {
       enabled: true,
     });
     const retrieve = vi.fn();
+    const recorded = eventRecorder();
 
     const supplied = await resolveInvestmentMarketContext({
       ownerId: "owner-1", workspaceId: "workspace-1", address,
@@ -123,16 +150,19 @@ describe("resolveInvestmentMarketContext", () => {
       marketSnapshots: markets,
       providerVersion: "airroi-api.v1",
       enabled: true,
+      telemetry: recorded.telemetry,
     });
 
     expect(supplied.source).toBe("persisted-snapshot");
     expect(retrieve).not.toHaveBeenCalled();
+    expectSingleTerminal(recorded.events, "market_snapshot_resolution_completed");
   });
 
   it("keeps historical retrieval available while new retrieval is disabled", async () => {
     const property = subject();
     const properties = new InMemoryPropertySnapshotRepository();
     await properties.save(propertySnapshot(property));
+    const recorded = eventRecorder();
     const result = await resolveInvestmentMarketContext({
       ownerId: "owner-1", workspaceId: "workspace-1", address, property: {},
       correlationId: "correlation-1", requestedAt: now,
@@ -142,6 +172,7 @@ describe("resolveInvestmentMarketContext", () => {
       marketSnapshots: new InMemoryStrMarketSnapshotRepository(),
       providerVersion: "airroi-api.v1",
       enabled: false,
+      telemetry: recorded.telemetry,
     });
     expect(result).toMatchObject({
       source: "manual-fallback",
@@ -149,6 +180,7 @@ describe("resolveInvestmentMarketContext", () => {
       failureCode: "STR_PROVIDER_UNAVAILABLE",
     });
     expect(result.warnings[0]).toContain("not configured");
+    expectSingleTerminal(recorded.events, "market_snapshot_resolution_limited");
   });
 
   it("preserves the canonical subject when STR retrieval fails", async () => {
@@ -195,6 +227,60 @@ describe("resolveInvestmentMarketContext", () => {
       }),
     ]));
     expect(result.subjectPropertySnapshotId).toBe(property.snapshotId);
+    expectSingleTerminal(events, "market_snapshot_resolution_failed");
+    expect(events.find(({ event }) => event === "market_snapshot_resolution_failed")?.attributes)
+      .toMatchObject({
+        correlationId: "correlation-1",
+        stage: "market-cache-and-provider-resolution",
+        errorName: "Error",
+        classification: "STR_PROVIDER_UNAVAILABLE",
+      });
+  });
+
+  it("emits one failed terminal event when subject loading throws", async () => {
+    const recorded = eventRecorder();
+    const expected = new Error("subject lookup unavailable");
+
+    await expect(resolveInvestmentMarketContext({
+      ownerId: "owner-1", workspaceId: "workspace-1", address, property: {},
+      correlationId: "correlation-subject-failure", requestedAt: now,
+    }, {
+      propertyProvider: {
+        search: vi.fn(async () => { throw expected; }),
+        retrieve: vi.fn(),
+      },
+      propertySnapshots: new InMemoryPropertySnapshotRepository(),
+      marketSnapshots: new InMemoryStrMarketSnapshotRepository(),
+      providerVersion: "airroi-api.v1",
+      enabled: true,
+      telemetry: recorded.telemetry,
+    })).rejects.toBe(expected);
+
+    expectSingleTerminal(recorded.events, "market_snapshot_resolution_failed");
+    expect(recorded.events.find(({ event }) => event === "market_snapshot_resolution_failed")?.attributes)
+      .toMatchObject({
+        correlationId: "correlation-subject-failure",
+        stage: "subject-property-loading",
+        errorName: "Error",
+        classification: "SUBJECT_PROPERTY_RESOLUTION_FAILED",
+      });
+  });
+
+  it("emits one failed terminal event when the property provider is absent", async () => {
+    const recorded = eventRecorder();
+
+    await expect(resolveInvestmentMarketContext({
+      ownerId: "owner-1", workspaceId: "workspace-1", address, property: {},
+      correlationId: "correlation-provider-missing", requestedAt: now,
+    }, {
+      propertySnapshots: new InMemoryPropertySnapshotRepository(),
+      marketSnapshots: new InMemoryStrMarketSnapshotRepository(),
+      providerVersion: "airroi-api.v1",
+      enabled: true,
+      telemetry: recorded.telemetry,
+    })).rejects.toThrow("Canonical property intelligence is not configured");
+
+    expectSingleTerminal(recorded.events, "market_snapshot_resolution_failed");
   });
 
   it("records comparable coverage and persistence without exposing provider payloads", async () => {
@@ -240,5 +326,6 @@ describe("resolveInvestmentMarketContext", () => {
         sufficientCoverage: false,
       });
     expect(JSON.stringify(events)).not.toContain(address);
+    expectSingleTerminal(events, "market_snapshot_resolution_limited");
   });
 });
