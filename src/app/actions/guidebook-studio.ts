@@ -96,7 +96,7 @@ async function getCanonicalPropertyProjection(
         const { data } = await createAdminClient()
           .from("properties")
           .select(
-            "id,name,slug,status,address,address_line_1,city,state,timezone,check_in_time,check_out_time,amenities,house_rules,featured_image,updated_at",
+            "id,name,slug,status,address_line_1,city,state,timezone,check_in_time,check_out_time,amenities,house_rules,featured_image,updated_at",
           )
           .eq("id", id)
           .maybeSingle();
@@ -159,6 +159,12 @@ export async function getGuidebookStudioRequest(
         : "updated";
     const { access } = await context(workspaceId),
       admin = createAdminClient(),
+      accessiblePropertyIds =
+        access.propertyAccess.type === "all"
+          ? null
+          : access.propertyAccess.type === "selected"
+            ? [...access.propertyAccess.propertyIds]
+            : [],
       { data: pageRows, error: pageError } = await admin.rpc(
         "list_guidebook_library_page",
         {
@@ -169,6 +175,7 @@ export async function getGuidebookStudioRequest(
           p_sort: sort,
           p_offset: from,
           p_limit: pageSize,
+          p_property_ids: accessiblePropertyIds,
         },
       ),
       propertyIds = (pageRows ?? []).map((row: { property_id: string }) =>
@@ -191,7 +198,7 @@ export async function getGuidebookStudioRequest(
           ? admin
               .from("properties")
               .select(
-                "id,name,slug,status,address,address_line_1,city,state,timezone,check_in_time,check_out_time,amenities,house_rules,featured_image,updated_at",
+                "id,name,slug,status,address_line_1,city,state,timezone,check_in_time,check_out_time,amenities,house_rules,featured_image,updated_at",
               )
               .eq("owner_id", access.ownerId)
               .in("id", propertyIds)
@@ -206,7 +213,11 @@ export async function getGuidebookStudioRequest(
         ),
       ]);
     if (pageError || guidebookError || propertyError)
-      throw new Error("guidebook_workspace_unavailable");
+      throw new Error(
+        `guidebook_workspace_unavailable: ${
+          (pageError ?? guidebookError ?? propertyError)?.message ?? "unknown"
+        }`,
+      );
     const guidebooks = (guidebookRows ?? []).filter(
         (g: { property_id: string }) =>
           evaluatePropertyAccess(access, g.property_id),
