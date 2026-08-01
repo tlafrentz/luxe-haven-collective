@@ -1,4 +1,7 @@
-import { evaluatePropertyAccess, evaluateWorkspacePermission } from "@/features/workspace";
+import {
+  evaluatePropertyAccess,
+  evaluateWorkspacePermission,
+} from "@/features/workspace/domain/team-access";
 import { Money } from "@/platform/kernel";
 import type {
   FinancialAccountCategory, FinancialConfidence, FinancialEvidence,
