@@ -1,6 +1,7 @@
 import type { GuidebookDeliveryRepository } from "../application";
+import type { SupabaseClient as Client } from "@supabase/supabase-js";
 
-type SupabaseClient = { from(table: string): any };
+type SupabaseClient = Pick<Client, "from">;
 
 export class SupabaseGuidebookDeliveryRepository implements GuidebookDeliveryRepository {
   constructor(private readonly client: SupabaseClient) {}

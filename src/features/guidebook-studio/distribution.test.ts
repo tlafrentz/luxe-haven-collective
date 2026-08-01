@@ -6,6 +6,8 @@ import {
   type GuidebookCommandReceiptRepository,
   type GuidebookMediaRepository,
   type GuidebookSlugRepository,
+  type AuthoringResult,
+  type Receipt,
 } from "./index";
 const context = {
   commandId: "cmd",
@@ -17,17 +19,17 @@ const context = {
   enteredAt: "2026-07-31T00:00:00Z",
 };
 class Receipts implements GuidebookCommandReceiptRepository {
-  value: any = null;
+  value: Receipt | null = null;
   async find() {
     return this.value;
   }
-  async begin(value: any) {
+  async begin(value: Receipt) {
     this.value = value;
     return "started" as const;
   }
-  async complete(_w: string, _c: string, outcome: any) {
+  async complete(_w: string, _c: string, outcome: AuthoringResult<unknown>) {
     this.value = {
-      ...this.value,
+      ...this.value!,
       state: outcome.ok ? "completed" : "failed",
       outcome,
     };
@@ -36,7 +38,7 @@ class Receipts implements GuidebookCommandReceiptRepository {
 describe("GB-001C distribution commands", () => {
   it("uploads privately once and replays the receipt", async () => {
     const receipts = new Receipts(),
-      createUpload = vi.fn(async (input: any) => ({
+      createUpload = vi.fn(async (input: Parameters<GuidebookMediaRepository["createUpload"]>[0]) => ({
         id: input.assetId,
         workspaceId: "owner",
         guidebookId: "guide",
@@ -75,8 +77,10 @@ describe("GB-001C distribution commands", () => {
       workspaceId: "owner",
       guidebookId: "guide",
       commandId: "cmd",
+      operation: "upload-media",
       fingerprint: "different",
       state: "completed",
+      createdAt: context.enteredAt,
     };
     await expect(
       uploadGuidebookMedia({ media, receipts }, context, {
@@ -85,7 +89,7 @@ describe("GB-001C distribution commands", () => {
       }),
     ).resolves.toMatchObject({ code: "COMMAND_RECEIPT_CONFLICT" });
     receipts.value = {
-      ...receipts.value,
+      ...receipts.value!,
       fingerprint: `guide:image/webp:4:${digest}`,
       state: "in-progress",
     };
@@ -98,7 +102,7 @@ describe("GB-001C distribution commands", () => {
   });
   it("rotates a slug once with a redirect expiry", async () => {
     const receipts = new Receipts(),
-      rotate = vi.fn(async (input: any) => ({
+      rotate = vi.fn(async (input: Parameters<GuidebookSlugRepository["rotate"]>[0]) => ({
         slug: input.nextSlug,
         redirectExpiresAt: input.expiresAt,
       })),

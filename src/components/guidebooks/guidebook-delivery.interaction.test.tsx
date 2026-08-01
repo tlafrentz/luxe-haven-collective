@@ -5,11 +5,11 @@ import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { CopyGuidebookLink } from "./copy-guidebook-link";
 import { PublicGuidebookExperience } from "./public-guidebook-experience";
-import type { PublicGuidebookView } from "@/features/guidebook-studio";
+import type { PublicGuidebookBlock, PublicGuidebookView } from "@/features/guidebook-studio";
 vi.mock("@/components/shared/safe-image", () => ({
-  SafeImage: (props: any) => <img src={props.src} alt={props.alt} />,
+  SafeImage: (props: { src: string; alt: string }) => <img src={props.src} alt={props.alt} />,
 }));
-const blocks: any[] = [
+const blocks: PublicGuidebookBlock[] = [
     {
       id: "h",
       type: "heading",
