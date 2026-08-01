@@ -16,3 +16,4 @@ export * from "./in-memory-capital-planning-repository";
 export * from "./financial-learning-projection-adapter";
 export * from "./financial-learning-cache";
 export * from "./in-memory-financial-learning-repository";
+export * from "./supabase-expense-workspace-source";

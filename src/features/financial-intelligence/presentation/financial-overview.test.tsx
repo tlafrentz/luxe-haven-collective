@@ -21,27 +21,30 @@ const overview = {
 } satisfies FinancialOverview;
 
 describe("Financial Overview presentation states", () => {
-  it.each(["strong", "stable", "attention-needed", "at-risk", "insufficient-evidence"] as const)("renders the %s condition with semantic headings", status => {
+  it.each(["strong", "stable", "attention-needed", "at-risk", "insufficient-evidence"] as const)("renders the %s overview without inventing attention", status => {
     const html = renderToStaticMarkup(<FinancialOverviewView overview={{ ...overview, condition: { ...overview.condition, status } }} />);
-    expect(html).toContain("Financial condition");
-    expect(html).toContain(status.split("-").map(part => part[0]!.toUpperCase() + part.slice(1)).join(" "));
-    expect(html).toContain("Accounting basis");
+    expect(html).toContain("Financial Overview");
+    expect(html).toContain("Operating Expenses");
+    expect(html).not.toContain("No material financial attention conditions");
   });
   it("renders unavailable values, permission and evidence context without hidden totals", () => {
     const html = renderToStaticMarkup(<FinancialOverviewView overview={{ ...overview, permissionLimited: true, state: "permission-limited" }} />);
-    expect(html).toContain("Cash unavailable");
+    expect(html).toContain("Cash Balance");
+    expect(html).toContain("Unavailable");
     expect(html).toContain("Financial Summary");
-    expect(html).toContain("Evidence &amp; freshness");
+    expect(html).toContain("Projections, scenarios, and budgets are kept separate");
   });
   it("renders loading, empty, and typed error states accessibly", () => {
     expect(renderToStaticMarkup(<FinancialOverviewSkeleton />)).toContain('aria-busy="true"');
     expect(renderToStaticMarkup(<FinancialOverviewEmpty />)).toContain("Financial data unavailable");
     expect(renderToStaticMarkup(<FinancialOverviewErrorView code="currency" message="Mismatch" />)).toContain('role="alert"');
   });
-  it("uses responsive grids without desktop-only tables or horizontal overflow", () => {
+  it("uses responsive summaries and exposes all three expense views", () => {
     const html = renderToStaticMarkup(<FinancialOverviewView overview={overview} />);
     expect(html).toMatch(/sm:grid-cols-2/);
-    expect(html).toMatch(/xl:grid-cols-6/);
-    expect(html).not.toContain("<table");
+    expect(html).toMatch(/lg:grid-cols-5/);
+    expect(html).toContain("Expense list");
+    expect(html).toContain("By category");
+    expect(html).toContain("Recurring expenses");
   });
 });

@@ -7,3 +7,4 @@ export * from "./cash-flow";
 export * from "./planning";
 export * from "./capital";
 export * from "./learning";
+export * from "./expenses";

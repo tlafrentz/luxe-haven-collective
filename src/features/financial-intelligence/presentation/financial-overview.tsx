@@ -1,34 +1,22 @@
 import Link from "next/link";
 import type {
-  FinancialMetricSummary, FinancialOverview, FinancialValueState,
+  ExpenseListItem, FinancialExpenseBasis, FinancialMetricSummary, FinancialOverview, FinancialValueState,
 } from "../application";
+import { FinancialOverviewActions, OperatingExpensesWorkspace } from "./expense-workspace";
 
-export function FinancialOverviewView({ overview }: { overview: FinancialOverview }) {
+export function FinancialOverviewView({ overview, expenses=[], properties=[], expenseView="list" }: { overview: FinancialOverview; expenses?:readonly ExpenseListItem[];properties?:readonly{id:string;name:string}[];expenseView?:"list"|"category"|"recurring" }) {
   if (overview.state === "empty") return <FinancialOverviewEmpty />;
-  return <main className="mx-auto max-w-[1500px] space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-    <FinancialHeader overview={overview} />
+  const basis=(overview.accountingBasis === "cash" || overview.accountingBasis === "accrual" ? "actual" : "actual") as FinancialExpenseBasis;
+  return <main className="mx-auto max-w-[1500px] space-y-4 px-4 py-6 sm:px-6 lg:px-8">
+    <header className="flex flex-wrap items-end justify-between gap-5">
+      <div><p className="text-[11px] text-stone-500">Understand <span className="px-2">›</span> Financial Intelligence</p><h1 className="mt-3 font-serif text-3xl font-semibold">Financial Overview</h1><p className="mt-3 text-sm font-semibold">{overview.scope.label}</p><p className="mt-1 text-xs text-stone-500">{overview.scope.propertyCount === 1 ? "Single property" : `${overview.scope.propertyCount} properties`} · {range(overview.period.from,overview.period.to)}</p></div>
+      <FinancialOverviewActions reportHref={`/dashboard/reports/new?type=financial-performance&workspace=${overview.identity.workspaceId}`}/>
+    </header>
     {overview.permissionLimited ? <Notice title="Financial Summary">You can view authorized property profitability, but workspace cash balances and sensitive owner-level financial details may be restricted.</Notice> : null}
-    {overview.state === "partial" ? <Notice title="Financial analysis is partially available">Valid financial facts remain visible. Unsupported profitability or liquidity conclusions are marked unavailable.</Notice> : null}
-    {overview.state === "degraded" ? <Notice title="Financial data may be incomplete">One or more financial sources are stale. Last known values remain explicitly labeled.</Notice> : null}
-    <FinancialConditionView overview={overview} />
-    <MetricGrid overview={overview} />
-    <div className="grid gap-8 xl:grid-cols-2">
-      <SummaryCard id="profitability" title="Profitability" status={title(overview.profitability.status)} explanation={overview.profitability.explanation}>
-        <Value label="Net operating income" value={formatValue(overview.profitability.noi, overview.reportingCurrency)} />
-        <Value label="Operating margin" value={formatValue(overview.profitability.margin, overview.reportingCurrency)} />
-      </SummaryCard>
-      <SummaryCard id="liquidity" title="Liquidity" status={title(overview.liquidity.status)} explanation={overview.liquidity.explanation}>
-        <Value label="Cash position" value={formatValue(overview.liquidity.cash, overview.reportingCurrency)} />
-        <Value label="Net cash movement" value={formatValue(overview.liquidity.movement, overview.reportingCurrency)} />
-        <p className="mt-4 text-xs text-stone-500">{overview.liquidity.reserveTargetConfigured ? `Reserve coverage: ${overview.liquidity.reserveCoverageMonths?.toFixed(1) ?? "Unavailable"} months` : "Reserve target not configured"}</p>
-      </SummaryCard>
-    </div>
-    <Changes overview={overview} />
-    <Attention overview={overview} />
-    <div className="grid gap-8 xl:grid-cols-2"><Drivers overview={overview} /><Contributions overview={overview} /></div>
-    <div className="grid gap-8 xl:grid-cols-2"><Obligations overview={overview} /><Planning overview={overview} /></div>
-    <Execution overview={overview} />
-    <Evidence overview={overview} />
+    <section aria-label="Financial summary" className="grid overflow-hidden rounded-xl border bg-white sm:grid-cols-2 lg:grid-cols-5">{["revenue","operating-expenses","noi","operating-margin","cash-balance"].map(id=>{const metric=overview.metrics.find(item=>item.metric===id);return <article key={id} className="min-h-32 border-b border-r p-5 last:border-r-0 sm:border-b-0"><p className="text-xs font-semibold">{metricName(id)}</p><p className="mt-3 text-2xl font-semibold">{metric?formatValue(metric.current,overview.reportingCurrency):"Unavailable"}</p><p className="mt-2 text-[10px] text-stone-500">{metric?.change?change(metric,overview.reportingCurrency):"No prior-period data"}</p></article>})}</section>
+    <OperatingExpensesWorkspace initialExpenses={expenses} properties={properties} workspaceId={overview.identity.workspaceId} currency={overview.reportingCurrency} basis={basis} initialView={expenseView}/>
+    {overview.attention.length?<Attention overview={overview}/>:null}
+    <aside className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-xs text-blue-900">ⓘ All expenses are recorded as actuals and tied to source evidence. Projections, scenarios, and budgets are kept separate.</aside>
   </main>;
 }
 
@@ -93,7 +81,7 @@ function Evidence({ overview }: { overview: FinancialOverview }) {
 
 export function FinancialOverviewEmpty() { return <main className="mx-auto max-w-3xl px-4 py-16"><section role="status" className="rounded-[2rem] border border-stone-200 bg-white p-8 text-center"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Financial Intelligence</p><h1 className="mt-3 text-3xl font-semibold">Financial data unavailable</h1><p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-stone-600">Connect, import, or enter financial data to begin Financial Intelligence.</p><Link href="/dashboard/workspace/connected-systems" className="mt-6 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white">Review connected systems</Link></section></main>; }
 export function FinancialOverviewErrorView({ code, message }: { code: string; message: string }) { return <main className="mx-auto max-w-3xl px-4 py-16"><section role="alert" aria-live="assertive" className="rounded-[2rem] border border-rose-200 bg-white p-8"><p className="text-xs font-semibold uppercase tracking-wide text-rose-700">{title(code)} error</p><h1 className="mt-3 text-3xl font-semibold">Financial Overview could not be completed</h1><p className="mt-3 text-sm text-stone-600">{message}</p></section></main>; }
-export function FinancialOverviewSkeleton() { return <main aria-label="Loading Financial Overview" aria-busy="true" className="mx-auto max-w-[1500px] animate-pulse space-y-7 px-4 py-8 motion-reduce:animate-none sm:px-6 lg:px-8"><div className="h-72 rounded-[2rem] bg-stone-200" /><div className="h-48 rounded-[2rem] bg-stone-200" /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">{Array.from({ length: 6 }, (_, i) => <div className="h-40 rounded-2xl bg-stone-200" key={i} />)}</div><div className="grid gap-8 xl:grid-cols-2"><div className="h-72 rounded-[2rem] bg-stone-200" /><div className="h-72 rounded-[2rem] bg-stone-200" /></div></main>; }
+export function FinancialOverviewSkeleton() { return <main aria-label="Loading Financial Overview" aria-busy="true" className="mx-auto max-w-[1500px] animate-pulse space-y-5 px-4 py-8 motion-reduce:animate-none sm:px-6 lg:px-8"><div className="h-28 rounded-xl bg-stone-200" /><div className="grid grid-cols-2 gap-2 lg:grid-cols-5">{Array.from({ length: 5 }, (_, i) => <div className="h-32 rounded-xl bg-stone-200" key={i} />)}</div><div className="h-[32rem] rounded-2xl bg-stone-200" /></main>; }
 
 function SummaryCard({ id, title: label, status, explanation, children }: { id: string; title: string; status: string; explanation: string; children: React.ReactNode }) { return <section id={id} aria-labelledby={`${id}-heading`} className="rounded-[2rem] border border-stone-200 bg-white p-6 sm:p-7"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{label}</p><h2 id={`${id}-heading`} className="mt-2 text-2xl font-semibold">{status}</h2><p className="mt-2 text-sm leading-6 text-stone-600">{explanation}</p><dl className="mt-5 grid grid-cols-2 gap-4">{children}</dl></section>; }
 function Card({ id, title: label, description, children }: { id: string; title: string; description: string; children: React.ReactNode }) { return <section id={id} aria-labelledby={`${id}-heading`} className="rounded-[2rem] border border-stone-200 bg-white p-6 sm:p-7"><Heading id={`${id}-heading`} title={label} description={description} /><div className="mt-5">{children}</div></section>; }
