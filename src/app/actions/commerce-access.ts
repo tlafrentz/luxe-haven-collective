@@ -1,15 +1,17 @@
 "use server";
 import{redirect}from"next/navigation";import{revalidatePath}from"next/cache";import{createClient}from"@/lib/supabase/server";import{createAdminClient}from"@/lib/supabase/admin";import{resolveEntitlements,type CommerceEntitlementGrant}from"@/platform/commerce";
-export async function getCommerceAccessWorkspace(){
+export async function getCommerceAccessWorkspace(input:Readonly<{workspaceId?:string;propertyId?:string}>={}){
  const client=await createClient(),{data:{user}}=await client.auth.getUser();if(!user)return null;
- const{data:customer}=await client.from("commerce_customers").select("id,workspace_id").eq("profile_id",user.id).maybeSingle();if(!customer)return{entitlements:[],credits:[],downloads:[],fulfillments:[],serviceOrders:[],version:"0",evaluatedAt:new Date()};
- const[{data:grants},{data:downloads},{data:fulfillments},{data:serviceOrders}]=await Promise.all([
-  client.from("commerce_entitlement_grants").select("*").or(`profile_id.eq.${user.id}${customer.workspace_id?`,workspace_id.eq.${customer.workspace_id}`:""}`).order("created_at",{ascending:false}),
+ const{data:customer,error:customerError}=await client.from("commerce_customers").select("id,workspace_id").eq("profile_id",user.id).maybeSingle();if(customerError)throw new Error(`commerce_customer_query_failed:${customerError.message}`);if(!customer)return{entitlements:[],credits:[],downloads:[],fulfillments:[],serviceOrders:[],version:"0",evaluatedAt:new Date()};
+ const workspaceId=input.workspaceId??customer.workspace_id??undefined,scopeFilters=[`profile_id.eq.${user.id}`,...(workspaceId?[`workspace_id.eq.${workspaceId}`]:[]),...(input.propertyId?[`property_id.eq.${input.propertyId}`]:[])];
+ const[{data:grants,error:grantsError},{data:downloads,error:downloadsError},{data:fulfillments,error:fulfillmentsError},{data:serviceOrders,error:serviceOrdersError}]=await Promise.all([
+  client.from("commerce_entitlement_grants").select("*").or(scopeFilters.join(",")).eq("environment","live").order("created_at",{ascending:false}),
   client.from("commerce_download_grants").select("id,product_id,status,download_limit,download_count,effective_until,created_at").eq("profile_id",user.id),
   client.from("commerce_fulfillments").select("id,order_id,fulfillment_type,status,target_type,target_id,attempts,failure_code,created_at").order("created_at",{ascending:false}).limit(100),
   client.from("commerce_service_orders").select("id,service_type,status,intake_required,requested_at,property_id,opportunity_id").order("requested_at",{ascending:false}).limit(100),
  ]);
- const mapped=(grants??[]).map(mapGrant),resolved=resolveEntitlements({grants:mapped,workspaceId:customer.workspace_id??undefined,profileId:user.id});
+ const queryError=grantsError??downloadsError??fulfillmentsError??serviceOrdersError;if(queryError)throw new Error(`commerce_access_query_failed:${queryError.message}`);
+ const mapped=(grants??[]).map(mapGrant),resolved=resolveEntitlements({grants:mapped,workspaceId,profileId:user.id,...(input.propertyId?{propertyId:input.propertyId}:{})});
  return Object.freeze({entitlements:resolved.entitlements,credits:mapped.filter(g=>g.quantity!==undefined),downloads:downloads??[],fulfillments:fulfillments??[],serviceOrders:serviceOrders??[],version:resolved.version,evaluatedAt:resolved.evaluatedAt});
 }
 export async function openProtectedCommerceDownload(formData:FormData){
