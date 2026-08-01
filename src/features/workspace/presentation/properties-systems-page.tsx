@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, Building2, CheckCircle2, PlugZap, RefreshCw } from "lucide-react";
 
-import { workspacePropertySystemAction } from "@/app/actions/workspace-properties-systems";
+import { workspaceHospitableSyncAction, workspacePropertySystemAction } from "@/app/actions/workspace-properties-systems";
 import {
   WorkspaceCard, WorkspaceContent, WorkspaceGrid, WorkspaceHeader, WorkspacePage,
 } from "@/components/application-layout";
@@ -96,20 +96,30 @@ export function WorkspaceConnectedSystemsPage({ overview, canManage }: Readonly<
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <p className="text-sm"><strong className="block">{system.management === "platform" ? "Data access" : "Last successful sync"}</strong>{system.management === "platform" ? "On demand" : system.lastSuccessfulSyncAt ? new Date(system.lastSuccessfulSyncAt).toLocaleString() : "Never"}</p>
-              <p className="text-sm"><strong className="block">Capabilities</strong>{system.capabilities.filter(({ status }) => status === "available").length} available</p>
+              <p className="text-sm"><strong className="block">Capabilities</strong>{system.capabilities.map(({ name }) => name).join(", ")}</p>
               <p className="text-sm"><strong className="block">Current issues</strong>{system.issues.length || "None"}</p>
             </div>
             {canManage && system.management === "workspace" ? (
-              <form action={workspacePropertySystemAction} className="mt-6">
-                <input type="hidden" name="workspaceId" value={system.workspaceId} />
-                <input type="hidden" name="targetId" value={system.connectionId} />
-                <input type="hidden" name="action" value={system.status === "disconnected" ? "reconnect" : "disconnect"} />
-                <button type="submit" className="inline-flex items-center gap-2 rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold">
-                  <RefreshCw className="h-4 w-4" aria-hidden />{system.status === "disconnected" ? "Reconnect" : "Disconnect"}
-                </button>
-              </form>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {system.provider === "hospitable" && system.status !== "disconnected" ? (
+                  <form action={workspaceHospitableSyncAction}>
+                    <input type="hidden" name="workspaceId" value={system.workspaceId} />
+                    <button type="submit" className="inline-flex items-center gap-2 rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white">
+                      <RefreshCw className="h-4 w-4" aria-hidden />Sync now
+                    </button>
+                  </form>
+                ) : null}
+                <form action={workspacePropertySystemAction}>
+                  <input type="hidden" name="workspaceId" value={system.workspaceId} />
+                  <input type="hidden" name="targetId" value={system.connectionId} />
+                  <input type="hidden" name="action" value={system.status === "disconnected" ? "reconnect" : "disconnect"} />
+                  <button type="submit" className="inline-flex items-center gap-2 rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold">
+                    <RefreshCw className="h-4 w-4" aria-hidden />{system.status === "disconnected" ? "Reconnect" : "Disconnect"}
+                  </button>
+                </form>
+              </div>
             ) : system.management === "platform" ? (
-              <p className="mt-5 text-sm text-stone-600">Managed securely at the platform level. Provider credentials are never exposed here.</p>
+              <p className="mt-5 text-sm text-stone-600">{typeof system.apiCallCount === "number" ? `${system.apiCallCount.toLocaleString()} API ${system.apiCallCount === 1 ? "call" : "calls"} made to date.` : "API call volume is not yet available."}</p>
             ) : <p className="mt-5 text-sm text-stone-600">Connection management is limited to workspace owners and administrators.</p>}
           </WorkspaceCard>
         ))}

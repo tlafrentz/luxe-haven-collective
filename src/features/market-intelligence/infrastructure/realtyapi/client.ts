@@ -5,6 +5,7 @@ import type {
   RealtyApiAutocompleteResponseDto,
   RealtyApiPropertyResponseDto,
 } from "./types";
+import { recordProviderApiCall } from "@/platform/provider-usage";
 
 export interface RealtyApiClientOptions {
   readonly apiKey: string;
@@ -69,6 +70,7 @@ export class RealtyApiClient {
   }
 
   private async get<T>(path: string, parameters: Readonly<Record<string, string | number>>): Promise<T> {
+    void recordProviderApiCall("realtyapi");
     const url = new URL(`${this.baseUrl}${path}`);
     for (const [key, value] of Object.entries(parameters)) url.searchParams.set(key, String(value));
     const controller = new AbortController();

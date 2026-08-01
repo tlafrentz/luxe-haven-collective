@@ -1,5 +1,6 @@
 import type { AirRoiEnvelopeDto } from "./airroi-types";
 import { AirRoiError, normalizeAirRoiError } from "./airroi-errors";
+import { recordProviderApiCall } from "@/platform/provider-usage";
 
 export interface AirRoiTelemetry {
   emit(event: string, attributes: Readonly<Record<string, string | number | boolean | undefined>>): void;
@@ -52,6 +53,7 @@ export class AirRoiClient {
     }
   }
   private async request<T>(path: string, parameters: Readonly<Record<string, string | number | boolean | undefined>>): Promise<AirRoiEnvelopeDto<T>> {
+    void recordProviderApiCall("airroi");
     const url = new URL(`${this.baseUrl}${path}`);
     for (const [key, value] of Object.entries(parameters)) if (value !== undefined) url.searchParams.set(key, String(value));
     const controller = new AbortController();

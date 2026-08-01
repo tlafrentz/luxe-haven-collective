@@ -58,6 +58,7 @@ export type ConnectedSystemSummary = Readonly<{
     failed: number;
   }>;
   capabilities: readonly Readonly<{ name: string; status: "available" | "partially-available" | "unavailable" | "not-supported" }>[];
+  apiCallCount?: number;
   issues: readonly string[];
 }>;
 

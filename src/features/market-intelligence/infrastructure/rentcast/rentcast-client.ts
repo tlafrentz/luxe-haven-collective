@@ -18,6 +18,7 @@ import {
   providerErrorCompletion,
   safeRequestMetadataFromUrl,
 } from "../provider-diagnostics";
+import { recordProviderApiCall } from "@/platform/provider-usage";
 
 const DEFAULT_BASE_URL =
   "https://api.rentcast.io/v1";
@@ -268,6 +269,7 @@ export class RentCastClient {
   private async request<T>(
     url: URL,
   ): Promise<T> {
+    void recordProviderApiCall("rentcast");
     const controller =
       new AbortController();
 

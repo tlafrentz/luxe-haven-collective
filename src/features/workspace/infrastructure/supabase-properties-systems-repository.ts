@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOperationalSurfaceProjection } from "@/features/operational-surfaces";
-import { DEFAULT_INTEGRATION_PROVIDERS } from "@/features/integrations";
+import { DEFAULT_INTEGRATION_PROVIDERS, describeProviderCapability } from "@/features/integrations";
 import { getMarketIntelligenceConfig } from "@/features/market-intelligence/infrastructure/market-intelligence-config";
+import { getProviderApiCallCounts } from "@/platform/provider-usage";
 
 import type {
   PropertiesSystemsRepository,
@@ -117,6 +118,7 @@ export class SupabasePropertiesSystemsRepository implements PropertiesSystemsRep
         issues: status === "connected" ? [] : [`Connection is ${status.replaceAll("-", " ")}.`],
       });
     });
+    const apiCallCounts = await getProviderApiCallCounts(supabase);
     try {
       const marketConfig = getMarketIntelligenceConfig();
       if (marketConfig.providerEnabled) {
@@ -139,9 +141,10 @@ export class SupabasePropertiesSystemsRepository implements PropertiesSystemsRep
             failed: 0,
           },
           capabilities: provider.capabilities.map((capability) => ({
-            name: capability.replaceAll("-", " "),
+            name: describeProviderCapability(capability),
             status: "available" as const,
           })),
+          apiCallCount: apiCallCounts[provider.id],
           issues: [],
         }));
       }
@@ -161,9 +164,10 @@ export class SupabasePropertiesSystemsRepository implements PropertiesSystemsRep
           attentionPropertyCount: 0,
           synchronization: { status: "never-run" as const, processed: 0, updated: 0, failed: 0 },
           capabilities: provider.capabilities.map((capability) => ({
-            name: capability.replaceAll("-", " "),
+            name: describeProviderCapability(capability),
             status: "unavailable" as const,
           })),
+          apiCallCount: apiCallCounts[provider.id],
           issues: ["Provider configuration is incomplete."],
         }));
       }
@@ -199,9 +203,10 @@ export class SupabasePropertiesSystemsRepository implements PropertiesSystemsRep
         attentionPropertyCount: 0,
         synchronization: { status: "never-run" as const, processed: 0, updated: 0, failed: 0 },
         capabilities: provider.capabilities.map((capability) => ({
-          name: capability.replaceAll("-", " "),
+          name: describeProviderCapability(capability),
           status: configured ? "available" as const : "unavailable" as const,
         })),
+        apiCallCount: apiCallCounts[provider.id],
         issues: configured ? [] : ["Provider configuration is incomplete."],
       }));
     }
