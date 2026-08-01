@@ -1,5 +1,5 @@
 export type GuidebookStatus = "draft"|"published"|"superseded"|"archived";
-export type GuidebookBlockType = "heading"|"rich-text"|"image"|"gallery"|"video"|"map"|"callout"|"checklist"|"contact"|"button"|"link"|"divider";
+export type GuidebookBlockType = "heading"|"rich-text"|"image"|"instruction"|"contact"|"location"|"link"|"callout"|"checklist";
 export type RecommendationCategory = "restaurants"|"coffee"|"bars"|"groceries"|"pharmacy"|"hospital"|"activities"|"shopping"|"transportation";
 export type GuidebookBlock = Readonly<{id:string;type:GuidebookBlockType;position:number;content:Readonly<Record<string,unknown>>;guestSafe:boolean}>;
 export type GuidebookSection = Readonly<{id:string;key:string;title:string;position:number;visible:boolean;blocks:readonly GuidebookBlock[]}>;
@@ -13,7 +13,7 @@ export type PublishedGuidebook = Readonly<{title:string;description:string;publi
 export class GuidebookError extends Error {
   constructor(public readonly code:"guidebook_invalid"|"guidebook_not_found"|"property_not_found"|"permission_denied"|"entitlement_required"|"revision_conflict"|"publication_invalid"|"public_guidebook_unavailable"|"unsafe_public_content"|"unexpected",message:string){super(message);this.name="GuidebookError";Object.freeze(this)}
 }
-export const defaultGuidebookSections = Object.freeze(["welcome","arrival","parking","check-in","wifi","property-guide","amenities","house-rules","neighborhood","restaurants","things-to-do","transportation","emergency","checkout"] as const);
+export const defaultGuidebookSections = Object.freeze(["welcome","arrival","parking","property-access","wi-fi","house-rules","amenities","local-recommendations","checkout","safety","contact"] as const);
 export function createGuidebook(input:Omit<Guidebook,"status"|"currentVersion"|"publishedVersion"|"sections"|"recommendations"|"revision"> & {sections?:readonly GuidebookSection[]}):Guidebook{
  if(!input.workspaceId||!input.propertyId||!input.title.trim()||!isPublicSlug(input.publicSlug))throw new GuidebookError("guidebook_invalid","A Guidebook requires a Property, title, workspace, and secure public slug.");
  const sections=input.sections??defaultGuidebookSections.map((key,position)=>({id:`${input.id}-${key}`,key,title:title(key),position,visible:true,blocks:[]}));

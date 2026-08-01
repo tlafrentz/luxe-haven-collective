@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useActionState,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   saveGuestCommunicationDraft,
@@ -28,6 +22,7 @@ type GuestMessageComposerProps = {
   templates: readonly Template[];
   values: Readonly<Record<string, string>>;
   disabled?: boolean;
+  focusOnMount?: boolean;
 };
 
 const initial: GuestCommunicationComposerState = {
@@ -42,6 +37,7 @@ export function GuestMessageComposer({
   templates,
   values,
   disabled = false,
+  focusOnMount = false,
 }: GuestMessageComposerProps) {
   const storageKey = `guest-communication-draft:${conversationId}`;
   const scrollKey = `guest-communication-scroll:${conversationId}`;
@@ -56,8 +52,12 @@ export function GuestMessageComposer({
   );
 
   const hydrated = useRef(false);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const idempotencyKey = useMemo(() => crypto.randomUUID(), []);
 
+  useEffect(() => {
+    if (focusOnMount) bodyRef.current?.focus();
+  }, [focusOnMount]);
   useEffect(() => {
     const localDraft = localStorage.getItem(storageKey);
     const position = Number(sessionStorage.getItem(scrollKey));
@@ -113,13 +113,7 @@ export function GuestMessageComposer({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [
-    body,
-    conversationId,
-    disabled,
-    storageKey,
-    templateId,
-  ]);
+  }, [body, conversationId, disabled, storageKey, templateId]);
 
   function applyTemplate(id: string) {
     setTemplateId(id);
@@ -154,21 +148,12 @@ export function GuestMessageComposer({
       className="mt-4 space-y-3"
       onSubmit={handleSubmit}
     >
-      <input
-        type="hidden"
-        name="conversationId"
-        value={conversationId}
-      />
+      <input type="hidden" name="conversationId" value={conversationId} />
 
-      <input
-        type="hidden"
-        name="idempotencyKey"
-        value={idempotencyKey}
-      />
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
       <label className="block text-sm font-medium">
         Template
-
         <select
           name="templateId"
           value={templateId}
@@ -179,10 +164,7 @@ export function GuestMessageComposer({
           <option value="">Start without a template</option>
 
           {templates.map((template) => (
-            <option
-              key={template.id}
-              value={template.id}
-            >
+            <option key={template.id} value={template.id}>
               {template.title}
             </option>
           ))}
@@ -191,8 +173,8 @@ export function GuestMessageComposer({
 
       <label className="block text-sm font-medium">
         Reply
-
         <textarea
+          ref={bodyRef}
           required
           name="body"
           value={body}

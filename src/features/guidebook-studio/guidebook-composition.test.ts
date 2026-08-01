@@ -6,8 +6,8 @@ const requiredSections:CompositionSection[]=guidebookSectionRegistry.filter(item
 
 describe("Guidebook composition",()=>{
  it("publishes a reusable registry of experience sections and blocks",()=>{
-  expect(guidebookSectionRegistry.find(item=>item.key==="emergency")?.required).toBe(true);
-  expect(guidebookBlockRegistry.map(item=>item.label)).toEqual(expect.arrayContaining(["Heading","Gallery","Checklist","Map"]));
+  expect(guidebookSectionRegistry.find(item=>item.key==="safety")?.required).toBe(true);
+  expect(guidebookBlockRegistry.map(item=>item.label)).toEqual(expect.arrayContaining(["Heading","Instruction","Checklist","Location"]));
  });
  it("resolves canonical property variables without changing source content",()=>{
   const source="Welcome to {{propertyName}}. Check in at {{checkInTime}}.";
@@ -21,7 +21,7 @@ describe("Guidebook composition",()=>{
   expect(result.diagnostics.map(item=>item.status)).toEqual(["missing","unknown"]);
  });
  it("blocks publication when required sections or variables are incomplete",()=>{
-  const result=validateGuidebookComposition(requiredSections.filter(section=>section.key!=="emergency").map(section=>section.key==="welcome"?{...section,blocks:[{...section.blocks[0],content:{markdown:"{{doorCode}}"}}]}:section),context);
+  const result=validateGuidebookComposition(requiredSections.filter(section=>section.key!=="safety").map(section=>section.key==="welcome"?{...section,blocks:[{...section.blocks[0],content:{markdown:"{{doorCode}}"}}]}:section),context);
   expect(result.ready).toBe(false);
   expect(result.issues.map(issue=>issue.code)).toEqual(expect.arrayContaining(["required-section-incomplete","variable-unknown"]));
  });

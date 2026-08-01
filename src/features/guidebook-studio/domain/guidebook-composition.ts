@@ -2,19 +2,20 @@ import type {GuidebookBlockType} from "./guidebook";
 
 export const guidebookSectionRegistry=Object.freeze([
  {key:"welcome",label:"Welcome",required:true},{key:"arrival",label:"Arrival",required:true},
- {key:"parking",label:"Parking",required:true},{key:"check-in",label:"Check-in",required:true},
+ {key:"parking",label:"Parking",required:true},{key:"property-access",label:"Property Access",required:true},
  {key:"wi-fi",label:"Wi-Fi",required:true},{key:"house-rules",label:"House Rules",required:true},
- {key:"property-guide",label:"Property Guide",required:false},{key:"neighborhood",label:"Neighborhood",required:false},
- {key:"recommendations",label:"Recommendations",required:false},{key:"emergency",label:"Emergency",required:true},
- {key:"checkout",label:"Checkout",required:true},{key:"host-contact",label:"Host Contact",required:false},
+ {key:"amenities",label:"Amenities",required:false},{key:"local-recommendations",label:"Local Recommendations",required:false},
+ {key:"checkout",label:"Checkout",required:true},{key:"safety",label:"Safety",required:true},
+ {key:"contact",label:"Contact",required:true},
 ] as const);
 
-export const guidebookBlockRegistry=Object.freeze([
- {type:"heading",label:"Heading"},{type:"rich-text",label:"Paragraph"},{type:"rich-text",label:"Bullet list",variant:"bullet-list"},
- {type:"checklist",label:"Checklist"},{type:"image",label:"Image"},{type:"gallery",label:"Gallery"},
- {type:"divider",label:"Divider"},{type:"callout",label:"Callout"},{type:"rich-text",label:"Quote",variant:"quote"},
- {type:"button",label:"Button"},{type:"map",label:"Map"},
-] satisfies readonly {type:GuidebookBlockType;label:string;variant?:string}[]);
+export const guidebookBlockRegistry: readonly Readonly<{type:GuidebookBlockType;label:string;variant?:string}>[] = Object.freeze([
+ {type:"heading",label:"Heading"},{type:"rich-text",label:"Rich Text"},
+ {type:"image",label:"Image"},{type:"instruction",label:"Instruction"},
+ {type:"contact",label:"Contact"},{type:"location",label:"Location"},
+ {type:"link",label:"Link"},{type:"callout",label:"Callout"},
+ {type:"checklist",label:"Checklist"},
+]);
 
 export type GuidebookVariableKey="propertyName"|"wifi"|"parking"|"address"|"hostName"|"hostPhone"|"guidebookUrl"|"checkInTime"|"checkOutTime";
 export type GuidebookVariableContext=Readonly<Record<GuidebookVariableKey,string|null|undefined>>;
@@ -50,10 +51,15 @@ export function validateGuidebookComposition(sections:readonly CompositionSectio
   const text=blockText(block);
   for(const diagnostic of resolveGuidebookVariables(text,context).diagnostics.filter(item=>item.status!=="resolved"))issues.push({code:`variable-${diagnostic.status}`,sectionKey:section.key,blockId:block.id,message:diagnostic.message,blocking:true});
   if(block.type==="image"&&!String(block.content.alt??"").trim())issues.push({code:"image-alt-missing",sectionKey:section.key,blockId:block.id,message:"Image alt text is required for accessible publishing.",blocking:true});
+  if(["link","location"].includes(block.type)){
+   const url=String(block.content.url??block.content.mapUrl??"");
+   if(url&&!safePublicUrl(url))issues.push({code:"unsafe-link",sectionKey:section.key,blockId:block.id,message:"Use an HTTPS, HTTP, telephone, email, or relative link.",blocking:true});
+  }
  }
  const blocking=issues.filter(issue=>issue.blocking).length;
  return deepFreeze({status:blocking?"requires-attention":"ready" as "requires-attention"|"ready",ready:blocking===0,completeRequired:guidebookSectionRegistry.filter(item=>item.required).length-issues.filter(issue=>issue.code==="required-section-incomplete").length,totalRequired:guidebookSectionRegistry.filter(item=>item.required).length,issues});
 }
 
 export function blockText(block:CompositionBlock){return String(block.content.markdown??block.content.text??block.content.label??block.content.caption??"");}
+function safePublicUrl(value:string){if(value.startsWith("/"))return true;try{return["https:","http:","mailto:","tel:"].includes(new URL(value).protocol)}catch{return false}}
 function deepFreeze<T>(value:T):T{if(value&&typeof value==="object"&&!Object.isFrozen(value)){Object.freeze(value);Object.values(value).forEach(deepFreeze)}return value;}

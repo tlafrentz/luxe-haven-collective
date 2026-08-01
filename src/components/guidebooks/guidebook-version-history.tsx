@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { restoreGuidebookVersionAction } from "@/app/actions/guidebook-studio";
+import Link from "next/link";
+import { restoreGuidebookVersionAction } from "@/app/actions/guidebook-authoring";
 import {
   compareGuidebookVersions,
   type GuidebookVersionRecord,
@@ -10,6 +11,7 @@ import type { ActivityLineageEvent } from "@/platform/activity-lineage";
 
 type Props = {
   guidebookId: string;
+  workspaceId: string;
   revision: number;
   versions: readonly GuidebookVersionRecord[];
   timeline: readonly ActivityLineageEvent[];
@@ -19,6 +21,7 @@ type Props = {
 
 export function GuidebookVersionHistory({
   guidebookId,
+  workspaceId,
   revision,
   versions,
   timeline,
@@ -118,9 +121,11 @@ export function GuidebookVersionHistory({
                   {version.publicationNotes}
                 </p>
               ) : null}
+              <Link href={`/dashboard/guidebooks/${guidebookId}/versions/${version.id}/preview`} className="mt-3 inline-flex rounded-full border bg-white px-3 py-2 text-xs font-semibold">Preview immutable version</Link>
               {canRestore ? (
                 <form action={async (formData) => { await restoreGuidebookVersionAction(formData); }} className="mt-3 flex flex-wrap gap-2">
                   <input type="hidden" name="guidebookId" value={guidebookId} />
+                  <input type="hidden" name="workspaceId" value={workspaceId} />
                   <input type="hidden" name="versionId" value={version.id} />
                   <input type="hidden" name="revision" value={revision} />
                   <input

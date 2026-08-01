@@ -49,10 +49,10 @@ describe("GC-005 / GC-006 provider coexistence and manual review", () => {
     const action = actions.slice(
       actions.indexOf("export async function associateProviderReviewMessageAction"),
       actions.indexOf("export async function hydrateHospitableMessageHistoryAction"),
-    );
-    expect(action.indexOf("await linkProviderThread")).toBeGreaterThan(-1);
+    ).replace(/\s+/g,"");
+    expect(action.indexOf("awaitlinkProviderThread")).toBeGreaterThan(-1);
     expect(action.indexOf('.rpc("ingest_guest_provider_message"')).toBeGreaterThan(
-      action.indexOf("await linkProviderThread"),
+      action.indexOf("awaitlinkProviderThread"),
     );
     expect(action.indexOf('status:"associated"')).toBeGreaterThan(
       action.indexOf('.rpc("ingest_guest_provider_message"'),

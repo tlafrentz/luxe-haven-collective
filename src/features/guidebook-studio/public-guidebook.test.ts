@@ -42,9 +42,9 @@ const artifact: PublishedArtifactEnvelope<GuidebookArtifactPayload> = {
           },
           {
             id: "list",
-            type: "rich_text",
+            type: "rich-text",
             position: 1,
-            content: { variant: "bullet-list", markdown: "- One\n* Two" },
+            content: { markdown: "One\nTwo" },
           },
         ],
       },
@@ -77,8 +77,8 @@ describe("public guidebook renderer", () => {
       "Wi-Fi",
     ]);
     expect(view.sections[1]?.blocks[0]).toMatchObject({
-      type: "list",
-      items: ["One", "Two"],
+      type: "paragraph",
+      text: "One\nTwo",
     });
     expect(view.meta).toEqual({
       guidebookVersion: 3,
@@ -97,5 +97,111 @@ describe("public guidebook renderer", () => {
     expect(unsafeLink).not.toHaveProperty("url");
     expect(view).not.toHaveProperty("payload");
     expect(JSON.stringify(view)).not.toContain("javascript:alert");
+  });
+  it("renders all nine v1 blocks through the hostile public boundary and resolves images only from the immutable manifest", () => {
+    const malicious = `<img src=x onerror=steal()><script>bad()</script>Safe`,
+      mediaRef = `gbm_${"a".repeat(26)}`,
+      view = guidebookPublicRenderer.render({
+        ...artifact,
+        payload: {
+          ...artifact.payload,
+          media: {
+            [mediaRef]: {
+              url: "https://cdn.example.com/immutable.webp",
+              mimeType: "image/webp",
+            },
+          },
+          sections: [
+            {
+              id: "all",
+              title: "<b>All blocks</b>",
+              blocks: [
+                { id: "h", type: "heading", content: { text: malicious } },
+                { id: "r", type: "rich-text", content: { text: malicious } },
+                {
+                  id: "i",
+                  type: "image",
+                  content: { mediaRef, alt: malicious },
+                },
+                {
+                  id: "instruction",
+                  type: "instruction",
+                  content: {
+                    text: "Steps",
+                    steps: [{ id: "1", text: malicious }],
+                  },
+                },
+                {
+                  id: "contact",
+                  type: "contact",
+                  content: { name: malicious, phone: "+15551234567" },
+                },
+                {
+                  id: "location",
+                  type: "location",
+                  content: { text: malicious, mapUrl: "javascript:bad()" },
+                },
+                {
+                  id: "link",
+                  type: "link",
+                  content: { label: malicious, url: "data:text/html,bad" },
+                },
+                {
+                  id: "callout",
+                  type: "callout",
+                  content: { text: malicious },
+                },
+                {
+                  id: "checklist",
+                  type: "checklist",
+                  content: { items: [{ id: "1", text: malicious }] },
+                },
+              ],
+            },
+          ],
+        },
+      });
+    expect(view.sections[0]?.blocks.map((block) => block.type)).toEqual([
+      "heading",
+      "paragraph",
+      "image",
+      "instruction",
+      "contact",
+      "location",
+      "link",
+      "callout",
+      "checklist",
+    ]);
+    expect(JSON.stringify(view)).not.toMatch(
+      /<script|onerror|javascript:|data:text|bad\(\)/,
+    );
+    expect(view.sections[0]?.blocks[2]).toMatchObject({
+      type: "image",
+      url: "https://cdn.example.com/immutable.webp",
+    });
+    const untrusted = guidebookPublicRenderer.render({
+      ...artifact,
+      payload: {
+        ...artifact.payload,
+        sections: [
+          {
+            id: "image",
+            title: "Image",
+            blocks: [
+              {
+                id: "i",
+                type: "image",
+                content: {
+                  mediaRef,
+                  url: "https://attacker.example/x",
+                  alt: "x",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(untrusted.sections[0]?.blocks[0]).not.toHaveProperty("url");
   });
 });

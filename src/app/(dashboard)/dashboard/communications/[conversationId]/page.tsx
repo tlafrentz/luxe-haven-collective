@@ -1,42 +1,712 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { addGuestCommunicationLinkAttachmentAction, addGuestCommunicationNote, changeGuestConversationStatusAction, completeCommunicationRecommendationAction, dismissCommunicationRecommendationAction, getGuestCommunicationWorkspaceRequest, retryGuestCommunicationDeliveryAction } from "@/app/actions/guest-communications";
+import {
+  addGuestCommunicationLinkAttachmentAction,
+  addGuestCommunicationNote,
+  changeGuestConversationStatusAction,
+  completeCommunicationRecommendationAction,
+  dismissCommunicationRecommendationAction,
+  getGuestCommunicationWorkspaceRequest,
+  retryGuestCommunicationDeliveryAction,
+} from "@/app/actions/guest-communications";
 import { GuestMessageComposer } from "@/components/communications/guest-message-composer";
 import { CommunicationContextRefresh } from "@/components/communications/communication-context-refresh";
+import { buildGuidebookInsertionDraft } from "@/features/guest-communications";
 
-export default async function ConversationPage({ params }: { params: Promise<{ conversationId: string }> }) {
+export default async function ConversationPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ conversationId: string }>;
+  searchParams: Promise<{ guidebookLink?: string }>;
+}) {
   const { conversationId } = await params;
+  const requestedGuidebookLink = (await searchParams).guidebookLink;
   const result = await getGuestCommunicationWorkspaceRequest(conversationId);
   if (!result.ok) {
     if (result.code === "conversation_not_found") notFound();
-    return <div role="alert" className="mx-auto mt-10 max-w-3xl rounded-2xl border border-amber-200 bg-amber-50 p-6">This conversation is unavailable or permission-limited.</div>;
+    return (
+      <div
+        role="alert"
+        className="mx-auto mt-10 max-w-3xl rounded-2xl border border-amber-200 bg-amber-50 p-6"
+      >
+        This conversation is unavailable or permission-limited.
+      </div>
+    );
   }
-  const { reservation,guestContext } = result.projection;
-  const templates=result.templates.map((template:Record<string,unknown>)=>({id:String(template.id),title:String(template.title),body:String(template.body),variables:Array.isArray(template.variables)?template.variables.map(String):[]}));
-  const templateValues={guestName:guestContext.guest.preferredName.state==="available"?guestContext.guest.preferredName.value:guestContext.guest.name,propertyName:reservation.property.name,arrival:reservation.stay.window.arrivalDate,departure:reservation.stay.window.departureDate,guidebookLink:guestContext.guidebook.publicUrl.state==="available"?guestContext.guidebook.publicUrl.value:"",checkInTime:reservation.stay.window.checkInTime,checkoutTime:reservation.stay.window.checkoutTime,doorCode:guestContext.property.doorCode.state==="available"?guestContext.property.doorCode.value:"",wifi:guestContext.property.wifi.state==="available"?guestContext.property.wifi.value:"",parkingInstructions:guestContext.property.parking.state==="available"?guestContext.property.parking.value:"",hostName:"Your host"};
-  return <div className="mx-auto max-w-7xl space-y-6 py-8">
-    <CommunicationContextRefresh/>
-    <header><Link href="/dashboard/communications" className="text-sm font-semibold text-amber-800 hover:underline">← Inbox</Link><div className="mt-3 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">{result.projection.conversation.providerThreads[0]?.provider??"provider independent"} · {result.projection.conversation.status.replaceAll("-", " ")}</p><h1 className="mt-1 text-3xl font-semibold text-stone-950">{reservation.guest.name.display}</h1><p className="mt-1 text-stone-600">{reservation.property.name} · {reservation.reservationId}</p><Link href={`/dashboard/communications/guests/${guestContext.identity.guestId}`} className="mt-2 inline-block text-sm font-semibold text-amber-800 underline">View complete relationship history →</Link></div><div className="flex flex-wrap items-center gap-3"><span className="rounded-full border border-stone-300 px-3 py-1 text-sm text-stone-700">{guestContext.dataQuality.state.replaceAll("-", " ")} · {guestContext.dataQuality.confidence} confidence</span>{result.canReply?<><form action={changeGuestConversationStatusAction}><input type="hidden" name="conversationId" value={conversationId}/><input type="hidden" name="operation" value={result.projection.conversation.status==="resolved"||result.projection.conversation.status==="archived"?"reopen":"close"}/><button className="rounded-full border px-3 py-1 text-sm font-semibold">{result.projection.conversation.status==="resolved"||result.projection.conversation.status==="archived"?"Reopen":"Resolve"}</button></form>{result.projection.conversation.status!=="archived"?<form action={changeGuestConversationStatusAction}><input type="hidden" name="conversationId" value={conversationId}/><input type="hidden" name="operation" value="archive"/><button className="rounded-full border px-3 py-1 text-sm font-semibold">Archive</button></form>:null}</>:null}</div></div></header>
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)]">
-      <main className="space-y-6">
-        {!result.projection.providerState.connected?<section role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><h2 className="font-semibold">No messaging provider connected</h2><p className="mt-1 text-sm text-amber-950">You can read history and preserve a draft, but replies cannot be delivered until the provider connection is restored.</p><Link href="/dashboard/settings/integrations" className="mt-3 inline-block text-sm font-semibold underline">Connect provider</Link></section>:null}
-        <section className="rounded-2xl border border-stone-200 bg-white p-4 text-sm"><div className="flex flex-wrap justify-between gap-2"><p><span className="font-semibold">Provider health:</span> {result.projection.providerState.health?.replaceAll("-"," ")??"unavailable"}</p><p><span className="font-semibold">Adapter:</span> {result.projection.providerState.adapterVersion??"not resolved"}</p></div><p className="mt-2 text-xs text-stone-500">Available capabilities: {result.projection.providerState.capabilities?.map(item=>item.replaceAll("-"," ")).join(", ")||"none"}</p></section>
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-semibold">Canonical conversation timeline</h2>{result.projection.messages.length === 0 && result.projection.timeline.length === 0 ? <p className="mt-4 text-sm text-stone-500">No synchronized messages are available yet.</p> : <ol className="mt-4 space-y-4" aria-live="polite">{result.projection.messages.map(message => <li key={message.id} className={`rounded-xl p-4 ${message.direction==="inbound"?"bg-amber-50":message.direction==="internal-note"?"border border-dashed bg-white":"bg-stone-50"}`}><div className="flex justify-between gap-4 text-xs text-stone-500"><span className="font-semibold uppercase">{message.sender.displayName} · {message.direction}</span><time>{new Date(message.sentAt).toLocaleString()}</time></div><p className="mt-2 whitespace-pre-wrap text-sm text-stone-800">{message.body}</p><span className="mt-2 inline-block text-xs capitalize text-stone-500">{message.delivery}</span>{message.delivery==="failed"&&message.deliveryHistory.at(-1)?.retryable!==false?<form action={retryGuestCommunicationDeliveryAction} className="mt-2"><input type="hidden" name="messageId" value={message.id}/><button className="text-xs font-semibold underline">Retry delivery</button><p className="mt-1 text-xs text-stone-500">Retry appends delivery history without creating a duplicate message.</p></form>:message.delivery==="failed"?<p className="mt-2 text-xs text-stone-500">Automatic retry is unavailable. Review provider configuration or thread association.</p>:null}</li>)}{result.projection.timeline.filter(event=>!result.projection.messages.some(message=>message.id===event.id)).map(event=><li className="border-l-2 border-stone-300 pl-4 text-sm" key={event.id}><p className="font-semibold capitalize">{event.type.replaceAll("-", " ")}</p><p className="text-stone-600">{event.summary}</p><time className="text-xs text-stone-500">{new Date(event.occurredAt).toLocaleString()}</time></li>)}</ol>}</section>
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-semibold">Reply workspace</h2><p className="mt-1 text-sm text-stone-600">Drafts save automatically. Sending records provider delivery separately from immutable message content.</p><GuestMessageComposer conversationId={conversationId} initialBody={result.projection.draft?.body??""} initialTemplateId={result.projection.draft?.templateId??""} templates={templates} values={templateValues} disabled={!result.projection.capabilities.reply}/>{result.projection.capabilities.reply?<details className="mt-4 rounded-xl border p-3"><summary className="cursor-pointer text-sm font-semibold">Attach secure link</summary><form action={addGuestCommunicationLinkAttachmentAction} className="mt-3 grid gap-2 sm:grid-cols-[1fr_1.5fr_auto]"><input type="hidden" name="conversationId" value={conversationId}/><input required name="name" maxLength={200} placeholder="Attachment name" className="rounded-lg border p-2 text-sm"/><input required name="url" type="url" placeholder="https://…" className="rounded-lg border p-2 text-sm"/><button className="rounded-lg border px-3 text-sm font-semibold">Attach</button></form></details>:null}{result.projection.attachments.length?<div className="mt-4"><h3 className="text-sm font-semibold">Attachments</h3><ul className="mt-2 space-y-1 text-sm">{result.projection.attachments.map(attachment=><li key={attachment.id}>{attachment.name} · {attachment.type}</li>)}</ul></div>:null}</section>
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-semibold">Reservation timeline</h2><ol className="mt-4 space-y-3 text-sm"><Event label="Reservation created" value={reservation.provenance.lastObservedAt??"Provider timestamp unavailable"}/><Event label="Arrival" value={`${reservation.stay.window.arrivalDate} · ${reservation.stay.window.checkInTime}`}/><Event label="Checkout" value={`${reservation.stay.window.departureDate} · ${reservation.stay.window.checkoutTime}`}/>{result.guidebook?<Event label="Guidebook published" value={`Version ${result.guidebook.published_version}`}/>:null}</ol></section>
-      </main>
-      <aside className="space-y-6">
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><h2 className="font-semibold">Canonical guest context</h2><p className="mt-1 text-xs text-stone-500">{guestContext.projectionVersion} · generated {new Date(guestContext.generatedAt).toLocaleString()}</p><dl className="mt-3 grid gap-2 text-sm"><Fact label="Guest" value={`${guestContext.guest.name} · ${guestContext.guest.status.replaceAll("-"," ")}`}/><Fact label="Preferred name" value={contextLabel(guestContext.guest.preferredName)}/><Fact label="Language" value={contextLabel(guestContext.guest.language)}/><Fact label="Reservation stage" value={guestContext.reservation.stage.replaceAll("-"," ")}/><Fact label="Stay" value={`${guestContext.reservation.arrival} – ${guestContext.reservation.departure} · ${guestContext.reservation.lengthOfStay} nights`}/><Fact label="Party" value={`${contextLabel(guestContext.reservation.adults)} adults · ${contextLabel(guestContext.reservation.children)} children · ${contextLabel(guestContext.reservation.pets)} pets`}/><Fact label="Property" value={guestContext.property.name}/><Fact label="Address" value={contextLabel(guestContext.property.address)}/><Fact label="Door code" value={contextLabel(guestContext.property.doorCode)}/><Fact label="Parking" value={contextLabel(guestContext.property.parking)}/><Fact label="Wi-Fi" value={contextLabel(guestContext.property.wifi)}/><Fact label="Communication" value={`${guestContext.communication.status.replaceAll("-"," ")} · waiting on ${guestContext.communication.waitingOn}`}/><Fact label="Guest history" value={`${guestContext.history.previousStayCount} previous stays · ${guestContext.history.previousConversationCount} previous conversations`}/></dl></section>
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><h2 className="font-semibold">Context quality</h2><p className="mt-2 text-sm text-stone-700">{guestContext.dataQuality.guidance}</p><p className="mt-2 text-xs font-semibold uppercase tracking-wide text-stone-500">{guestContext.dataQuality.completeness}% complete · {guestContext.dataQuality.confidence} confidence</p>{guestContext.dataQuality.missing.length?<ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-900">{guestContext.dataQuality.missing.map(item=><li key={item}>{item} unavailable</li>)}</ul>:null}</section>
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><h2 className="font-semibold">Operational blockers</h2>{guestContext.operations.issues.length?<ul className="mt-3 space-y-2">{guestContext.operations.issues.map(issue=><li key={issue.id} className="rounded-lg bg-amber-50 p-3 text-sm"><p className="font-semibold">{issue.title}</p><p className="mt-1 capitalize text-stone-600">{issue.type} · {issue.priority} · {issue.status.replaceAll("_"," ")}</p></li>)}</ul>:<p className="mt-2 text-sm text-stone-600">No active operational issues were found.</p>}</section>
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><h2 className="font-semibold">Suggested actions</h2><p className="mt-1 text-xs text-stone-500">Deterministic operational guidance. Nothing is sent automatically.</p><ul className="mt-3 space-y-3">{result.projection.suggestedActions.length?result.projection.suggestedActions.map(suggestion=><li className="rounded-xl bg-stone-50 p-3" key={suggestion.id}><div className="flex items-start justify-between gap-3"><p className="text-sm font-semibold">{suggestion.title}</p><span className="rounded-full border bg-white px-2 py-0.5 text-[11px] font-semibold capitalize">{suggestion.priority}</span></div><p className="mt-1 text-xs text-stone-600">{suggestion.reason}</p><details className="mt-2 text-xs text-stone-600"><summary className="cursor-pointer font-semibold">Why this appeared · {suggestion.confidence} confidence</summary><ul className="mt-2 list-disc space-y-1 pl-4">{suggestion.explanation.map(reason=><li key={reason}>{reason}</li>)}</ul>{suggestion.dependencies.length?<ul className="mt-2 space-y-1">{suggestion.dependencies.map(dependency=><li key={dependency.key}>{dependency.satisfied?"✓":"—"} {dependency.label}{dependency.recovery?` · ${dependency.recovery}`:""}</li>)}</ul>:null}</details>{suggestion.suggestedTemplateCategory?<p className="mt-2 text-xs text-stone-500">Suggested template: <span className="font-semibold capitalize">{suggestion.suggestedTemplateCategory.replaceAll("-"," ")}</span></p>:null}{suggestion.href?<Link className="mt-2 inline-block text-xs font-semibold underline" href={suggestion.href}>Open required workspace</Link>:null}{result.projection.capabilities.reply?<div className="mt-3 flex flex-wrap gap-2"><form action={completeCommunicationRecommendationAction}><input type="hidden" name="conversationId" value={conversationId}/><input type="hidden" name="actionKey" value={suggestion.actionKey}/><input type="hidden" name="contextFingerprint" value={suggestion.contextFingerprint}/><button className="rounded-lg border bg-white px-2 py-1 text-xs font-semibold">Mark complete</button></form><details><summary className="cursor-pointer rounded-lg border bg-white px-2 py-1 text-xs font-semibold">Dismiss</summary><form action={dismissCommunicationRecommendationAction} className="mt-2 flex gap-2"><input type="hidden" name="conversationId" value={conversationId}/><input type="hidden" name="actionKey" value={suggestion.actionKey}/><input type="hidden" name="contextFingerprint" value={suggestion.contextFingerprint}/><input required name="reason" maxLength={500} aria-label="Dismissal reason" placeholder="Reason…" className="min-w-0 rounded-lg border px-2 py-1 text-xs"/><button className="rounded-lg border bg-white px-2 py-1 text-xs font-semibold">Confirm</button></form></details></div>:null}</li>):<li className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900"><p className="font-semibold">No communication actions require attention.</p><p className="mt-1 text-xs">You&apos;re up to date.</p></li>}</ul></section>
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><h2 className="font-semibold">Guidebook</h2>{result.guidebook?<><p className="mt-2 text-sm text-stone-600">{result.guidebook.title} · Version {result.guidebook.published_version}</p><Link href={result.guidebook.publicUrl} className="mt-3 inline-block text-sm font-semibold text-amber-800 hover:underline">Open published Guidebook →</Link><p className="mt-2 break-all rounded-lg bg-stone-50 p-2 text-xs text-stone-600">{result.guidebook.publicUrl}</p></>:<p className="mt-2 text-sm text-stone-600">No published Guidebook is available for this property.</p>}</section>
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><h2 className="font-semibold">Private notes</h2><p className="mt-1 text-xs text-stone-500">Never visible to guests.</p>{result.projection.notes.map(note => <p key={note.id} className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-stone-800">{note.body}</p>)}{result.projection.capabilities.note?<form action={addGuestCommunicationNote} className="mt-4 space-y-3"><input type="hidden" name="conversationId" value={conversationId} /><textarea required name="body" rows={3} maxLength={5000} className="block w-full rounded-xl border border-stone-300 px-3 py-2" placeholder="Add an internal note…" /><label className="flex items-center gap-2 text-sm"><input type="checkbox" name="pinned" /> Pin note</label><button className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold">Add note</button></form>:null}</section>
-        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><h2 className="font-semibold">Linked actions</h2><p className="mt-2 text-sm text-stone-600">{result.actionLinks.length ? `${result.actionLinks.length} Action Center item(s) linked.` : "No Action Center items linked."}</p><Link href="/dashboard/actions" className="mt-3 inline-block text-sm font-semibold text-amber-800 hover:underline">Open Action Center →</Link></section>
-      </aside>
+  const { reservation, guestContext } = result.projection;
+  const insertion = buildGuidebookInsertionDraft({
+    currentBody: result.projection.draft?.body ?? "",
+    requestedUrl: requestedGuidebookLink,
+    publishedUrl: result.guidebook?.publicUrl,
+  });
+  const templates = result.templates.map(
+    (template: Record<string, unknown>) => ({
+      id: String(template.id),
+      title: String(template.title),
+      body: String(template.body),
+      variables: Array.isArray(template.variables)
+        ? template.variables.map(String)
+        : [],
+    }),
+  );
+  const templateValues = {
+    guestName:
+      guestContext.guest.preferredName.state === "available"
+        ? guestContext.guest.preferredName.value
+        : guestContext.guest.name,
+    propertyName: reservation.property.name,
+    arrival: reservation.stay.window.arrivalDate,
+    departure: reservation.stay.window.departureDate,
+    guidebookLink:
+      guestContext.guidebook.publicUrl.state === "available"
+        ? guestContext.guidebook.publicUrl.value
+        : "",
+    checkInTime: reservation.stay.window.checkInTime,
+    checkoutTime: reservation.stay.window.checkoutTime,
+    doorCode:
+      guestContext.property.doorCode.state === "available"
+        ? guestContext.property.doorCode.value
+        : "",
+    wifi:
+      guestContext.property.wifi.state === "available"
+        ? guestContext.property.wifi.value
+        : "",
+    parkingInstructions:
+      guestContext.property.parking.state === "available"
+        ? guestContext.property.parking.value
+        : "",
+    hostName: "Your host",
+  };
+  return (
+    <div className="mx-auto max-w-7xl space-y-6 py-8">
+      <CommunicationContextRefresh />
+      <header>
+        <Link
+          href="/dashboard/communications"
+          className="text-sm font-semibold text-amber-800 hover:underline"
+        >
+          ← Inbox
+        </Link>
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+              {result.projection.conversation.providerThreads[0]?.provider ??
+                "provider independent"}{" "}
+              · {result.projection.conversation.status.replaceAll("-", " ")}
+            </p>
+            <h1 className="mt-1 text-3xl font-semibold text-stone-950">
+              {reservation.guest.name.display}
+            </h1>
+            <p className="mt-1 text-stone-600">
+              {reservation.property.name} · {reservation.reservationId}
+            </p>
+            <Link
+              href={`/dashboard/communications/guests/${guestContext.identity.guestId}`}
+              className="mt-2 inline-block text-sm font-semibold text-amber-800 underline"
+            >
+              View complete relationship history →
+            </Link>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full border border-stone-300 px-3 py-1 text-sm text-stone-700">
+              {guestContext.dataQuality.state.replaceAll("-", " ")} ·{" "}
+              {guestContext.dataQuality.confidence} confidence
+            </span>
+            {result.canReply ? (
+              <>
+                <form action={changeGuestConversationStatusAction}>
+                  <input
+                    type="hidden"
+                    name="conversationId"
+                    value={conversationId}
+                  />
+                  <input
+                    type="hidden"
+                    name="operation"
+                    value={
+                      result.projection.conversation.status === "resolved" ||
+                      result.projection.conversation.status === "archived"
+                        ? "reopen"
+                        : "close"
+                    }
+                  />
+                  <button className="rounded-full border px-3 py-1 text-sm font-semibold">
+                    {result.projection.conversation.status === "resolved" ||
+                    result.projection.conversation.status === "archived"
+                      ? "Reopen"
+                      : "Resolve"}
+                  </button>
+                </form>
+                {result.projection.conversation.status !== "archived" ? (
+                  <form action={changeGuestConversationStatusAction}>
+                    <input
+                      type="hidden"
+                      name="conversationId"
+                      value={conversationId}
+                    />
+                    <input type="hidden" name="operation" value="archive" />
+                    <button className="rounded-full border px-3 py-1 text-sm font-semibold">
+                      Archive
+                    </button>
+                  </form>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </div>
+      </header>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)]">
+        <main className="space-y-6">
+          {!result.projection.providerState.connected ? (
+            <section
+              role="alert"
+              className="rounded-2xl border border-amber-200 bg-amber-50 p-5"
+            >
+              <h2 className="font-semibold">No messaging provider connected</h2>
+              <p className="mt-1 text-sm text-amber-950">
+                You can read history and preserve a draft, but replies cannot be
+                delivered until the provider connection is restored.
+              </p>
+              <Link
+                href="/dashboard/settings/integrations"
+                className="mt-3 inline-block text-sm font-semibold underline"
+              >
+                Connect provider
+              </Link>
+            </section>
+          ) : null}
+          <section className="rounded-2xl border border-stone-200 bg-white p-4 text-sm">
+            <div className="flex flex-wrap justify-between gap-2">
+              <p>
+                <span className="font-semibold">Provider health:</span>{" "}
+                {result.projection.providerState.health?.replaceAll("-", " ") ??
+                  "unavailable"}
+              </p>
+              <p>
+                <span className="font-semibold">Adapter:</span>{" "}
+                {result.projection.providerState.adapterVersion ??
+                  "not resolved"}
+              </p>
+            </div>
+            <p className="mt-2 text-xs text-stone-500">
+              Available capabilities:{" "}
+              {result.projection.providerState.capabilities
+                ?.map((item) => item.replaceAll("-", " "))
+                .join(", ") || "none"}
+            </p>
+          </section>
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold">
+              Canonical conversation timeline
+            </h2>
+            {result.projection.messages.length === 0 &&
+            result.projection.timeline.length === 0 ? (
+              <p className="mt-4 text-sm text-stone-500">
+                No synchronized messages are available yet.
+              </p>
+            ) : (
+              <ol className="mt-4 space-y-4" aria-live="polite">
+                {result.projection.messages.map((message) => (
+                  <li
+                    key={message.id}
+                    className={`rounded-xl p-4 ${message.direction === "inbound" ? "bg-amber-50" : message.direction === "internal-note" ? "border border-dashed bg-white" : "bg-stone-50"}`}
+                  >
+                    <div className="flex justify-between gap-4 text-xs text-stone-500">
+                      <span className="font-semibold uppercase">
+                        {message.sender.displayName} · {message.direction}
+                      </span>
+                      <time>{new Date(message.sentAt).toLocaleString()}</time>
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-stone-800">
+                      {message.body}
+                    </p>
+                    <span className="mt-2 inline-block text-xs capitalize text-stone-500">
+                      {message.delivery}
+                    </span>
+                    {message.delivery === "failed" &&
+                    message.deliveryHistory.at(-1)?.retryable !== false ? (
+                      <form
+                        action={retryGuestCommunicationDeliveryAction}
+                        className="mt-2"
+                      >
+                        <input
+                          type="hidden"
+                          name="messageId"
+                          value={message.id}
+                        />
+                        <button className="text-xs font-semibold underline">
+                          Retry delivery
+                        </button>
+                        <p className="mt-1 text-xs text-stone-500">
+                          Retry appends delivery history without creating a
+                          duplicate message.
+                        </p>
+                      </form>
+                    ) : message.delivery === "failed" ? (
+                      <p className="mt-2 text-xs text-stone-500">
+                        Automatic retry is unavailable. Review provider
+                        configuration or thread association.
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+                {result.projection.timeline
+                  .filter(
+                    (event) =>
+                      !result.projection.messages.some(
+                        (message) => message.id === event.id,
+                      ),
+                  )
+                  .map((event) => (
+                    <li
+                      className="border-l-2 border-stone-300 pl-4 text-sm"
+                      key={event.id}
+                    >
+                      <p className="font-semibold capitalize">
+                        {event.type.replaceAll("-", " ")}
+                      </p>
+                      <p className="text-stone-600">{event.summary}</p>
+                      <time className="text-xs text-stone-500">
+                        {new Date(event.occurredAt).toLocaleString()}
+                      </time>
+                    </li>
+                  ))}
+              </ol>
+            )}
+          </section>
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold">Reply workspace</h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Drafts save automatically. Sending records provider delivery
+              separately from immutable message content.
+            </p>
+            <GuestMessageComposer
+              conversationId={conversationId}
+              initialBody={insertion.body}
+              focusOnMount={insertion.state === "inserted"}
+              initialTemplateId={result.projection.draft?.templateId ?? ""}
+              templates={templates}
+              values={templateValues}
+              disabled={!result.projection.capabilities.reply}
+            />
+            {result.projection.capabilities.reply ? (
+              <details className="mt-4 rounded-xl border p-3">
+                <summary className="cursor-pointer text-sm font-semibold">
+                  Attach secure link
+                </summary>
+                <form
+                  action={addGuestCommunicationLinkAttachmentAction}
+                  className="mt-3 grid gap-2 sm:grid-cols-[1fr_1.5fr_auto]"
+                >
+                  <input
+                    type="hidden"
+                    name="conversationId"
+                    value={conversationId}
+                  />
+                  <input
+                    required
+                    name="name"
+                    maxLength={200}
+                    placeholder="Attachment name"
+                    className="rounded-lg border p-2 text-sm"
+                  />
+                  <input
+                    required
+                    name="url"
+                    type="url"
+                    placeholder="https://…"
+                    className="rounded-lg border p-2 text-sm"
+                  />
+                  <button className="rounded-lg border px-3 text-sm font-semibold">
+                    Attach
+                  </button>
+                </form>
+              </details>
+            ) : null}
+            {result.projection.attachments.length ? (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold">Attachments</h3>
+                <ul className="mt-2 space-y-1 text-sm">
+                  {result.projection.attachments.map((attachment) => (
+                    <li key={attachment.id}>
+                      {attachment.name} · {attachment.type}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </section>
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold">Reservation timeline</h2>
+            <ol className="mt-4 space-y-3 text-sm">
+              <Event
+                label="Reservation created"
+                value={
+                  reservation.provenance.lastObservedAt ??
+                  "Provider timestamp unavailable"
+                }
+              />
+              <Event
+                label="Arrival"
+                value={`${reservation.stay.window.arrivalDate} · ${reservation.stay.window.checkInTime}`}
+              />
+              <Event
+                label="Checkout"
+                value={`${reservation.stay.window.departureDate} · ${reservation.stay.window.checkoutTime}`}
+              />
+              {result.guidebook ? (
+                <Event
+                  label="Guidebook published"
+                  value={`Version ${result.guidebook.published_version}`}
+                />
+              ) : null}
+            </ol>
+          </section>
+        </main>
+        <aside className="space-y-6">
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold">Canonical guest context</h2>
+            <p className="mt-1 text-xs text-stone-500">
+              {guestContext.projectionVersion} · generated{" "}
+              {new Date(guestContext.generatedAt).toLocaleString()}
+            </p>
+            <dl className="mt-3 grid gap-2 text-sm">
+              <Fact
+                label="Guest"
+                value={`${guestContext.guest.name} · ${guestContext.guest.status.replaceAll("-", " ")}`}
+              />
+              <Fact
+                label="Preferred name"
+                value={contextLabel(guestContext.guest.preferredName)}
+              />
+              <Fact
+                label="Language"
+                value={contextLabel(guestContext.guest.language)}
+              />
+              <Fact
+                label="Reservation stage"
+                value={guestContext.reservation.stage.replaceAll("-", " ")}
+              />
+              <Fact
+                label="Stay"
+                value={`${guestContext.reservation.arrival} – ${guestContext.reservation.departure} · ${guestContext.reservation.lengthOfStay} nights`}
+              />
+              <Fact
+                label="Party"
+                value={`${contextLabel(guestContext.reservation.adults)} adults · ${contextLabel(guestContext.reservation.children)} children · ${contextLabel(guestContext.reservation.pets)} pets`}
+              />
+              <Fact label="Property" value={guestContext.property.name} />
+              <Fact
+                label="Address"
+                value={contextLabel(guestContext.property.address)}
+              />
+              <Fact
+                label="Door code"
+                value={contextLabel(guestContext.property.doorCode)}
+              />
+              <Fact
+                label="Parking"
+                value={contextLabel(guestContext.property.parking)}
+              />
+              <Fact
+                label="Wi-Fi"
+                value={contextLabel(guestContext.property.wifi)}
+              />
+              <Fact
+                label="Communication"
+                value={`${guestContext.communication.status.replaceAll("-", " ")} · waiting on ${guestContext.communication.waitingOn}`}
+              />
+              <Fact
+                label="Guest history"
+                value={`${guestContext.history.previousStayCount} previous stays · ${guestContext.history.previousConversationCount} previous conversations`}
+              />
+            </dl>
+          </section>
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold">Context quality</h2>
+            <p className="mt-2 text-sm text-stone-700">
+              {guestContext.dataQuality.guidance}
+            </p>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+              {guestContext.dataQuality.completeness}% complete ·{" "}
+              {guestContext.dataQuality.confidence} confidence
+            </p>
+            {guestContext.dataQuality.missing.length ? (
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-900">
+                {guestContext.dataQuality.missing.map((item) => (
+                  <li key={item}>{item} unavailable</li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold">Operational blockers</h2>
+            {guestContext.operations.issues.length ? (
+              <ul className="mt-3 space-y-2">
+                {guestContext.operations.issues.map((issue) => (
+                  <li
+                    key={issue.id}
+                    className="rounded-lg bg-amber-50 p-3 text-sm"
+                  >
+                    <p className="font-semibold">{issue.title}</p>
+                    <p className="mt-1 capitalize text-stone-600">
+                      {issue.type} · {issue.priority} ·{" "}
+                      {issue.status.replaceAll("_", " ")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-stone-600">
+                No active operational issues were found.
+              </p>
+            )}
+          </section>
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold">Suggested actions</h2>
+            <p className="mt-1 text-xs text-stone-500">
+              Deterministic operational guidance. Nothing is sent automatically.
+            </p>
+            <ul className="mt-3 space-y-3">
+              {result.projection.suggestedActions.length ? (
+                result.projection.suggestedActions.map((suggestion) => (
+                  <li
+                    className="rounded-xl bg-stone-50 p-3"
+                    key={suggestion.id}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-semibold">
+                        {suggestion.title}
+                      </p>
+                      <span className="rounded-full border bg-white px-2 py-0.5 text-[11px] font-semibold capitalize">
+                        {suggestion.priority}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-stone-600">
+                      {suggestion.reason}
+                    </p>
+                    <details className="mt-2 text-xs text-stone-600">
+                      <summary className="cursor-pointer font-semibold">
+                        Why this appeared · {suggestion.confidence} confidence
+                      </summary>
+                      <ul className="mt-2 list-disc space-y-1 pl-4">
+                        {suggestion.explanation.map((reason) => (
+                          <li key={reason}>{reason}</li>
+                        ))}
+                      </ul>
+                      {suggestion.dependencies.length ? (
+                        <ul className="mt-2 space-y-1">
+                          {suggestion.dependencies.map((dependency) => (
+                            <li key={dependency.key}>
+                              {dependency.satisfied ? "✓" : "—"}{" "}
+                              {dependency.label}
+                              {dependency.recovery
+                                ? ` · ${dependency.recovery}`
+                                : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </details>
+                    {suggestion.suggestedTemplateCategory ? (
+                      <p className="mt-2 text-xs text-stone-500">
+                        Suggested template:{" "}
+                        <span className="font-semibold capitalize">
+                          {suggestion.suggestedTemplateCategory.replaceAll(
+                            "-",
+                            " ",
+                          )}
+                        </span>
+                      </p>
+                    ) : null}
+                    {suggestion.href ? (
+                      <Link
+                        className="mt-2 inline-block text-xs font-semibold underline"
+                        href={suggestion.href}
+                      >
+                        Open required workspace
+                      </Link>
+                    ) : null}
+                    {result.projection.capabilities.reply ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <form
+                          action={completeCommunicationRecommendationAction}
+                        >
+                          <input
+                            type="hidden"
+                            name="conversationId"
+                            value={conversationId}
+                          />
+                          <input
+                            type="hidden"
+                            name="actionKey"
+                            value={suggestion.actionKey}
+                          />
+                          <input
+                            type="hidden"
+                            name="contextFingerprint"
+                            value={suggestion.contextFingerprint}
+                          />
+                          <button className="rounded-lg border bg-white px-2 py-1 text-xs font-semibold">
+                            Mark complete
+                          </button>
+                        </form>
+                        <details>
+                          <summary className="cursor-pointer rounded-lg border bg-white px-2 py-1 text-xs font-semibold">
+                            Dismiss
+                          </summary>
+                          <form
+                            action={dismissCommunicationRecommendationAction}
+                            className="mt-2 flex gap-2"
+                          >
+                            <input
+                              type="hidden"
+                              name="conversationId"
+                              value={conversationId}
+                            />
+                            <input
+                              type="hidden"
+                              name="actionKey"
+                              value={suggestion.actionKey}
+                            />
+                            <input
+                              type="hidden"
+                              name="contextFingerprint"
+                              value={suggestion.contextFingerprint}
+                            />
+                            <input
+                              required
+                              name="reason"
+                              maxLength={500}
+                              aria-label="Dismissal reason"
+                              placeholder="Reason…"
+                              className="min-w-0 rounded-lg border px-2 py-1 text-xs"
+                            />
+                            <button className="rounded-lg border bg-white px-2 py-1 text-xs font-semibold">
+                              Confirm
+                            </button>
+                          </form>
+                        </details>
+                      </div>
+                    ) : null}
+                  </li>
+                ))
+              ) : (
+                <li className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">
+                  <p className="font-semibold">
+                    No communication actions require attention.
+                  </p>
+                  <p className="mt-1 text-xs">You&apos;re up to date.</p>
+                </li>
+              )}
+            </ul>
+          </section>
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold">Guidebook</h2>
+            {result.guidebook ? (
+              <>
+                <p className="mt-2 text-sm text-stone-600">
+                  {result.guidebook.title} · Version{" "}
+                  {result.guidebook.published_version}
+                </p>
+                <Link
+                  href={result.guidebook.publicUrl}
+                  className="mt-3 inline-block text-sm font-semibold text-amber-800 hover:underline"
+                >
+                  Open published Guidebook →
+                </Link>
+                <p className="mt-2 break-all rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
+                  {result.guidebook.publicUrl}
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-stone-600">
+                No published Guidebook is available for this property.
+              </p>
+            )}
+          </section>
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold">Private notes</h2>
+            <p className="mt-1 text-xs text-stone-500">
+              Never visible to guests.
+            </p>
+            {result.projection.notes.map((note) => (
+              <p
+                key={note.id}
+                className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-stone-800"
+              >
+                {note.body}
+              </p>
+            ))}
+            {result.projection.capabilities.note ? (
+              <form
+                action={addGuestCommunicationNote}
+                className="mt-4 space-y-3"
+              >
+                <input
+                  type="hidden"
+                  name="conversationId"
+                  value={conversationId}
+                />
+                <textarea
+                  required
+                  name="body"
+                  rows={3}
+                  maxLength={5000}
+                  className="block w-full rounded-xl border border-stone-300 px-3 py-2"
+                  placeholder="Add an internal note…"
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="pinned" /> Pin note
+                </label>
+                <button className="rounded-xl border border-stone-300 px-4 py-2 text-sm font-semibold">
+                  Add note
+                </button>
+              </form>
+            ) : null}
+          </section>
+          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold">Linked actions</h2>
+            <p className="mt-2 text-sm text-stone-600">
+              {result.actionLinks.length
+                ? `${result.actionLinks.length} Action Center item(s) linked.`
+                : "No Action Center items linked."}
+            </p>
+            <Link
+              href="/dashboard/actions"
+              className="mt-3 inline-block text-sm font-semibold text-amber-800 hover:underline"
+            >
+              Open Action Center →
+            </Link>
+          </section>
+        </aside>
+      </div>
     </div>
-  </div>;
+  );
 }
-function Fact({label,value}:{label:string;value:string}){return <div><dt className="text-stone-500">{label}</dt><dd className="capitalize">{value}</dd></div>}
-function Event({label,value}:{label:string;value:string}){return <li className="border-l-2 border-amber-500 pl-3"><p className="font-semibold">{label}</p><p className="text-stone-600">{value}</p></li>}
-function contextLabel(value:{state:string;value?:unknown;reason?:string}){return value.state==="available"?String(value.value):`${value.state.replaceAll("-"," ")} — ${value.reason??"No source value"}`;}
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-stone-500">{label}</dt>
+      <dd className="capitalize">{value}</dd>
+    </div>
+  );
+}
+function Event({ label, value }: { label: string; value: string }) {
+  return (
+    <li className="border-l-2 border-amber-500 pl-3">
+      <p className="font-semibold">{label}</p>
+      <p className="text-stone-600">{value}</p>
+    </li>
+  );
+}
+function contextLabel(value: {
+  state: string;
+  value?: unknown;
+  reason?: string;
+}) {
+  return value.state === "available"
+    ? String(value.value)
+    : `${value.state.replaceAll("-", " ")} — ${value.reason ?? "No source value"}`;
+}
