@@ -403,6 +403,7 @@ export async function getGuidebookStudioRequest(
         retryable: true,
         timestamp: new Date().toISOString(),
         errorType: error instanceof Error ? error.name : "unknown",
+        errorMessage: error instanceof Error ? error.message : String(error),
       });
     return {
       ok: false as const,
