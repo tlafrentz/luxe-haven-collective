@@ -321,11 +321,14 @@ async function updateConnectionStatus({
       ? {
           status,
           last_synced_at: timestamp,
+          last_successful_sync_at: timestamp,
+          last_failed_sync_at: null,
           updated_at: timestamp,
           metadata,
         }
       : {
           status,
+          last_failed_sync_at: timestamp,
           updated_at: timestamp,
           metadata,
         };
