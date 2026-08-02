@@ -1,52 +1,7 @@
-import {
-  getIntegrationsDashboard,
-  IntegrationCard,
-  SyncHistory,
-} from "@/features/integrations";
+import Link from "next/link";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { Metric, StatusPill } from "@/components/admin/operations-ui";
+import { listAdminIntegrations } from "@/features/admin-operations";
 
-export default async function IntegrationsPage() {
-  const dashboard =
-    await getIntegrationsDashboard();
-
-  return (
-    <main className="space-y-6">
-      <header>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500">
-          Admin
-        </p>
-
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">
-          Integrations
-        </h1>
-
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-600">
-          Monitor connected platforms, synchronized
-          properties, reservation activity, and sync
-          health.
-        </p>
-      </header>
-
-      {dashboard.integrations.map(
-        (integration) => (
-          <section
-            key={integration.id}
-            className="space-y-6"
-          >
-            <IntegrationCard
-              integration={integration}
-            />
-
-            <SyncHistory
-              history={integration.syncHistory}
-            />
-
-            <SyncHistory
-              history={integration.messageSyncHistory}
-              kind="messages"
-            />
-          </section>
-        ),
-      )}
-    </main>
-  );
-}
+const date=(value?:string)=>value?new Intl.DateTimeFormat("en-US",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value)):"No measured activity";
+export default async function IntegrationsPage(){const integrations=await listAdminIntegrations();const operational=integrations.filter((item)=>item.runtimeStatus==="operational").length,attention=integrations.filter((item)=>["degraded","unavailable"].includes(item.runtimeStatus)||item.configurationStatus==="invalid").length,notConfigured=integrations.filter((item)=>item.configurationStatus==="not_configured").length,disabled=integrations.filter((item)=>item.configurationStatus==="disabled").length;return <div className="space-y-8 py-8"><AdminPageHeader title="Integrations" description="Server-owned inventory of external provider boundaries. Configuration and measured runtime status are reported independently."/><section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Integration summary"><Metric label="Total integrations" value={integrations.length}/><Metric label="Operational" value={operational}/><Metric label="Attention required" value={attention}/><Metric label="Not configured" value={notConfigured}/><Metric label="Disabled" value={disabled}/></section><div className="grid gap-5 lg:grid-cols-2">{integrations.map(({definition,...state})=><article key={definition.id} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{definition.category}</p><h2 className="mt-1 text-xl font-semibold">{definition.displayName}</h2></div><div className="flex flex-col items-end gap-2"><StatusPill value={state.configurationStatus}/><StatusPill value={state.runtimeStatus}/></div></div><p className="mt-3 text-sm leading-6 text-stone-600">{definition.description}</p><ul className="mt-4 flex flex-wrap gap-2" aria-label="Capabilities">{definition.capabilities.map((capability)=><li className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-700" key={capability}>{capability}</li>)}</ul><dl className="mt-5 grid grid-cols-2 gap-4 border-t border-stone-100 pt-4 text-sm"><div><dt className="text-stone-500">Last success</dt><dd className="mt-1 font-medium">{date(state.lastSuccessfulActivity)}</dd></div><div><dt className="text-stone-500">Last failure</dt><dd className="mt-1 font-medium">{date(state.lastFailedActivity)}</dd></div><div><dt className="text-stone-500">7-day success rate</dt><dd className="mt-1 font-medium">{state.recentSuccessRate===undefined?"Unknown":`${state.recentSuccessRate}%`}</dd></div><div><dt className="text-stone-500">Management</dt><dd className="mt-1 font-medium capitalize">{definition.managementMode}</dd></div></dl><div className="mt-5 flex flex-wrap gap-3"><Link className="text-sm font-semibold underline" href={`/admin/integrations/${definition.id}`}>View details</Link><Link className="text-sm font-semibold underline" href={`/admin/provider-health?provider=${definition.id}`}>Open provider health</Link>{definition.supportsManualSync?<Link className="text-sm font-semibold underline" href="/admin/sync-history?provider=hospitable">Synchronization</Link>:null}{definition.managementUrl?<a className="text-sm font-semibold underline" href={definition.managementUrl} target="_blank" rel="noreferrer">Management console</a>:null}</div></article>)}</div></div>}
