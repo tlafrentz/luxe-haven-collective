@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { HTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 import { AlertTriangle, ArrowRight, CircleHelp, Inbox, RotateCcw } from "lucide-react";
 
@@ -66,6 +67,10 @@ export function WorkspaceContextSelector({ label, className, children, ...props 
     </label>
   );
 }
+
+export function WorkspaceNavigation({label,items,activeHref,action}:{label:string;items:readonly Readonly<{label:string;href:string}>[];activeHref:string;action?:ReactNode}){return <div className="overflow-x-auto border-b border-stone-200 bg-white px-4 sm:px-6 lg:px-8"><div className="mx-auto flex min-w-max max-w-[1440px] items-center justify-between gap-8"><nav aria-label={label} className="flex gap-8">{items.map(item=>{const active=activeHref===item.href;return <Link key={item.href} href={item.href} aria-current={active?"page":undefined} className={cn("border-b-2 py-4 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-teal-600",active?"border-stone-950 text-stone-950":"border-transparent text-stone-500 hover:text-stone-950")}>{item.label}</Link>})}</nav>{action?<div className="shrink-0 py-2">{action}</div>:null}</div></div>}
+export function StepWizard({label,steps,current}:{label:string;steps:readonly string[];current:number}){return <nav aria-label={label}><ol className="grid gap-2 sm:grid-cols-5">{steps.map((step,index)=><li key={step} aria-current={index===current?"step":undefined} className={cn("rounded-xl border px-3 py-3 text-sm font-semibold",index===current?"border-stone-950 bg-stone-950 text-white":index<current?"border-emerald-200 bg-emerald-50 text-emerald-800":"border-stone-200 bg-white text-stone-500")}><span className="mr-2">{index+1}</span>{step}</li>)}</ol></nav>}
+export function ListDetailPattern({list,detail,className}:{list:ReactNode;detail:ReactNode;className?:string}){return <div data-als="list-detail" className={cn("grid min-h-0 gap-6 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.7fr)]",className)}><section aria-label="Items">{list}</section><section aria-label="Selected item">{detail}</section></div>}
 
 function Region({ type, children, className, ...props }: HTMLAttributes<HTMLElement> & Readonly<{ type: "workspace-overview" | "workspace-content" | "workspace-supporting" | "workspace-activity" }>) {
   const Component = type === "workspace-supporting" ? "aside" : "section";

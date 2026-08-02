@@ -7,7 +7,7 @@ describe("Investment Workspace Completion boundaries", () => {
   it("keeps workspace navigation focused and report history in opportunity context", () => {
     const navigation = source("src/features/investment-intelligence/components/investment-workspace-shell-navigation.tsx");
     const opportunity = source("src/features/investment-opportunity/components/acquisition-opportunity-workspace.tsx");
-    expect([...navigation.matchAll(/label: "([^"]+)"/g)].map(match => match[1])).toEqual(["Analyze", "Saved Scenarios", "Opportunities"]);
+    expect([...navigation.matchAll(/label: "([^"]+)"/g)].map(match => match[1])).toEqual(["Analyze", "Scenarios", "Opportunities"]);
     expect(navigation).not.toContain("Templates");
     expect(navigation).not.toContain("History");
     expect(navigation).not.toContain("Saved Reports");

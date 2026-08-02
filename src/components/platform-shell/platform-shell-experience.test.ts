@@ -18,6 +18,8 @@ describe("workspace navigation experience", () => {
     expect(portfolio).toMatchObject({ parentId: "understand", level: 2, icon: "understand" });
   });
 
+  it("keeps the global sidebar at two levels",()=>{expect(Math.max(...clientWorkspaceNavigation.map(item=>item.level))).toBeLessThanOrEqual(2);});
+
   it("synchronizes booking shell context and breadcrumbs", () => {
     expect(pageDetails("/bookings", "client-workspace")).toMatchObject({
       eyebrow: "Business operations",

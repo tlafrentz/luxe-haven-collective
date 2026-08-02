@@ -6,3 +6,4 @@ export * from "./cash-flow-liquidity";
 export * from "./financial-planning";
 export * from "./financial-capital-planning";
 export * from "./financial-learning";
+export * from "./expense-workspace";

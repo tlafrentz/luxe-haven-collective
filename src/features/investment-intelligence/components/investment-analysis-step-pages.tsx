@@ -4,7 +4,6 @@ import { ArrowLeft, ArrowRight, Check, CircleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-import { AcquisitionTypeSelector } from "./acquisition-type-selector";
 import { DecisionReadinessCard } from "./decision-readiness-card";
 import { FinancingCard } from "./financing-card";
 import { GenerateInvestmentAnalysisCard } from "./generate-investment-analysis-card";
@@ -17,11 +16,11 @@ import { RevenueAssumptionsCard } from "./revenue-assumptions-card";
 import { useInvestmentWorkspaceState } from "./investment-workspace-state";
 
 const STEPS = [
-  { id: "strategy", label: "Strategy", description: "Choose the investment path and identify the property." },
-  { id: "property-market", label: "Property and Market", description: "Describe the asset and review the evidence available for the market." },
-  { id: "revenue-operations", label: "Revenue and Operations", description: "Set revenue assumptions and recurring operating costs." },
-  { id: "acquisition-capital", label: "Acquisition and Capital", description: "Enter the strategy-specific acquisition and funding assumptions." },
-  { id: "review-decision", label: "Review and Decision", description: "Review assumptions, resolve blockers, and generate the decision." },
+  { id: "property", label: "Property", description: "Identify the subject property and its physical profile." },
+  { id: "capital-structure", label: "Capital Structure", description: "Enter the purchase financing or rental-arbitrage lease structure." },
+  { id: "revenue-operations", label: "Revenue & Operations", description: "Set revenue assumptions and recurring operating costs." },
+  { id: "intelligence", label: "Intelligence", description: "Review provider evidence, market context, gaps, and confidence." },
+  { id: "decision", label: "Decision", description: "Review assumptions, resolve blockers, and generate the decision summary." },
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
@@ -89,11 +88,11 @@ export function InvestmentAnalysisStepPages({ resultsActions }: { resultsActions
 
         {validationMessage ? <div role="alert" className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><CircleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" /><span>{validationMessage}</span></div> : null}
 
-        {step === "strategy" ? <div className="mx-auto max-w-4xl"><AcquisitionTypeSelector /></div> : null}
-        {step === "property-market" ? <div className="space-y-6"><div className="mx-auto max-w-4xl"><PropertyProfileCard /></div><InvestmentMarketEvidencePanel /></div> : null}
+        {step === "property" ? <div className="mx-auto max-w-4xl"><PropertyProfileCard /></div> : null}
+        {step === "capital-structure" ? <div className="mx-auto max-w-4xl"><FinancingCard /></div> : null}
         {step === "revenue-operations" ? <div className="grid gap-6 xl:grid-cols-2"><RevenueAssumptionsCard /><OperatingPlanCard /></div> : null}
-        {step === "acquisition-capital" ? <div className="mx-auto max-w-4xl"><FinancingCard /></div> : null}
-        {step === "review-decision" ? <div className="space-y-7"><LiveInvestmentSummary /><div className="grid gap-8 xl:grid-cols-[minmax(0,0.7fr)_minmax(0,1.5fr)]"><DecisionReadinessCard /><GenerateInvestmentAnalysisCard /></div>{workspace.currentAnalysis.status === "completed" ? <><InvestmentAnalysisResults />{resultsActions}</> : null}</div> : null}
+        {step === "intelligence" ? <InvestmentMarketEvidencePanel /> : null}
+        {step === "decision" ? <div className="space-y-7"><LiveInvestmentSummary /><div className="grid gap-8 xl:grid-cols-[minmax(0,0.7fr)_minmax(0,1.5fr)]"><DecisionReadinessCard /><GenerateInvestmentAnalysisCard /></div>{workspace.currentAnalysis.status === "completed" ? <><InvestmentAnalysisResults />{resultsActions}</> : null}</div> : null}
       </section>
 
       <div className="flex items-center justify-between border-t border-neutral-200 pt-6">
@@ -107,37 +106,37 @@ export function InvestmentAnalysisStepPages({ resultsActions }: { resultsActions
 function buildCompletion(workspace: ReturnType<typeof useInvestmentWorkspaceState>): Record<StepId, StepState> {
   const { values, currentAnalysis } = workspace;
   return {
-    strategy: values.acquisitionType ? "Complete" : "Not started",
-    "property-market": values.address1.trim() && values.city.trim() && values.state.trim() && values.postalCode.trim() ? "Complete" : "Needs attention",
-    "revenue-operations": values.projectedAdr > 0 && values.projectedOccupancyPercentage > 0 && values.projectedOccupancyPercentage <= 100 ? "Complete" : "Needs attention",
-    "acquisition-capital": values.acquisitionType === "purchase"
+    property: values.address1.trim() && values.city.trim() && values.state.trim() && values.postalCode.trim() ? "Complete" : "Needs attention",
+    "capital-structure": values.acquisitionType === "purchase"
       ? values.purchasePrice > 0 && values.downPaymentPercentage >= 0 ? "Complete" : "Needs attention"
       : values.monthlyLease > 0 && values.leaseTermMonths > 0 ? "Complete" : "Needs attention",
-    "review-decision": currentAnalysis.status === "completed" ? "Complete" : currentAnalysis.status === "failed" ? "Needs attention" : "Not started",
+    "revenue-operations": values.projectedAdr > 0 && values.projectedOccupancyPercentage > 0 && values.projectedOccupancyPercentage <= 100 ? "Complete" : "Needs attention",
+    intelligence: values.address1.trim() ? "Complete" : "Not started",
+    decision: currentAnalysis.status === "completed" ? "Complete" : currentAnalysis.status === "failed" ? "Needs attention" : "Not started",
   };
 }
 
 function validateStep(step: StepId, workspace: ReturnType<typeof useInvestmentWorkspaceState>): string | null {
   const { values } = workspace;
-  if (step === "property-market" && (!values.address1.trim() || !values.city.trim() || !values.state.trim() || !values.postalCode.trim())) {
+  if (step === "property" && (!values.address1.trim() || !values.city.trim() || !values.state.trim() || !values.postalCode.trim())) {
     return "Enter the street address, city, state, and postal code before continuing.";
   }
   if (step === "revenue-operations" && (values.projectedAdr <= 0 || values.projectedOccupancyPercentage <= 0 || values.projectedOccupancyPercentage > 100)) {
     return "Enter a positive nightly rate and an occupancy assumption between 0% and 100% before continuing.";
   }
-  if (step === "acquisition-capital" && values.acquisitionType === "purchase" && values.purchasePrice <= 0) {
+  if (step === "capital-structure" && values.acquisitionType === "purchase" && values.purchasePrice <= 0) {
     return "Enter a purchase price before reviewing the decision.";
   }
-  if (step === "acquisition-capital" && values.acquisitionType === "rental-arbitrage" && values.monthlyLease <= 0) {
+  if (step === "capital-structure" && values.acquisitionType === "rental-arbitrage" && values.monthlyLease <= 0) {
     return "Enter the monthly rent before reviewing the decision.";
   }
   return null;
 }
 
 function readStep(): StepId {
-  if (typeof window === "undefined") return "strategy";
+  if (typeof window === "undefined") return "property";
   const value = new URL(window.location.href).searchParams.get("step");
-  return STEPS.some(item => item.id === value) ? value as StepId : "strategy";
+  return STEPS.some(item => item.id === value) ? value as StepId : "property";
 }
 
 function goTo(step: StepId, update: (step: StepId) => void) {
