@@ -122,8 +122,9 @@ function EnvironmentIndicator() { return process.env.NEXT_PUBLIC_VERCEL_ENV === 
 
 export function pageDetails(pathname: string, experience: PlatformExperience): { eyebrow: string; title: string; breadcrumbs: readonly Crumb[] } {
   if (experience === "operations-console") {
-    const title = pathname === "/admin" ? "Operations Console" : pathname.startsWith("/admin/integrations") ? "Integrations" : pathname.startsWith("/admin/properties") ? "Properties" : pathname.startsWith("/admin/owners") ? "Customers" : pathname.startsWith("/admin/inquiries") ? "Support" : "Operations Console";
-    return { eyebrow: "Internal operations", title, breadcrumbs: [{ id: "operations", label: "Operations Console", href: "/admin" }, { id: "current", label: title, current: true }] };
+    const routes = [["/admin/customers", "Customers"], ["/admin/properties", "Properties"], ["/admin/support", "Support"], ["/admin/integrations", "Integrations"], ["/admin/sync-history", "Sync History"], ["/admin/provider-health", "Provider Health"], ["/admin/audit", "Audit"]] as const;
+    const title = pathname === "/admin" ? "Workspace" : routes.find(([route]) => pathname.startsWith(route))?.[1] ?? "Operations";
+    return { eyebrow: "Admin Portal / Operations", title, breadcrumbs: [{ id: "operations", label: "Operations", href: "/admin" }, { id: "current", label: title, current: true }] };
   }
   if (pathname.startsWith("/dashboard/portfolio")) {
     const workspace = pathname.startsWith("/dashboard/portfolio/workspace");

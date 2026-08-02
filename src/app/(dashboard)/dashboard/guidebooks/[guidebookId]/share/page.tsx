@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
 import { GuidebookNavigation } from "@/components/guidebooks/guidebook-navigation";
@@ -56,10 +57,10 @@ export default async function GuidebookSharePage({
               </Link>
             </div>
             <div className="mt-5 rounded-2xl border bg-white p-4">
-              <img
+              <Image
                 src={`/dashboard/guidebooks/${guidebookId}/share/qr`}
-                width="192"
-                height="192"
+                width={192}
+                height={192}
                 alt={`QR code for ${path}`}
                 className="h-48 w-48"
               />

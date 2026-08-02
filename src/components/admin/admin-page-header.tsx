@@ -22,10 +22,10 @@ export function AdminPageHeader({
           </p>
         ) : null}
 
-        <h1 className="mt-3 font-serif text-5xl text-white">{title}</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">{title}</h1>
 
         {description ? (
-          <p className="mt-3 max-w-2xl text-white/60">{description}</p>
+          <p className="mt-2 max-w-2xl text-sm text-stone-600">{description}</p>
         ) : null}
       </div>
 

@@ -1,53 +1,66 @@
 Vercel CLI 58.4.0 (Node.js 24.18.0)
 Retrieving project…
 Finding latest production deployment
-Streaming logs for latest production deployment dpl_Nu4qTcehyFdTXobhDCDMMECkdW8o starting from 22:55:41.95
+Streaming logs for latest production deployment dpl_CDp9JTgDqezTbCd74Cx9oQhqseVM starting from 23:54:10.34
 
 waiting for new logs...
-22:55:51.25  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+23:54:21.27  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
 ---------------------------------------------------------------------------------
-{"event":"str_runtime_repository_construction_started","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"str_runtime_repository_construction_started"}
+{"event":"str_runtime_repository_construction_started","correlationId":"property-sync:50d59b68-138e-4d84-94b4-87dd5def16a7","stage":"str_runtime_repository_construction_started"}
 
 waiting for new logs...
-22:55:51.25  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+23:54:21.27  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
 ---------------------------------------------------------------------------------
-{"event":"str_runtime_repository_construction_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"str_runtime_repository_construction_completed"}
+{"event":"str_runtime_repository_construction_completed","correlationId":"property-sync:50d59b68-138e-4d84-94b4-87dd5def16a7","stage":"str_runtime_repository_construction_completed"}
 
 waiting for new logs...
-22:55:51.26  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+23:54:21.27  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
 ---------------------------------------------------------------------------------
-{"event":"str_runtime_feature_flag_evaluation_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"str_runtime_feature_flag_evaluation_completed"}
+{"event":"str_runtime_feature_flag_evaluation_completed","correlationId":"property-sync:50d59b68-138e-4d84-94b4-87dd5def16a7","stage":"str_runtime_feature_flag_evaluation_completed","featureEnabled":true}
 
 waiting for new logs...
-22:55:51.26  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+23:54:21.27  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
 ---------------------------------------------------------------------------------
-{"event":"str_runtime_provider_construction_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"str_runtime_provider_construction_completed"}
+{"event":"subject_property_autocomplete_started","correlationId":"property-sync:50d59b68-138e-4d84-94b4-87dd5def16a7","stage":"subject_property_autocomplete_started"}
 
 waiting for new logs...
-22:55:51.26  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+23:54:21.57  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
 ---------------------------------------------------------------------------------
-{"event":"market_snapshot_resolution_started","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"market_snapshot_resolution_started"}
+{"event":"subject_property_autocomplete_completed","correlationId":"property-sync:50d59b68-138e-4d84-94b4-87dd5def16a7","stage":"subject_property_autocomplete_completed"}
 
 waiting for new logs...
-22:55:51.26  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+23:55:35.16  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
 ---------------------------------------------------------------------------------
-{"event":"subject_property_autocomplete_started","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"subject_property_autocomplete_started"}
+{"event":"str_runtime_repository_construction_started","correlationId":"property-sync:4738795d-c6e3-41d2-a952-a7b56dce2678","stage":"str_runtime_repository_construction_started"}
 
 waiting for new logs...
-22:55:51.48  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+23:55:35.16  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
 ---------------------------------------------------------------------------------
-{"event":"subject_property_autocomplete_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"subject_property_autocomplete_completed"}
+{"event":"str_runtime_repository_construction_completed","correlationId":"property-sync:4738795d-c6e3-41d2-a952-a7b56dce2678","stage":"str_runtime_repository_construction_completed"}
 
 waiting for new logs...
-22:55:51.48  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+23:55:35.17  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
 ---------------------------------------------------------------------------------
-{"event":"subject_property_candidate_selection_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"subject_property_candidate_selection_completed"}
+{"event":"str_runtime_feature_flag_evaluation_completed","correlationId":"property-sync:4738795d-c6e3-41d2-a952-a7b56dce2678","stage":"str_runtime_feature_flag_evaluation_completed","featureEnabled":true}
 
 waiting for new logs...
-22:55:52.04  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+23:55:35.17  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
 ---------------------------------------------------------------------------------
-{"event":"subject_property_property_detail_mapping_completed","correlationId":"property-sync:81ee0819-6efc-4b1b-9a8f-6e4f435445e0","stage":"subject_property_property_detail_mapping_completed"}
+{"event":"market_snapshot_resolution_started","correlationId":"property-sync:4738795d-c6e3-41d2-a952-a7b56dce2678","stage":"market_snapshot_resolution_started"}
 
 waiting for new logs...
-WARNING! Exceeded query duration limit of 5 minutes
+23:55:35.17  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"subject_property_autocomplete_started","correlationId":"property-sync:4738795d-c6e3-41d2-a952-a7b56dce2678","stage":"subject_property_autocomplete_started"}
 
+waiting for new logs...
+23:55:35.44  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"subject_property_autocomplete_completed","correlationId":"property-sync:4738795d-c6e3-41d2-a952-a7b56dce2678","stage":"subject_property_autocomplete_completed"}
+
+waiting for new logs...
+23:55:35.44  ℹ️  POST  ---  luxehavencollective.co     /dashboard/investments/new
+---------------------------------------------------------------------------------
+{"event":"subject_property_candidate_selection_completed","correlationId":"property-sync:4738795d-c6e3-41d2-a952-a7b56dce2678","stage":"subject_property_candidate_selection_completed"}
+
+waiting for new logs...

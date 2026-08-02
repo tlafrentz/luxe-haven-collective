@@ -31,17 +31,16 @@ export default async function AdminPropertiesPage() {
   ).length;
 
   return (
-    <section>
+    <section className="py-8">
       <AdminPageHeader
-        eyebrow="Inventory"
-        title="Managed properties"
-        description="Create, publish, pause, and maintain the homes that power the Luxe Haven marketing site and future booking engine."
+        title="Properties"
+        description="Manage canonical property records and their customer relationships."
         actions={
           <Link
             href="/admin/properties/new"
-            className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-lg bg-stone-950 px-5 py-3 text-sm font-semibold text-white hover:bg-stone-800"
           >
-            New property
+            Add Property
           </Link>
         }
       />
@@ -60,22 +59,22 @@ export default async function AdminPropertiesPage() {
         />
 
         <AdminStatCard
-          label="Drafts"
+            label="Inactive"
           value={draftCount}
-          detail="Not yet published"
+            detail="Draft lifecycle state"
         />
 
         <AdminStatCard
-          label="Archived"
+            label="Maintenance"
           value={archivedCount}
-          detail="Hidden from inventory"
+            detail="No canonical maintenance property state"
         />
       </div>
 
       <AdminSectionCard className="mt-8">
         <div className="overflow-hidden">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-white/10 text-xs uppercase tracking-[0.22em] text-white/45">
+            <thead className="border-b border-stone-200 text-xs text-stone-500">
               <tr>
                 <th className="p-5">
                   Property
@@ -108,7 +107,7 @@ export default async function AdminPropertiesPage() {
                           src={propertyImage(
                             property,
                           )}
-                          alt=""
+                          alt={`${property.name} property`}
                           fill
                           sizes="96px"
                           className="object-cover"
@@ -116,23 +115,23 @@ export default async function AdminPropertiesPage() {
                       </div>
 
                       <div>
-                        <p className="font-semibold text-white">
+                        <p className="font-semibold text-stone-950">
                           {property.name}
                         </p>
 
-                        <p className="text-white/45">
+                        <p className="text-stone-500">
                           /{property.slug}
                         </p>
                       </div>
                     </div>
                   </td>
 
-                  <td className="p-5 text-white/65">
+                  <td className="p-5 text-stone-600">
                     {property.city},{" "}
                     {property.state}
                   </td>
 
-                  <td className="p-5 text-white/65">
+                  <td className="p-5 text-stone-600">
                     $
                     {Number(
                       property.nightly_rate,
@@ -150,14 +149,14 @@ export default async function AdminPropertiesPage() {
                     <div className="flex justify-end gap-2">
                       <Link
                         href={`/admin/properties/${property.id}`}
-                        className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white/70 hover:bg-white/10"
+                        className="rounded-lg border border-stone-200 px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
                       >
                         View
                       </Link>
 
                       <Link
                         href={`/admin/properties/${property.id}/edit`}
-                        className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white/70 hover:bg-white/10"
+                        className="rounded-lg border border-stone-200 px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
                       >
                         Edit
                       </Link>
@@ -175,7 +174,7 @@ export default async function AdminPropertiesPage() {
 
                         <button
                           type="submit"
-                          className="rounded-full border border-red-300/20 px-4 py-2 text-xs font-semibold text-red-200 hover:bg-red-500/10"
+                          className="rounded-lg border border-red-200 px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
                         >
                           Archive
                         </button>
@@ -189,7 +188,7 @@ export default async function AdminPropertiesPage() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="p-10 text-center text-white/50"
+                    className="p-10 text-center text-stone-500"
                   >
                     No properties yet. Create
                     the first Luxe Haven stay.

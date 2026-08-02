@@ -15,13 +15,13 @@ export function AdminSectionCard({
 }: AdminSectionCardProps) {
   return (
     <section
-      className={`rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 ${className}`}
+      className={`rounded-xl border border-stone-200 bg-white p-6 shadow-sm ${className}`}
     >
       {title || description ? (
         <div className="mb-6">
-          {title ? <h2 className="font-serif text-3xl text-white">{title}</h2> : null}
+          {title ? <h2 className="text-base font-semibold text-stone-950">{title}</h2> : null}
           {description ? (
-            <p className="mt-2 text-sm leading-6 text-white/50">{description}</p>
+            <p className="mt-1 text-sm leading-6 text-stone-500">{description}</p>
           ) : null}
         </div>
       ) : null}
