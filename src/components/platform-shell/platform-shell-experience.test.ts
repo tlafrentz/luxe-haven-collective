@@ -7,15 +7,16 @@ describe("workspace navigation experience", () => {
     "has one active product destination for %s",
     (pathname) => {
       const active = clientWorkspaceNavigation.filter(
-        (item) => item.kind !== "group" && item.activeMatch && matchesNavigationRoute(pathname, item.activeMatch),
+        (item) => item.activeMatch && matchesNavigationRoute(pathname, item.activeMatch),
       );
       expect(active).toHaveLength(1);
     },
   );
 
-  it("presents Portfolio Intelligence as an Understand peer", () => {
-    const portfolio = clientWorkspaceNavigation.find(({ id }) => id === "portfolio-intelligence");
-    expect(portfolio).toMatchObject({ parentId: "understand", level: 2, icon: "understand" });
+  it("presents Understand as the direct destination for its intelligence workspaces", () => {
+    const understand = clientWorkspaceNavigation.find(({ id }) => id === "understand");
+    expect(understand).toMatchObject({ level: 1, icon: "understand", href: "/dashboard/understand" });
+    expect(understand?.activeMatch && matchesNavigationRoute("/dashboard/financial", understand.activeMatch)).toBe(true);
   });
 
   it("keeps the global sidebar at two levels",()=>{expect(Math.max(...clientWorkspaceNavigation.map(item=>item.level))).toBeLessThanOrEqual(2);});

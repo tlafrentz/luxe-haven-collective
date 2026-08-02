@@ -4,17 +4,16 @@ import { buildPlatformBreadcrumbs, clientWorkspaceNavigation, matchesNavigationR
 describe("workspace-driven platform experience", () => {
   it("defines lifecycle capabilities in canonical order", () => {
     const lifecycle = clientWorkspaceNavigation.filter(item => "lifecycleStage" in item);
-    expect(lifecycle.map(item => item.lifecycleStage)).toEqual(["observe", "understand", "understand", "understand", "decide", "execute", "learn"]);
-    expect(lifecycle.map(item => item.label)).toEqual(["Revenue Intelligence", "Executive Intelligence", "Portfolio Intelligence", "Financial Intelligence", "Investment Intelligence", "Action Center", "Learning Intelligence"]);
+    expect(lifecycle.map(item => item.lifecycleStage)).toEqual(["observe", "understand", "decide", "execute", "learn"]);
+    expect(lifecycle.map(item => item.label)).toEqual(["Observe", "Understand", "Decide", "Execute", "Learn"]);
     expect(lifecycle.every(item => !("children" in item))).toBe(true);
     expect(new Set(lifecycle.map(item => item.href).filter(Boolean)).size).toBe(lifecycle.filter(item => item.href).length);
   });
 
-  it("models Understand products as lifecycle peers", () => {
-    expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ kind: "group", level: 1 });
-    expect(clientWorkspaceNavigation.find(item => item.id === "executive-intelligence")).toMatchObject({ parentId: "understand", kind: "product", level: 2 });
-    expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ parentId: "understand", kind: "product", level: 2 });
-    expect(clientWorkspaceNavigation.find(item => item.id === "financial-intelligence")).toMatchObject({ parentId: "understand", kind: "product", level: 2 });
+  it("presents lifecycle stages as direct workspace destinations", () => {
+    const lifecycle = clientWorkspaceNavigation.filter(item => "lifecycleStage" in item);
+    expect(lifecycle.every(item => item.kind === "product" && item.level === 1 && !("parentId" in item))).toBe(true);
+    expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ href: "/dashboard/understand", icon: "understand" });
   });
 
   it("keeps business, service, operations, and infrastructure concepts separate", () => {
@@ -66,7 +65,7 @@ describe("workspace-driven platform experience", () => {
   it("owns Portfolio Intelligence as an Understand lifecycle destination", () => {
     const route = platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio");
     expect(route).toMatchObject({ hpmStage: "understand", businessWorkspace: "portfolio", navigationItemId: "portfolio-intelligence" });
-    expect(clientWorkspaceNavigation.find(item => item.id === "portfolio-intelligence")).toMatchObject({ group: "hpm", parentId: "understand", level: 2, href: "/dashboard/portfolio", icon: "understand" });
+    expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ group: "hpm", level: 1, href: "/dashboard/understand", icon: "understand" });
     expect(platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio/workspace")).toMatchObject({ hpmStage: "understand", navigationItemId: "portfolio-intelligence" });
   });
 
@@ -78,13 +77,13 @@ describe("workspace-driven platform experience", () => {
   it("separates customer guidebook service consumption from internal delivery", () => {
     const customerService = clientWorkspaceNavigation.find(item => item.id === "guidebook-studio");
     const internalService = operationsConsoleNavigation.find(item => item.id === "guidebook-projects");
-    expect(customerService).toMatchObject({ group: "services", label: "Guidebook Studio", availability: "available", href: "/dashboard/guidebooks", description: "Publish mobile-first guest experiences" });
+    expect(customerService).toMatchObject({ group: "services", label: "Guidebook Studio", availability: "available", href: "/dashboard/guidebooks" });
     expect(internalService).toMatchObject({ group: "services", label: "Guidebook Projects", availability: "coming-soon", description: "Manage guidebook service delivery" });
     expect(customerService?.label).not.toBe(internalService?.label);
   });
 
-  it.each(["/dashboard/portfolio", "/dashboard/portfolio/workspace"])("activates Portfolio Intelligence for %s", path => {
-    const item = clientWorkspaceNavigation.find(entry => entry.id === "portfolio-intelligence");
+  it.each(["/dashboard/portfolio", "/dashboard/portfolio/workspace"])("activates Understand for %s", path => {
+    const item = clientWorkspaceNavigation.find(entry => entry.id === "understand");
     expect(item?.activeMatch && matchesNavigationRoute(path, item.activeMatch)).toBe(true);
   });
 

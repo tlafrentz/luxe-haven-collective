@@ -4,18 +4,29 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import {
   Boxes,
+  BookOpen,
+  BriefcaseBusiness,
   Building2,
+  CalendarDays,
   ChevronDown,
   CircleGauge,
   ClipboardList,
+  Crosshair,
+  Eye,
+  GraduationCap,
   Headphones,
   History,
   House,
+  LineChart,
+  MessageCircle,
   Palette,
+  PieChart,
   PlugZap,
   ScrollText,
+  Settings,
   ShieldCheck,
   UsersRound,
+  Zap,
   type LucideProps,
 } from "lucide-react";
 import {
@@ -33,7 +44,6 @@ import { ContextLink, WorkspaceContextBar, WorkspaceContextProvider } from "@/pl
 
 type ShellProps = Readonly<{ children: ReactNode; experience: PlatformExperience; role?: string | null }>;
 const groupLabels: Record<string, string> = { home: "Home", hpm: "HPM lifecycle", business: "Business", services: "Services", settings: "Workspace settings", operations: "Operations", infrastructure: "Infrastructure" };
-const iconLabels: Record<string, string> = { home: "HM", observe: "OB", understand: "UN", portfolio: "PI", decide: "DC", execute: "EX", learn: "LN", property: "PR", investment: "IN", booking: "BK", message: "MS", report: "RP", service: "SV", settings: "ST", operations: "OP", integration: "IT", content: "CT" };
 const availabilityLabels: Record<NavigationAvailability, string> = { available: "", "limited-preview": "Limited", "coming-soon": "Soon" };
 const operationsIcons: Record<string, ComponentType<LucideProps>> = {
   "operations-workspace": House,
@@ -47,6 +57,21 @@ const operationsIcons: Record<string, ComponentType<LucideProps>> = {
   "platform-sync-history": History,
   "platform-health": CircleGauge,
   "platform-audit": ShieldCheck,
+};
+const clientIcons: Record<string, ComponentType<LucideProps>> = {
+  home: House,
+  "workspace-overview": BriefcaseBusiness,
+  observe: Eye,
+  understand: LineChart,
+  decide: Crosshair,
+  execute: Zap,
+  learn: GraduationCap,
+  properties: Building2,
+  bookings: CalendarDays,
+  messages: MessageCircle,
+  reports: PieChart,
+  "guidebook-studio": BookOpen,
+  "workspace-settings": Settings,
 };
 
 export function ClientWorkspaceShell({ children, role }: Omit<ShellProps, "experience">) { return <PlatformShell experience="client-workspace" role={role}>{children}</PlatformShell>; }
@@ -132,10 +157,10 @@ function ShellNavigation({ experience, navigation, pathname, collapsed, onNaviga
   }
   const operations = experience === "operations-console";
   return <div className="flex h-full flex-col bg-[#0b0f12]">
-    <div className={operations ? "px-6 pb-5 pt-7" : "border-b border-white/10 px-5 py-5"}><div className="flex items-center justify-between"><ContextLink href={experience === "client-workspace" ? "/dashboard" : "/admin"} onClick={onNavigate} className="min-w-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-amber-300">{operations ? <OperationsBrand collapsed={collapsed} /> : <><span className="block truncate text-xs font-semibold uppercase tracking-[0.22em] text-amber-200">Luxe Haven</span>{!collapsed ? <span className="mt-1 block truncate text-xl font-semibold">HPM Workspace</span> : null}</>}</ContextLink><button type="button" onClick={onToggle} aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} className={operations && !collapsed ? "sr-only" : "hidden h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-stone-300 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-teal-400 lg:flex"}>{collapsed ? "→" : "←"}</button></div>{!collapsed && experience === "client-workspace" ? <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2"><span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-200">Current workspace</span><span className="mt-1 block truncate text-xs font-semibold text-stone-300">Luxe Haven Collective</span></div> : null}</div>
+    <div className={operations ? "px-6 pb-5 pt-7" : "px-6 pb-5 pt-6"}><div className="flex items-center justify-between"><ContextLink href={experience === "client-workspace" ? "/dashboard" : "/admin"} onClick={onNavigate} className="min-w-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-amber-300"><OperationsBrand collapsed={collapsed} /></ContextLink><button type="button" onClick={onToggle} aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} className={operations && !collapsed ? "sr-only" : "hidden h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-xl text-stone-300 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-teal-400 lg:flex"}>{collapsed ? "→" : "‹"}</button></div>{!collapsed && experience === "client-workspace" ? <ContextLink href="/dashboard/workspace" onClick={onNavigate} className="mt-6 flex min-h-24 items-center justify-between rounded-2xl border border-white/[0.12] bg-white/[0.035] px-4 py-4 outline-none transition-colors hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-amber-300"><span className="min-w-0"><span className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#d5b46b]">Current workspace</span><span className="mt-2 block truncate text-base font-semibold text-stone-100">Luxe Haven Collective</span></span><ChevronDown aria-hidden="true" className="h-5 w-5 shrink-0 text-stone-200" /></ContextLink> : null}</div>
     {operations && !collapsed ? <div className="mx-6 border-t border-white/[0.08] pt-5"><p className="text-[12px] font-bold uppercase tracking-[0.08em] text-stone-100">Admin Portal</p></div> : null}
-    <nav aria-label={experience === "client-workspace" ? "HPM workspace navigation" : "Operations Console navigation"} className={operations ? "flex-1 overflow-x-hidden overflow-y-auto px-4 pb-5 pt-4" : "flex-1 overflow-x-hidden overflow-y-auto px-3 py-5"}>
-      {groups.map(group => <section key={group} aria-labelledby={`nav-${group}`} className={operations ? "mb-6" : "mb-5"}><h2 id={`nav-${group}`} className={collapsed || group === "home" ? "sr-only" : operations ? "mb-2.5 px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#c9a85f]" : "mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-200"}>{groupLabels[group]}</h2><div className={operations ? "space-y-0.5" : "space-y-1"}>{navigation.filter(item => item.group === group).map(item => <NavigationEntry key={item.id} item={item} pathname={pathname} collapsed={collapsed} experience={experience} parentActive={activeHierarchy.has(item.id)} onNavigate={onNavigate} />)}</div></section>)}
+    <nav aria-label={experience === "client-workspace" ? "HPM workspace navigation" : "Operations Console navigation"} className={operations ? "flex-1 overflow-x-hidden overflow-y-auto px-4 pb-5 pt-4" : "flex-1 overflow-x-hidden overflow-y-auto px-4 py-4"}>
+      {groups.map(group => <section key={group} aria-labelledby={`nav-${group}`} className={operations ? "mb-6" : group === "settings" ? "mt-6 border-t border-white/10 pt-6" : "mb-7"}><h2 id={`nav-${group}`} className={collapsed || group === "home" || group === "settings" ? "sr-only" : operations ? "mb-2.5 px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#c9a85f]" : "mb-3 px-2 text-[12px] font-bold uppercase tracking-[0.18em] text-[#d5b46b]"}>{groupLabels[group]}</h2><div className={operations ? "space-y-0.5" : "space-y-1.5"}>{navigation.filter(item => item.group === group).map(item => <NavigationEntry key={item.id} item={item} pathname={pathname} collapsed={collapsed} experience={experience} parentActive={activeHierarchy.has(item.id)} onNavigate={onNavigate} />)}</div></section>)}
     </nav>
     <div className={operations ? "border-t border-white/[0.08] px-4 py-4" : "border-t border-white/10 p-3"}><div className="flex min-h-14 items-center gap-3 rounded-xl px-2 text-stone-300"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-950">TL</span>{collapsed ? <span className="sr-only">Todd L, Administrator</span> : <><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">Todd L.</span><span className="block truncate text-xs text-stone-500">Administrator</span></span>{operations ? <ChevronDown aria-hidden="true" className="h-5 w-5 text-stone-300" /> : null}</>}</div></div>
   </div>;
@@ -152,9 +177,9 @@ function NavigationEntry({ item, pathname, collapsed, experience, parentActive, 
   const disabled = item.availability !== "available" || !item.href;
   const status = item.availability === "available" ? null : availabilityLabels[item.availability];
   const operations = experience === "operations-console";
-  const Icon = operationsIcons[item.id] ?? ScrollText;
-  const content = <><span className={["relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border", item.level === 3 ? "scale-90" : "", operations ? "border-white/[0.08] bg-[#171b1e] text-stone-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]" : active ? "border-white bg-white text-stone-950" : "border-white/10 bg-[#151719] text-stone-300"].join(" ")}>{operations ? <Icon aria-hidden="true" strokeWidth={1.9} className="h-[18px] w-[18px]" /> : <span className="text-[10px] font-semibold">{item.icon ? iconLabels[item.icon] : "•"}</span>}</span>{collapsed ? <><span className="sr-only">{item.label}{status ? `, ${status}` : ""}</span><span role="tooltip" className="pointer-events-none absolute left-full z-50 ml-3 hidden min-w-max rounded-lg bg-stone-800 px-3 py-2 text-xs font-semibold text-white shadow-xl group-hover/nav:block group-focus-visible/nav:block">{item.label}</span></> : <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="block text-sm font-semibold">{item.label}</span>{status ? <span aria-hidden="true" className="rounded-full border border-white/15 bg-[#111518] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-stone-300">{status}</span> : null}</span>{item.description && !operations ? <span className="mt-0.5 block text-xs leading-4 text-stone-500">{item.description}</span> : null}{status ? <span className="sr-only">Availability: {status}</span> : null}</span>}</>;
-  const classes = ["group/nav relative flex min-h-11 w-full items-center gap-3 rounded-xl px-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950", active ? operations ? "bg-white/[0.065] text-white" : "bg-white/[0.10] text-stone-200 ring-1 ring-white/10" : parentActive ? "text-stone-300" : disabled ? "cursor-default text-stone-400" : "text-stone-300 hover:bg-white/[0.05] hover:text-white"].join(" ");
+  const Icon = operations ? operationsIcons[item.id] ?? ScrollText : clientIcons[item.id] ?? ScrollText;
+  const content = <><span className={["relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border", item.level === 3 ? "scale-90" : "", operations ? "border-white/[0.08] bg-[#171b1e] text-stone-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]" : active ? "border-white/10 bg-white/[0.06] text-white" : "border-white/[0.08] bg-[#171b1e] text-stone-200"].join(" ")}><Icon aria-hidden="true" strokeWidth={1.9} className="h-5 w-5" /></span>{collapsed ? <><span className="sr-only">{item.label}{status ? `, ${status}` : ""}</span><span role="tooltip" className="pointer-events-none absolute left-full z-50 ml-3 hidden min-w-max rounded-lg bg-stone-800 px-3 py-2 text-xs font-semibold text-white shadow-xl group-hover/nav:block group-focus-visible/nav:block">{item.label}</span></> : <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="block text-[15px] font-medium">{item.label}</span>{status ? <span aria-hidden="true" className="rounded-full border border-white/15 bg-[#111518] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-stone-300">{status}</span> : null}</span>{status ? <span className="sr-only">Availability: {status}</span> : null}</span>}</>;
+  const classes = ["group/nav relative flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950", active ? operations ? "bg-white/[0.065] text-white" : "bg-white/[0.09] text-white ring-1 ring-white/[0.04]" : parentActive ? "text-stone-300" : disabled ? "cursor-default text-stone-400" : "text-stone-300 hover:bg-white/[0.05] hover:text-white"].join(" ");
   return disabled ? <div className={classes} aria-disabled="true" title={item.description}>{content}</div> : <ContextLink href={item.href!} onClick={() => { recordPlatformNavigationEvent("platform_navigation_item_selected", { navigationItemId: item.id, destinationRoute: item.href }); onNavigate(); }} className={classes} aria-current={active ? "page" : undefined} title={collapsed ? item.label : undefined}>{content}</ContextLink>;
 }
 
