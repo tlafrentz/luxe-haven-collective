@@ -30,22 +30,20 @@ export default async function GuestCommunicationsPage({
     priority: params.priority,
   });
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-5 py-8">
+    <div className="mx-auto max-w-[1440px] space-y-4 px-5 py-5">
       <CommunicationContextRefresh />
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-          Guest experience
+      <header className="flex items-end justify-between gap-4">
+        <div><p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+          Guest Communications
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-stone-950">
-          Guest Communication Workspace
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm text-stone-600">
+        <h1 className="sr-only">Guest Communications</h1>
+        <p className="mt-1 max-w-3xl text-xs text-stone-600">
           Conversations connect guest messages with the reservation, property,
           Guidebook, and operational follow-through.
-        </p>
+        </p></div><Link href="/dashboard/workspace/connected-systems" className="inline-flex min-h-10 items-center rounded-full bg-stone-950 px-5 text-xs font-semibold text-white">Manage connection</Link>
       </header>
-      <form className="grid gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm md:grid-cols-4">
-        <label className="text-sm font-medium text-stone-700">
+      <form className="grid gap-3 rounded-xl border border-stone-200 bg-white p-4 shadow-sm md:grid-cols-6">
+        <label className="text-[10px] font-medium text-stone-700">
           Search
           <span className="sr-only">
             {" "}
@@ -55,15 +53,15 @@ export default async function GuestCommunicationsPage({
             name="q"
             defaultValue={params.q}
             placeholder="Guest, property, reservation…"
-            className="mt-1 block w-full rounded-xl border border-stone-300 px-3 py-2"
+            className="mt-1 block min-h-10 w-full rounded-lg border border-stone-300 px-3 text-xs"
           />
         </label>
-        <label className="text-sm font-medium text-stone-700">
+        <label className="text-[10px] font-medium text-stone-700">
           Status
           <select
             name="status"
             defaultValue={params.status ?? ""}
-            className="mt-1 block w-full rounded-xl border border-stone-300 px-3 py-2"
+            className="mt-1 block min-h-10 w-full rounded-lg border border-stone-300 px-3 text-xs"
           >
             <option value="">All conversations</option>
             <option value="unread">Unread</option>
@@ -74,12 +72,12 @@ export default async function GuestCommunicationsPage({
             <option value="archived">Archived</option>
           </select>
         </label>
-        <label className="text-sm font-medium text-stone-700">
+        <label className="text-[10px] font-medium text-stone-700">
           Sort
           <select
             name="sort"
             defaultValue={params.sort ?? "requires-reply"}
-            className="mt-1 block w-full rounded-xl border border-stone-300 px-3 py-2"
+            className="mt-1 block min-h-10 w-full rounded-lg border border-stone-300 px-3 text-xs"
           >
             <option value="requires-reply">Requires reply</option>
             <option value="arrival-today">Arrival today</option>
@@ -88,12 +86,12 @@ export default async function GuestCommunicationsPage({
             <option value="recent">Recently active</option>
           </select>
         </label>
-        <label className="text-sm font-medium text-stone-700">
+        <label className="text-[10px] font-medium text-stone-700">
           Property
           <select
             name="property"
             defaultValue={params.property ?? ""}
-            className="mt-1 block w-full rounded-xl border border-stone-300 px-3 py-2"
+            className="mt-1 block min-h-10 w-full rounded-lg border border-stone-300 px-3 text-xs"
           >
             <option value="">All properties</option>
             {result.ok
@@ -105,12 +103,12 @@ export default async function GuestCommunicationsPage({
               : null}
           </select>
         </label>
-        <label className="text-sm font-medium text-stone-700">
+        <label className="text-[10px] font-medium text-stone-700">
           Reservation stage
           <select
             name="stage"
             defaultValue={params.stage ?? ""}
-            className="mt-1 block w-full rounded-xl border border-stone-300 px-3 py-2"
+            className="mt-1 block min-h-10 w-full rounded-lg border border-stone-300 px-3 text-xs"
           >
             <option value="">All stages</option>
             <option value="arrival-today">Arrival today</option>
@@ -119,12 +117,12 @@ export default async function GuestCommunicationsPage({
             <option value="confirmed">Confirmed</option>
           </select>
         </label>
-        <label className="text-sm font-medium text-stone-700">
+        <label className="text-[10px] font-medium text-stone-700">
           Priority
           <select
             name="priority"
             defaultValue={params.priority ?? ""}
-            className="mt-1 block w-full rounded-xl border border-stone-300 px-3 py-2"
+            className="mt-1 block min-h-10 w-full rounded-lg border border-stone-300 px-3 text-xs"
           >
             <option value="">All priorities</option>
             <option value="urgent">Urgent</option>
@@ -133,7 +131,7 @@ export default async function GuestCommunicationsPage({
             <option value="low">Low</option>
           </select>
         </label>
-        <button className="self-end rounded-xl bg-stone-950 px-5 py-2 text-sm font-semibold text-white">
+        <button className="sr-only">
           Filter
         </button>
       </form>

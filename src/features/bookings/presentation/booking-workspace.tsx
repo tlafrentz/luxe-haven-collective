@@ -98,9 +98,9 @@ export function BookingWorkspace({
   }, [selectedBooking]);
 
   return (
-    <WorkspacePage width="wide">
+    <WorkspacePage width="wide" className="py-5 lg:py-5">
       <WorkspaceHeader
-        eyebrow="Business operations"
+        eyebrow="Bookings"
         title="Bookings"
         description="See the reservations you are responsible for operating across your hospitality business."
         actions={

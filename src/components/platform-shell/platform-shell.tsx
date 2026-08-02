@@ -17,6 +17,9 @@ import {
   Headphones,
   History,
   House,
+  Search,
+  CircleHelp,
+  Bell,
   LineChart,
   MessageCircle,
   Palette,
@@ -39,7 +42,7 @@ import {
   type NavigationItem,
   type PlatformExperience,
 } from "@/platform/experience";
-import { ContextLink, WorkspaceContextBar, WorkspaceContextProvider } from "@/platform/workspace-context";
+import { ContextLink, WorkspaceContextBar, WorkspaceContextProvider, workspaceContextKind } from "@/platform/workspace-context";
 
 type ShellProps = Readonly<{ children: ReactNode; experience: PlatformExperience; role?: string | null }>;
 const groupLabels: Record<string, string> = { home: "Home", hpm: "HPM lifecycle", business: "Business", services: "Services", settings: "Workspace settings", operations: "Operations", infrastructure: "Infrastructure" };
@@ -88,6 +91,7 @@ function PlatformShellFrame({ children, experience, role }: ShellProps) {
   const source = experience === "client-workspace" ? clientWorkspaceNavigation : operationsConsoleNavigation;
   const navigation = resolveNavigation(source, resolveUserCapabilities({ authenticated: true, role }));
   const details = pageDetails(pathname, experience);
+  const contextKind = workspaceContextKind(pathname);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(`luxe-haven:${experience}:sidebar-collapsed`);
@@ -125,16 +129,17 @@ function PlatformShellFrame({ children, experience, role }: ShellProps) {
       <aside className="relative h-full w-[88%] max-w-96 shadow-2xl"><ShellNavigation experience={experience} navigation={navigation} pathname={pathname} collapsed={false} onNavigate={() => setMobileOpen(false)} onToggle={() => undefined} /></aside>
     </div> : null}
     <div className={collapsed ? "lg:pl-20" : "lg:pl-80"}>
-      <header className="sticky top-0 z-30 border-b border-stone-200 bg-[#f8f7f4]/95 backdrop-blur-xl">
-        <div className="flex min-h-20 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <header data-context-kind={contextKind} className={["sticky top-0 z-30 border-b bg-white/95 backdrop-blur-xl",contextKind==="operational"?"border-emerald-200":contextKind==="intelligence"?"border-violet-200":"border-blue-200"].join(" ")}>
+        <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <button ref={triggerRef} type="button" onClick={() => { setMobileOpen(true); recordPlatformNavigationEvent("platform_mobile_navigation_opened", { experience }); }} aria-label="Open navigation menu" aria-expanded={mobileOpen} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-950 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 lg:hidden"><span aria-hidden="true">☰</span></button>
-            <div className="min-w-0"><p className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">{details.eyebrow}</p><p className="truncate text-lg font-semibold text-stone-950">{details.title}</p><Breadcrumbs items={details.breadcrumbs} /></div>
+            <div className="hidden min-w-0 lg:block"><WorkspaceContextBar /></div>
+            <div className="min-w-0 lg:hidden"><p className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">{details.eyebrow}</p><p className="truncate text-lg font-semibold text-stone-950">{details.title}</p></div>
           </div>
-          <div className="flex items-center gap-3"><EnvironmentIndicator /><span className="hidden rounded-full border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-600 sm:inline-flex">{experience === "client-workspace" ? "Workspace" : "Internal"}</span><ContextLink href={experience === "client-workspace" ? "/dashboard/workspace/preferences" : "/admin"} aria-label="Open user profile menu" className="flex h-10 w-10 items-center justify-center rounded-full bg-stone-950 text-xs font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">TL</ContextLink></div>
+          <div className="flex items-center gap-1"><EnvironmentIndicator /><button aria-label="Search" className="grid h-10 w-10 place-items-center rounded-lg text-stone-700 hover:bg-stone-100"><Search className="h-4 w-4" /></button><button aria-label="Help" className="hidden h-10 w-10 place-items-center rounded-lg text-stone-700 hover:bg-stone-100 sm:grid"><CircleHelp className="h-4 w-4" /></button><button aria-label="Notifications" className="hidden h-10 w-10 place-items-center rounded-lg text-stone-700 hover:bg-stone-100 sm:grid"><Bell className="h-4 w-4" /></button><ContextLink href={experience === "client-workspace" ? "/dashboard/workspace/preferences" : "/admin"} aria-label="Open user profile menu" className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-stone-950 text-[10px] font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">TL</ContextLink></div>
         </div>
       </header>
-      <WorkspaceContextBar />
+      <div className="lg:hidden"><WorkspaceContextBar /></div>
       <main id="main-content" className="sm:mx-6 lg:mx-8">{children}</main>
     </div>
   </div>;
@@ -182,7 +187,6 @@ function NavigationEntry({ item, pathname, collapsed, experience, parentActive, 
 }
 
 type Crumb = Readonly<{ id: string; label: string; href?: string; current?: boolean }>;
-function Breadcrumbs({ items }: { items: readonly Crumb[] }) { return <nav aria-label="Breadcrumb" className="mt-0.5 hidden sm:block"><ol className="flex items-center gap-1 text-xs text-stone-500">{items.map((item, index) => <li key={item.id} className="flex items-center gap-1">{index ? <span aria-hidden="true">/</span> : null}{item.href ? <ContextLink className="rounded underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href={item.href}>{item.label}</ContextLink> : <span aria-current={item.current ? "page" : undefined}>{item.label}</span>}</li>)}</ol></nav>; }
 function EnvironmentIndicator() { return process.env.NEXT_PUBLIC_VERCEL_ENV === "preview" ? <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900">Preview</span> : null; }
 
 export function pageDetails(pathname: string, experience: PlatformExperience): { eyebrow: string; title: string; breadcrumbs: readonly Crumb[] } {

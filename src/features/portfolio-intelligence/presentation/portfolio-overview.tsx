@@ -9,13 +9,13 @@ import type {
 export function PortfolioOverviewView({ overview }: { overview: PortfolioOverview }) {
   if (overview.scope.propertyCount === 0) return <PortfolioOverviewEmpty />;
   return (
-    <main className="mx-auto max-w-[1500px] space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-      <PortfolioOverviewHeader overview={overview} />
+    <main className="mx-auto max-w-[1500px] space-y-5 px-4 pb-8 pt-3 sm:px-6 lg:px-8">
+      <h1 className="sr-only">Portfolio Overview</h1>
       {overview.permissionLimited ? <Notice title="Your Assigned Portfolio">This view includes only properties assigned to your role. Inaccessible property names and totals are not disclosed.</Notice> : null}
       {overview.scope.propertyCount === 1 ? <Notice title="Single-property portfolio">Portfolio totals are available. Comparative property and diversification analysis requires additional properties.</Notice> : null}
       {overview.freshness !== "current" ? <Notice title="Portfolio data may be incomplete">{overview.evidence.limitingSource ? `${overview.evidence.limitingSource} is the limiting data source.` : "One or more operational sources are not current."} Last known values remain labeled by freshness.</Notice> : null}
-      <PortfolioConditionView overview={overview} />
       <PortfolioMetrics metrics={overview.metrics} />
+      <PortfolioConditionView overview={overview} />
       <PortfolioChanges overview={overview} />
       <div className="grid gap-8 xl:grid-cols-2">
         <PortfolioContribution overview={overview} />

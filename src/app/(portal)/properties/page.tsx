@@ -63,12 +63,12 @@ export default async function PropertiesPage({
   ).length;
 
   return (
-    <WorkspacePage width="wide">
+    <WorkspacePage width="wide" className="py-5 lg:py-5">
       <WorkspaceHeader
-        eyebrow="Business operations"
+        eyebrow="Properties"
         title="Properties"
-        description="Operate the hospitality assets you own using live reservations, stay context, connection state, and trusted data quality."
-        actions={params.property?<Link href={`/dashboard/reports/new?type=property-performance&source=${params.property}`} className="inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold">Generate property report</Link>:undefined}
+        description="Operate the hospitality assets you own."
+        actions={<div className="flex gap-2">{params.property?<Link href={`/dashboard/reports/new?type=property-performance&source=${params.property}`} className="inline-flex min-h-10 items-center rounded-full border px-4 text-xs font-semibold">Generate property report</Link>:null}<Link href="/dashboard/workspace/connected-systems" className="inline-flex min-h-10 items-center rounded-full bg-stone-950 px-5 text-xs font-semibold text-white">+ Add property</Link></div>}
       />
       <OperationalDegradedState synchronization={projection.synchronization} />
       <WorkspaceOverview className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

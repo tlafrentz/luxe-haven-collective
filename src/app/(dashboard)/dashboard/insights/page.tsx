@@ -6,7 +6,7 @@ import {
   getRevenueIntelligence,
   RevenueIntelligenceDashboard,
 } from "@/features/revenue-intelligence";
-import { WorkspaceHeader, WorkspacePage } from "@/components/application-layout";
+import { WorkspacePage } from "@/components/application-layout";
 import { getRelevantLearning } from "@/app/actions/platform-learning-workspace";
 import { RelevantLearningPanel } from "@/components/learning/relevant-learning-panel";
 
@@ -47,17 +47,7 @@ export default async function InsightsPage({
   }).catch(() => null);
 
   return (
-    <WorkspacePage className="space-y-6">
-      <WorkspaceHeader
-        eyebrow="Observe"
-        title="Revenue Intelligence"
-        description="Monitor revenue, occupancy, and booking performance, then review the opportunities that need attention."
-        context={<div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          Live intelligence engine
-        </div>}
-      />
-
+    <WorkspacePage className="space-y-6 pt-1">
       <RevenueIntelligenceDashboard
         intelligence={intelligence}
       />

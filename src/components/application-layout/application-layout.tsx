@@ -48,11 +48,11 @@ export function WorkspaceHeader({
   className,
 }: Readonly<{ title: string; description: string; eyebrow?: string; actions?: ReactNode; context?: ReactNode; className?: string }>) {
   return (
-    <header data-als="workspace-header" className={cn("flex flex-col justify-between gap-6 border-b border-stone-200 pb-8 lg:flex-row lg:items-end", className)}>
+    <header data-als="workspace-header" className={cn("flex flex-col justify-between gap-4 pb-3 lg:flex-row lg:items-center", className)}>
       <div className="min-w-0">
         {eyebrow ? <p className="ui-capability">{eyebrow}</p> : null}
-        <h1 className="ui-page-title mt-2">{title}</h1>
-        <p className="ui-supporting mt-3 max-w-2xl">{description}</p>
+        <h1 className="sr-only">{title}</h1>
+        <p className="mt-1 max-w-3xl text-xs text-stone-600">{description}</p>
       </div>
       {actions || context ? <div className="flex flex-col gap-3 sm:flex-row sm:items-center">{context}{actions}</div> : null}
     </header>
