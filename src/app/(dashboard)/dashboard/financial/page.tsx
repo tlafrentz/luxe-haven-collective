@@ -18,6 +18,6 @@ export default async function FinancialOverviewPage({ searchParams }: { searchPa
 }
 function single(value: string | string[] | undefined) { return Array.isArray(value) ? value[0] : value; }
 function values(value: string | string[]) { return Array.isArray(value) ? value : [value]; }
-function preset(value?: string): FinancialPeriodPreset { return ["this-month", "last-month", "qtd", "ytd", "12m", "custom"].includes(value ?? "") ? value as FinancialPeriodPreset : "this-month"; }
+function preset(value?: string): FinancialPeriodPreset { return ["this-month", "last-month", "qtd", "ytd", "12m", "custom"].includes(value ?? "") ? value as FinancialPeriodPreset : "last-month"; }
 function comparison(value?: string): FinancialComparisonType { return ["previous-period", "previous-year", "budget", "forecast", "none"].includes(value ?? "") ? value as FinancialComparisonType : "previous-period"; }
 function view(value?:string){return (["list","category","recurring"].includes(value??"")?value:"list") as "list"|"category"|"recurring";}
