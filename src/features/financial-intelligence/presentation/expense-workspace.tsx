@@ -3,6 +3,7 @@ import { startTransition, useActionState, useCallback, useEffect, useMemo, useRe
 import { Plus, Search, X } from "lucide-react";
 import { archiveFinancialExpenseAction, recordFinancialExpenseAction, updateFinancialExpenseAction } from "@/app/actions/financial-observations";
 import {
+  activeExpenseItems,
   expenseCategoryTotals,
   financialExpenseFrequencies,
   type ExpenseListItem,
@@ -15,8 +16,9 @@ export function FinancialOverviewActions({reportHref}:{reportHref:string}){retur
 export function OperatingExpensesWorkspace({initialExpenses,properties,workspaceId,currency,basis,initialView="list"}:{initialExpenses:readonly ExpenseListItem[];properties:readonly{id:string;name:string}[];workspaceId:string;currency:string;basis:FinancialExpenseBasis;initialView?:View}){
  const[view,setView]=useState<View>(initialView),[modal,setModal]=useState(false),[expenses,setExpenses]=useState(initialExpenses),[query,setQuery]=useState(""),[category,setCategory]=useState("all"),[status,setStatus]=useState("all"),[sort,setSort]=useState<"date-desc"|"date-asc"|"amount-desc"|"amount-asc">("date-desc"),[editingExpense,setEditingExpense]=useState<ExpenseListItem|null>(null);
  const filtered=useMemo(()=>expenses.filter(e=>(category==="all"||e.category===category)&&(status==="all"||e.status===status)&&(!query||`${e.name} ${e.category} ${e.source} ${e.sourceReference??""}`.toLowerCase().includes(query.toLowerCase()))).sort((a,b)=>sort.startsWith("date")?(sort.endsWith("desc")?b.effectiveDate.localeCompare(a.effectiveDate):a.effectiveDate.localeCompare(b.effectiveDate)):(sort.endsWith("desc")?b.amountMinor-a.amountMinor:a.amountMinor-b.amountMinor)),[expenses,query,category,status,sort]);
+ const activeExpenses=useMemo(()=>activeExpenseItems(expenses),[expenses]);
  function navigate(next:View){setView(next);const url=new URL(location.href);url.searchParams.set("expenseView",next);history.replaceState({},"",url);}
- const recurring=expenses.filter(e=>e.frequency!=="one-time");
+ const recurring=activeExpenses.filter(e=>e.frequency!=="one-time");
  const closeModal=useCallback(()=>setModal(false),[]),recordExpense=useCallback((expense:ExpenseListItem)=>setExpenses(current=>[expense,...current]),[]);
  const updateExpense=useCallback((expense:ExpenseListItem)=>setExpenses(current=>current.map(e=>e.id===expense.id?expense:e)),[]);
  const archiveExpense=useCallback(async(expense:ExpenseListItem)=>{
@@ -29,10 +31,10 @@ export function OperatingExpensesWorkspace({initialExpenses,properties,workspace
   <section aria-labelledby="operating-expenses-heading" className="rounded-2xl border border-stone-200 bg-white shadow-sm">
    <div className="flex flex-wrap items-start justify-between gap-4 p-5 sm:p-6"><div><h2 id="operating-expenses-heading" className="font-serif text-xl font-semibold">Operating Expenses</h2><p className="mt-1 text-xs text-stone-500">All {title(basis)} operating expenses for this property</p></div><button onClick={()=>setModal(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-stone-950 px-3 text-xs font-semibold text-white"><Plus size={15}/>Add expense</button></div>
    <div className="border-b px-5 sm:px-6" role="tablist" aria-label="Expense views">{([["list","Expense list"],["category","By category"],["recurring","Recurring expenses"]]as const).map(([id,label])=><button key={id} role="tab" aria-selected={view===id} onClick={()=>navigate(id)} className={`min-h-11 border-b-2 px-3 text-xs font-semibold ${view===id?"border-stone-950 text-stone-950":"border-transparent text-stone-500"}`}>{label}</button>)}</div>
-   {view==="list"?<ExpenseList expenses={filtered} query={query} setQuery={setQuery} category={category} setCategory={setCategory} status={status} setStatus={setStatus} sort={sort} setSort={setSort} onEdit={setEditingExpense} onArchive={archiveExpense}/>:view==="category"?<CategoryView expenses={expenses}/>:<RecurringView expenses={recurring} onAdd={()=>setModal(true)} onEdit={setEditingExpense} onArchive={archiveExpense}/>}
+   {view==="list"?<ExpenseList expenses={filtered} query={query} setQuery={setQuery} category={category} setCategory={setCategory} status={status} setStatus={setStatus} sort={sort} setSort={setSort} onEdit={setEditingExpense} onArchive={archiveExpense}/>:view==="category"?<CategoryView expenses={activeExpenses}/>:<RecurringView expenses={recurring} onAdd={()=>setModal(true)} onEdit={setEditingExpense} onArchive={archiveExpense}/>}
   </section>
-  <ExpenseHighlights expenses={expenses}/>
-  {modal?<RecordExpenseModal workspaceId={workspaceId} properties={properties} currency={currency} basis={basis} expenses={expenses} onClose={closeModal} onRecorded={recordExpense}/>:null}
+  <ExpenseHighlights expenses={activeExpenses}/>
+  {modal?<RecordExpenseModal workspaceId={workspaceId} properties={properties} currency={currency} basis={basis} expenses={activeExpenses} onClose={closeModal} onRecorded={recordExpense}/>:null}
   {editingExpense?<EditExpenseModal workspaceId={workspaceId} properties={properties} currency={currency} expense={editingExpense} onClose={()=>setEditingExpense(null)} onUpdated={updateExpense}/>:null}
  </>;
 }

@@ -62,6 +62,28 @@ describe("Expense Workspace", () => {
     expect(stops).not.toMatch(/NaN|Infinity/);
   });
 
+  it("keeps archived expenses out of category, recurring, highlight, and trend calculations", () => {
+    const shared = {
+      propertyId: props.properties[0].id,
+      propertyName: "Lake House",
+      accountId: "expense",
+      category: "cleaning" as const,
+      currency: "USD",
+      basis: "actual" as const,
+      effectiveDate: "2026-08-01",
+      frequency: "monthly" as const,
+      source: "manual",
+    };
+    render(<OperatingExpensesWorkspace {...props} initialView="category" initialExpenses={[
+      { ...shared, id: "active", name: "active cleaning", amountMinor: 10_000, status: "recorded" },
+      { ...shared, id: "archived", name: "archived cleaning", amountMinor: 99_900, status: "archived" },
+    ]} />);
+
+    expect(screen.getByRole("img", { name: "Expense composition totaling $100.00" })).toBeTruthy();
+    expect(screen.queryByText("$999.00")).toBeNull();
+    expect(screen.getAllByText("$100.00").length).toBeGreaterThan(1);
+  });
+
   it("keeps a command ID stable across field updates and rerenders, then creates a new ID for a new modal", async () => {
     const view = render(<OperatingExpensesWorkspace {...props} />);
     const user = await openAndCompleteForm();

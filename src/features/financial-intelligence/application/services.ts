@@ -282,9 +282,10 @@ export async function buildFinancialReadModel(source: FinancialSource, query: Ge
   if (accounts.some((account) => account.workspaceId !== query.workspaceId) || transactions.some(({ props }) => props.workspaceId !== query.workspaceId || (query.propertyId && props.propertyId !== query.propertyId) || (selected && (!props.propertyId || !selected.has(props.propertyId))))) {
     throw new FinancialReadError("SOURCE_SCOPE_VIOLATION", "A financial source returned data outside the authorized scope.");
   }
-  const context = { query, identity, accounts, transactions, synchronization };
+  const activeTransactions = Object.freeze(transactions.filter(({props})=>props.status!=="voided"));
+  const context = { query, identity, accounts, transactions:activeTransactions, synchronization };
   const snapshot = buildFinancialSnapshot(context);
-  const ledger: Ledger = Object.freeze({ workspaceId: query.workspaceId, period: query.period, accounts: Object.freeze([...accounts]), transactions: Object.freeze([...transactions]) });
+  const ledger: Ledger = Object.freeze({ workspaceId: query.workspaceId, period: query.period, accounts: Object.freeze([...accounts]), transactions: activeTransactions });
   return Object.freeze({
     identity, period: query.period, ledger, accounts: ledger.accounts,
     transactions: query.authorizationLevel === "detail" || query.authorizationLevel === "administration" ? ledger.transactions : Object.freeze([]),

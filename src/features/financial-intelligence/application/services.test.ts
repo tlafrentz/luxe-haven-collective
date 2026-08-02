@@ -57,6 +57,27 @@ describe("canonical financial read model", () => {
     expect(model.transactions).toHaveLength(4);
   });
 
+  it("excludes voided transactions from the ledger and every derived calculation", async () => {
+    const voidedExpense = FinancialTransaction.create({
+      ...transaction("voided-expense", "expense", 9_999).props,
+      status: "voided",
+    });
+    const gateway = source({
+      listTransactions: vi.fn(async () => [
+        transaction("revenue", "revenue", 5_000),
+        transaction("expense", "expense", 1_000),
+        voidedExpense,
+      ]),
+    });
+
+    const model = await buildFinancialReadModel(gateway, query({ authorizationLevel: "detail" }));
+
+    expect(model.transactions.map(({ props }) => props.id)).toEqual(["revenue", "expense"]);
+    expect(model.snapshot.expenses?.amount).toBe(1_000);
+    expect(model.snapshot.profitability.noi?.amount).toBe(4_000);
+    expect(model.snapshot.lineage.noi.inputTransactionIds).not.toContain("voided-expense");
+  });
+
   it("propagates partial evidence, missing expenses, and stale synchronization", async () => {
     const gateway = source({
       listTransactions: vi.fn(async () => [transaction("r1", "revenue", 100, "measured", [])]),

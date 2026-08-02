@@ -60,7 +60,7 @@ export class SupabaseFinancialOverviewSource implements FinancialSource, Financi
         .in("property_id", propertyIds).neq("status", "cancelled")
         .lt("check_in", nextDate(scope.period.to)).gt("check_out", scope.period.from),
       client.from("financial_transactions").select("id,workspace_id,account_id,property_id,amount_minor,currency,measurement,effective_date,posting_date,source_provider,source_external_id,status,evidence_ids")
-        .eq("workspace_id",scope.workspaceId).in("property_id",propertyIds).gte("effective_date",scope.period.from).lte("effective_date",scope.period.to),
+        .eq("workspace_id",scope.workspaceId).in("property_id",propertyIds).neq("status","voided").gte("effective_date",scope.period.from).lte("effective_date",scope.period.to),
     ]);
     if (bookingResult.error||transactionResult.error) throw new Error(`Unable to read canonical financial observations: ${bookingResult.error?.message??transactionResult.error?.message}`);
     const identity = await this.getIdentity(scope.workspaceId);

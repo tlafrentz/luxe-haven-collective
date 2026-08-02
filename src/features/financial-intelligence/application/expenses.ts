@@ -15,9 +15,10 @@ export type SimilarExpense = Pick<ExpenseListItem,"id"|"name"|"category"|"amount
 export type DuplicateAssessment = {kind:"none"}|{kind:"possible";matches:readonly SimilarExpense[]}|{kind:"exact";matches:readonly SimilarExpense[]};
 
 export type DuplicateCandidate = Readonly<{workspaceId:string;propertyId:string;basis:FinancialExpenseBasis;amountMinor:number;effectiveDate:string;category:FinancialExpenseCategory;frequency:FinancialExpenseFrequency;sourceReference?:string}>;
+export function activeExpenseItems(expenses:readonly ExpenseListItem[]):readonly ExpenseListItem[]{return Object.freeze(expenses.filter(expense=>expense.status!=="archived"));}
 export function normalizeExpenseReference(value?:string){return value?.trim().toLocaleLowerCase("en-US").replace(/\s+/g," ")||undefined;}
 export function assessExpenseDuplicate(candidate:DuplicateCandidate,expenses:readonly (ExpenseListItem&{workspaceId?:string})[]):DuplicateAssessment{
-  const scoped=expenses.filter(item=>item.propertyId===candidate.propertyId&&item.basis===candidate.basis);
+  const scoped=expenses.filter(item=>item.status!=="archived"&&item.propertyId===candidate.propertyId&&item.basis===candidate.basis);
   const reference=normalizeExpenseReference(candidate.sourceReference);
   const exact=scoped.filter(item=>item.amountMinor===candidate.amountMinor&&item.effectiveDate===candidate.effectiveDate&&reference!==undefined&&normalizeExpenseReference(item.sourceReference)===reference);
   if(exact.length)return{kind:"exact",matches:exact};
@@ -27,7 +28,7 @@ export function assessExpenseDuplicate(candidate:DuplicateCandidate,expenses:rea
 
 export function expenseCategoryTotals(expenses:readonly ExpenseListItem[]){
   const totals=new Map<FinancialExpenseCategory,number>();
-  for(const expense of expenses)totals.set(expense.category,(totals.get(expense.category)??0)+expense.amountMinor);
+  for(const expense of activeExpenseItems(expenses))totals.set(expense.category,(totals.get(expense.category)??0)+expense.amountMinor);
   return [...totals].map(([category,amountMinor])=>({category,amountMinor})).sort((a,b)=>b.amountMinor-a.amountMinor);
 }
 export function isFinancialExpenseCategory(value:string):value is FinancialExpenseCategory{return (financialExpenseCategories as readonly string[]).includes(value);}
