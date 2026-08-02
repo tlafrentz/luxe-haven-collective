@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: "/dashboard/observe", destination: "/dashboard/observe/revenue", permanent: false },
+      { source: "/dashboard/insights", destination: "/dashboard/observe/revenue", permanent: false },
+      { source: "/dashboard/financial", destination: "/dashboard/observe/financial", permanent: false },
+      { source: "/dashboard/understand", destination: "/dashboard/understand/executive", permanent: false },
+      { source: "/dashboard/portfolio", destination: "/dashboard/understand/portfolio", permanent: false },
+    ];
+  },
   async headers() {
     return [{ source: "/shared/investment-report/:path*", headers: [
       { key: "Cache-Control", value: "private, no-store, max-age=0" },

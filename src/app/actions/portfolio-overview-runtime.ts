@@ -14,6 +14,10 @@ export async function getPortfolioOverviewRouteState(input: Readonly<{
   propertyIds?: readonly string[];
   periodPreset: "30d" | "90d" | "ytd" | "12m";
   comparisonType: PortfolioComparison;
+  customFrom?: string;
+  customTo?: string;
+  compareFrom?: string;
+  compareTo?: string;
   now?: Date;
 }>) {
   const started = Date.now();
@@ -22,7 +26,9 @@ export async function getPortfolioOverviewRouteState(input: Readonly<{
     if (!user) return { ok: false as const, code: "permission" as const, message: "Sign in to view Portfolio Intelligence." };
     const access = await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(), user.id, input.workspaceId);
     const now = input.now ?? new Date();
-    const period = portfolioPeriod(input.periodPreset, input.comparisonType, now);
+    const period = input.customFrom && input.customTo
+      ? Object.freeze({ current: { from: input.customFrom, to: input.customTo }, ...(input.comparisonType !== "none" && input.compareFrom && input.compareTo ? { comparison: { from: input.compareFrom, to: input.compareTo } } : {}), comparisonType: input.comparisonType })
+      : portfolioPeriod(input.periodPreset, input.comparisonType, now);
     const source = new SupabasePortfolioProjectionSource();
     const projection = await buildPortfolioProjection(source, { access, workspaceId: access.workspaceId, period, propertyIds: input.propertyIds, evaluatedAt: now.toISOString(), evidenceThreshold: 1 });
     const comparison = period.comparison ? await buildPortfolioProjection(source, {

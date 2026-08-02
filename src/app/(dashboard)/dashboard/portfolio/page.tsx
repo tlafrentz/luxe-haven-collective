@@ -8,7 +8,7 @@ export default async function PortfolioDashboardPage({ searchParams }: { searchP
   const comparison = comparisonType(single(params.comparison));
   const scope = single(params.scope);
   const propertyIds = scope === "workspace" || !params.properties ? undefined : values(params.properties);
-  const result = await getPortfolioOverviewRouteState({ workspaceId: single(params.workspace), propertyIds, periodPreset: preset, comparisonType: comparison });
+  const result = await getPortfolioOverviewRouteState({ workspaceId: single(params.workspace), propertyIds, periodPreset: preset, comparisonType: comparison, customFrom: single(params.from), customTo: single(params.to), compareFrom: single(params.compareFrom), compareTo: single(params.compareTo) });
   return result.ok ? <><div className="mx-auto flex max-w-7xl justify-end px-5 pt-5"><Link className="rounded-full border px-4 py-2 text-sm font-semibold" href={`/dashboard/reports/new?type=portfolio-performance${single(params.workspace)?`&workspace=${single(params.workspace)}`:""}`}>Generate portfolio report</Link></div><PortfolioOverviewView overview={result.overview} /></> : <PortfolioOverviewError message={result.message} />;
 }
 function single(value: string | string[] | undefined) { return Array.isArray(value) ? value[0] : value; }

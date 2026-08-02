@@ -1,0 +1,2 @@
+"use client";
+export default function ObserveError({ reset }: { error: Error; reset: () => void }) { return <section role="alert" className="mx-auto my-10 max-w-2xl rounded-2xl border border-rose-200 bg-white p-7"><h2 className="text-xl font-semibold">Intelligence data is temporarily unavailable</h2><p className="mt-2 text-sm text-stone-600">Your Workspace Context is preserved. No data was changed.</p><button type="button" onClick={reset} className="mt-5 min-h-11 rounded-lg bg-stone-950 px-5 text-sm font-semibold text-white">Try again</button></section>; }

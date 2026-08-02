@@ -10,7 +10,6 @@ import {
 } from "@/components/application-layout";
 import {
   OperationalActivityTimeline,
-  OperationalContextBar,
   OperationalDegradedState,
   OperationalPropertyCard,
   OperationalQualityIndicator,
@@ -26,6 +25,8 @@ type PropertiesPageProps = Readonly<{
     property?: string;
     start?: string;
     end?: string;
+    from?: string;
+    to?: string;
   }>;
 }>;
 
@@ -46,8 +47,8 @@ export default async function PropertiesPage({
   });
   const projection = filterOperationalProjection(fullProjection, {
     propertyId: params.property,
-    startDate: params.start,
-    endDate: params.end,
+    startDate: params.from ?? params.start,
+    endDate: params.to ?? params.end,
   });
   const selected = params.property
     ? projection.properties.find(
@@ -68,17 +69,6 @@ export default async function PropertiesPage({
         title="Properties"
         description="Operate the hospitality assets you own using live reservations, stay context, connection state, and trusted data quality."
         actions={params.property?<Link href={`/dashboard/reports/new?type=property-performance&source=${params.property}`} className="inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold">Generate property report</Link>:undefined}
-      />
-      <OperationalContextBar
-        action="/properties"
-        value={{
-          workspaceId: projection.workspace.id,
-          workspaceLabel: projection.workspace.label,
-          propertyId: params.property,
-          startDate: params.start,
-          endDate: params.end,
-        }}
-        properties={fullProjection.selectors.properties}
       />
       <OperationalDegradedState synchronization={projection.synchronization} />
       <WorkspaceOverview className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

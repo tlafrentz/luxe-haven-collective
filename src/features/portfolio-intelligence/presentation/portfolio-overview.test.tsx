@@ -5,7 +5,7 @@ import { overviewProjectionFixture, overviewPropertyFixture } from "../applicati
 import { PortfolioOverviewEmpty, PortfolioOverviewError, PortfolioOverviewSkeleton, PortfolioOverviewView } from "./portfolio-overview";
 
 describe("Portfolio Overview presentation", () => {
-  it("renders semantic condition, metrics, controls, contribution, attention, composition, execution, and evidence", () => {
+  it("renders semantic condition, metrics, contribution, attention, composition, execution, and evidence without duplicate context controls", () => {
     const current = overviewProjectionFixture([overviewPropertyFixture("a", 150), overviewPropertyFixture("b", 50, { freshness: "stale" })], { freshness: "stale" });
     const prior = overviewProjectionFixture([overviewPropertyFixture("a", 100), overviewPropertyFixture("b", 60)]);
     const html = renderToStaticMarkup(<PortfolioOverviewView overview={buildPortfolioOverview({ projection: current, comparison: prior, historyLengthDays: 90 })} />);
@@ -19,7 +19,7 @@ describe("Portfolio Overview presentation", () => {
     expect(html).toContain("Composition snapshot");
     expect(html).toContain("Active decisions &amp; actions");
     expect(html).toContain("Evidence &amp; freshness");
-    expect(html).toContain('aria-label="Portfolio scope and period controls"');
+    expect(html).not.toContain('aria-label="Portfolio scope and period controls"');
     expect(html).not.toContain("$0</p>");
   });
   it("renders assigned and single-property disclosures", () => {

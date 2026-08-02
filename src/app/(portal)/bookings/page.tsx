@@ -44,8 +44,8 @@ export default async function BookingsPage({
   const filters: BookingFilters = {
     propertyId: first(params.property) || undefined,
     source: first(params.source) || undefined,
-    arrivalFrom: first(params.arrivalFrom) || first(params.start) || undefined,
-    departureTo: first(params.departureTo) || first(params.end) || undefined,
+    arrivalFrom: first(params.arrivalFrom) || first(params.from) || first(params.start) || undefined,
+    departureTo: first(params.departureTo) || first(params.to) || first(params.end) || undefined,
     query: first(params.query) || undefined,
     status:
       statusValue && statuses.has(statusValue as BookingLifecycleStatus)

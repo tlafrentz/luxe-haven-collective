@@ -3,12 +3,12 @@ import { buildExecutiveBusinessHealth, ExecutiveWorkspace, financialOverviewExec
 import { getFinancialOverviewRouteState } from "@/app/actions/financial-overview-runtime";
 import { requireUser } from "@/lib/auth/session";
 
-export type ExecutiveSearchParams=Promise<{property?:string;start?:string;end?:string}>;
+export type ExecutiveSearchParams=Promise<{property?:string;start?:string;end?:string;from?:string;to?:string}>;
 
 export async function ExecutivePageView({searchParams,tab}:Readonly<{searchParams:ExecutiveSearchParams;tab:ExecutiveTab}>) {
   const params=await searchParams;
   const {user}=await requireUser();
-  const range=resolveAnalyticsDateRange({startDate:params.start,endDate:params.end});
+  const range=resolveAnalyticsDateRange({startDate:params.from??params.start,endDate:params.to??params.end});
   const [result,financial]=await Promise.all([
     getExecutiveIntelligenceView({propertyId:params.property??null,startDate:range.startDate,endDate:range.endDate}),
     getFinancialOverviewRouteState({periodPreset:"custom",comparisonType:"previous-period",customFrom:range.startDate,customTo:addDays(range.endDate,-1)}),

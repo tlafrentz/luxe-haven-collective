@@ -4,7 +4,7 @@ export type WorkspacePattern="Briefing"|"Overview → Manage"|"Overview → Insi
 export type ExperienceFeatureDeclaration=Readonly<{feature:string;workspace:ExperienceWorkspace;stage:HpmLifecycleStage;pattern:WorkspacePattern}>;
 export const EXPERIENCE_FEATURE_DECLARATIONS:readonly ExperienceFeatureDeclaration[]=Object.freeze([
  {feature:"Executive Brief",workspace:"Executive Intelligence",stage:"Understand",pattern:"Briefing"},
- {feature:"Expense Entry",workspace:"Financial Intelligence",stage:"Understand",pattern:"Overview → Manage"},
+ {feature:"Expense Entry",workspace:"Financial Intelligence",stage:"Observe",pattern:"Overview → Manage"},
  {feature:"Opportunity Pipeline",workspace:"Investment Intelligence",stage:"Decide",pattern:"List → Detail"},
  {feature:"Investment Analysis",workspace:"Investment Intelligence",stage:"Decide",pattern:"Guided workflow → Decision"},
  {feature:"Provider Health",workspace:"Operations Console",stage:"Infrastructure",pattern:"Overview → Monitor"},

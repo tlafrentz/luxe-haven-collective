@@ -42,13 +42,6 @@ export function PortfolioOverviewHeader({ overview }: { overview: PortfolioOverv
         <Fact label="Evaluated" value={evaluated(overview.evaluatedAt)} />
       </dl>
     </div>
-    <form aria-label="Portfolio scope and period controls" className="mt-7 grid gap-3 border-t border-white/10 pt-6 sm:grid-cols-2 lg:max-w-5xl lg:grid-cols-4">
-      <Control label="Scope" name="scope" defaultValue={overview.scope.authorization.type} options={[["workspace","All accessible properties"],["filtered-portfolio","Selected properties"],["single-property","Single property"]]} />
-      <Control label="Property" name="properties" defaultValue={overview.scope.propertyIds[0] ?? ""} options={overview.propertiesForControl ?? []} />
-      <Control label="Period" name="period" defaultValue="90d" options={[["30d","Last 30 days"],["90d","Last 90 days"],["ytd","Year to date"],["12m","Trailing 12 months"]]} />
-      <Control label="Comparison" name="comparison" defaultValue={overview.period.comparisonType} options={[["previous-period","Previous period"],["previous-year","Previous year"],["none","No comparison"]]} />
-      <button className="min-h-11 rounded-full bg-white px-5 text-sm font-semibold text-stone-950 outline-none focus-visible:ring-2 focus-visible:ring-teal-300 sm:col-span-2 sm:justify-self-start lg:col-span-4">Update portfolio view</button>
-    </form>
   </header>;
 }
 
@@ -97,7 +90,6 @@ export function PortfolioOverviewSkeleton() {
   return <main aria-hidden="true" className="mx-auto max-w-[1500px] animate-pulse space-y-7 px-4 py-8 motion-reduce:animate-none sm:px-6 lg:px-8"><span className="sr-only">Loading Portfolio Overview</span><div className="h-64 rounded-[2rem] bg-stone-200" /><div className="h-48 rounded-[2rem] bg-stone-200" /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{Array.from({ length: 5 }, (_, index) => <div className="h-36 rounded-2xl bg-stone-200" key={index} />)}</div><div className="h-56 rounded-[2rem] bg-stone-200" /><div className="grid gap-8 xl:grid-cols-2"><div className="h-80 rounded-[2rem] bg-stone-200" /><div className="h-80 rounded-[2rem] bg-stone-200" /></div></main>;
 }
 
-function Control({ label: title, name, defaultValue, options }: { label: string; name: string; defaultValue: string; options: readonly (readonly [string,string])[] }) { return <label className="text-xs font-semibold text-stone-300">{title}<select name={name} defaultValue={defaultValue} className="mt-2 min-h-11 w-full rounded-xl border border-white/20 bg-white/10 px-3 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-teal-300">{options.map(([value,title]) => <option className="text-stone-950" value={value} key={value}>{title}</option>)}</select></label>; }
 function Notice({ title, children }: { title: string; children: React.ReactNode }) { return <aside role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950"><strong>{title}.</strong> {children}</aside>; }
 function SectionCard({ id, title, description, children }: { id: string; title: string; description: string; children: React.ReactNode }) { return <section aria-labelledby={id} className="rounded-[2rem] border border-stone-200 bg-white p-6 sm:p-7"><SectionHeading id={id} title={title} description={description} /><div className="mt-5">{children}</div></section>; }
 function SectionHeading({ id, title, description }: { id: string; title: string; description: string }) { return <div><h2 id={id} className="text-2xl font-semibold tracking-tight text-stone-950">{title}</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-stone-600">{description}</p></div>; }

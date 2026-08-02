@@ -13,7 +13,15 @@ describe("workspace-driven platform experience", () => {
   it("presents lifecycle stages as direct workspace destinations", () => {
     const lifecycle = clientWorkspaceNavigation.filter(item => "lifecycleStage" in item);
     expect(lifecycle.every(item => item.kind === "product" && item.level === 1 && !("parentId" in item))).toBe(true);
-    expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ href: "/dashboard/understand", icon: "understand" });
+    expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ href: "/dashboard/understand/executive", icon: "understand" });
+  });
+
+  it("keeps intelligence lenses beneath their lifecycle stages", () => {
+    expect(clientWorkspaceNavigation.find(item => item.id === "observe")).toMatchObject({ href: "/dashboard/observe/revenue", level: 1 });
+    expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ href: "/dashboard/understand/executive", level: 1 });
+    expect(clientWorkspaceNavigation.some(item => ["Revenue Intelligence", "Financial Intelligence", "Executive Intelligence", "Portfolio Intelligence"].includes(item.label))).toBe(false);
+    expect(platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/observe/financial")).toMatchObject({ hpmStage: "observe", businessWorkspace: "financial" });
+    expect(platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/understand/portfolio")).toMatchObject({ hpmStage: "understand", businessWorkspace: "portfolio" });
   });
 
   it("keeps business, service, operations, and infrastructure concepts separate", () => {
@@ -30,6 +38,8 @@ describe("workspace-driven platform experience", () => {
     ["/dashboard/investments/opportunities/abc", "decide"],
     ["/dashboard/investments/portfolio/abc/analyses/xyz", "decide"],
     ["/dashboard/insights", "observe"],
+    ["/dashboard/observe/revenue", "observe"],
+    ["/dashboard/observe/financial", "observe"],
     ["/dashboard/actions/abc", "execute"],
     ["/dashboard/portfolio", "understand"],
     ["/dashboard/portfolio/workspace", "understand"],
@@ -65,7 +75,7 @@ describe("workspace-driven platform experience", () => {
   it("owns Portfolio Intelligence as an Understand lifecycle destination", () => {
     const route = platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio");
     expect(route).toMatchObject({ hpmStage: "understand", businessWorkspace: "portfolio", navigationItemId: "portfolio-intelligence" });
-    expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ group: "hpm", level: 1, href: "/dashboard/understand", icon: "understand" });
+    expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ group: "hpm", level: 1, href: "/dashboard/understand/executive", icon: "understand" });
     expect(platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio/workspace")).toMatchObject({ hpmStage: "understand", navigationItemId: "portfolio-intelligence" });
   });
 

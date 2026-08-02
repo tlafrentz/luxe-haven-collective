@@ -33,10 +33,7 @@ import type {
   OperationalDataQuality,
   WorkspaceOperationalDataHealth,
 } from "@/platform/operational-data-quality";
-import {
-  OperationalContextBar,
-  type OperationalContextValue,
-} from "@/components/product/operational";
+import type { OperationalContextValue } from "@/components/product/operational";
 
 const statusLabels: Record<BookingLifecycleStatus, string> = {
   upcoming: "Upcoming",
@@ -117,17 +114,6 @@ export function BookingWorkspace({
         }
       />
 
-      {contextValue ? (
-        <OperationalContextBar
-          action="/bookings"
-          value={contextValue}
-          properties={model.properties.map((property) => ({
-            id: property.id,
-            label: property.name,
-          }))}
-        />
-      ) : null}
-
       {degraded ? (
         <section
           aria-labelledby="sync-attention-title"
@@ -206,6 +192,8 @@ export function BookingWorkspace({
           aria-label="Booking filters"
           className="grid gap-3 rounded-2xl border border-stone-200 bg-white p-4 lg:grid-cols-[minmax(220px,1.5fr)_minmax(150px,1fr)_minmax(150px,1fr)_auto]"
         >
+          {contextValue?.startDate ? <input type="hidden" name="from" value={contextValue.startDate} /> : null}
+          {contextValue?.endDate ? <input type="hidden" name="to" value={contextValue.endDate} /> : null}
           <label className="relative">
             <span className="sr-only">Search guests or reservations</span>
             <Search
@@ -391,7 +379,11 @@ function BookingTable({
               <td className="px-4 py-4">
                 <Link
                   href={`/bookings?booking=${encodeURIComponent(booking.id)}`}
-                  onClick={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    selectBooking(booking.id);
+                  }}
                   className="font-semibold text-stone-950 hover:underline"
                 >
                   {formatDate(booking.stay.arrival)}

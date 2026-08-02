@@ -39,13 +39,16 @@ describe("live operational routes", () => {
     }
   });
 
-  it("reuses one context selector rather than page-specific property selectors", () => {
+  it("uses shared Workspace Context rather than page-specific date selectors", () => {
     const home = read("src/app/(dashboard)/dashboard/page.tsx");
     const properties = read("src/app/(portal)/properties/page.tsx");
     const bookings = read(
       "src/features/bookings/presentation/booking-workspace.tsx",
     );
     for (const source of [home, properties, bookings])
-      expect(source).toContain("OperationalContextBar");
+      expect(source).not.toContain("OperationalContextBar");
+    expect(read("src/platform/workspace-context/workspace-context.tsx")).toContain("OperationalWindowSelect");
+    expect(home).toContain("params.from??params.start");
+    expect(properties).toContain("params.from ?? params.start");
   });
 });

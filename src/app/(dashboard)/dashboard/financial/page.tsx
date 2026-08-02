@@ -8,7 +8,7 @@ export default async function FinancialOverviewPage({ searchParams }: { searchPa
   const propertyIds = scope === "workspace" || !params.properties ? undefined : values(params.properties);
   const result = await getFinancialOverviewRouteState({
     workspaceId: single(params.workspace), propertyIds,
-    periodPreset: preset(single(params.period)), comparisonType: comparison(single(params.comparison)),
+    periodPreset: single(params.from) && single(params.to) ? "custom" : preset(single(params.period)), comparisonType: comparison(single(params.comparison)),
     customFrom: single(params.from), customTo: single(params.to),
   });
   if(!result.ok)return <FinancialOverviewErrorView code={result.code} message={result.message}/>;

@@ -15,6 +15,8 @@ type InsightsPageProps = {
     property?: string;
     start?: string;
     end?: string;
+    from?: string;
+    to?: string;
   }>;
 };
 
@@ -25,8 +27,8 @@ export default async function InsightsPage({
 
   const dateRange =
     resolveAnalyticsDateRange({
-      startDate: params.start,
-      endDate: params.end,
+      startDate: params.from ?? params.start,
+      endDate: params.to ?? params.end,
     });
 
   const intelligence =
