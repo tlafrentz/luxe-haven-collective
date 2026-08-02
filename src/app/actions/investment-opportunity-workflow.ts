@@ -39,7 +39,8 @@ export async function saveAnalysisAsScenarioAction(input: unknown): Promise<Oppo
     revalidatePath("/dashboard/investments/scenarios");
     revalidatePath("/dashboard/investments/opportunities");
     return { ok: true, data: { opportunityId: saved.data.opportunityId, analysisId: saved.data.analysisId, scenarioId, redirectPath: "/dashboard/investments/scenarios" } };
-  } catch {
+  } catch (error) {
+    console.error("scenario_persistence_failed", { errorMessage: error instanceof Error ? error.message : String(error) });
     return failure("SCENARIO_PERSISTENCE_FAILED", "The analysis was retained, but the saved scenario could not be finalized. Try again.");
   }
 }

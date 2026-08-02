@@ -197,9 +197,12 @@ export function InvestmentWorkspaceStateProvider({ children, initialValues, init
       const next = operation === "accept" ? acceptMarketAssumption(current[key])
         : operation === "restore" ? restoreMarketAssumption(current[key])
           : overrideMarketAssumption(current[key], value!);
-      if ((key === "adr" || key === "occupancy") && next.value !== undefined) setWorkspaceValues(values => ({
-        ...values, ...(key === "adr" ? { projectedAdr: next.value! } : { projectedOccupancyPercentage: next.value! }),
-      }));
+      if ((key === "adr" || key === "occupancy") && next.value !== undefined) {
+        const rounded = Math.round(next.value * 100) / 100;
+        setWorkspaceValues(values => ({
+          ...values, ...(key === "adr" ? { projectedAdr: rounded } : { projectedOccupancyPercentage: rounded }),
+        }));
+      }
       return { ...current, [key]: next };
     });
   }, []);
