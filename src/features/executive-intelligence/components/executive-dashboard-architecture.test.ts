@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
-const route = readFileSync(join(root, "src/app/(dashboard)/dashboard/understand/page.tsx"), "utf8");
+const route = ["page.tsx","executive-page.tsx"].map(file=>readFileSync(join(root, "src/app/(dashboard)/dashboard/understand",file), "utf8")).join("\n");
 const productionComponents = [
   "executive-command-center.tsx", "executive-command-header.tsx", "executive-brief.tsx", "executive-attention-card.tsx",
   "executive-attention-list.tsx", "executive-scope-controls.tsx", "hpm-pillar-grid.tsx", "portfolio-health-overview.tsx",

@@ -13,7 +13,9 @@ export {
   RecentChangesFeed,
   RevenueRiskSummary,
   SectionHeading,
+  ExecutiveWorkspace,
 } from "./components";
+export type { ExecutiveTab, ExecutiveFinancialMetric } from "./components";
 export { SupabaseExecutiveHealthProjectionWriter } from "./infrastructure/supabase-executive-health-projection-writer";
 
 export {

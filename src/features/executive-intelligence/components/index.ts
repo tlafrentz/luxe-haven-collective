@@ -49,3 +49,4 @@ export {
 export {
   ExecutiveScopeControls,
 } from "./executive-scope-controls";
+export { ExecutiveWorkspace, type ExecutiveTab, type ExecutiveFinancialMetric } from "./executive-workspace";
