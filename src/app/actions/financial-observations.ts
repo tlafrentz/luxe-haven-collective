@@ -64,4 +64,65 @@ export async function recordFinancialExpenseAction(_previous:FinancialExpenseAct
     return{ok:false as const,code:"FINANCIAL_EXPENSE_PERSISTENCE_FAILED",message:"The expense was not saved. Retry, then share the correlation ID with support if it continues.",correlationId};
   }
 }
+const expenseUpdateInput = expenseInput.omit({ idempotencyKey: true }).extend({ expenseId: z.string().uuid() });
+
+export async function updateFinancialExpenseAction(_previous:FinancialExpenseActionState,formData:FormData):Promise<FinancialExpenseActionState>{
+  const correlationId=crypto.randomUUID(),parsed=expenseUpdateInput.safeParse(Object.fromEntries(formData));
+  if(!parsed.success)return{ok:false as const,code:"INVALID_EXPENSE",message:"Review the amount, category, period, and source information.",correlationId};
+  const input=parsed.data,{user}=await getSessionProfile();
+  if(!user)return{ok:false as const,code:"AUTHENTICATION_REQUIRED",message:"Sign in before updating an expense.",correlationId};
+  try{
+    const access=await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(),user.id,input.workspaceId);
+    if(!evaluateWorkspacePermission(access,"financial.administration")||!evaluatePropertyAccess(access,input.propertyId))return{ok:false as const,code:"FINANCIAL_ACCESS_DENIED",message:"Your role or property access does not permit expense edits.",correlationId};
+    if(input.effectiveTo&&input.effectiveTo<input.effectiveDate)return{ok:false as const,code:"INVALID_DATE_RANGE",message:"Effective through cannot be earlier than the effective date.",correlationId};
+    const client=await createClient(),amountMinor=minorUnits(input.amount);
+    const{data:property}=await client.from("properties").select("id").eq("id",input.propertyId).eq("owner_id",access.workspaceId).maybeSingle();
+    if(!property)return{ok:false as const,code:"PROPERTY_ACCESS_DENIED",message:"The selected property is outside the active workspace.",correlationId};
+    const code=`EXP-${input.category.toUpperCase()}`,{data:account,error:accountError}=await client.from("financial_accounts").upsert({
+      workspace_id:access.workspaceId,code,name:input.category.replaceAll("-"," ").replace(/\b\w/g,letter=>letter.toUpperCase()),
+      category:input.category==="furniture"||input.category==="equipment"||input.category==="renovations"||input.category==="replacement-reserve"||input.category==="capital-improvements"?"capital-expense":"operating-expense",
+      subcategory:input.category,active:true,
+    },{onConflict:"workspace_id,code"}).select("id").single();
+    if(accountError||!account)throw accountError??new Error("financial_account_unavailable");
+    const evidenceIds=input.sourceReference?[`manual-source:${input.sourceReference}`]:[];
+    const{error,data:updated}=await client.from("financial_transactions").update({
+      account_id:account.id,property_id:input.propertyId,
+      amount_minor:amountMinor,currency:input.currency,measurement:input.basis,
+      effective_date:input.effectiveDate,effective_to:input.effectiveTo||null,frequency:input.frequency,
+      posting_date:input.effectiveDate,
+      source_external_id:input.sourceReference||null,evidence_ids:evidenceIds,
+    }).eq("id",input.expenseId).eq("workspace_id",access.workspaceId).select("id").maybeSingle();
+    if(error)throw error;
+    if(!updated)return{ok:false as const,code:"EXPENSE_NOT_FOUND",message:"The expense could not be found in this workspace.",correlationId};
+    console.info("financial_expense_updated",{correlationId,capability:"financial-intelligence",operation:"update-expense",workspaceId:access.workspaceId,propertyId:input.propertyId,expenseId:input.expenseId,category:input.category,basis:input.basis,timestamp:new Date().toISOString()});
+    revalidatePath("/dashboard/financial");revalidatePath("/dashboard/financial/profitability");revalidatePath("/dashboard/financial/cash-flow");revalidatePath("/dashboard");
+    return{ok:true as const,duplicate:false,duplicateKind:"none",correlationId};
+  }catch(error){
+    console.error("capability_operation_failed",{correlationId,capability:"financial-intelligence",operation:"update-expense",code:"FINANCIAL_EXPENSE_UPDATE_FAILED",retryable:true,timestamp:new Date().toISOString(),errorMessage:error instanceof Error?error.message:String(error)});
+    return{ok:false as const,code:"FINANCIAL_EXPENSE_UPDATE_FAILED",message:"The expense was not updated. Retry, then share the correlation ID with support if it continues.",correlationId};
+  }
+}
+
+const expenseArchiveInput = z.object({ expenseId: z.string().uuid(), workspaceId: z.string().uuid(), propertyId: z.string().uuid() });
+export async function archiveFinancialExpenseAction(input:{expenseId:string;workspaceId:string;propertyId:string}):Promise<FinancialExpenseActionState>{
+  const correlationId=crypto.randomUUID(),parsed=expenseArchiveInput.safeParse(input);
+  if(!parsed.success)return{ok:false as const,code:"INVALID_EXPENSE",message:"The expense could not be identified.",correlationId};
+  const{user}=await getSessionProfile();
+  if(!user)return{ok:false as const,code:"AUTHENTICATION_REQUIRED",message:"Sign in before archiving an expense.",correlationId};
+  try{
+    const access=await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(),user.id,parsed.data.workspaceId);
+    if(!evaluateWorkspacePermission(access,"financial.administration")||!evaluatePropertyAccess(access,parsed.data.propertyId))return{ok:false as const,code:"FINANCIAL_ACCESS_DENIED",message:"Your role or property access does not permit archiving expenses.",correlationId};
+    const client=await createClient();
+    const{error,data:updated}=await client.from("financial_transactions").update({status:"voided"}).eq("id",parsed.data.expenseId).eq("workspace_id",access.workspaceId).select("id").maybeSingle();
+    if(error)throw error;
+    if(!updated)return{ok:false as const,code:"EXPENSE_NOT_FOUND",message:"The expense could not be found in this workspace.",correlationId};
+    console.info("financial_expense_archived",{correlationId,capability:"financial-intelligence",operation:"archive-expense",workspaceId:access.workspaceId,expenseId:parsed.data.expenseId,timestamp:new Date().toISOString()});
+    revalidatePath("/dashboard/financial");revalidatePath("/dashboard/financial/profitability");revalidatePath("/dashboard/financial/cash-flow");revalidatePath("/dashboard");
+    return{ok:true as const,correlationId};
+  }catch(error){
+    console.error("capability_operation_failed",{correlationId,capability:"financial-intelligence",operation:"archive-expense",code:"FINANCIAL_EXPENSE_ARCHIVE_FAILED",retryable:true,timestamp:new Date().toISOString(),errorMessage:error instanceof Error?error.message:String(error)});
+    return{ok:false as const,code:"FINANCIAL_EXPENSE_ARCHIVE_FAILED",message:"The expense was not archived. Retry, then share the correlation ID with support if it continues.",correlationId};
+  }
+}
+
 function minorUnits(value:string){const[whole,fraction=""]=value.split(".");return Number(whole)*100+Number(fraction.padEnd(2,"0"));}
