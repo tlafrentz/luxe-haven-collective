@@ -1,1 +1,2 @@
-export { default } from "../../financial/page";
+import { HpmDashboard } from "@/components/hpm-dashboard";
+export default function FinancialIntelligencePage(){ return <HpmDashboard screen="financial"/>; }

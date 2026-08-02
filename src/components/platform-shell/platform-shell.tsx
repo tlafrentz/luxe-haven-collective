@@ -121,14 +121,14 @@ function PlatformShellFrame({ children, experience, role }: ShellProps) {
   };
 
   return <div className="platform-workspace min-h-screen overflow-x-clip bg-background">
-    <aside className={["fixed inset-y-0 left-0 z-40 hidden border-r border-white/10 bg-[#0b0f12] text-white transition-[width] motion-reduce:transition-none lg:block", collapsed ? "w-20" : "w-80"].join(" ")}>
+    <aside className={["fixed inset-y-0 left-0 z-40 hidden border-r border-white/10 bg-[#081117] text-white transition-[width] motion-reduce:transition-none lg:block", collapsed ? "w-20" : "w-56"].join(" ")}>
       <ShellNavigation experience={experience} navigation={navigation} pathname={pathname} collapsed={collapsed} onNavigate={() => undefined} onToggle={toggleCollapsed} />
     </aside>
     {mobileOpen ? <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label={`${experience === "client-workspace" ? "Workspace" : "Operations Console"} navigation`}>
       <button type="button" aria-label="Close navigation menu" className="absolute inset-0 bg-stone-950/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
       <aside className="relative h-full w-[88%] max-w-96 shadow-2xl"><ShellNavigation experience={experience} navigation={navigation} pathname={pathname} collapsed={false} onNavigate={() => setMobileOpen(false)} onToggle={() => undefined} /></aside>
     </div> : null}
-    <div className={collapsed ? "lg:pl-20" : "lg:pl-80"}>
+    <div className={collapsed ? "lg:pl-20" : "lg:pl-56"}>
       <header data-context-kind={contextKind} className={["sticky top-0 z-30 border-b bg-white/95 backdrop-blur-xl",contextKind==="operational"?"border-emerald-200":contextKind==="intelligence"?"border-violet-200":"border-blue-200"].join(" ")}>
         <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-5">
           <div className="flex min-w-0 items-center gap-3">

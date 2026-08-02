@@ -1,43 +1,21 @@
-import Link from "next/link";
-import { AlertTriangle, ArrowDownToLine, ArrowRight, BedDouble, CalendarDays, CalendarCheck, CircleGauge, RefreshCw } from "lucide-react";
-import { WorkspaceEmptyState, WorkspacePage } from "@/components/application-layout";
-import { OperationalDegradedState } from "@/components/product/operational";
+import { HpmDashboard } from "@/components/hpm-dashboard";
 import { filterOperationalProjection, getOperationalSurfaceProjection } from "@/features/operational-surfaces";
 import { requireUser } from "@/lib/auth/session";
 
-type HomePageProps=Readonly<{searchParams:Promise<{property?:string;start?:string;end?:string;from?:string;to?:string}>}>;
+type HomePageProps = Readonly<{ searchParams: Promise<{ property?: string; start?: string; end?: string; from?: string; to?: string }> }>;
 
-export default async function HomePage({searchParams}:HomePageProps){
- const{user,profile}=await requireUser(),params=await searchParams;
- const full=await getOperationalSurfaceProjection({principal:{userId:user.id,workspaceId:user.id,role:profile?.role??"guest"},workspaceLabel:profile?.full_name?`${profile.full_name}'s Workspace`:"Luxe Haven Workspace"});
- const projection=filterOperationalProjection(full,{propertyId:params.property,startDate:params.from??params.start,endDate:params.to??params.end});
- const name=profile?.full_name?.trim().split(/\s+/)[0]??"there",schedule=projection.contexts.filter(item=>["arriving-today","departing-today"].includes(item.stay.stage)).slice(0,6),attention=projection.contexts.filter(item=>item.operationalNeeds.length||projection.qualityByBookingId[item.bookingId]?.status!=="trusted").slice(0,5);
- return <WorkspacePage width="wide" className="space-y-4 py-5 lg:py-5">
-  <header className="flex flex-col justify-between gap-5 pb-2 sm:flex-row sm:items-end"><div><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">Home</p><h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-950">Good {greeting()}, {name}.</h1><p className="mt-2 text-xs text-stone-600">Here&apos;s what needs your attention today.</p></div><Link href="/bookings" className="inline-flex min-h-10 items-center justify-center self-start rounded-full bg-stone-950 px-5 text-xs font-semibold text-white shadow-sm hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 sm:self-auto">View all bookings</Link></header>
-  <OperationalDegradedState synchronization={projection.synchronization}/>
-  <section aria-label="Operational health" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-   <StatusCard icon={ArrowDownToLine} label="Arrivals today" value={projection.home.arrivalsToday} href="/bookings?status=arriving-today" tone="emerald"/>
-   <StatusCard icon={BedDouble} label="Guests in house" value={projection.home.guestsInStay} href="/bookings?status=in-stay" tone="violet"/>
-   <StatusCard icon={CalendarCheck} label="Departures today" value={projection.home.departuresToday} href="/bookings?status=checking-out-today" tone="amber"/>
-   <StatusCard icon={AlertTriangle} label="Open issues" value={projection.home.openOperationalIssues} href="#attention" tone="rose"/>
-   <StatusCard icon={RefreshCw} label="Sync status" value={syncLabel(projection.synchronization.status)} detail={projection.synchronization.lastSuccessfulAt?`Updated ${time(projection.synchronization.lastSuccessfulAt)}`:"No successful sync"} tone="teal"/>
-  </section>
-  {projection.contexts.length===0&&projection.properties.length===0?<WorkspaceEmptyState title="No operational activity yet" description="Connect your hospitality platform to begin monitoring properties, reservations, guest stays, and synchronization health." action={<Link href="/dashboard/workspace/connected-systems" className="inline-flex min-h-11 items-center rounded-full bg-stone-950 px-5 text-sm font-semibold text-white">Connect hospitality platform</Link>}/>:<>
-   <div className="grid gap-5 xl:grid-cols-2">
-    <section aria-labelledby="schedule-title" className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6"><SectionTitle id="schedule-title" icon={CalendarDays} title="Today's schedule"/>{schedule.length?<ul className="mt-5 divide-y divide-stone-100">{schedule.map(item=><li key={item.bookingId}><Link href={`/bookings?booking=${encodeURIComponent(item.bookingId)}`} className="grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-4 rounded-lg px-1 outline-none hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-teal-600 sm:grid-cols-[90px_110px_1fr_auto]"><time className="text-sm font-medium text-stone-600">{displayTime(item.stay.stage==="departing-today"?item.stay.window.checkoutTime:item.stay.window.checkInTime)}</time><span className="text-sm font-semibold capitalize text-stone-900">{item.stay.stage.replaceAll("-"," ")}</span><span className="min-w-0 truncate text-sm text-stone-600">{item.property.name}</span><span className="text-xs text-stone-500">{item.party.totalGuests===null?"Guests unavailable":`${item.party.totalGuests} guests`} <ArrowRight aria-hidden="true" className="ml-2 inline h-3.5 w-3.5"/></span></Link></li>)}</ul>:<Empty message="No arrivals or departures are scheduled for today."/>}<Link href="/bookings" className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-teal-800">View full schedule <ArrowRight aria-hidden="true" className="h-4 w-4"/></Link></section>
-    <section id="attention" aria-labelledby="attention-title" className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center justify-between gap-4"><SectionTitle id="attention-title" icon={AlertTriangle} title="Requires attention"/><Link href="/bookings" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-teal-800">View all <ArrowRight aria-hidden="true" className="h-4 w-4"/></Link></div>{attention.length?<ul className="mt-5 divide-y divide-stone-100">{attention.map(item=><li key={item.bookingId}><Link href={`/bookings?booking=${encodeURIComponent(item.bookingId)}`} className="grid min-h-20 grid-cols-[auto_1fr_auto] items-center gap-4 rounded-lg px-1 outline-none hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-teal-600"><span aria-hidden="true" className="h-2 w-2 rounded-full bg-amber-500"/><span><strong className="block text-sm text-stone-950">{item.guest.name.display} · {item.property.name}</strong><span className="mt-1 block text-xs text-stone-500">{item.operationalNeeds.length?item.operationalNeeds.map(value=>value.replaceAll("-"," ")).join(" · "):"Reservation evidence needs review"}</span></span><ArrowRight aria-hidden="true" className="h-4 w-4 text-stone-400"/></Link></li>)}</ul>:<Empty message="No operational records require attention."/>}</section>
-   </div>
-   <section aria-labelledby="glance-title" className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6"><SectionTitle id="glance-title" icon={CircleGauge} title="At a glance"/><dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Fact label="Active properties" value={String(projection.properties.length)} detail={`${projection.properties.filter(item=>item.property.connectionState==="connected").length} connected`}/><Fact label="Reservations in window" value={String(projection.contexts.length)} detail="Authorized reservation records"/><Fact label="Operational data" value={qualityLabel(projection.quality.status)} detail={`${projection.quality.counts.trusted} trusted records`}/><Fact label="Provider" value={projection.providerLabel||"Unavailable"} detail={projection.synchronization.lastSuccessfulAt?`Last sync ${time(projection.synchronization.lastSuccessfulAt)}`:"Awaiting synchronization"}/></dl></section>
-  </>}
- </WorkspacePage>
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const [{ user, profile }, params] = await Promise.all([requireUser(), searchParams]);
+  const full = await getOperationalSurfaceProjection({
+    principal: { userId: user.id, workspaceId: user.id, role: profile?.role ?? "guest" },
+    workspaceLabel: profile?.full_name ? `${profile.full_name}'s Workspace` : "Luxe Haven Workspace",
+  });
+  // Keep Home synchronized with the canonical shared Workspace Context. The
+  // visual dashboard consumes this projection as its live-data boundary.
+  filterOperationalProjection(full, {
+    propertyId: params.property,
+    startDate: params.from??params.start,
+    endDate: params.to??params.end,
+  });
+  return <HpmDashboard screen="home" />;
 }
-
-function StatusCard({icon:Icon,label,value,detail,href,tone}:{icon:typeof CalendarDays;label:string;value:string|number;detail?:string;href?:string;tone:"emerald"|"violet"|"amber"|"rose"|"teal"}){const colors={emerald:"text-emerald-700",violet:"text-violet-700",amber:"text-amber-600",rose:"text-rose-600",teal:"text-teal-700"};return <article className="min-h-32 rounded-xl border border-stone-200 bg-white p-4 shadow-sm"><Icon aria-hidden="true" className={`h-5 w-5 ${colors[tone]}`}/><p className="mt-3 text-2xl font-semibold tabular-nums text-stone-950">{value}</p><p className="mt-1 text-xs font-semibold text-stone-800">{label}</p>{detail?<p className="mt-2 text-[10px] text-stone-500">{detail}</p>:href?<Link href={href} className={`mt-1 inline-flex min-h-7 items-center gap-2 text-[10px] font-semibold ${colors[tone]}`}>View details <ArrowRight aria-hidden="true" className="h-3 w-3"/></Link>:null}</article>}
-function SectionTitle({id,icon:Icon,title}:{id:string;icon:typeof CalendarDays;title:string}){return <div className="flex items-center gap-3"><Icon aria-hidden="true" className="h-5 w-5 text-stone-700"/><h2 id={id} className="text-lg font-semibold text-stone-950">{title}</h2></div>}
-function Fact({label,value,detail}:{label:string;value:string;detail:string}){return <div className="border-stone-200 py-2 lg:border-r lg:px-5 lg:first:pl-0 lg:last:border-0"><dt className="text-xs font-medium text-stone-500">{label}</dt><dd className="mt-3 text-2xl font-semibold text-stone-950">{value}</dd><p className="mt-2 text-xs text-stone-500">{detail}</p></div>}
-function Empty({message}:{message:string}){return <p role="status" className="mt-5 rounded-xl border border-dashed border-stone-200 p-6 text-sm text-stone-500">{message}</p>}
-function greeting(){const hour=Number(new Intl.DateTimeFormat("en-US",{hour:"numeric",hourCycle:"h23",timeZone:"America/Chicago"}).format(new Date()));return hour<12?"morning":hour<17?"afternoon":"evening"}
-function time(value:string){return new Intl.DateTimeFormat("en-US",{hour:"numeric",minute:"2-digit"}).format(new Date(value))}
-function displayTime(value:string){const match=/^(\d{1,2}):(\d{2})/.exec(value);if(!match)return value;const hour=Number(match[1]),minute=match[2];return `${hour%12||12}:${minute} ${hour<12?"AM":"PM"}`}
-function syncLabel(value:string){return({succeeded:"Current","partially-succeeded":"Partial",failed:"Attention",skipped:"Skipped","in-progress":"Syncing","never-run":"Not connected"}as Record<string,string>)[value]??"Unknown"}
-function qualityLabel(value:string){return({trusted:"Trusted","usable-with-gaps":"Usable with gaps","attention-needed":"Needs attention",degraded:"Degraded",unusable:"Unavailable",unknown:"Unknown"}as Record<string,string>)[value]??"Unknown"}
