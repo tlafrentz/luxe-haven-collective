@@ -1,8 +1,4 @@
-import {
-  GUIDEBOOK_MEDIA_REFERENCE,
-  normalizePublicSlug,
-  type GuidebookDraft,
-} from "../domain";
+import { normalizePublicSlug, type GuidebookDraft } from "../domain";
 import type {
   AuthoringErrorCode,
   AuthoringResult,

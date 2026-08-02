@@ -7,6 +7,7 @@ import { CopyGuidebookLink } from "./copy-guidebook-link";
 import { PublicGuidebookExperience } from "./public-guidebook-experience";
 import type { PublicGuidebookBlock, PublicGuidebookView } from "@/features/guidebook-studio";
 vi.mock("@/components/shared/safe-image", () => ({
+  // eslint-disable-next-line @next/next/no-img-element
   SafeImage: (props: { src: string; alt: string }) => <img src={props.src} alt={props.alt} />,
 }));
 const blocks: PublicGuidebookBlock[] = [
