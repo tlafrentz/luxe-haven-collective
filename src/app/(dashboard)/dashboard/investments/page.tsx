@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { HpmDashboard } from "@/components/hpm-dashboard";
+import InvestmentPortfolioPage from "./portfolio/page";
 
 export default async function InvestmentIntelligencePage({
   searchParams,
@@ -14,5 +14,5 @@ export default async function InvestmentIntelligencePage({
     }
     redirect(`/dashboard/investments/new?${query}`);
   }
-  return <HpmDashboard screen="investment" />;
+  return <InvestmentPortfolioPage searchParams={searchParams} />;
 }

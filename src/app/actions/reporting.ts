@@ -137,7 +137,7 @@ export async function getExecutiveReportWorkspace(workspaceId?:string){
     client.from("report_collections").select("id,name,description,collection_type,status,updated_at,report_collection_items(id,report_id,position)").eq("workspace_id",access.workspaceId).order("updated_at",{ascending:false}).limit(50),
     client.from("report_artifact_jobs").select("id,report_id,artifact_type,status,failure_message,created_at").in("status",["queued","rendering","validating","storing","failed"]).order("created_at",{ascending:false}).limit(25),
   ]);
-  return Object.freeze({workspaceId:access.workspaceId,reports:reports??[],collections:collections??[],jobs:jobs??[]});
+  return Object.freeze({workspaceId:access.workspaceId,reports:reports??[],collections:collections??[],jobs:jobs??[],evaluatedAt:new Date().toISOString()});
 }
 
 export async function createReportCollectionAction(formData:FormData){

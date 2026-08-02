@@ -1,2 +1,5 @@
-import { HpmDashboard } from "@/components/hpm-dashboard";
-export default function ExecutiveIntelligencePage(){ return <HpmDashboard screen="executive"/>; }
+import { ExecutivePageView, type ExecutiveSearchParams } from "../executive-page";
+
+export default function ExecutiveIntelligencePage({ searchParams }: Readonly<{ searchParams: ExecutiveSearchParams }>) {
+  return <ExecutivePageView searchParams={searchParams} tab="overview" />;
+}
