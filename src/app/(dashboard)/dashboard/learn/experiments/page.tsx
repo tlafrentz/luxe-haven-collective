@@ -1,3 +1,3 @@
-import LearningWorkspacePage from "../../learning/workspace/page";
+import LearningCandidatesPage from "../../learning/candidates/page";
 
-export default LearningWorkspacePage;
+export default LearningCandidatesPage;

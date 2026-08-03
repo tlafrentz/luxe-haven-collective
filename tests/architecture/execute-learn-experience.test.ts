@@ -32,4 +32,12 @@ describe("EDS-006 Execute and Learn experience", () => {
     expect(projection).toContain('completed: ["link-outcome", "archive"]');
     expect(projection).not.toContain('completed: ["archive"]');
   });
+
+  it("does not send the Experiments tab to a portfolio-parameter dead end", () => {
+    const experiments = readFileSync(route("learn/experiments"), "utf8");
+    const navigation = readFileSync("src/components/learning/learning-workspace-navigation.tsx", "utf8");
+    expect(experiments).toContain("learning/candidates/page");
+    expect(experiments).not.toContain("learning/workspace/page");
+    expect(navigation).toContain('aria-current={active ? "page" : undefined}');
+  });
 });

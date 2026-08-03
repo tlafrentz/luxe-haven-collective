@@ -3,11 +3,11 @@ import type {
   KnowledgeGap, LearningContradictionSummary, LearningHealth,
   LearningWorkspaceLesson, LearningWorkspaceReview,
 } from "@/platform/learning";
+import { LearningWorkspaceNavigation } from "./learning-workspace-navigation";
 
 export function LearningHeader({ title, description }: { title: string; description: string }) {
-  return <header><p className="text-xs font-semibold uppercase tracking-[.2em] text-teal-700">Learn · Remember · Improve</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">{title}</h1><p className="mt-3 max-w-3xl text-stone-600">{description}</p><nav aria-label="Learn workspace" className="mt-6 flex gap-2 overflow-x-auto pb-1 text-sm"><Nav href="/dashboard/learn">Outcomes</Nav><Nav href="/dashboard/learn/experiments">Experiments</Nav><Nav href="/dashboard/learn/lessons">Knowledge</Nav><Nav href="/dashboard/learn/improvement">Improvement</Nav></nav></header>;
+  return <header><p className="text-xs font-semibold uppercase tracking-[.2em] text-teal-700">Learn · Remember · Improve</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-950">{title}</h1><p className="mt-3 max-w-3xl text-stone-600">{description}</p><LearningWorkspaceNavigation /></header>;
 }
-function Nav({href,children}:{href:string;children:React.ReactNode}){return <Link className="rounded-full border border-stone-300 bg-white px-4 py-2 font-semibold hover:border-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href={href}>{children}</Link>}
 
 export function Metric({ label, value, detail }: { label: string; value: string | number; detail?: string }) {
   return <article className="rounded-2xl border border-stone-200 bg-white p-5"><p className="text-sm text-stone-500">{label}</p><p className="mt-2 text-3xl font-semibold">{value}</p>{detail?<p className="mt-1 text-xs text-stone-500">{detail}</p>:null}</article>;
