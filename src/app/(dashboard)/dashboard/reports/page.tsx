@@ -14,18 +14,18 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     ["Shared", model.reports.filter(report=>report.report_shares?.some(share=>share.status === "active")).length, "Active shares"],
   ] as const;
   const templates = [
-    ["Monthly Executive Report","Performance summary for executives","violet","portfolio-performance"],
-    ["Owner Statement","Monthly performance and owner statement","orange","property-performance"],
-    ["Investment Review","Acquisition and portfolio analysis","green","investment-decision"],
-    ["Financial Performance","Profitability, cash flow, and financial position","teal","financial-performance"],
-    ["Custom Report","Build a governed report from an available template","stone","custom"],
+    ["Monthly Executive Report","Performance summary for executives","violet","/dashboard/reports/executive/executive-performance-summary"],
+    ["Owner Statement","Traceable operational owner balance statement","orange","/dashboard/reports/owner/owner-statement"],
+    ["Investment Review","Acquisition underwriting and decision analysis","green","/dashboard/reports/investment/acquisition-underwriting"],
+    ["Weekly Operations Summary","Operational execution and exceptions","teal","/dashboard/reports/operations/weekly-operations-summary"],
+    ["Custom Report","Governed report builder availability","stone","/dashboard/reports/custom/custom-report-builder"],
   ] as const;
   return <main className="hpm-page">
-    <header className="hpm-title"><div><h1>Hospitality Performance Reports</h1><p>Create and share business reports for every audience.</p></div><Link className="hpm-button" href="/dashboard/reports/new">Create report <Plus/></Link></header>
-    <nav className="hpm-tabs" aria-label="Report views"><Link className="active" href="/dashboard/reports">Executive</Link><Link href="/dashboard/reports?audience=owner">Owner</Link><Link href="/dashboard/investments/reports">Investment</Link><Link href="/dashboard/reports?audience=operations">Operations</Link><Link href="/dashboard/reports/new?type=custom">Custom</Link></nav>
+    <header className="hpm-title"><div><h1>Hospitality Performance Reports</h1><p>Create and share business reports for every audience.</p></div><Link className="hpm-button" href="/dashboard/reports/new?type=property-performance">Create report <Plus/></Link></header>
+    <nav className="hpm-tabs" aria-label="Report views"><Link className="active" href="/dashboard/reports/executive">Executive</Link><Link href="/dashboard/reports/owner">Owner</Link><Link href="/dashboard/reports/investment">Investment</Link><Link href="/dashboard/reports/operations">Operations</Link><Link href="/dashboard/reports/custom">Custom</Link></nav>
     <div className="hpm-reports-layout"><div className="hpm-reports-main">
       <section className="hpm-metrics four" aria-label="Report summary">{metrics.map(([label,value,detail])=><article key={label}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>)}</section>
       <section className="hpm-panel"><div className="hpm-panel-head"><h2>Recent Reports</h2></div>{model.reports.length?<div className="overflow-x-auto"><table className="hpm-table hpm-reports-table"><thead><tr><th>Report</th><th>Type</th><th>Status</th><th>Generated</th><th>Open</th></tr></thead><tbody>{model.reports.slice(0,8).map(report=><tr key={report.id}><td>{report.title}</td><td><span className="hpm-report-tag operations">{report.report_type.replaceAll("-"," ")}</span></td><td><span className={`hpm-report-status ${report.status}`}>{report.status}</span></td><td>{new Date(report.generated_at).toLocaleString()}</td><td><Link aria-label={`View ${report.title}`} href={`/dashboard/reports/${report.id}`}><Eye className="h-3 w-3"/></Link></td></tr>)}</tbody></table></div>:<p className="rounded-xl bg-stone-50 p-5 text-sm text-stone-600">No generated reports exist in this workspace.</p>}<Link className="hpm-reports-link" href="/dashboard/reports/executive">View report workspace <Plus/></Link></section>
-    </div><section className="hpm-panel"><div className="hpm-panel-head"><h2>Report Templates</h2></div><div className="hpm-report-templates">{templates.map(([name,description,tone,type])=><Link href={`/dashboard/reports/new?type=${type}`} key={name}><span className={`hpm-template-icon ${tone}`}><FileText/></span><span><strong>{name}</strong><small>{description}</small></span></Link>)}</div></section></div>
+    </div><section className="hpm-panel"><div className="hpm-panel-head"><h2>Report Templates</h2></div><div className="hpm-report-templates">{templates.map(([name,description,tone,href])=><Link href={href} key={name}><span className={`hpm-template-icon ${tone}`}><FileText/></span><span><strong>{name}</strong><small>{description}</small></span></Link>)}</div></section></div>
   </main>;
 }

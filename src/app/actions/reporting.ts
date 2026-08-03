@@ -66,7 +66,7 @@ export async function getReportComposerContext(input?: Readonly<{ workspaceId?: 
   if (!user) return Object.freeze({ state: "insufficient-permission" as ReportPreflightState, message: "Sign in to create a report.", nextAction: "/login" });
   try {
     const access = await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(), user.id, input?.workspaceId);
-    const commerce = await getCommerceAccessWorkspace();
+    const commerce = await getCommerceAccessWorkspace({ workspaceId: access.workspaceId });
     const [{ data: properties }, { data: opportunities }] = await Promise.all([
       client.from("properties").select("id,name,status").eq("owner_id", access.ownerId).order("name").limit(500),
       client.from("investment_opportunities").select("id,name,status").eq("workspace_id", access.workspaceId).order("updated_at", { ascending: false }).limit(200),
@@ -164,14 +164,14 @@ export async function generateReportAction(formData: FormData) {
   const client = await createClient();
   const { data: { user } } = await client.auth.getUser();
   if (!user) throw new Error("report_permission_denied");
-  const access = await getCommerceAccessWorkspace();
-  if (!access) throw new Error("report_permission_denied");
   const reportType = String(formData.get("reportType") ?? "") as ReportType;
   const definition = getReportDefinition(reportType);
   if (!definition) throw new Error("report_definition_not_found");
   const requestedWorkspaceId = String(formData.get("workspaceId") ?? "");
   const workspaceAccess = await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(), user.id, requestedWorkspaceId || undefined);
   const workspaceId = workspaceAccess.workspaceId;
+  const access = await getCommerceAccessWorkspace({ workspaceId });
+  if (!access) throw new Error("report_permission_denied");
   const idempotencyKey = String(formData.get("idempotencyKey") ?? crypto.randomUUID());
   const admin = createAdminClient();
   const { data: duplicateRequest } = await admin.from("report_requests").select("id,status").eq("workspace_id", workspaceId).eq("idempotency_key", idempotencyKey).maybeSingle();
