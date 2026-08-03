@@ -88,8 +88,10 @@ describe("workspace-driven platform experience", () => {
     const customerService = clientWorkspaceNavigation.find(item => item.id === "guidebook-studio");
     const internalService = operationsConsoleNavigation.find(item => item.id === "guidebook-projects");
     expect(customerService).toMatchObject({ group: "services", label: "Guidebook Studio", availability: "available", href: "/dashboard/guidebooks" });
-    expect(internalService).toMatchObject({ group: "services", label: "Guidebook Projects", availability: "coming-soon", description: "Manage guidebook service delivery" });
-    expect(customerService?.label).not.toBe(internalService?.label);
+    expect(internalService).toMatchObject({ group: "services", label: "Guidebook Studio", availability: "available", href: "/admin/guidebooks", description: "Create, publish, and govern guest guidebooks" });
+    expect(customerService?.href).not.toBe(internalService?.href);
+    expect(customerService?.experience).toBe("client-workspace");
+    expect(internalService?.experience).toBe("operations-console");
   });
 
   it.each(["/dashboard/portfolio", "/dashboard/portfolio/workspace"])("activates Understand for %s", path => {
