@@ -10,7 +10,8 @@ describe("investment report share credentials and lifecycle", () => {
   });
   it("rejects modified secrets and cross-paired credentials", () => {
     const first = generateShareCredential(), second = generateShareCredential();
-    expect(verifyShareCredential(`${first.secret.slice(0, -1)}A`, first.digest)).toBe(false);
+    const replacement = first.secret.endsWith("A") ? "B" : "A";
+    expect(verifyShareCredential(`${first.secret.slice(0, -1)}${replacement}`, first.digest)).toBe(false);
     expect(verifyShareCredential(first.secret, second.digest)).toBe(false);
     expect(digestShareSecret(first.secret)).toBe(first.digest);
   });
