@@ -22,7 +22,9 @@ import {
   normalizeGuidebookVersion,
   projectGuidebookEntitlements,
   resolveGuidebookVariables,
+  SupabaseGuidebookDraftRepository,
   validateGuidebookComposition,
+  type GuidebookDraft,
   type GuidebookVariableContext,
 } from "@/features/guidebook-studio";
 import {
@@ -438,12 +440,13 @@ export async function getGuidebookEditorRequest(id: string) {
         .eq("id", id)
         .maybeSingle();
     if (!guidebook) return { ok: false as const, code: "guidebook_not_found" };
-    const { access } = await context(guidebook.workspace_id);
+    const { access, user } = await context(guidebook.workspace_id);
     if (!evaluatePropertyAccess(access, guidebook.property_id))
       return { ok: false as const, code: "permission_denied" };
     const [
       propertyProjection,
       { data: sections },
+      durableDraft,
       { data: recommendations },
       { data: versions },
       { data: analytics },
@@ -459,6 +462,11 @@ export async function getGuidebookEditorRequest(id: string) {
         .select("*,guidebook_blocks(*)")
         .eq("guidebook_id", id)
         .order("position"),
+      new SupabaseGuidebookDraftRepository(admin).load({
+        workspaceId: access.workspaceId,
+        guidebookId: id,
+        actorId: user.id,
+      }),
       admin
         .from("guidebook_recommendations")
         .select("*")
@@ -549,6 +557,10 @@ export async function getGuidebookEditorRequest(id: string) {
       permissions: {
         manage: evaluateWorkspacePermission(access, "guidebooks.manage"),
       },
+      draft: durableDraft,
+      draftSections: durableDraft
+        ? authoringSectionsAsLegacy(durableDraft)
+        : sections ?? [],
     };
   } catch (error) {
     return {
@@ -556,6 +568,26 @@ export async function getGuidebookEditorRequest(id: string) {
       code: error instanceof Error ? error.message : "unexpected",
     };
   }
+}
+
+function authoringSectionsAsLegacy(draft: GuidebookDraft) {
+  return draft.sections.map((section) => ({
+    id: section.id,
+    guidebook_id: draft.guidebookId,
+    section_key: section.id,
+    title: section.name,
+    position: section.position,
+    visible: section.visible,
+    guidebook_blocks: section.blocks.map((block) => ({
+      id: block.id,
+      section_id: section.id,
+      block_type: block.type,
+      position: block.position,
+      visible: block.visible,
+      guest_safe: true,
+      content: block.content,
+    })),
+  }));
 }
 export async function addGuidebookBlockAction(formData: FormData) {
   const guidebookId = String(formData.get("guidebookId") ?? ""),

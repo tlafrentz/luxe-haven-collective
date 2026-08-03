@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   guidebookAuthoringCommandAction,
   loadGuidebookAuthoringAction,
@@ -40,6 +41,7 @@ export function GuidebookAuthoringWorkspace({
   initialDraft: GuidebookDraft;
   canEdit: boolean;
 }) {
+  const router = useRouter();
   const [draft, setDraft] = useState(initialDraft),
     [selected, setSelected] = useState(initialDraft.sections[0]?.id ?? ""),
     [state, setState] = useState<
@@ -127,6 +129,7 @@ export function GuidebookAuthoringWorkspace({
         setConflictingCommand(null);
         setReviewedLatest(false);
         setState("saved");
+        router.refresh();
       } else if (result.code === "DRAFT_CONFLICT") {
         setLocal((current) => current ?? preserved);
         setConflictingCommand(value);
@@ -458,7 +461,8 @@ export function GuidebookAuthoringWorkspace({
                     block={block}
                     guidebookId={draft.guidebookId}
                     workspaceId={draft.workspaceId}
-                    disabled={!canEdit}
+                    disabled={!canEdit || pending}
+                    saving={pending}
                     onSave={(next) =>
                       command({
                         type: "update-block",
@@ -597,12 +601,14 @@ function StructuredEditor({
   guidebookId,
   workspaceId,
   disabled,
+  saving,
   onSave,
 }: {
   block: AuthoringBlock;
   guidebookId: string;
   workspaceId: string;
   disabled: boolean;
+  saving: boolean;
   onSave: (block: AuthoringBlock) => void;
 }) {
   const [value, setValue] = useState(block),
@@ -788,7 +794,7 @@ function StructuredEditor({
         onClick={save}
         className="mt-4 rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
-        Save block
+        {saving ? "Saving…" : "Save block"}
       </button>
     </div>
   );
