@@ -2,6 +2,7 @@ import {
   CheckCircle2,
   Sparkles,
 } from "lucide-react";
+import Link from "next/link";
 
 import type {
   ActionCenterSummary,
@@ -24,12 +25,10 @@ export function ActionCenterHeader({
       <div>
         <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800">
           <Sparkles className="h-3.5 w-3.5" />
-          Execution workspace
+          Execute
         </div>
 
-        <h1 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl">
-        Turn recommendations into business outcomes.
-        </h1>
+        <h1 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl">Action Center</h1>
 
         <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600 sm:text-base">
         Execute the highest-impact work across your
@@ -52,6 +51,10 @@ capture what improves performance.
           {summary.blocked} blocked
         </p>
       </div>
+      <nav aria-label="Execute workspace" className="flex flex-wrap gap-2 text-sm xl:absolute xl:mt-28">
+        <Link className="rounded-full bg-stone-950 px-4 py-2 font-semibold text-white" href="/dashboard/execute">Actions</Link>
+        {['Projects', 'Automations', 'Services'].map(item => <span key={item} aria-disabled="true" className="rounded-full border bg-white px-4 py-2 text-stone-500">{item}</span>)}
+      </nav>
     </header>
   );
 }

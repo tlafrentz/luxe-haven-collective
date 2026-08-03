@@ -14,6 +14,10 @@ const { recordExpense, result } = vi.hoisted(() => ({
 
 vi.mock("@/app/actions/financial-observations", () => ({
   recordFinancialExpenseAction: recordExpense,
+  updateFinancialExpenseAction: vi.fn(),
+  archiveFinancialExpenseAction: vi.fn(),
+  restoreFinancialExpensesAction: vi.fn(),
+  deleteFinancialExpensesAction: vi.fn(),
 }));
 
 import { categoryGradientStops, OperatingExpensesWorkspace } from "./expense-workspace";
@@ -40,6 +44,8 @@ async function openAndCompleteForm() {
 
 describe("Expense Workspace", () => {
   beforeEach(() => {
+    localStorage.clear();
+    history.replaceState({}, "", "/dashboard/financial/expenses");
     let sequence = 0;
     vi.spyOn(crypto, "randomUUID").mockImplementation(() => {
       sequence += 1;
@@ -84,6 +90,26 @@ describe("Expense Workspace", () => {
     expect(screen.getAllByText("$100.00").length).toBeGreaterThan(1);
   });
 
+  it("defaults the ledger to active expenses and exposes archived metadata on demand", async () => {
+    const shared = {
+      propertyId: props.properties[0].id, propertyName: "Lake House", accountId: "expense",
+      category: "cleaning" as const, currency: "USD", basis: "actual" as const,
+      effectiveDate: "2026-08-01", frequency: "one-time" as const, source: "manual",
+    };
+    render(<OperatingExpensesWorkspace {...props} initialExpenses={[
+      { ...shared, id: "active", name: "active cleaning", amountMinor: 10_000, status: "recorded" },
+      { ...shared, id: "archived", name: "archived cleaning", amountMinor: 99_900, status: "archived", archivedAt: "2026-08-02T00:00:00Z" },
+    ]} />);
+
+    expect(screen.getByText("Active Cleaning")).toBeTruthy();
+    expect(screen.queryByText("Archived Cleaning")).toBeNull();
+    await userEvent.selectOptions(screen.getByLabelText("Status"), "archived");
+    expect(screen.getByText("Archived Cleaning")).toBeTruthy();
+    expect(screen.getByText("Aug 2, 2026")).toBeTruthy();
+    expect(new URL(location.href).searchParams.get("status")).toBe("archived");
+    expect(localStorage.getItem("financial-expenses:status")).toBe("archived");
+  });
+
   it("keeps a command ID stable across field updates and rerenders, then creates a new ID for a new modal", async () => {
     const view = render(<OperatingExpensesWorkspace {...props} />);
     const user = await openAndCompleteForm();
@@ -121,7 +147,7 @@ describe("Expense Workspace", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getAllByText("$123.45").length).toBeGreaterThan(0);
-    expect(screen.getByText("Showing 1 expense")).toBeTruthy();
+    expect(screen.getByText("Showing 1 result")).toBeTruthy();
   });
 
   it("does not close for a duplicate response", async () => {

@@ -9,6 +9,7 @@ export type ExpenseListItem = Readonly<{
   category: FinancialExpenseCategory; amountMinor: number; currency: string; basis: FinancialExpenseBasis;
   effectiveDate: string; effectiveTo?: string; frequency: FinancialExpenseFrequency;
   source: string; sourceReference?: string; status: "pending" | "recorded" | "archived";
+  archivedAt?: string; archivedBy?: string;
 }>;
 export type ExpenseWorkspace = Readonly<{ expenses: readonly ExpenseListItem[]; properties: readonly Readonly<{id:string;name:string}>[] }>;
 export type SimilarExpense = Pick<ExpenseListItem,"id"|"name"|"category"|"amountMinor"|"currency"|"effectiveDate"|"source"|"sourceReference">;

@@ -56,7 +56,8 @@ export async function resolveWorkspaceAccessContext(
   profileId: string,
   workspaceId?: string,
 ) {
-  const context = await repository.resolve(profileId, workspaceId);
+  const resolvedWorkspaceId = workspaceId === "current" ? undefined : workspaceId;
+  const context = await repository.resolve(profileId, resolvedWorkspaceId);
   if (!context || context.status !== "active") {
     throw new TeamAccessPolicyError("INACTIVE_MEMBERSHIP", "An active workspace membership is required.");
   }

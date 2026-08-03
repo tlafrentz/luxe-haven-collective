@@ -1,9 +1,7 @@
 import {
-  AnalyticsControls,
   BookingsTable,
   OccupancyTrendChart,
   PerformanceSummary,
-  ReportContext,
   RevenueTrendChart,
   StatsGrid,
   buildDailyRevenueSeries,
@@ -49,15 +47,6 @@ export function RevenueIntelligenceDashboard({
 
   return (
     <div className="space-y-6">
-      <AnalyticsControls
-        properties={analytics.properties}
-        selectedPropertyId={
-          analytics.selectedPropertyId
-        }
-        startDate={analytics.dateRange.startDate}
-        endDate={analytics.dateRange.endDate}
-      />
-
       {!hasProperties ? (
         <EmptyState
           title="No active properties"
@@ -65,8 +54,6 @@ export function RevenueIntelligenceDashboard({
         />
       ) : (
         <>
-          <ReportContext analytics={analytics} />
-
           <StatsGrid
             metrics={analytics.metrics}
             comparison={analytics.comparison}

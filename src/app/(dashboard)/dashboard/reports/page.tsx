@@ -8,10 +8,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   if (!model) return <main className="mx-auto max-w-3xl px-5 py-16"><p role="alert">Sign in to view reports.</p></main>;
   const recentThreshold = new Date(model.evaluatedAt).getTime() - 30 * 24 * 60 * 60 * 1000;
   const metrics = [
-    ["Active jobs", model.jobs.filter(job=>job.status !== "failed").length, "Currently processing"],
+    ["Scheduled", model.jobs.filter(job=>job.status !== "failed").length, "Upcoming"],
     ["Recent", model.reports.filter(report=>new Date(report.generated_at).getTime() >= recentThreshold).length, "Last 30 days"],
     ["Drafts", model.reports.filter(report=>report.status === "draft").length, "In progress"],
-    ["Shared", model.reports.filter(report=>report.report_shares.some(share=>share.status === "active")).length, "Active shares"],
+    ["Shared", model.reports.filter(report=>report.report_shares?.some(share=>share.status === "active")).length, "Active shares"],
   ] as const;
   const templates = [
     ["Monthly Executive Report","Performance summary for executives","violet","portfolio-performance"],
@@ -21,8 +21,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     ["Custom Report","Build a governed report from an available template","stone","custom"],
   ] as const;
   return <main className="hpm-page">
-    <header className="hpm-title"><div><h1>Hospitality Performance Reports</h1><p>Create and share business reports from immutable production snapshots.</p></div><Link className="hpm-button" href="/dashboard/reports/new">Create report <Plus/></Link></header>
-    <nav className="hpm-tabs" aria-label="Report views"><Link className="active" href="/dashboard/reports">Executive</Link><Link href="/dashboard/reports/executive">Collections</Link><Link href="/dashboard/investments/reports">Investment</Link></nav>
+    <header className="hpm-title"><div><h1>Hospitality Performance Reports</h1><p>Create and share business reports for every audience.</p></div><Link className="hpm-button" href="/dashboard/reports/new">Create report <Plus/></Link></header>
+    <nav className="hpm-tabs" aria-label="Report views"><Link className="active" href="/dashboard/reports">Executive</Link><Link href="/dashboard/reports?audience=owner">Owner</Link><Link href="/dashboard/investments/reports">Investment</Link><Link href="/dashboard/reports?audience=operations">Operations</Link><Link href="/dashboard/reports/new?type=custom">Custom</Link></nav>
     <div className="hpm-reports-layout"><div className="hpm-reports-main">
       <section className="hpm-metrics four" aria-label="Report summary">{metrics.map(([label,value,detail])=><article key={label}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>)}</section>
       <section className="hpm-panel"><div className="hpm-panel-head"><h2>Recent Reports</h2></div>{model.reports.length?<div className="overflow-x-auto"><table className="hpm-table hpm-reports-table"><thead><tr><th>Report</th><th>Type</th><th>Status</th><th>Generated</th><th>Open</th></tr></thead><tbody>{model.reports.slice(0,8).map(report=><tr key={report.id}><td>{report.title}</td><td><span className="hpm-report-tag operations">{report.report_type.replaceAll("-"," ")}</span></td><td><span className={`hpm-report-status ${report.status}`}>{report.status}</span></td><td>{new Date(report.generated_at).toLocaleString()}</td><td><Link aria-label={`View ${report.title}`} href={`/dashboard/reports/${report.id}`}><Eye className="h-3 w-3"/></Link></td></tr>)}</tbody></table></div>:<p className="rounded-xl bg-stone-50 p-5 text-sm text-stone-600">No generated reports exist in this workspace.</p>}<Link className="hpm-reports-link" href="/dashboard/reports/executive">View report workspace <Plus/></Link></section>

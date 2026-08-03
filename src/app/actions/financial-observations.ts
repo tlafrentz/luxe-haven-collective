@@ -113,7 +113,7 @@ export async function archiveFinancialExpenseAction(input:{expenseId:string;work
     const access=await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(),user.id,parsed.data.workspaceId);
     if(!evaluateWorkspacePermission(access,"financial.administration")||!evaluatePropertyAccess(access,parsed.data.propertyId))return{ok:false as const,code:"FINANCIAL_ACCESS_DENIED",message:"Your role or property access does not permit archiving expenses.",correlationId};
     const client=await createClient();
-    const{error,data:updated}=await client.from("financial_transactions").update({status:"voided"}).eq("id",parsed.data.expenseId).eq("workspace_id",access.workspaceId).select("id").maybeSingle();
+    const{error,data:updated}=await client.from("financial_transactions").update({status:"voided",archived_at:new Date().toISOString(),archived_by_profile_id:user.id}).eq("id",parsed.data.expenseId).eq("workspace_id",access.workspaceId).select("id").maybeSingle();
     if(error)throw error;
     if(!updated)return{ok:false as const,code:"EXPENSE_NOT_FOUND",message:"The expense could not be found in this workspace.",correlationId};
     console.info("financial_expense_archived",{correlationId,capability:"financial-intelligence",operation:"archive-expense",workspaceId:access.workspaceId,expenseId:parsed.data.expenseId,timestamp:new Date().toISOString()});
@@ -122,6 +122,35 @@ export async function archiveFinancialExpenseAction(input:{expenseId:string;work
   }catch(error){
     console.error("capability_operation_failed",{correlationId,capability:"financial-intelligence",operation:"archive-expense",code:"FINANCIAL_EXPENSE_ARCHIVE_FAILED",retryable:true,timestamp:new Date().toISOString(),errorMessage:error instanceof Error?error.message:String(error)});
     return{ok:false as const,code:"FINANCIAL_EXPENSE_ARCHIVE_FAILED",message:"The expense was not archived. Retry, then share the correlation ID with support if it continues.",correlationId};
+  }
+}
+
+const expenseBatchInput=z.object({expenseIds:z.array(z.string().uuid()).min(1).max(100),workspaceId:z.string().uuid()});
+export async function restoreFinancialExpensesAction(input:{expenseIds:string[];workspaceId:string}):Promise<FinancialExpenseActionState>{
+  return transitionArchivedExpenses(input,"restore");
+}
+export async function deleteFinancialExpensesAction(input:{expenseIds:string[];workspaceId:string}):Promise<FinancialExpenseActionState>{
+  return transitionArchivedExpenses(input,"delete");
+}
+async function transitionArchivedExpenses(input:{expenseIds:string[];workspaceId:string},operation:"restore"|"delete"):Promise<FinancialExpenseActionState>{
+  const correlationId=crypto.randomUUID(),parsed=expenseBatchInput.safeParse(input),{user}=await getSessionProfile();
+  if(!parsed.success)return{ok:false,code:"INVALID_EXPENSE_SELECTION",message:"Select between 1 and 100 valid expenses.",correlationId};
+  if(!user)return{ok:false,code:"AUTHENTICATION_REQUIRED",message:"Sign in before managing archived expenses.",correlationId};
+  try{
+    const access=await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(),user.id,parsed.data.workspaceId);
+    if(!evaluateWorkspacePermission(access,"financial.administration"))return{ok:false,code:"FINANCIAL_ACCESS_DENIED",message:"Your role does not permit archived expense management.",correlationId};
+    const client=await createClient(),query=client.from("financial_transactions");
+    const result=operation==="restore"
+      ?await query.update({status:"posted",archived_at:null,archived_by_profile_id:null}).eq("workspace_id",access.workspaceId).in("id",parsed.data.expenseIds).eq("status","voided").select("id")
+      :await query.delete().eq("workspace_id",access.workspaceId).in("id",parsed.data.expenseIds).eq("status","voided").select("id");
+    if(result.error)throw result.error;
+    if((result.data??[]).length!==parsed.data.expenseIds.length)return{ok:false,code:"EXPENSE_SELECTION_CHANGED",message:"One or more expenses were changed or are outside your permitted workspace. Refresh and try again.",correlationId};
+    console.info("financial_expenses_archived_transitioned",{correlationId,workspaceId:access.workspaceId,operation,count:parsed.data.expenseIds.length,actorId:user.id,timestamp:new Date().toISOString()});
+    revalidatePath("/dashboard/financial/expenses");revalidatePath("/dashboard/financial");revalidatePath("/dashboard");
+    return{ok:true,correlationId};
+  }catch(error){
+    console.error("financial_expense_archive_transition_failed",{correlationId,operation,errorMessage:error instanceof Error?error.message:String(error)});
+    return{ok:false,code:"FINANCIAL_EXPENSE_ARCHIVE_TRANSITION_FAILED",message:`The selected expenses could not be ${operation==="restore"?"restored":"deleted"}.`,correlationId};
   }
 }
 

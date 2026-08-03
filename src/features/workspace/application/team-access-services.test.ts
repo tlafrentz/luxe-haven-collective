@@ -55,6 +55,12 @@ describe("Team access application services", () => {
     await expect(resolveWorkspaceAccessContext({ ...fake(), resolve: async () => ({ ...ownerContext, status: "suspended" }) }, "owner-profile")).rejects.toBeInstanceOf(TeamAccessPolicyError);
   });
 
+  it("treats the workspace context sentinel as the current membership", async () => {
+    const repository = fake();
+    await expect(resolveWorkspaceAccessContext(repository, "owner-profile", "current")).resolves.toEqual(ownerContext);
+    expect(repository.resolve).toHaveBeenCalledWith("owner-profile", undefined);
+  });
+
   it("allows an owner to invite a normalized least-privilege member", async () => {
     const invitation = await inviteWorkspaceMember(fake(), ownerContext, {
       email: " Ops@Example.com ", role: "operator",
