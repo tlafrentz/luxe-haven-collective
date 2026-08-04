@@ -1,7 +1,13 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import {
   Boxes,
   BookOpen,
@@ -29,8 +35,10 @@ import {
   ShieldCheck,
   UsersRound,
   Zap,
+  LogOut,
   type LucideProps,
 } from "lucide-react";
+import { signOutAction } from "@/app/actions/auth";
 import {
   clientWorkspaceNavigation,
   operationsConsoleNavigation,
@@ -42,11 +50,32 @@ import {
   type NavigationItem,
   type PlatformExperience,
 } from "@/platform/experience";
-import { ContextLink, WorkspaceContextBar, WorkspaceContextProvider, workspaceContextKind } from "@/platform/workspace-context";
+import {
+  ContextLink,
+  WorkspaceContextBar,
+  WorkspaceContextProvider,
+  workspaceContextKind,
+} from "@/platform/workspace-context";
 
-type ShellProps = Readonly<{ children: ReactNode; experience: PlatformExperience; role?: string | null }>;
-const groupLabels: Record<string, string> = { home: "Home", hpm: "HPM lifecycle", business: "Business", services: "Services", settings: "Workspace settings", operations: "Operations", infrastructure: "Infrastructure" };
-const availabilityLabels: Record<NavigationAvailability, string> = { available: "", "limited-preview": "Limited", "coming-soon": "Soon" };
+type ShellProps = Readonly<{
+  children: ReactNode;
+  experience: PlatformExperience;
+  role?: string | null;
+}>;
+const groupLabels: Record<string, string> = {
+  home: "Home",
+  hpm: "HPM lifecycle",
+  business: "Business",
+  services: "Services",
+  settings: "Workspace settings",
+  operations: "Operations",
+  infrastructure: "Infrastructure",
+};
+const availabilityLabels: Record<NavigationAvailability, string> = {
+  available: "",
+  "limited-preview": "Limited",
+  "coming-soon": "Soon",
+};
 const operationsIcons: Record<string, ComponentType<LucideProps>> = {
   "operations-workspace": House,
   "operations-customers": UsersRound,
@@ -75,11 +104,35 @@ const clientIcons: Record<string, ComponentType<LucideProps>> = {
   "guidebook-studio": BookOpen,
 };
 
-export function ClientWorkspaceShell({ children, role }: Omit<ShellProps, "experience">) { return <PlatformShell experience="client-workspace" role={role}>{children}</PlatformShell>; }
-export function OperationsConsoleShell({ children, role }: Omit<ShellProps, "experience">) { return <PlatformShell experience="operations-console" role={role}>{children}</PlatformShell>; }
+export function ClientWorkspaceShell({
+  children,
+  role,
+}: Omit<ShellProps, "experience">) {
+  return (
+    <PlatformShell experience="client-workspace" role={role}>
+      {children}
+    </PlatformShell>
+  );
+}
+export function OperationsConsoleShell({
+  children,
+  role,
+}: Omit<ShellProps, "experience">) {
+  return (
+    <PlatformShell experience="operations-console" role={role}>
+      {children}
+    </PlatformShell>
+  );
+}
 
 export function PlatformShell({ children, experience, role }: ShellProps) {
-  return <WorkspaceContextProvider><PlatformShellFrame experience={experience} role={role}>{children}</PlatformShellFrame></WorkspaceContextProvider>;
+  return (
+    <WorkspaceContextProvider>
+      <PlatformShellFrame experience={experience} role={role}>
+        {children}
+      </PlatformShellFrame>
+    </WorkspaceContextProvider>
+  );
 }
 
 function PlatformShellFrame({ children, experience, role }: ShellProps) {
@@ -88,13 +141,21 @@ function PlatformShellFrame({ children, experience, role }: ShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
-  const source = experience === "client-workspace" ? clientWorkspaceNavigation : operationsConsoleNavigation;
-  const navigation = resolveNavigation(source, resolveUserCapabilities({ authenticated: true, role }));
+  const source =
+    experience === "client-workspace"
+      ? clientWorkspaceNavigation
+      : operationsConsoleNavigation;
+  const navigation = resolveNavigation(
+    source,
+    resolveUserCapabilities({ authenticated: true, role }),
+  );
   const details = pageDetails(pathname, experience);
   const contextKind = workspaceContextKind(pathname);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(`luxe-haven:${experience}:sidebar-collapsed`);
+    const saved = window.localStorage.getItem(
+      `luxe-haven:${experience}:sidebar-collapsed`,
+    );
     if (saved !== "true") return;
     const frame = window.requestAnimationFrame(() => setCollapsed(true));
     return () => window.cancelAnimationFrame(frame);
@@ -108,49 +169,172 @@ function PlatformShellFrame({ children, experience, role }: ShellProps) {
     }
     wasOpen.current = true;
     document.body.style.overflow = "hidden";
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setMobileOpen(false); };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
     document.addEventListener("keydown", onKeyDown);
-    return () => { document.body.style.overflow = ""; document.removeEventListener("keydown", onKeyDown); };
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [mobileOpen]);
 
   const toggleCollapsed = () => {
     const next = !collapsed;
     setCollapsed(next);
-    window.localStorage.setItem(`luxe-haven:${experience}:sidebar-collapsed`, String(next));
-    recordPlatformNavigationEvent("platform_navigation_collapsed", { experience, collapsed: next });
+    window.localStorage.setItem(
+      `luxe-haven:${experience}:sidebar-collapsed`,
+      String(next),
+    );
+    recordPlatformNavigationEvent("platform_navigation_collapsed", {
+      experience,
+      collapsed: next,
+    });
   };
 
-  return <div className="platform-workspace min-h-screen overflow-x-clip bg-background">
-    <aside className={["fixed inset-y-0 left-0 z-40 hidden border-r border-white/10 bg-[#081117] text-white transition-[width] motion-reduce:transition-none lg:block", collapsed ? "w-20" : "w-72"].join(" ")}>
-      <ShellNavigation experience={experience} navigation={navigation} pathname={pathname} collapsed={collapsed} onNavigate={() => undefined} onToggle={toggleCollapsed} />
-    </aside>
-    {mobileOpen ? <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label={`${experience === "client-workspace" ? "Workspace" : "Operations Console"} navigation`}>
-      <button type="button" aria-label="Close navigation menu" className="absolute inset-0 bg-stone-950/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-      <aside className="relative h-full w-[88%] max-w-96 shadow-2xl"><ShellNavigation experience={experience} navigation={navigation} pathname={pathname} collapsed={false} onNavigate={() => setMobileOpen(false)} onToggle={() => undefined} /></aside>
-    </div> : null}
-    <div className={collapsed ? "lg:pl-20" : "lg:pl-72"}>
-      <header data-context-kind={contextKind} className={["sticky top-0 z-30 border-b bg-white/95 backdrop-blur-xl",contextKind==="operational"?"border-emerald-200":contextKind==="intelligence"?"border-violet-200":"border-blue-200"].join(" ")}>
-        <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <button ref={triggerRef} type="button" onClick={() => { setMobileOpen(true); recordPlatformNavigationEvent("platform_mobile_navigation_opened", { experience }); }} aria-label="Open navigation menu" aria-expanded={mobileOpen} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-950 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 lg:hidden"><span aria-hidden="true">☰</span></button>
-            <div className="hidden min-w-0 lg:block"><WorkspaceContextBar /></div>
-            <div className="min-w-0 lg:hidden"><p className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">{details.eyebrow}</p><p className="truncate text-lg font-semibold text-stone-950">{details.title}</p></div>
-          </div>
-          <div className="flex items-center gap-1"><EnvironmentIndicator /><button aria-label="Search" className="grid h-10 w-10 place-items-center rounded-lg text-stone-700 hover:bg-stone-100"><Search className="h-4 w-4" /></button><button aria-label="Help" className="hidden h-10 w-10 place-items-center rounded-lg text-stone-700 hover:bg-stone-100 sm:grid"><CircleHelp className="h-4 w-4" /></button><button aria-label="Notifications" className="hidden h-10 w-10 place-items-center rounded-lg text-stone-700 hover:bg-stone-100 sm:grid"><Bell className="h-4 w-4" /></button><ContextLink href={experience === "client-workspace" ? "/dashboard/workspace/preferences" : "/admin"} aria-label="Open user profile menu" className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-stone-950 text-[10px] font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">TL</ContextLink></div>
+  return (
+    <div className="platform-workspace min-h-screen overflow-x-clip bg-background">
+      <aside
+        className={[
+          "fixed inset-y-0 left-0 z-40 hidden border-r border-white/10 bg-[#081117] text-white transition-[width] motion-reduce:transition-none lg:block",
+          collapsed ? "w-20" : "w-72",
+        ].join(" ")}
+      >
+        <ShellNavigation
+          experience={experience}
+          navigation={navigation}
+          pathname={pathname}
+          collapsed={collapsed}
+          onNavigate={() => undefined}
+          onToggle={toggleCollapsed}
+        />
+      </aside>
+      {mobileOpen ? (
+        <div
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${experience === "client-workspace" ? "Workspace" : "Operations Console"} navigation`}
+        >
+          <button
+            type="button"
+            aria-label="Close navigation menu"
+            className="absolute inset-0 bg-stone-950/60 backdrop-blur-sm"
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside className="relative h-full w-[88%] max-w-96 shadow-2xl">
+            <ShellNavigation
+              experience={experience}
+              navigation={navigation}
+              pathname={pathname}
+              collapsed={false}
+              onNavigate={() => setMobileOpen(false)}
+              onToggle={() => undefined}
+            />
+          </aside>
         </div>
-      </header>
-      <div className="lg:hidden"><WorkspaceContextBar /></div>
-      <main id="main-content" className="sm:mx-6 lg:mx-8">{children}</main>
+      ) : null}
+      <div className={collapsed ? "lg:pl-20" : "lg:pl-72"}>
+        <header
+          data-context-kind={contextKind}
+          className={[
+            "sticky top-0 z-30 border-b bg-white/95 backdrop-blur-xl",
+            contextKind === "operational"
+              ? "border-emerald-200"
+              : contextKind === "intelligence"
+                ? "border-violet-200"
+                : "border-blue-200",
+          ].join(" ")}
+        >
+          <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-5">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                ref={triggerRef}
+                type="button"
+                onClick={() => {
+                  setMobileOpen(true);
+                  recordPlatformNavigationEvent(
+                    "platform_mobile_navigation_opened",
+                    { experience },
+                  );
+                }}
+                aria-label="Open navigation menu"
+                aria-expanded={mobileOpen}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-950 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 lg:hidden"
+              >
+                <span aria-hidden="true">☰</span>
+              </button>
+              <div className="hidden min-w-0 lg:block">
+                <WorkspaceContextBar />
+              </div>
+              <div className="min-w-0 lg:hidden">
+                <p className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+                  {details.eyebrow}
+                </p>
+                <p className="truncate text-lg font-semibold text-stone-950">
+                  {details.title}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <EnvironmentIndicator />
+              <button
+                aria-label="Search"
+                className="grid h-10 w-10 place-items-center rounded-lg text-stone-700 hover:bg-stone-100"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+              <button
+                aria-label="Help"
+                className="hidden h-10 w-10 place-items-center rounded-lg text-stone-700 hover:bg-stone-100 sm:grid"
+              >
+                <CircleHelp className="h-4 w-4" />
+              </button>
+              <button
+                aria-label="Notifications"
+                className="hidden h-10 w-10 place-items-center rounded-lg text-stone-700 hover:bg-stone-100 sm:grid"
+              >
+                <Bell className="h-4 w-4" />
+              </button>
+              <AccountMenu experience={experience} />
+            </div>
+          </div>
+        </header>
+        <div className="lg:hidden">
+          <WorkspaceContextBar />
+        </div>
+        <main id="main-content" className="sm:mx-6 lg:mx-8">
+          {children}
+        </main>
+      </div>
     </div>
-  </div>;
+  );
 }
 
-function ShellNavigation({ experience, navigation, pathname, collapsed, onNavigate, onToggle }: { experience: PlatformExperience; navigation: readonly NavigationItem[]; pathname: string; collapsed: boolean; onNavigate: () => void; onToggle: () => void }) {
-  const groups = [...new Set(navigation.map(item => item.group))];
-  const byId = new Map(navigation.map(item => [item.id, item]));
+function ShellNavigation({
+  experience,
+  navigation,
+  pathname,
+  collapsed,
+  onNavigate,
+  onToggle,
+}: {
+  experience: PlatformExperience;
+  navigation: readonly NavigationItem[];
+  pathname: string;
+  collapsed: boolean;
+  onNavigate: () => void;
+  onToggle: () => void;
+}) {
+  const groups = [...new Set(navigation.map((item) => item.group))];
+  const byId = new Map(navigation.map((item) => [item.id, item]));
   const activeHierarchy = new Set<string>();
   for (const item of navigation) {
-    if (!item.activeMatch || !matchesNavigationRoute(pathname, item.activeMatch)) continue;
+    if (
+      !item.activeMatch ||
+      !matchesNavigationRoute(pathname, item.activeMatch)
+    )
+      continue;
     activeHierarchy.add(item.id);
     let parentId = item.parentId;
     while (parentId) {
@@ -159,64 +343,589 @@ function ShellNavigation({ experience, navigation, pathname, collapsed, onNaviga
     }
   }
   const operations = experience === "operations-console";
-  return <div className="flex h-full flex-col bg-[#0b0f12]">
-    <div className={operations ? "px-6 pb-5 pt-7" : "px-6 pb-5 pt-6"}><div className="flex items-center justify-between"><ContextLink href={experience === "client-workspace" ? "/dashboard" : "/admin"} onClick={onNavigate} className="min-w-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-amber-300"><OperationsBrand collapsed={collapsed} /></ContextLink><button type="button" onClick={onToggle} aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} className={operations && !collapsed ? "sr-only" : "hidden h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-xl text-stone-300 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-teal-400 lg:flex"}>{collapsed ? "→" : "‹"}</button></div>{!collapsed && experience === "client-workspace" ? <ContextLink href="/dashboard/workspace" onClick={onNavigate} className="mt-6 flex min-h-24 items-center justify-between rounded-2xl border border-white/[0.12] bg-white/[0.035] px-4 py-4 outline-none transition-colors hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-amber-300"><span className="min-w-0"><span className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#d5b46b]">Current workspace</span><span className="mt-2 block truncate text-base font-semibold text-stone-100">Luxe Haven Collective</span></span><ChevronDown aria-hidden="true" className="h-5 w-5 shrink-0 text-stone-200" /></ContextLink> : null}</div>
-    {operations && !collapsed ? <div className="mx-6 border-t border-white/[0.08] pt-5"><p className="text-[12px] font-bold uppercase tracking-[0.08em] text-stone-100">Admin Portal</p></div> : null}
-    <nav aria-label={experience === "client-workspace" ? "HPM workspace navigation" : "Operations Console navigation"} className={operations ? "flex-1 overflow-x-hidden overflow-y-auto px-3 pb-4 pt-3" : "flex-1 overflow-x-hidden overflow-y-auto px-3 py-3"}>
-      {groups.map(group => <section key={group} aria-labelledby={`nav-${group}`} className={operations ? "mb-5" : group === "settings" ? "mt-5 border-t border-white/10 pt-5" : "mb-5"}><h2 id={`nav-${group}`} className={collapsed || group === "home" || group === "settings" ? "sr-only" : operations ? "mb-2 px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#c9a85f]" : "mb-2 px-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#d5b46b]"}>{groupLabels[group]}</h2><div className="space-y-0.5">{navigation.filter(item => item.group === group).map(item => <NavigationEntry key={item.id} item={item} pathname={pathname} collapsed={collapsed} experience={experience} parentActive={activeHierarchy.has(item.id)} onNavigate={onNavigate} />)}</div></section>)}
-    </nav>
-    <div className={operations ? "border-t border-white/[0.08] px-4 py-4" : "border-t border-white/10 p-3"}><div className="flex min-h-14 items-center gap-3 rounded-xl px-2 text-stone-300"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-950">TL</span>{collapsed ? <span className="sr-only">Todd L, Administrator</span> : <><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">Todd L.</span><span className="block truncate text-xs text-stone-500">Administrator</span></span>{operations ? <ChevronDown aria-hidden="true" className="h-5 w-5 text-stone-300" /> : null}</>}</div></div>
-  </div>;
+  return (
+    <div className="flex h-full flex-col bg-[#0b0f12]">
+      <div className={operations ? "px-6 pb-5 pt-7" : "px-6 pb-5 pt-6"}>
+        <div className="flex items-center justify-between">
+          <ContextLink
+            href={experience === "client-workspace" ? "/dashboard" : "/admin"}
+            onClick={onNavigate}
+            className="min-w-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+          >
+            <OperationsBrand collapsed={collapsed} />
+          </ContextLink>
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+            className={
+              operations && !collapsed
+                ? "sr-only"
+                : "hidden h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-xl text-stone-300 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-teal-400 lg:flex"
+            }
+          >
+            {collapsed ? "→" : "‹"}
+          </button>
+        </div>
+        {!collapsed && experience === "client-workspace" ? (
+          <ContextLink
+            href="/dashboard/workspace"
+            onClick={onNavigate}
+            className="mt-6 flex min-h-24 items-center justify-between rounded-2xl border border-white/[0.12] bg-white/[0.035] px-4 py-4 outline-none transition-colors hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-amber-300"
+          >
+            <span className="min-w-0">
+              <span className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#d5b46b]">
+                Current workspace
+              </span>
+              <span className="mt-2 block truncate text-base font-semibold text-stone-100">
+                Luxe Haven Collective
+              </span>
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className="h-5 w-5 shrink-0 text-stone-200"
+            />
+          </ContextLink>
+        ) : null}
+      </div>
+      {operations && !collapsed ? (
+        <div className="mx-6 border-t border-white/[0.08] pt-5">
+          <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-stone-100">
+            Admin Portal
+          </p>
+        </div>
+      ) : null}
+      <nav
+        aria-label={
+          experience === "client-workspace"
+            ? "HPM workspace navigation"
+            : "Operations Console navigation"
+        }
+        className={
+          operations
+            ? "flex-1 overflow-x-hidden overflow-y-auto px-3 pb-4 pt-3"
+            : "flex-1 overflow-x-hidden overflow-y-auto px-3 py-3"
+        }
+      >
+        {groups.map((group) => (
+          <section
+            key={group}
+            aria-labelledby={`nav-${group}`}
+            className={
+              operations
+                ? "mb-5"
+                : group === "settings"
+                  ? "mt-5 border-t border-white/10 pt-5"
+                  : "mb-5"
+            }
+          >
+            <h2
+              id={`nav-${group}`}
+              className={
+                collapsed || group === "home" || group === "settings"
+                  ? "sr-only"
+                  : operations
+                    ? "mb-2 px-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#c9a85f]"
+                    : "mb-2 px-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#d5b46b]"
+              }
+            >
+              {groupLabels[group]}
+            </h2>
+            <div className="space-y-0.5">
+              {navigation
+                .filter((item) => item.group === group)
+                .map((item) => (
+                  <NavigationEntry
+                    key={item.id}
+                    item={item}
+                    pathname={pathname}
+                    collapsed={collapsed}
+                    experience={experience}
+                    parentActive={activeHierarchy.has(item.id)}
+                    onNavigate={onNavigate}
+                  />
+                ))}
+            </div>
+          </section>
+        ))}
+      </nav>
+      <div
+        className={
+          operations
+            ? "border-t border-white/[0.08] px-4 py-4"
+            : "border-t border-white/10 p-3"
+        }
+      >
+        <form action={signOutAction}>
+          <button
+            type="submit"
+            aria-label="Sign out of Luxe Haven"
+            title="Sign out"
+            className="flex min-h-14 w-full items-center gap-3 rounded-xl px-2 text-left text-stone-300 outline-none transition hover:bg-white/[0.06] hover:text-white focus-visible:ring-2 focus-visible:ring-amber-300"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-950">
+              TL
+            </span>
+            {collapsed ? (
+              <span className="sr-only">Sign out</span>
+            ) : (
+              <>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-white">
+                    Todd L.
+                  </span>
+                  <span className="block truncate text-xs text-stone-500">
+                    Administrator
+                  </span>
+                </span>
+                <LogOut aria-hidden="true" className="h-4 w-4 text-stone-400" />
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 function OperationsBrand({ collapsed }: { collapsed: boolean }) {
-  return <span className="flex items-center gap-3"><span aria-hidden="true" className="inline-flex h-12 w-12 shrink-0 items-center justify-center text-xl font-black tracking-[-0.16em] text-[#d5b46b] [text-shadow:0_0_12px_rgba(213,180,107,0.16)]">LH</span>{collapsed ? <span className="sr-only">Luxe Haven Collective</span> : <span><span className="block text-[17px] font-bold uppercase tracking-[0.2em] text-[#d5b46b]">Luxe Haven</span><span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-[0.3em] text-[#a98d55]">Collective</span></span>}</span>;
+  return (
+    <span className="flex items-center gap-3">
+      <span
+        aria-hidden="true"
+        className="inline-flex h-12 w-12 shrink-0 items-center justify-center text-xl font-black tracking-[-0.16em] text-[#d5b46b] [text-shadow:0_0_12px_rgba(213,180,107,0.16)]"
+      >
+        LH
+      </span>
+      {collapsed ? (
+        <span className="sr-only">Luxe Haven Collective</span>
+      ) : (
+        <span>
+          <span className="block text-[17px] font-bold uppercase tracking-[0.2em] text-[#d5b46b]">
+            Luxe Haven
+          </span>
+          <span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-[0.3em] text-[#a98d55]">
+            Collective
+          </span>
+        </span>
+      )}
+    </span>
+  );
 }
 
-function NavigationEntry({ item, pathname, collapsed, experience, parentActive, onNavigate }: { item: NavigationItem; pathname: string; collapsed: boolean; experience: PlatformExperience; parentActive: boolean; onNavigate: () => void }) {
+function NavigationEntry({
+  item,
+  pathname,
+  collapsed,
+  experience,
+  parentActive,
+  onNavigate,
+}: {
+  item: NavigationItem;
+  pathname: string;
+  collapsed: boolean;
+  experience: PlatformExperience;
+  parentActive: boolean;
+  onNavigate: () => void;
+}) {
   if (collapsed && item.kind === "group") return null;
-  const active = item.activeMatch ? matchesNavigationRoute(pathname, item.activeMatch) : false;
-  if (item.kind === "group") return <div className="mt-3 flex min-h-8 items-center px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-200" aria-expanded="true"><span>{item.label}</span><span className="sr-only">, {item.description}</span></div>;
+  const active = item.activeMatch
+    ? matchesNavigationRoute(pathname, item.activeMatch)
+    : false;
+  if (item.kind === "group")
+    return (
+      <div
+        className="mt-3 flex min-h-8 items-center px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-200"
+        aria-expanded="true"
+      >
+        <span>{item.label}</span>
+        <span className="sr-only">, {item.description}</span>
+      </div>
+    );
   const disabled = item.availability !== "available" || !item.href;
-  const status = item.availability === "available" ? null : availabilityLabels[item.availability];
+  const status =
+    item.availability === "available"
+      ? null
+      : availabilityLabels[item.availability];
   const operations = experience === "operations-console";
-  const Icon = operations ? operationsIcons[item.id] ?? ScrollText : clientIcons[item.id] ?? ScrollText;
-  const content = <><span className={["relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border", item.level === 3 ? "scale-90" : "", operations ? "border-white/[0.08] bg-[#171b1e] text-stone-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]" : active ? "border-white/10 bg-white/[0.06] text-white" : "border-white/[0.08] bg-[#171b1e] text-stone-200"].join(" ")}><Icon aria-hidden="true" strokeWidth={1.9} className="h-[18px] w-[18px]" /></span>{collapsed ? <><span className="sr-only">{item.label}{status ? `, ${status}` : ""}</span><span role="tooltip" className="pointer-events-none absolute left-full z-50 ml-3 hidden min-w-max rounded-lg bg-stone-800 px-3 py-2 text-xs font-semibold text-white shadow-xl group-hover/nav:block group-focus-visible/nav:block">{item.label}</span></> : <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="block whitespace-nowrap text-sm font-medium">{item.label}</span>{status ? <span aria-hidden="true" className="shrink-0 rounded-full border border-white/15 bg-[#111518] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-stone-300">{status}</span> : null}</span>{status ? <span className="sr-only">Availability: {status}</span> : null}</span>}</>;
-  const classes = ["group/nav relative flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950", active ? operations ? "bg-white/[0.065] text-white" : "bg-white/[0.09] text-white ring-1 ring-white/[0.04]" : parentActive ? "text-stone-300" : disabled ? "cursor-default text-stone-400" : "text-stone-300 hover:bg-white/[0.05] hover:text-white"].join(" ");
-  return disabled ? <div className={classes} aria-disabled="true" title={item.description}>{content}</div> : <ContextLink href={item.href!} onClick={() => { recordPlatformNavigationEvent("platform_navigation_item_selected", { navigationItemId: item.id, destinationRoute: item.href }); onNavigate(); }} className={classes} aria-current={active ? "page" : undefined} title={collapsed ? item.label : undefined}>{content}</ContextLink>;
+  const Icon = operations
+    ? (operationsIcons[item.id] ?? ScrollText)
+    : (clientIcons[item.id] ?? ScrollText);
+  const content = (
+    <>
+      <span
+        className={[
+          "relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border",
+          item.level === 3 ? "scale-90" : "",
+          operations
+            ? "border-white/[0.08] bg-[#171b1e] text-stone-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+            : active
+              ? "border-white/10 bg-white/[0.06] text-white"
+              : "border-white/[0.08] bg-[#171b1e] text-stone-200",
+        ].join(" ")}
+      >
+        <Icon
+          aria-hidden="true"
+          strokeWidth={1.9}
+          className="h-[18px] w-[18px]"
+        />
+      </span>
+      {collapsed ? (
+        <>
+          <span className="sr-only">
+            {item.label}
+            {status ? `, ${status}` : ""}
+          </span>
+          <span
+            role="tooltip"
+            className="pointer-events-none absolute left-full z-50 ml-3 hidden min-w-max rounded-lg bg-stone-800 px-3 py-2 text-xs font-semibold text-white shadow-xl group-hover/nav:block group-focus-visible/nav:block"
+          >
+            {item.label}
+          </span>
+        </>
+      ) : (
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center justify-between gap-2">
+            <span className="block whitespace-nowrap text-sm font-medium">
+              {item.label}
+            </span>
+            {status ? (
+              <span
+                aria-hidden="true"
+                className="shrink-0 rounded-full border border-white/15 bg-[#111518] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-stone-300"
+              >
+                {status}
+              </span>
+            ) : null}
+          </span>
+          {status ? (
+            <span className="sr-only">Availability: {status}</span>
+          ) : null}
+        </span>
+      )}
+    </>
+  );
+  const classes = [
+    "group/nav relative flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950",
+    active
+      ? operations
+        ? "bg-white/[0.065] text-white"
+        : "bg-white/[0.09] text-white ring-1 ring-white/[0.04]"
+      : parentActive
+        ? "text-stone-300"
+        : disabled
+          ? "cursor-default text-stone-400"
+          : "text-stone-300 hover:bg-white/[0.05] hover:text-white",
+  ].join(" ");
+  return disabled ? (
+    <div className={classes} aria-disabled="true" title={item.description}>
+      {content}
+    </div>
+  ) : (
+    <ContextLink
+      href={item.href!}
+      onClick={() => {
+        recordPlatformNavigationEvent("platform_navigation_item_selected", {
+          navigationItemId: item.id,
+          destinationRoute: item.href,
+        });
+        onNavigate();
+      }}
+      className={classes}
+      aria-current={active ? "page" : undefined}
+      title={collapsed ? item.label : undefined}
+    >
+      {content}
+    </ContextLink>
+  );
 }
 
-type Crumb = Readonly<{ id: string; label: string; href?: string; current?: boolean }>;
-function EnvironmentIndicator() { return process.env.NEXT_PUBLIC_VERCEL_ENV === "preview" ? <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900">Preview</span> : null; }
+type Crumb = Readonly<{
+  id: string;
+  label: string;
+  href?: string;
+  current?: boolean;
+}>;
+function EnvironmentIndicator() {
+  return process.env.NEXT_PUBLIC_VERCEL_ENV === "preview" ? (
+    <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+      Preview
+    </span>
+  ) : null;
+}
 
-export function pageDetails(pathname: string, experience: PlatformExperience): { eyebrow: string; title: string; breadcrumbs: readonly Crumb[] } {
+function AccountMenu({ experience }: { experience: PlatformExperience }) {
+  return (
+    <details className="group relative ml-1">
+      <summary
+        aria-label="Open user profile menu"
+        className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full bg-stone-950 text-[10px] font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+      >
+        TL
+      </summary>
+      <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-stone-200 bg-white p-2 shadow-xl">
+        <ContextLink
+          href={
+            experience === "client-workspace"
+              ? "/dashboard/workspace/preferences"
+              : "/admin"
+          }
+          className="flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-stone-700 hover:bg-stone-100"
+        >
+          Account settings
+        </ContextLink>
+        <form action={signOutAction} className="border-t border-stone-100 pt-1">
+          <button
+            type="submit"
+            className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-red-700 hover:bg-red-50"
+          >
+            <LogOut aria-hidden="true" className="h-4 w-4" />
+            Sign out
+          </button>
+        </form>
+      </div>
+    </details>
+  );
+}
+
+export function pageDetails(
+  pathname: string,
+  experience: PlatformExperience,
+): { eyebrow: string; title: string; breadcrumbs: readonly Crumb[] } {
   if (experience === "operations-console") {
-    const routes = [["/admin/offers", "Offer Catalog"], ["/admin/furnishing", "Furnishing Studio"], ["/admin/guidebooks", "Guidebook Studio"], ["/admin/customers", "Customers"], ["/admin/properties", "Properties"], ["/admin/support", "Support"], ["/admin/integrations", "Integrations"], ["/admin/sync-history", "Sync History"], ["/admin/provider-health", "Provider Health"], ["/admin/audit", "Audit"]] as const;
-    const title = pathname === "/admin" ? "Workspace" : pathname.startsWith("/admin/internal-workspace") ? "Internal Workspace" : routes.find(([route]) => pathname.startsWith(route))?.[1] ?? "Operations";
-    return { eyebrow: "Admin Portal / Operations", title, breadcrumbs: [{ id: "operations", label: "Operations", href: "/admin" }, { id: "current", label: title, current: true }] };
+    const routes = [
+      ["/admin/offers", "Offer Catalog"],
+      ["/admin/furnishing", "Furnishing Studio"],
+      ["/admin/guidebooks", "Guidebook Studio"],
+      ["/admin/customers", "Customers"],
+      ["/admin/properties", "Properties"],
+      ["/admin/support", "Support"],
+      ["/admin/integrations", "Integrations"],
+      ["/admin/sync-history", "Sync History"],
+      ["/admin/provider-health", "Provider Health"],
+      ["/admin/audit", "Audit"],
+    ] as const;
+    const title =
+      pathname === "/admin"
+        ? "Workspace"
+        : pathname.startsWith("/admin/internal-workspace")
+          ? "Internal Workspace"
+          : (routes.find(([route]) => pathname.startsWith(route))?.[1] ??
+            "Operations");
+    return {
+      eyebrow: "Admin Portal / Operations",
+      title,
+      breadcrumbs: [
+        { id: "operations", label: "Operations", href: "/admin" },
+        { id: "current", label: title, current: true },
+      ],
+    };
   }
-  if (pathname.startsWith("/dashboard/understand/portfolio") || pathname.startsWith("/dashboard/portfolio")) {
+  if (
+    pathname.startsWith("/dashboard/understand/portfolio") ||
+    pathname.startsWith("/dashboard/portfolio")
+  ) {
     const workspace = pathname.startsWith("/dashboard/portfolio/workspace");
-    return { eyebrow: "Understand", title: workspace ? "Portfolio Workspace" : "Portfolio Intelligence", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "understand", label: "Understand", href: "/dashboard" }, { id: "portfolio", label: "Portfolio Intelligence", ...(workspace ? { href: "/dashboard/portfolio" } : { current: true }) }, ...(workspace ? [{ id: "current", label: "Workspace", current: true }] : [])] };
+    return {
+      eyebrow: "Understand",
+      title: workspace ? "Portfolio Workspace" : "Portfolio Intelligence",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "understand", label: "Understand", href: "/dashboard" },
+        {
+          id: "portfolio",
+          label: "Portfolio Intelligence",
+          ...(workspace ? { href: "/dashboard/portfolio" } : { current: true }),
+        },
+        ...(workspace
+          ? [{ id: "current", label: "Workspace", current: true }]
+          : []),
+      ],
+    };
   }
-  if (pathname.startsWith("/dashboard/observe/financial") || pathname.startsWith("/dashboard/financial")) return { eyebrow: "Observe", title: "Financial Intelligence", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "observe", label: "Observe", href: "/dashboard/observe/revenue" }, { id: "current", label: "Financial Intelligence", current: true }] };
-  if (pathname.startsWith("/dashboard/understand/executive")) return { eyebrow: "Understand", title: "Executive Intelligence", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "understand", label: "Understand", href: "/dashboard/understand/executive" }, { id: "current", label: "Executive Intelligence", current: true }] };
+  if (
+    pathname.startsWith("/dashboard/observe/financial") ||
+    pathname.startsWith("/dashboard/financial")
+  )
+    return {
+      eyebrow: "Observe",
+      title: "Financial Intelligence",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "observe", label: "Observe", href: "/dashboard/observe/revenue" },
+        { id: "current", label: "Financial Intelligence", current: true },
+      ],
+    };
+  if (pathname.startsWith("/dashboard/understand/executive"))
+    return {
+      eyebrow: "Understand",
+      title: "Executive Intelligence",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        {
+          id: "understand",
+          label: "Understand",
+          href: "/dashboard/understand/executive",
+        },
+        { id: "current", label: "Executive Intelligence", current: true },
+      ],
+    };
   if (pathname.startsWith("/dashboard/investments")) {
-    const destination = pathname === "/dashboard/investments" ? "Overview" : pathname.startsWith("/dashboard/investments/new") ? "New Analysis" : pathname.includes("/analyses/") ? "Investment Analysis" : pathname.includes("/compare") ? "Opportunity Comparison" : /\/(portfolio|opportunities)\/[^/]+/.test(pathname) ? "Investment Opportunity" : "Opportunity Portfolio";
-    return { eyebrow: "Decide · Investment Intelligence", title: destination, breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "decide", label: "Decide", href: "/dashboard/investments" }, { id: "workspace", label: "Investment Intelligence", href: "/dashboard/investments" }, ...(destination === "Overview" ? [] : [{ id: "current", label: destination, current: true }])] };
+    const destination =
+      pathname === "/dashboard/investments"
+        ? "Overview"
+        : pathname.startsWith("/dashboard/investments/new")
+          ? "New Analysis"
+          : pathname.includes("/analyses/")
+            ? "Investment Analysis"
+            : pathname.includes("/compare")
+              ? "Opportunity Comparison"
+              : /\/(portfolio|opportunities)\/[^/]+/.test(pathname)
+                ? "Investment Opportunity"
+                : "Opportunity Portfolio";
+    return {
+      eyebrow: "Decide · Investment Intelligence",
+      title: destination,
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "decide", label: "Decide", href: "/dashboard/investments" },
+        {
+          id: "workspace",
+          label: "Investment Intelligence",
+          href: "/dashboard/investments",
+        },
+        ...(destination === "Overview"
+          ? []
+          : [{ id: "current", label: destination, current: true }]),
+      ],
+    };
   }
-  if (pathname.startsWith("/dashboard/actions")) return { eyebrow: "Execute", title: "Action Center", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Action Center", current: true }] };
-  if (pathname.startsWith("/dashboard/communications")) return { eyebrow: "Observe · Understand · Execute", title: "Guest Communications", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "communications", label: "Guest Communications", ...(pathname === "/dashboard/communications" ? { current: true } : { href: "/dashboard/communications" }) }, ...(pathname === "/dashboard/communications" ? [] : [{ id: "current", label: "Conversation", current: true }])] };
+  if (pathname.startsWith("/dashboard/actions"))
+    return {
+      eyebrow: "Execute",
+      title: "Action Center",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "current", label: "Action Center", current: true },
+      ],
+    };
+  if (pathname.startsWith("/dashboard/communications"))
+    return {
+      eyebrow: "Observe · Understand · Execute",
+      title: "Guest Communications",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        {
+          id: "communications",
+          label: "Guest Communications",
+          ...(pathname === "/dashboard/communications"
+            ? { current: true }
+            : { href: "/dashboard/communications" }),
+        },
+        ...(pathname === "/dashboard/communications"
+          ? []
+          : [{ id: "current", label: "Conversation", current: true }]),
+      ],
+    };
   if (pathname.startsWith("/dashboard/learning")) {
     const workspace = pathname.startsWith("/dashboard/learning/workspace");
-    return { eyebrow: "Learn", title: workspace ? "Continuous Improvement" : "Learning Intelligence", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "learning", label: "Learning Intelligence", ...(workspace ? { href: "/dashboard/learning" } : { current: true }) }, ...(workspace ? [{ id: "workspace", label: "Continuous Improvement", current: true }] : [])] };
+    return {
+      eyebrow: "Learn",
+      title: workspace ? "Continuous Improvement" : "Learning Intelligence",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        {
+          id: "learning",
+          label: "Learning Intelligence",
+          ...(workspace ? { href: "/dashboard/learning" } : { current: true }),
+        },
+        ...(workspace
+          ? [
+              {
+                id: "workspace",
+                label: "Continuous Improvement",
+                current: true,
+              },
+            ]
+          : []),
+      ],
+    };
   }
-  if (pathname.startsWith("/dashboard/observe/revenue") || pathname.startsWith("/dashboard/insights")) return { eyebrow: "Observe", title: "Revenue Intelligence", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Revenue Intelligence", current: true }] };
-  if (pathname.startsWith("/dashboard/workspace") || pathname.startsWith("/dashboard/settings")) return { eyebrow: "Business configuration", title: "Workspace", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Workspace", current: true }] };
-  if (pathname.startsWith("/bookings")) return { eyebrow: "Business operations", title: "Bookings", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Bookings", current: true }] };
-  if (pathname.startsWith("/properties")) return { eyebrow: "Business operations", title: "Properties", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Properties", current: true }] };
-  if (pathname.startsWith("/messages")) return { eyebrow: "Business", title: "Guest Communications", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Guest Communications", current: true }] };
-  if (pathname.startsWith("/reports")) return { eyebrow: "Business · Luxe Haven Press", title: "Hospitality Performance Reports", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Reports", current: true }] };
-  if (pathname.startsWith("/dashboard/guidebooks") || pathname.startsWith("/guidebooks")) return { eyebrow: "Execute · Guest experience", title: "Guidebook Studio", breadcrumbs: [{ id: "home", label: "Home", href: "/dashboard" }, { id: "current", label: "Guidebook Studio", current: true }] };
-  return { eyebrow: "Home", title: "Home", breadcrumbs: [{ id: "current", label: "Home", current: true }] };
+  if (
+    pathname.startsWith("/dashboard/observe/revenue") ||
+    pathname.startsWith("/dashboard/insights")
+  )
+    return {
+      eyebrow: "Observe",
+      title: "Revenue Intelligence",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "current", label: "Revenue Intelligence", current: true },
+      ],
+    };
+  if (
+    pathname.startsWith("/dashboard/workspace") ||
+    pathname.startsWith("/dashboard/settings")
+  )
+    return {
+      eyebrow: "Business configuration",
+      title: "Workspace",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "current", label: "Workspace", current: true },
+      ],
+    };
+  if (pathname.startsWith("/bookings"))
+    return {
+      eyebrow: "Business operations",
+      title: "Bookings",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "current", label: "Bookings", current: true },
+      ],
+    };
+  if (pathname.startsWith("/properties"))
+    return {
+      eyebrow: "Business operations",
+      title: "Properties",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "current", label: "Properties", current: true },
+      ],
+    };
+  if (pathname.startsWith("/messages"))
+    return {
+      eyebrow: "Business",
+      title: "Guest Communications",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "current", label: "Guest Communications", current: true },
+      ],
+    };
+  if (pathname.startsWith("/reports"))
+    return {
+      eyebrow: "Business · Luxe Haven Press",
+      title: "Hospitality Performance Reports",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "current", label: "Reports", current: true },
+      ],
+    };
+  if (
+    pathname.startsWith("/dashboard/guidebooks") ||
+    pathname.startsWith("/guidebooks")
+  )
+    return {
+      eyebrow: "Execute · Guest experience",
+      title: "Guidebook Studio",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "current", label: "Guidebook Studio", current: true },
+      ],
+    };
+  return {
+    eyebrow: "Home",
+    title: "Home",
+    breadcrumbs: [{ id: "current", label: "Home", current: true }],
+  };
 }
