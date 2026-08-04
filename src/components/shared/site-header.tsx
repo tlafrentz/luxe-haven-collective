@@ -1,142 +1,38 @@
 import Link from "next/link";
-
-import { signOutAction } from "@/app/actions/auth";
+import { ArrowUpRight } from "lucide-react";
 import { getSessionProfile } from "@/lib/auth/session";
 
 const nav = [
-  { href: "/services", label: "Services" },
-  { href: "/stays", label: "Properties" },
-  { href: "/owners", label: "Owners" },
-  { href: "/resources", label: "Luxe Insights" },
-  { href: "/notary", label: "Notary" },
-  { href: "/contact", label: "Contact" },
+  { href: "/services", label: "Solutions" },
+  { href: "/resources", label: "Resources" },
+  { href: "/stays", label: "Stay With Us" },
+  { href: "/about", label: "About" },
+  { href: "/pricing", label: "Pricing" },
 ];
 
 export async function SiteHeader() {
   const { user, profile } = await getSessionProfile();
-
-  const portalHref =
-    profile?.role === "admin" ? "/admin" : "/dashboard";
-
+  const portalHref = profile?.role === "admin" ? "/admin" : "/dashboard";
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur-xl">
-      <div className="container-shell flex min-h-20 items-center justify-between gap-5">
-        <Link href="/" className="shrink-0">
-          <span className="block text-base font-semibold uppercase tracking-[0.24em] md:text-lg">
-            Luxe Haven
-          </span>
-
-          <span className="mt-0.5 hidden text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:block">
-            Hospitality Collective
-          </span>
+    <header className="sticky top-0 z-50 border-b border-[#dde1dd] bg-white/95 backdrop-blur-xl">
+      <div className="mx-auto flex min-h-[76px] max-w-[1440px] items-center justify-between gap-5 px-5 sm:px-8">
+        <Link href="/" aria-label="Luxe Haven Collective home" className="flex shrink-0 items-center gap-3 text-[#8d6b1d]">
+          <span className="font-serif text-3xl leading-none">LH</span>
+          <span className="border-l border-[#d7c89d] pl-3 text-[10px] font-bold uppercase leading-[1.2] tracking-[0.13em]">Luxe Haven<br/>Collective</span>
         </Link>
-
-        <nav className="hidden items-center gap-5 text-sm text-muted-foreground xl:flex">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="transition hover:text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
+        <nav aria-label="Primary navigation" className="hidden items-center gap-8 text-sm font-medium text-[#4f5953] lg:flex">
+          {nav.map(item => <Link key={item.href} href={item.href} className="transition hover:text-[#074e38]">{item.label}</Link>)}
         </nav>
-
-        <div className="hidden items-center gap-3 md:flex">
-          {user ? (
-            <>
-              <Link
-                href={portalHref}
-                className="rounded-full border border-border px-5 py-3 text-sm font-semibold transition hover:bg-muted/50"
-              >
-                Portal
-              </Link>
-
-              <form action={signOutAction}>
-                <button className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90">
-                  Sign out
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="rounded-full px-3 py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
-              >
-                Sign in
-              </Link>
-
-              <Link
-                href="/contact?service=consulting"
-                className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
-              >
-                Schedule Consultation
-              </Link>
-            </>
-          )}
+        <div className="hidden md:block">
+          <Link href={user ? portalHref : "/contact?service=consulting"} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#074e38] px-5 text-sm font-semibold text-white transition hover:bg-[#053d2c]">
+            {user ? "Open Portal" : "Get Started"}<ArrowUpRight aria-hidden size={15}/>
+          </Link>
         </div>
-
         <details className="relative md:hidden">
-          <summary className="cursor-pointer list-none rounded-full border border-border px-4 py-2 text-sm font-semibold">
-            Menu
-          </summary>
-
-          <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-border bg-background p-4 shadow-2xl">
-            <nav className="grid gap-1">
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                >
-                  {item.label}
-                </Link>
-              ))}
-
-              <Link
-                href="/about"
-                className="rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              >
-                About
-              </Link>
-            </nav>
-
-            <div className="mt-4 border-t border-border pt-4">
-              {user ? (
-                <div className="grid gap-2">
-                  <Link
-                    href={portalHref}
-                    className="rounded-full border border-border px-4 py-2.5 text-center text-sm font-semibold"
-                  >
-                    Portal
-                  </Link>
-
-                  <form action={signOutAction}>
-                    <button className="w-full rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">
-                      Sign out
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <div className="grid gap-2">
-                  <Link
-                    href="/login"
-                    className="rounded-full border border-border px-4 py-2.5 text-center text-sm font-semibold"
-                  >
-                    Sign in
-                  </Link>
-
-                  <Link
-                    href="/contact?service=consulting"
-                    className="rounded-full bg-primary px-4 py-2.5 text-center text-sm font-semibold text-primary-foreground"
-                  >
-                    Schedule Consultation
-                  </Link>
-                </div>
-              )}
-            </div>
+          <summary className="cursor-pointer list-none rounded-md border border-[#aeb8b2] px-4 py-2 text-sm font-semibold text-[#17372c]">Menu</summary>
+          <div className="absolute right-0 top-12 w-72 rounded-xl border border-[#d8ded9] bg-white p-3 shadow-2xl">
+            <nav className="grid gap-1">{nav.map(item => <Link key={item.href} href={item.href} className="rounded-lg px-3 py-2.5 text-sm text-[#4f5953] hover:bg-[#f1f5f2]">{item.label}</Link>)}</nav>
+            <Link href={user ? portalHref : "/contact?service=consulting"} className="mt-3 flex min-h-11 items-center justify-center rounded-md bg-[#074e38] px-4 text-sm font-semibold text-white">{user ? "Open Portal" : "Get Started"}</Link>
           </div>
         </details>
       </div>

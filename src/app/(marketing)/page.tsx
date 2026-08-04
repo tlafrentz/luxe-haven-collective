@@ -116,7 +116,7 @@ export default function HomePage() {
     <main>
       <HeroSection />
 
-      <section className="border-b border-border py-20 md:py-28">
+      <section className="border-b border-[#dce2dd] bg-[#f7f7f3] py-20 md:py-28">
         <div className="container-shell grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent">
@@ -126,7 +126,7 @@ export default function HomePage() {
 
           <div>
             <h2 className="max-w-4xl font-serif text-4xl leading-tight md:text-6xl">
-              Hospitality is more than managing a property.
+              Performance starts with a better operating system.
             </h2>
 
             <div className="mt-8 grid gap-6 text-lg leading-8 text-muted-foreground md:grid-cols-2">
