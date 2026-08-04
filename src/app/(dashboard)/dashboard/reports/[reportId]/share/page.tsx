@@ -1,6 +1,93 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getGeneratedReportView, revokeReportShareAction } from "@/app/actions/reporting";
+import {
+  getGeneratedReportView,
+  revokeReportShareAction,
+} from "@/app/actions/reporting";
 import { CreateShareForm } from "@/components/reporting/create-share-form";
 import { RegenerateShareForm } from "@/components/reporting/regenerate-share-form";
-export default async function ReportSharePage({params}:{params:Promise<{reportId:string}>}){const{reportId}=await params,view=await getGeneratedReportView(reportId);if(!view)notFound();const disabled=view.report.report_type==="financial-performance"||view.report.status!=="published";return <main className="mx-auto max-w-5xl space-y-8 px-5 py-10"><header><Link href={`/dashboard/reports/${reportId}`}>← Report</Link><h1 className="mt-5 text-4xl font-semibold">Secure sharing</h1><p className="mt-3 text-stone-600">Shares never grant Workspace access and can be revoked immediately.</p></header>{disabled?<p className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">This report must be published and allowed by its sharing policy before external access can be created.</p>:<CreateShareForm reportId={reportId}/>}<section><h2 className="text-2xl font-semibold">Share governance</h2><div className="mt-4 space-y-3">{view.shares.map((share)=><article className="rounded-2xl border p-5" key={share.id}><div className="flex flex-wrap justify-between gap-3"><div><p className="font-semibold">{share.recipient_label??"Unlabelled recipient"}</p><p className="mt-1 text-sm capitalize">{share.status} · {share.access_mode.replaceAll("-"," ")} · {share.confidentiality_level.replaceAll("-"," ")}</p><p className="mt-1 text-sm text-stone-600">{share.view_count}{share.max_views?` of ${share.max_views}`:""} views · {share.download_count} downloads · Expires {share.expires_at?new Date(share.expires_at).toLocaleString():"Never"}</p><p className="mt-1 text-xs text-stone-500">Created {new Date(share.created_at).toLocaleString()}{share.last_viewed_at?` · Last viewed ${new Date(share.last_viewed_at).toLocaleString()}`:""}</p></div>{share.status==="active"?<div className="space-y-2"><form action={revokeReportShareAction}><input name="shareId" type="hidden" value={share.id}/><input name="reportId" type="hidden" value={reportId}/><button className="rounded-full border px-4 py-2 font-semibold">Revoke</button></form><RegenerateShareForm reportId={reportId} shareId={share.id}/></div>:null}</div></article>)}{!view.shares.length?<p className="rounded-2xl border p-6 text-stone-600">This report has not been shared.</p>:null}</div></section></main>;}
+export default async function ReportSharePage({
+  params,
+}: {
+  params: Promise<{ reportId: string }>;
+}) {
+  const { reportId } = await params,
+    view = await getGeneratedReportView(reportId);
+  if (!view) notFound();
+  const disabled =
+    view.report.report_type === "financial-performance" ||
+    !["published", "superseded"].includes(view.report.status);
+  return (
+    <main className="mx-auto max-w-5xl space-y-8 px-5 py-10">
+      <header>
+        <Link href={`/dashboard/reports/${reportId}`}>← Report</Link>
+        <h1 className="mt-5 text-4xl font-semibold">Secure sharing</h1>
+        <p className="mt-3 text-stone-600">
+          Shares never grant Workspace access and can be revoked immediately.
+        </p>
+      </header>
+      {disabled ? (
+        <p className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+          This report must be published and allowed by its sharing policy before
+          external access can be created.
+        </p>
+      ) : (
+        <CreateShareForm reportId={reportId} />
+      )}
+      <section>
+        <h2 className="text-2xl font-semibold">Share governance</h2>
+        <div className="mt-4 space-y-3">
+          {view.shares.map((share) => (
+            <article className="rounded-2xl border p-5" key={share.id}>
+              <div className="flex flex-wrap justify-between gap-3">
+                <div>
+                  <p className="font-semibold">
+                    {share.recipient_label ?? "Unlabelled recipient"}
+                  </p>
+                  <p className="mt-1 text-sm capitalize">
+                    {share.status} · {share.access_mode.replaceAll("-", " ")} ·{" "}
+                    {share.confidentiality_level.replaceAll("-", " ")}
+                  </p>
+                  <p className="mt-1 text-sm text-stone-600">
+                    {share.view_count}
+                    {share.max_views ? ` of ${share.max_views}` : ""} views ·{" "}
+                    {share.download_count} downloads · Expires{" "}
+                    {share.expires_at
+                      ? new Date(share.expires_at).toLocaleString()
+                      : "Never"}
+                  </p>
+                  <p className="mt-1 text-xs text-stone-500">
+                    Created {new Date(share.created_at).toLocaleString()}
+                    {share.last_viewed_at
+                      ? ` · Last viewed ${new Date(share.last_viewed_at).toLocaleString()}`
+                      : ""}
+                  </p>
+                </div>
+                {share.status === "active" ? (
+                  <div className="space-y-2">
+                    <form action={revokeReportShareAction}>
+                      <input name="shareId" type="hidden" value={share.id} />
+                      <input name="reportId" type="hidden" value={reportId} />
+                      <button className="rounded-full border px-4 py-2 font-semibold">
+                        Revoke
+                      </button>
+                    </form>
+                    <RegenerateShareForm
+                      reportId={reportId}
+                      shareId={share.id}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </article>
+          ))}
+          {!view.shares.length ? (
+            <p className="rounded-2xl border p-6 text-stone-600">
+              This report has not been shared.
+            </p>
+          ) : null}
+        </div>
+      </section>
+    </main>
+  );
+}
