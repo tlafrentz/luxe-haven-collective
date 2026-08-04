@@ -5,7 +5,7 @@ import { getSessionProfile } from "@/lib/auth/session";
 const nav = [
   { href: "/solutions", label: "Solutions" },
   { href: "/resources", label: "Resources" },
-  { href: "/stays", label: "Stay With Us" },
+  { href: "/stays/mesa-downtown-retreat", label: "Stay With Us" },
   { href: "/about", label: "About" },
   { href: "/pricing", label: "Pricing" },
 ];
@@ -42,7 +42,15 @@ export async function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <div className="hidden md:block">
+        <div className="hidden items-center gap-6 md:flex">
+          {!user ? (
+            <Link
+              href="/login"
+              className="text-sm font-semibold text-[#34423b] transition hover:text-[#074e38]"
+            >
+              Sign in
+            </Link>
+          ) : null}
           <Link
             href={user ? portalHref : "/get-started"}
             className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#074e38] px-5 text-sm font-semibold text-white transition hover:bg-[#053d2c]"
@@ -67,6 +75,14 @@ export async function SiteHeader() {
                 </Link>
               ))}
             </nav>
+            {!user ? (
+              <Link
+                href="/login"
+                className="mt-2 flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-[#34423b] hover:bg-[#f1f5f2]"
+              >
+                Sign in
+              </Link>
+            ) : null}
             <Link
               href={user ? portalHref : "/get-started"}
               className="mt-3 flex min-h-11 items-center justify-center rounded-md bg-[#074e38] px-4 text-sm font-semibold text-white"

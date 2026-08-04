@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const exploreLinks = [
-  ["Stays", "/stays"],
+  ["Stay With Us", "/stays/mesa-downtown-retreat"],
   ["Solutions", "/solutions"],
   ["Owners", "/owners"],
   ["Resources", "/resources"],

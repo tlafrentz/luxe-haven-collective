@@ -10,10 +10,7 @@ export function HeroSection() {
       <div className="mx-auto max-w-[1440px] overflow-hidden rounded-[1.4rem] border border-[#cdd3ce] bg-white shadow-[0_18px_60px_rgba(20,45,35,0.08)]">
         <div className="grid min-h-[590px] lg:grid-cols-[0.88fr_1.12fr]">
           <div className="relative z-10 flex flex-col justify-center px-7 py-14 sm:px-12 lg:px-16 xl:px-20">
-            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#97762a]">
-              Hospitality Performance Management
-            </p>
-            <h1 className="mt-7 max-w-xl font-serif text-[3.35rem] leading-[0.92] tracking-[-0.04em] text-[#161b18] sm:text-7xl lg:text-[5rem]">
+            <h1 className="max-w-xl font-serif text-[3.35rem] leading-[0.98] tracking-[-0.04em] text-[#161b18] sm:text-7xl lg:text-[5rem]">
               Operate.
               <br />
               Optimize.
@@ -21,9 +18,7 @@ export function HeroSection() {
               Outperform.
             </h1>
             <p className="mt-8 max-w-lg text-base leading-7 text-[#56605a] sm:text-lg">
-              The performance platform for independent hospitality
-              businesses—connecting insight, decisions, execution, and learning
-              in one operating system.
+              The performance platform for independent hospitality businesses.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -77,9 +72,8 @@ export function HeroSection() {
               ★★★★★
             </span>
             <span className="text-[10px] leading-4 text-[#68716c]">
-              Guest-centered
-              <br />
-              performance
+              <strong className="text-[#29322d]">4.9/5</strong> from 2,000+
+              reviews
             </span>
           </div>
         </div>
