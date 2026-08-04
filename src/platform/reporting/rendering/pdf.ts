@@ -6,6 +6,7 @@ import {
   type PDFPage,
 } from "pdf-lib";
 import type { ReportProjection, ReportTemplate } from "../domain";
+import { reportMetricDisplay, reportMetricLabel } from "./metric-format";
 
 const PAGE = { width: 612, height: 792, margin: 48 };
 const COLORS = {
@@ -151,7 +152,7 @@ export async function renderSimpleReportPdf(
           borderWidth: 0.7,
           color: rgb(1, 1, 1),
         });
-        page.drawText(metric.label, {
+        page.drawText(reportMetricLabel(metric), {
           x: x + 12,
           y: top - 17,
           font: regular,
@@ -159,7 +160,7 @@ export async function renderSimpleReportPdf(
           color: COLORS.muted,
           maxWidth: 220,
         });
-        page.drawText(metric.displayValue, {
+        page.drawText(reportMetricDisplay(metric), {
           x: x + 12,
           y: top - 42,
           font: bold,

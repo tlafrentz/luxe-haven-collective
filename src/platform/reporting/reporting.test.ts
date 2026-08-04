@@ -200,7 +200,7 @@ describe("Platform Reporting", () => {
   it("renders semantic qualification and accessible report HTML without recalculation", async () => {
     const rendered = await renderReportHtml(projection, template);
     expect(rendered.content).toContain("<h1>Investment Decision");
-    expect(rendered.content).toContain("projected. Projected annual cash flow");
+    expect(rendered.content).toContain("projected. Annual Cash Flow: $18,400.00");
     expect(rendered.content).not.toContain('<th scope="col">');
     expect(rendered.sizeBytes).toBeGreaterThan(500);
     const pdf = await renderSimpleReportPdf(projection, template, {
