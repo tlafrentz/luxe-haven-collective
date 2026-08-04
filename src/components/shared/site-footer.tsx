@@ -2,14 +2,17 @@ import Link from "next/link";
 
 const exploreLinks = [
   ["Stays", "/stays"],
-  ["Services", "/services"],
+  ["Solutions", "/solutions"],
   ["Owners", "/owners"],
   ["Resources", "/resources"],
   ["FAQ", "/faq"],
 ];
 
 const serviceLinks = [
-  ["STR Consulting", "/services"],
+  ["Guest Experience", "/solutions/guest-experience"],
+  ["Investment", "/solutions/investment"],
+  ["Property Launch", "/solutions/property-launch"],
+  ["HPM Platform", "/platform"],
   ["Co-Hosting", "/owners"],
   ["Texas Notary", "/notary"],
   ["Contact", "/contact"],

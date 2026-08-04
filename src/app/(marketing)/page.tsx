@@ -203,10 +203,10 @@ export default function HomePage() {
 
           <div className="mt-10 text-center">
             <Link
-              href="/services"
+              href="/solutions"
               className="inline-flex rounded-full border border-border bg-background px-6 py-3 text-sm font-semibold transition hover:bg-muted"
             >
-              Explore All Services
+              Explore All Solutions
             </Link>
           </div>
         </div>
@@ -296,9 +296,7 @@ export default function HomePage() {
 
                 <p
                   className={`mt-5 text-sm leading-7 ${
-                    index === 0
-                      ? "text-white/60"
-                      : "text-muted-foreground"
+                    index === 0 ? "text-white/60" : "text-muted-foreground"
                   }`}
                 >
                   {insight.description}

@@ -12,8 +12,8 @@ type CTASectionProps = {
 export function CTASection({
   title = "Ready to build a better hospitality business?",
   description = "Let’s identify the clearest opportunities to strengthen your property, guest experience, operations, and owner performance.",
-  primaryHref = "/contact?service=consulting",
-  primaryLabel = "Schedule a Strategy Consultation",
+  primaryHref = "/get-started",
+  primaryLabel = "Find Your Best Fit",
   secondaryHref = "/lead-magnet",
   secondaryLabel = "Download the Owner Checklist",
 }: CTASectionProps) {

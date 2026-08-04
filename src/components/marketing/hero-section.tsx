@@ -21,13 +21,21 @@ export function HeroSection() {
               Outperform.
             </h1>
             <p className="mt-8 max-w-lg text-base leading-7 text-[#56605a] sm:text-lg">
-              The performance platform for independent hospitality businesses—connecting insight, decisions, execution, and learning in one operating system.
+              The performance platform for independent hospitality
+              businesses—connecting insight, decisions, execution, and learning
+              in one operating system.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link href="/services" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#074e38] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#053d2c]">
+              <Link
+                href="/solutions"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#074e38] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#053d2c]"
+              >
                 Explore Solutions <ArrowRight aria-hidden size={16} />
               </Link>
-              <Link href="/store" className="inline-flex min-h-12 items-center justify-center rounded-md border border-[#9ca8a1] bg-white px-6 text-sm font-semibold text-[#18352b] transition hover:border-[#074e38] hover:bg-[#f2f7f4]">
+              <Link
+                href="/packages"
+                className="inline-flex min-h-12 items-center justify-center rounded-md border border-[#9ca8a1] bg-white px-6 text-sm font-semibold text-[#18352b] transition hover:border-[#074e38] hover:bg-[#f2f7f4]"
+              >
                 View Packages
               </Link>
             </div>
@@ -35,7 +43,14 @@ export function HeroSection() {
 
           <div className="relative min-h-[380px] overflow-hidden lg:min-h-full">
             <div className="absolute inset-y-0 left-0 z-10 hidden w-24 -translate-x-12 skew-x-[-12deg] bg-white lg:block" />
-            <SafeImage src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=88&w=1800&auto=format&fit=crop" alt="Refined hospitality interior managed through Luxe Haven Collective" fill priority sizes="(min-width: 1024px) 58vw, 100vw" className="object-cover" />
+            <SafeImage
+              src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=88&w=1800&auto=format&fit=crop"
+              alt="Refined hospitality interior managed through Luxe Haven Collective"
+              fill
+              priority
+              sizes="(min-width: 1024px) 58vw, 100vw"
+              className="object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0b2118]/20 via-transparent to-transparent" />
             <div className="absolute bottom-6 right-6 z-20 flex items-center gap-3 rounded-full border border-white/50 bg-white/90 px-4 py-2 text-xs font-semibold text-[#18352b] shadow-lg backdrop-blur">
               Hospitality, measured better <ArrowRight aria-hidden size={14} />
@@ -44,11 +59,29 @@ export function HeroSection() {
         </div>
 
         <div className="grid gap-7 border-t border-[#dde1dd] bg-[#fbfbf8] px-7 py-7 sm:px-12 lg:grid-cols-[1fr_2.4fr_auto] lg:items-center lg:px-16">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#68716c]">Trusted by operators worldwide</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#68716c]">
+            Trusted by operators worldwide
+          </p>
           <div className="grid grid-cols-2 items-center gap-x-8 gap-y-4 text-center sm:grid-cols-4">
-            {trustMarks.map(mark => <span key={mark} className="font-serif text-lg font-semibold text-[#46504a]">{mark}</span>)}
+            {trustMarks.map((mark) => (
+              <span
+                key={mark}
+                className="font-serif text-lg font-semibold text-[#46504a]"
+              >
+                {mark}
+              </span>
+            ))}
           </div>
-          <div className="flex items-center gap-3 lg:justify-end"><span className="text-lg tracking-[0.12em] text-[#d99018]">★★★★★</span><span className="text-[10px] leading-4 text-[#68716c]">Guest-centered<br/>performance</span></div>
+          <div className="flex items-center gap-3 lg:justify-end">
+            <span className="text-lg tracking-[0.12em] text-[#d99018]">
+              ★★★★★
+            </span>
+            <span className="text-[10px] leading-4 text-[#68716c]">
+              Guest-centered
+              <br />
+              performance
+            </span>
+          </div>
         </div>
       </div>
     </section>

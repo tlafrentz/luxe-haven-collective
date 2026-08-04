@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { CheckoutButton } from "@/features/commerce/checkout-button";
+import { defaultCommerceCatalog } from "@/platform/commerce";
 export const dynamic = "force-dynamic";
 export default async function Page({
   params,
@@ -57,8 +59,8 @@ export default async function Page({
           Preview mode · Not publicly visible · No live order will be created
         </p>
       ) : null}
-      <Link href="/store" className="text-sm font-semibold">
-        ← Store
+      <Link href="/packages" className="text-sm font-semibold">
+        ← Packages
       </Link>
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_.8fr]">
         <section>
@@ -97,12 +99,41 @@ export default async function Page({
               ))}
             </select>
           ) : null}
-          <button
-            disabled={preview}
-            className="mt-5 w-full rounded-xl bg-emerald-800 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
-          >
-            {preview ? "Checkout disabled in preview" : "Continue to checkout"}
-          </button>
+          <div className="mt-5">
+            {preview ? (
+              <button
+                disabled
+                className="w-full rounded-xl bg-stone-300 px-5 py-3 font-semibold text-white"
+              >
+                Checkout disabled in preview
+              </button>
+            ) : (
+              await (async () => {
+                const products = await defaultCommerceCatalog.listProducts();
+                const offers = await defaultCommerceCatalog.listOffers();
+                const canonicalProduct = products.find(
+                  (item) => item.slug === slug,
+                );
+                const offer = canonicalProduct
+                  ? offers.find(
+                      (item) =>
+                        item.productIds.includes(canonicalProduct.id) &&
+                        item.status === "active",
+                    )
+                  : undefined;
+                return offer ? (
+                  <CheckoutButton offerId={offer.id} />
+                ) : (
+                  <Link
+                    href={`/get-started?offer=${encodeURIComponent(slug)}`}
+                    className="flex w-full justify-center rounded-xl bg-emerald-800 px-5 py-3 font-semibold text-white"
+                  >
+                    Continue with this offer
+                  </Link>
+                );
+              })()
+            )}
+          </div>
           <p className="mt-4 text-sm text-stone-500">
             Next:{" "}
             {String(
