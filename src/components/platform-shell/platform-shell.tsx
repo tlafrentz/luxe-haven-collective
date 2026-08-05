@@ -137,6 +137,7 @@ export function PlatformShell({ children, experience, role }: ShellProps) {
 
 function PlatformShellFrame({ children, experience, role }: ShellProps) {
   const pathname = usePathname();
+  const dedicatedStudioShell = pathname.startsWith("/admin/guidebooks");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -197,6 +198,7 @@ function PlatformShellFrame({ children, experience, role }: ShellProps) {
       <aside
         className={[
           "fixed inset-y-0 left-0 z-40 hidden border-r border-white/10 bg-[#081117] text-white transition-[width] motion-reduce:transition-none lg:block",
+          dedicatedStudioShell ? "lg:hidden" : "",
           collapsed ? "w-20" : "w-72",
         ].join(" ")}
       >
@@ -234,7 +236,11 @@ function PlatformShellFrame({ children, experience, role }: ShellProps) {
           </aside>
         </div>
       ) : null}
-      <div className={collapsed ? "lg:pl-20" : "lg:pl-72"}>
+      <div
+        className={
+          dedicatedStudioShell ? "" : collapsed ? "lg:pl-20" : "lg:pl-72"
+        }
+      >
         <header
           data-context-kind={contextKind}
           className={[

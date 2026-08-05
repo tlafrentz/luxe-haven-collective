@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { getGuidebookStudioRequest } from "@/app/actions/guidebook-studio";
-import { AdminGuidebookNavigation } from "./admin-guidebook-navigation";
 import { LibraryOverviewSection } from "./canonical-library-workspace";
 
 export type AdminGuidebookView =
@@ -101,7 +100,6 @@ export async function AdminGuidebookWorkspace({
           ) : null}
         </div>
       </header>
-      <AdminGuidebookNavigation current={view} />
       {view === "overview" ? <Overview projection={projection} /> : null}
       {view === "guidebooks" ? <GuidebookList projection={projection} /> : null}
       {view === "analytics" ? <Analytics projection={projection} /> : null}
@@ -142,6 +140,7 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
         ? "Live guest experiences"
         : "Publish your first guidebook",
       "/admin/guidebooks/list",
+      "View guidebooks",
     ],
     [
       "Draft",
@@ -150,6 +149,7 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
         ? "In progress"
         : "No drafts in progress",
       "/admin/guidebooks/list?status=draft",
+      "Continue editing",
     ],
     [
       "Needs review",
@@ -158,18 +158,21 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
         ? "Requires attention"
         : "Everything is current",
       "/admin/guidebooks/list?status=needs-update",
+      "Review guidebooks",
     ],
     [
       "Archived",
       archived,
       archived ? "Not in use" : "No archived guidebooks",
       "/admin/guidebooks/list?status=archived",
+      "View archived",
     ],
     [
       "Property coverage",
       `${published.length}/${projection.portfolio.totalProperties}`,
       `${projection.portfolio.unpublishedProperties} ${projection.portfolio.unpublishedProperties === 1 ? "property has" : "properties have"} no published guidebook`,
       "/admin/guidebooks/list",
+      "View coverage",
     ],
   ] as const;
   const attention = [...projection.library]
@@ -191,7 +194,7 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
           </h2>
         </div>
         <div className="mt-4 grid overflow-hidden rounded-2xl border bg-white sm:grid-cols-2 xl:grid-cols-5">
-          {operations.map(([label, value, note, href]) => (
+          {operations.map(([label, value, note, href, action]) => (
             <article
               key={label}
               className="border-b p-5 last:border-b-0 sm:border-r xl:border-b-0"
@@ -203,7 +206,7 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
                 href={href}
                 className="mt-2 inline-flex text-xs font-semibold text-emerald-800"
               >
-                View →
+                {action} →
               </Link>
             </article>
           ))}
@@ -233,37 +236,51 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
                 key={item.property.id}
                 className="grid gap-3 rounded-xl border bg-stone-50 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center"
               >
-                <div>
-                  <p className="font-semibold">
-                    {item.guidebook?.title ?? item.property.name}
-                  </p>
-                  <p className="mt-1 text-xs text-stone-500">
-                    {item.property.name} ·{" "}
-                    <span
-                      className={
-                        item.health.requiresAttention
-                          ? "font-semibold text-amber-800"
-                          : "font-semibold text-emerald-800"
-                      }
-                    >
-                      {item.health.requiresAttention
-                        ? "Needs attention"
-                        : "Healthy"}
-                    </span>
-                  </p>
-                  {item.requiredSections.missing.length ? (
-                    <p className="mt-2 text-xs text-stone-600">
-                      <strong>Missing:</strong>{" "}
-                      {item.requiredSections.missing
-                        .slice(0, 4)
-                        .map(humanize)
-                        .join(", ")}
+                <div className="flex min-w-0 items-center gap-3">
+                  <div
+                    role="img"
+                    aria-label={`${item.property.name} property`}
+                    className="hidden size-16 shrink-0 rounded-lg bg-stone-200 bg-cover bg-center sm:block"
+                    style={
+                      item.property.featuredImage
+                        ? {
+                            backgroundImage: `url(${item.property.featuredImage})`,
+                          }
+                        : undefined
+                    }
+                  />
+                  <div className="min-w-0">
+                    <p className="font-semibold">
+                      {item.guidebook?.title ?? item.property.name}
                     </p>
-                  ) : (
-                    <p className="mt-2 text-xs text-stone-600">
-                      Ready for its next publishing step.
+                    <p className="mt-1 text-xs text-stone-500">
+                      {item.property.name} ·{" "}
+                      <span
+                        className={
+                          item.health.requiresAttention
+                            ? "font-semibold text-amber-800"
+                            : "font-semibold text-emerald-800"
+                        }
+                      >
+                        {item.health.requiresAttention
+                          ? "Needs attention"
+                          : "Healthy"}
+                      </span>
                     </p>
-                  )}
+                    {item.requiredSections.missing.length ? (
+                      <p className="mt-2 text-xs text-stone-600">
+                        <strong>Missing:</strong>{" "}
+                        {item.requiredSections.missing
+                          .slice(0, 4)
+                          .map(humanize)
+                          .join(", ")}
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-xs text-stone-600">
+                        Ready for its next publishing step.
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Status value={item.status} />
@@ -308,6 +325,18 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
           </div>
         </section>
       </div>
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/50 px-5 py-4 text-sm text-stone-600">
+        <p>
+          Guidebook Studio helps you deliver consistent, branded guest
+          experiences. Build once in the libraries, publish everywhere.
+        </p>
+        <Link
+          href="/admin/guidebooks/content"
+          className="font-semibold text-emerald-800"
+        >
+          Learn more about Guidebook Studio →
+        </Link>
+      </section>
     </>
   );
 }

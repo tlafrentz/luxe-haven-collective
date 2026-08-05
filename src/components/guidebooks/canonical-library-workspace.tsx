@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  Armchair,
+  Boxes,
+  FileText,
+  ImageIcon,
+  LayoutTemplate,
+} from "lucide-react";
+import {
   createLibraryArtifactAction,
   createGuidebookFromTemplateAction,
   getGuidebookLibraries,
@@ -11,7 +18,6 @@ import {
   importLibraryContentAction,
 } from "@/app/actions/guidebook-libraries";
 import type { LibraryArtifactType } from "@/features/guidebook-libraries";
-import { AdminGuidebookNavigation } from "./admin-guidebook-navigation";
 
 type Row = Record<string, unknown>;
 const routeByType: Record<LibraryArtifactType, string> = {
@@ -193,6 +199,7 @@ export async function LibraryOverviewSection() {
       "/admin/guidebooks/content",
       count("content", ["draft", "under_review", "deprecated"]),
       "Browse content",
+      FileText,
     ],
     [
       "Experience Components",
@@ -201,6 +208,7 @@ export async function LibraryOverviewSection() {
       "/admin/guidebooks/components",
       count("component", ["draft", "under_review", "deprecated"]),
       "Browse components",
+      Boxes,
     ],
     [
       "Templates",
@@ -209,6 +217,7 @@ export async function LibraryOverviewSection() {
       "/admin/guidebooks/templates",
       count("template", ["draft", "under_review"]),
       "Browse templates",
+      LayoutTemplate,
     ],
     [
       "Media Library",
@@ -217,6 +226,7 @@ export async function LibraryOverviewSection() {
       "/admin/guidebooks/media",
       count("media", ["processing", "needs_review", "rejected"]),
       "Open library",
+      ImageIcon,
     ],
     [
       "Furnishing Packages",
@@ -225,6 +235,7 @@ export async function LibraryOverviewSection() {
       "/admin/furnishing/packages",
       0,
       "Open Furnishing Studio",
+      Armchair,
     ],
   ] as const;
   const publishedContent = count("content", ["published"]);
@@ -257,7 +268,7 @@ export async function LibraryOverviewSection() {
   ];
   return (
     <section aria-labelledby="platform-libraries">
-      <div className="flex items-end justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-700">
             Platform libraries
@@ -266,18 +277,42 @@ export async function LibraryOverviewSection() {
             Canonical reusable assets
           </h2>
         </div>
+        <details className="relative text-sm">
+          <summary className="flex cursor-pointer list-none items-center gap-3 font-semibold text-stone-700">
+            <span>Library health</span>
+            <span
+              className={`rounded-full px-3 py-1 text-xs ${mediaNeedingAttention ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-900"}`}
+            >
+              {mediaNeedingAttention ? "Needs attention" : "Good"}
+            </span>
+            <span className="text-emerald-800">View details →</span>
+          </summary>
+          <div
+            id="library-health"
+            className="absolute right-0 z-20 mt-3 w-72 rounded-2xl border bg-white p-4 shadow-xl"
+          >
+            {health.map(([label, value]) => (
+              <p
+                key={label}
+                className="flex justify-between gap-4 border-b py-2 last:border-0"
+              >
+                <span className="text-stone-600">{label}</span>
+                <strong>{value}</strong>
+              </p>
+            ))}
+          </div>
+        </details>
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {cards.map(([label, value, note, href, attention, action]) => (
+        {cards.map(([label, value, note, href, attention, action, Icon]) => (
           <article key={label} className="rounded-2xl border bg-white p-5">
-            <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
-              {label}
-            </p>
-            <p className="mt-3 text-3xl font-semibold">
-              {label === "Furnishing Packages"
-                ? `${value} published packages`
-                : value}
-            </p>
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-full bg-emerald-50 text-emerald-800">
+                <Icon className="size-5" aria-hidden="true" />
+              </span>
+              <p className="font-semibold">{label}</p>
+            </div>
+            <p className="mt-3 text-3xl font-semibold">{value}</p>
             <p className="mt-2 min-h-10 text-xs text-stone-500">{note}</p>
             {attention ? (
               <p className="mt-2 text-xs font-semibold text-amber-800">
@@ -292,26 +327,6 @@ export async function LibraryOverviewSection() {
             </Link>
           </article>
         ))}
-      </div>
-      <div
-        className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-2xl border bg-emerald-50/50 px-5 py-4"
-        aria-label="Library health"
-      >
-        <p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-800">
-          Library health
-        </p>
-        {health.map(([label, value]) => (
-          <p key={label} className="text-sm">
-            <span className="text-stone-600">{label}</span>{" "}
-            <strong className="ml-1">{value}</strong>
-          </p>
-        ))}
-        <Link
-          href="/admin/guidebooks/content?status=under_review"
-          className="ml-auto text-sm font-semibold text-emerald-800"
-        >
-          View details →
-        </Link>
       </div>
     </section>
   );
@@ -476,17 +491,6 @@ function LibraryHeader({
         <h1 className="mt-2 text-4xl font-semibold tracking-tight">{title}</h1>
         <p className="mt-2 text-stone-600">{description}</p>
       </header>
-      <AdminGuidebookNavigation
-        current={
-          current === "component"
-            ? "experience-components"
-            : current === "media"
-              ? "media-library"
-              : current === "template"
-                ? "templates"
-                : "content-library"
-        }
-      />
     </>
   );
 }

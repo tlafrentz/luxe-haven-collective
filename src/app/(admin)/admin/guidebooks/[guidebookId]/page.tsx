@@ -4,7 +4,6 @@ import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
 import { loadGuidebookAuthoringAction } from "@/app/actions/guidebook-authoring";
 import { GuidebookAuthoringWorkspace } from "@/components/guidebooks/guidebook-authoring-workspace";
 import { GuidebookPublicationControl } from "@/components/guidebooks/guidebook-publication-control";
-import { AdminGuidebookNavigation } from "@/components/guidebooks/admin-guidebook-navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +79,6 @@ export default async function AdminGuidebookEditorPage({
           ) : null}
         </div>
       </header>
-      <AdminGuidebookNavigation current="guidebooks" />
       <section className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm text-blue-950">
         <strong>Draft workspace:</strong> edits update the durable working
         draft. Guests continue seeing the immutable published version until
