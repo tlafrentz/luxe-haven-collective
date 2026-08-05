@@ -4,8 +4,9 @@ const items = [
   ["Overview", "/admin/guidebooks"],
   ["Guidebooks", "/admin/guidebooks/list"],
   ["Content Library", "/admin/guidebooks/content"],
+  ["Experience Components", "/admin/guidebooks/components"],
   ["Templates", "/admin/guidebooks/templates"],
-  ["Media", "/admin/guidebooks/media"],
+  ["Media Library", "/admin/guidebooks/media"],
   ["Analytics", "/admin/guidebooks/analytics"],
   ["Settings", "/admin/guidebooks/settings"],
 ] as const;
@@ -20,7 +21,7 @@ export function AdminGuidebookNavigation({
     >
       <ul className="flex min-w-max gap-7">
         {items.map(([label, href]) => {
-          const active = current === label.toLowerCase().replace(" ", "-");
+          const active = current === label.toLowerCase().replaceAll(" ", "-");
           return (
             <li key={href}>
               <Link

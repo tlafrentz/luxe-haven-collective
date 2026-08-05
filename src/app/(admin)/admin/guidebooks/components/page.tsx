@@ -11,6 +11,6 @@ export default async function Page({
   }>;
 }) {
   return (
-    <CanonicalLibraryBrowser type="content" filters={await searchParams} />
+    <CanonicalLibraryBrowser type="component" filters={await searchParams} />
   );
 }

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { getGuidebookStudioRequest } from "@/app/actions/guidebook-studio";
 import { AdminGuidebookNavigation } from "./admin-guidebook-navigation";
+import { LibraryOverviewSection } from "./canonical-library-workspace";
 
 export type AdminGuidebookView =
   | "overview"
   | "guidebooks"
   | "content-library"
+  | "experience-components"
   | "templates"
   | "media"
   | "analytics"
@@ -20,6 +22,10 @@ const titleByView: Record<AdminGuidebookView, [string, string]> = {
   "content-library": [
     "Content Library",
     "Govern reusable hospitality content and its usage.",
+  ],
+  "experience-components": [
+    "Experience Components",
+    "Manage reusable guest-facing interface blocks.",
   ],
   templates: [
     "Templates",
@@ -98,17 +104,6 @@ export async function AdminGuidebookWorkspace({
       <AdminGuidebookNavigation current={view} />
       {view === "overview" ? <Overview projection={projection} /> : null}
       {view === "guidebooks" ? <GuidebookList projection={projection} /> : null}
-      {view === "content-library" ? (
-        <ContentLibrary projection={projection} />
-      ) : null}
-      {view === "templates" ? <Templates /> : null}
-      {view === "media" ? (
-        <GovernedEmpty
-          title="No centralized media assets yet"
-          description="Upload and asset replacement will become available when the canonical media repository and sanitization policy are configured."
-          action="Open a guidebook to manage its current media"
-        />
-      ) : null}
       {view === "analytics" ? <Analytics projection={projection} /> : null}
       {view === "settings" ? <Settings /> : null}
     </main>
@@ -141,6 +136,7 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
   ).length;
   return (
     <>
+      <LibraryOverviewSection />
       <section
         aria-label="Guidebook health"
         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
