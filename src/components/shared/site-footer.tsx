@@ -39,7 +39,7 @@ const groups = [
     "About",
     [
       ["About Us", "/about"],
-      ["Our Approach", "/about"],
+      ["Our Approach", "/approach"],
       ["Contact", "/contact"],
     ],
   ],
@@ -118,8 +118,8 @@ export function SiteFooter() {
             reserved.
           </p>
           <div className="flex gap-5">
-            <Link href="/contact">Privacy inquiries</Link>
-            <Link href="/contact">Terms of Service</Link>
+            <Link href="/privacy">Privacy Policy</Link>
+            <Link href="/terms">Terms of Service</Link>
             <Link href="/notary">Notary Disclaimer</Link>
           </div>
         </div>

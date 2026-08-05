@@ -148,12 +148,12 @@ export async function CanonicalLibraryBrowser({
                   </button>
                 </form>
               </details>
-              <a
+              <Link
                 href="/admin/guidebooks/content/export"
                 className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold"
               >
                 Export
-              </a>
+              </Link>
             </>
           ) : null}
           <details className="relative">
@@ -977,7 +977,7 @@ function LivePreview({
   );
 }
 function MediaDetail({
-  artifact,
+  artifact: _artifact,
   version,
   file,
   usages,

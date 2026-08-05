@@ -3,10 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-import {
-  submitContactInquiry,
-  type FormState,
-} from "@/app/actions/forms";
+import { submitContactInquiry, type FormState } from "@/app/actions/forms";
 import { SubmitButton } from "@/components/forms/submit-button";
 
 const initialState: FormState = {
@@ -18,6 +15,10 @@ const fieldClass =
   "rounded-2xl border border-border bg-background px-4 py-3 outline-none transition focus:border-accent";
 
 const inquiryOptions = [
+  "Property performance review",
+  "Guidebook services",
+  "Furnishing services",
+  "Investment analysis",
   "STR consulting",
   "Co-hosting or property management",
   "Owner partnership",
@@ -38,6 +39,18 @@ function FieldError({ errors }: { errors?: string[] }) {
 
 function resolveInitialInquiry(service: string | null) {
   switch (service?.toLowerCase()) {
+    case "improve":
+    case "performance":
+      return "Property performance review";
+
+    case "guidebook":
+      return "Guidebook services";
+
+    case "furnishing":
+      return "Furnishing services";
+
+    case "investment":
+      return "Investment analysis";
     case "notary":
       return "Texas notary service";
 
@@ -79,10 +92,7 @@ export function ContactInquiryForm() {
   );
 
   const [inquiryType, setInquiryType] = useState(initialInquiryType);
-  const [state, action] = useActionState(
-    submitContactInquiry,
-    initialState,
-  );
+  const [state, action] = useActionState(submitContactInquiry, initialState);
 
   const isNotary = inquiryType === "Texas notary service";
 
@@ -96,9 +106,7 @@ export function ContactInquiryForm() {
           Inquiry details
         </p>
 
-        <h2 className="mt-3 font-serif text-3xl">
-          How can we help?
-        </h2>
+        <h2 className="mt-3 font-serif text-3xl">How can we help?</h2>
 
         <p className="mt-3 text-sm leading-7 text-muted-foreground">
           Choose the service that best matches your needs. The form will adapt
@@ -107,7 +115,7 @@ export function ContactInquiryForm() {
       </div>
 
       <label className="grid gap-2 text-sm font-medium">
-        Inquiry Type
+        Service you’re inquiring about
         <select
           name="inquiryType"
           className={fieldClass}
@@ -167,9 +175,7 @@ export function ContactInquiryForm() {
         {!isNotary ? (
           <label className="grid gap-2 text-sm font-medium">
             Property Market
-            <span className="font-normal text-muted-foreground">
-              optional
-            </span>
+            <span className="font-normal text-muted-foreground">optional</span>
             <input
               name="propertyMarket"
               className={fieldClass}
@@ -180,14 +186,8 @@ export function ContactInquiryForm() {
         ) : (
           <label className="grid gap-2 text-sm font-medium">
             Preferred Appointment Date
-            <span className="font-normal text-muted-foreground">
-              optional
-            </span>
-            <input
-              name="preferredDate"
-              type="date"
-              className={fieldClass}
-            />
+            <span className="font-normal text-muted-foreground">optional</span>
+            <input name="preferredDate" type="date" className={fieldClass} />
             <FieldError errors={state.fieldErrors?.preferredDate} />
           </label>
         )}
@@ -207,9 +207,7 @@ export function ContactInquiryForm() {
                 className={fieldClass}
                 placeholder="City, ZIP code, or Remote Online"
               />
-              <FieldError
-                errors={state.fieldErrors?.appointmentLocation}
-              />
+              <FieldError errors={state.fieldErrors?.appointmentLocation} />
             </label>
 
             <label className="grid gap-2 text-sm font-medium">
@@ -251,9 +249,7 @@ export function ContactInquiryForm() {
         </>
       )}
 
-      {isNotary ? (
-        <input type="hidden" name="propertyMarket" value="" />
-      ) : null}
+      {isNotary ? <input type="hidden" name="propertyMarket" value="" /> : null}
 
       <label className="mt-5 grid gap-2 text-sm font-medium">
         Message

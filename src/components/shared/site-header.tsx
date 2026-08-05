@@ -6,7 +6,7 @@ const nav = [
   { href: "/solutions", label: "Solutions" },
   { href: "/platform", label: "Platform" },
   { href: "/resources", label: "Resources" },
-  { href: "/stays/mesa-downtown-retreat", label: "Properties" },
+  { href: "/stays", label: "Properties" },
   { href: "/about", label: "About" },
   { href: "/pricing", label: "Pricing" },
 ];

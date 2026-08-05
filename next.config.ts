@@ -63,6 +63,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        protocol: "https",
+        hostname: "a0.muscache.com",
+      },
     ],
   },
 };

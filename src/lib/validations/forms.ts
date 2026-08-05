@@ -20,6 +20,10 @@ const optionalText = z
   .or(z.literal(""));
 
 export const inquiryTypes = [
+  "Property performance review",
+  "Guidebook services",
+  "Furnishing services",
+  "Investment analysis",
   "STR consulting",
   "Co-hosting or property management",
   "Owner partnership",
