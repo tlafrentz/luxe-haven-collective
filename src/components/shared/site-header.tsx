@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { getSessionProfile } from "@/lib/auth/session";
+import { resourceLinks } from "@/components/marketing/resources-navigation";
 
 const nav = [
   { href: "/solutions", label: "Solutions" },
@@ -33,15 +34,34 @@ export async function SiteHeader() {
           aria-label="Primary navigation"
           className="hidden items-center gap-7 text-sm font-medium text-[#26342e] lg:flex"
         >
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="transition hover:text-[#074e38]"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {nav.map((item) =>
+            item.label === "Resources" ? (
+              <details key={item.href} className="group relative">
+                <summary className="cursor-pointer list-none transition hover:text-[#074e38]">
+                  Resources⌄
+                </summary>
+                <div className="absolute left-1/2 top-8 w-56 -translate-x-1/2 rounded-xl border bg-white p-2 shadow-xl">
+                  {resourceLinks.map(([label, href]) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className="block rounded-lg px-3 py-2.5 text-sm hover:bg-stone-50 hover:text-emerald-800"
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              </details>
+            ) : (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="transition hover:text-[#074e38]"
+              >
+                {item.label}
+              </Link>
+            ),
+          )}
         </nav>
         <div className="hidden items-center gap-3 md:flex">
           {!user ? (
@@ -76,6 +96,17 @@ export async function SiteHeader() {
                 </Link>
               ))}
             </nav>
+            <div className="mt-2 border-t pt-2">
+              {resourceLinks.slice(1).map(([label, href]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="block rounded-lg px-3 py-2 text-xs text-stone-500 hover:bg-stone-50"
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
             {!user ? (
               <Link
                 href="/login"

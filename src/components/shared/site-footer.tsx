@@ -28,10 +28,11 @@ const groups = [
   [
     "Resources",
     [
-      ["Insights", "/resources"],
-      ["Playbooks", "/resources"],
-      ["Templates", "/resources"],
-      ["Market Reports", "/resources"],
+      ["Luxe Haven Press", "/resources"],
+      ["Insights", "/resources/insights"],
+      ["Playbooks", "/resources/playbooks"],
+      ["Templates", "/resources/templates"],
+      ["Market Reports", "/resources/market-reports"],
       ["FAQ", "/faq"],
     ],
   ],
