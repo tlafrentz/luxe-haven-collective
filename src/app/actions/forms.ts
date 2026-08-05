@@ -8,6 +8,7 @@ import {
   leadNotificationHtml,
 } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/send";
+import { createOwnerChecklistToken } from "@/features/lead-magnets/owner-checklist-token";
 import {
   contactInquirySchema,
   leadMagnetSchema,
@@ -31,9 +32,7 @@ export async function submitContactInquiry(
   _: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const parsed = contactInquirySchema.safeParse(
-    parseFormData(formData),
-  );
+  const parsed = contactInquirySchema.safeParse(parseFormData(formData));
 
   if (!parsed.success) {
     return {
@@ -56,22 +55,20 @@ export async function submitContactInquiry(
     const supabase = createAdminClient();
 
     if (supabase) {
-      const { error } = await supabase
-        .from("contact_inquiries")
-        .insert({
-          name: input.name,
-          email: input.email,
-          phone: input.phone || null,
-          inquiry_type: input.inquiryType,
-          property_market: input.propertyMarket || null,
-          message: input.message,
-          source:
-            input.inquiryType === "Texas notary service"
-              ? "notary_page"
-              : "contact_page",
-          status: "new",
-          metadata,
-        });
+      const { error } = await supabase.from("contact_inquiries").insert({
+        name: input.name,
+        email: input.email,
+        phone: input.phone || null,
+        inquiry_type: input.inquiryType,
+        property_market: input.propertyMarket || null,
+        message: input.message,
+        source:
+          input.inquiryType === "Texas notary service"
+            ? "notary_page"
+            : "contact_page",
+        status: "new",
+        metadata,
+      });
 
       if (error) {
         throw error;
@@ -123,9 +120,7 @@ export async function submitLeadMagnet(
   _: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const parsed = leadMagnetSchema.safeParse(
-    parseFormData(formData),
-  );
+  const parsed = leadMagnetSchema.safeParse(parseFormData(formData));
 
   if (!parsed.success) {
     return {
@@ -139,25 +134,32 @@ export async function submitLeadMagnet(
   try {
     const supabase = createAdminClient();
 
+    let leadId: string;
     if (supabase) {
-      const { error } = await supabase
+      const { data: lead, error } = await supabase
         .from("lead_magnet_downloads")
         .insert({
           name: input.name,
           email: input.email,
           property_market: input.propertyMarket,
           property_status: input.propertyStatus,
-          lead_magnet: "str_revenue_readiness_checklist",
-        });
+          lead_magnet: "hospitality_owner_performance_checklist",
+        })
+        .select("id")
+        .single();
 
-      if (error) {
-        throw error;
+      if (error || !lead) {
+        throw error ?? new Error("lead_capture_failed");
       }
+      leadId = String(lead.id);
     } else {
-      console.warn(
-        "SUPABASE_SERVICE_ROLE_KEY is not configured. Skipping lead magnet insert.",
-      );
+      throw new Error("lead_capture_unavailable");
     }
+
+    const token = createOwnerChecklistToken(leadId);
+    const downloadHref = `/api/public/owner-checklist/download?token=${encodeURIComponent(token)}`;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const downloadUrl = new URL(downloadHref, siteUrl).toString();
 
     const notificationTo = process.env.CONTACT_TO_EMAIL;
 
@@ -178,7 +180,7 @@ export async function submitLeadMagnet(
       await sendEmail({
         to: input.email,
         subject: "Your STR Revenue Readiness Checklist",
-        html: leadConfirmationHtml(input),
+        html: leadConfirmationHtml(input, downloadUrl),
       });
     } catch (error) {
       console.error("Lead checklist email failed", error);
@@ -187,14 +189,14 @@ export async function submitLeadMagnet(
         ok: true,
         message:
           "Your request was saved, but we could not send the email. You can open the checklist now.",
-        downloadHref: "/resources/str-revenue-readiness-checklist",
+        downloadHref,
       };
     }
 
     return {
       ok: true,
       message: "Success — check your inbox for the checklist link.",
-      downloadHref: "/resources/str-revenue-readiness-checklist",
+      downloadHref,
     };
   } catch (error) {
     console.error("Lead magnet submission failed", error);

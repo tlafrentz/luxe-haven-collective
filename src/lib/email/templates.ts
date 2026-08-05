@@ -1,4 +1,7 @@
-import type { ContactInquiryInput, LeadMagnetInput } from "@/lib/validations/forms";
+import type {
+  ContactInquiryInput,
+  LeadMagnetInput,
+} from "@/lib/validations/forms";
 
 const escape = (value?: string) =>
   (value || "")
@@ -48,14 +51,16 @@ export function leadNotificationHtml(input: LeadMagnetInput) {
   `;
 }
 
-export function leadConfirmationHtml(input: LeadMagnetInput) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
+export function leadConfirmationHtml(
+  input: LeadMagnetInput,
+  downloadUrl: string,
+) {
   return `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#171412;">
       <h1>Your STR Revenue Readiness Checklist</h1>
       <p>Hi ${escape(input.name)},</p>
-      <p>Here is your Luxe Haven Collective checklist: <a href="${siteUrl}/resources/str-revenue-readiness-checklist">Open the checklist</a>.</p>
+      <p>Here is your Luxe Haven Collective checklist: <a href="${escape(downloadUrl)}">Download the PDF</a>.</p>
+      <p>This private download link expires in 24 hours.</p>
       <p>Use it to review listing positioning, guest experience, pricing, operations, and owner reporting.</p>
       <p>— Luxe Haven Collective</p>
     </div>

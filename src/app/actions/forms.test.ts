@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   insert: vi.fn(),
+  select: vi.fn(),
+  single: vi.fn(),
   sendEmail: vi.fn(),
 }));
 
@@ -28,7 +30,10 @@ function validLead() {
 
 describe("submitLeadMagnet", () => {
   beforeEach(() => {
-    mocks.insert.mockResolvedValue({ error: null });
+    process.env.OWNER_CHECKLIST_SIGNING_SECRET = "test-download-secret";
+    mocks.insert.mockReturnValue({ select: mocks.select });
+    mocks.select.mockReturnValue({ single: mocks.single });
+    mocks.single.mockResolvedValue({ data: { id: "lead-123" }, error: null });
     mocks.sendEmail.mockResolvedValue({ id: "email-id" });
     vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
@@ -36,6 +41,7 @@ describe("submitLeadMagnet", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    delete process.env.OWNER_CHECKLIST_SIGNING_SECRET;
   });
 
   it("persists the lead and returns an immediate checklist link", async () => {
@@ -47,15 +53,17 @@ describe("submitLeadMagnet", () => {
     expect(mocks.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "production@example.com",
-        lead_magnet: "str_revenue_readiness_checklist",
+        lead_magnet: "hospitality_owner_performance_checklist",
       }),
     );
     expect(mocks.sendEmail).toHaveBeenCalledOnce();
-    expect(result).toEqual({
-      ok: true,
-      message: "Success — check your inbox for the checklist link.",
-      downloadHref: "/resources/str-revenue-readiness-checklist",
-    });
+    expect(result.ok).toBe(true);
+    expect(result.message).toBe(
+      "Success — check your inbox for the checklist link.",
+    );
+    expect(result.downloadHref).toMatch(
+      /^\/api\/public\/owner-checklist\/download\?token=/,
+    );
   });
 
   it("keeps a captured lead usable when email delivery fails", async () => {
@@ -68,14 +76,17 @@ describe("submitLeadMagnet", () => {
 
     expect(mocks.insert).toHaveBeenCalledOnce();
     expect(result.ok).toBe(true);
-    expect(result.downloadHref).toBe(
-      "/resources/str-revenue-readiness-checklist",
+    expect(result.downloadHref).toMatch(
+      /^\/api\/public\/owner-checklist\/download\?token=/,
     );
     expect(result.message).toContain("request was saved");
   });
 
   it("does not report success when persistence fails", async () => {
-    mocks.insert.mockResolvedValue({ error: new Error("database unavailable") });
+    mocks.single.mockResolvedValue({
+      data: null,
+      error: new Error("database unavailable"),
+    });
 
     const result = await submitLeadMagnet(
       { ok: false, message: "" },
