@@ -187,41 +187,74 @@ export async function LibraryOverviewSection() {
     ).length;
   const cards = [
     [
-      "Content records",
+      "Content Library",
       count("content"),
-      "Reusable written knowledge",
+      "Reusable guest-facing content",
       "/admin/guidebooks/content",
       count("content", ["draft", "under_review", "deprecated"]),
+      "Browse content",
     ],
     [
-      "Experience components",
+      "Experience Components",
       count("component"),
-      "Reusable guest-facing blocks",
+      "Reusable guest experience components",
       "/admin/guidebooks/components",
       count("component", ["draft", "under_review", "deprecated"]),
+      "Browse components",
     ],
     [
-      "Published templates",
+      "Templates",
       count("template", ["published"]),
-      "Immutable template versions",
+      "Published, versioned guidebook templates",
       "/admin/guidebooks/templates",
       count("template", ["draft", "under_review"]),
+      "Browse templates",
     ],
     [
-      "Approved media",
+      "Media Library",
       count("media", ["approved"]),
-      "Governed digital assets",
+      "Approved media and brand assets",
       "/admin/guidebooks/media",
       count("media", ["processing", "needs_review", "rejected"]),
+      "Open library",
     ],
     [
-      "Furnishing packages",
+      "Furnishing Packages",
       data.furnishingPackages,
       "Reusable furnishing systems",
       "/admin/furnishing/packages",
       0,
+      "Open Furnishing Studio",
     ],
   ] as const;
+  const publishedContent = count("content", ["published"]);
+  const allContent = count("content");
+  const currentTemplates = count("template", ["published"]);
+  const allTemplates = count("template");
+  const unusedComponents = artifacts.filter(
+    (row) => row.artifact_type === "component" && Number(row.usage_count) === 0,
+  ).length;
+  const mediaNeedingAttention = count("media", [
+    "processing",
+    "needs_review",
+    "rejected",
+  ]);
+  const health = [
+    [
+      "Published content",
+      allContent
+        ? `${Math.round((publishedContent / allContent) * 100)}%`
+        : "Unavailable",
+    ],
+    [
+      "Templates current",
+      allTemplates
+        ? `${Math.round((currentTemplates / allTemplates) * 100)}%`
+        : "Unavailable",
+    ],
+    ["Unused components", String(unusedComponents)],
+    ["Media needs attention", String(mediaNeedingAttention)],
+  ];
   return (
     <section aria-labelledby="platform-libraries">
       <div className="flex items-end justify-between">
@@ -235,12 +268,16 @@ export async function LibraryOverviewSection() {
         </div>
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {cards.map(([label, value, note, href, attention]) => (
+        {cards.map(([label, value, note, href, attention, action]) => (
           <article key={label} className="rounded-2xl border bg-white p-5">
             <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
               {label}
             </p>
-            <p className="mt-3 text-3xl font-semibold">{value}</p>
+            <p className="mt-3 text-3xl font-semibold">
+              {label === "Furnishing Packages"
+                ? `${value} published packages`
+                : value}
+            </p>
             <p className="mt-2 min-h-10 text-xs text-stone-500">{note}</p>
             {attention ? (
               <p className="mt-2 text-xs font-semibold text-amber-800">
@@ -251,10 +288,30 @@ export async function LibraryOverviewSection() {
               href={href}
               className="mt-4 inline-flex text-sm font-semibold text-emerald-800"
             >
-              Manage →
+              {action} →
             </Link>
           </article>
         ))}
+      </div>
+      <div
+        className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-2xl border bg-emerald-50/50 px-5 py-4"
+        aria-label="Library health"
+      >
+        <p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-800">
+          Library health
+        </p>
+        {health.map(([label, value]) => (
+          <p key={label} className="text-sm">
+            <span className="text-stone-600">{label}</span>{" "}
+            <strong className="ml-1">{value}</strong>
+          </p>
+        ))}
+        <Link
+          href="/admin/guidebooks/content?status=under_review"
+          className="ml-auto text-sm font-semibold text-emerald-800"
+        >
+          View details →
+        </Link>
       </div>
     </section>
   );

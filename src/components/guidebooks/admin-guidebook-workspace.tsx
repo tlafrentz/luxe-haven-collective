@@ -89,7 +89,7 @@ export async function AdminGuidebookWorkspace({
             href="/dashboard/guidebooks"
             className="rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold"
           >
-            Customer workspace
+            View customer workspace
           </Link>
           {projection.permissions.manage && projection.entitlements.create ? (
             <Link
@@ -134,37 +134,91 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
   const archived = projection.library.filter(
     (x) => x.status === "archived",
   ).length;
+  const operations = [
+    [
+      "Published",
+      published.length,
+      published.length
+        ? "Live guest experiences"
+        : "Publish your first guidebook",
+      "/admin/guidebooks/list",
+    ],
+    [
+      "Draft",
+      projection.portfolio.draftGuidebooks,
+      projection.portfolio.draftGuidebooks
+        ? "In progress"
+        : "No drafts in progress",
+      "/admin/guidebooks/list?status=draft",
+    ],
+    [
+      "Needs review",
+      projection.portfolio.requiringAttention,
+      projection.portfolio.requiringAttention
+        ? "Requires attention"
+        : "Everything is current",
+      "/admin/guidebooks/list?status=needs-update",
+    ],
+    [
+      "Archived",
+      archived,
+      archived ? "Not in use" : "No archived guidebooks",
+      "/admin/guidebooks/list?status=archived",
+    ],
+    [
+      "Property coverage",
+      `${published.length}/${projection.portfolio.totalProperties}`,
+      `${projection.portfolio.unpublishedProperties} ${projection.portfolio.unpublishedProperties === 1 ? "property has" : "properties have"} no published guidebook`,
+      "/admin/guidebooks/list",
+    ],
+  ] as const;
+  const attention = [...projection.library]
+    .sort(
+      (a, b) =>
+        Number(b.health.requiresAttention) - Number(a.health.requiresAttention),
+    )
+    .slice(0, 5);
   return (
     <>
       <LibraryOverviewSection />
-      <section
-        aria-label="Guidebook health"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
-      >
-        <Card
-          label="Published"
-          value={published.length}
-          note="Live guest experiences"
-        />
-        <Card label="Draft" value={projection.portfolio.draftGuidebooks} />
-        <Card
-          label="Needs review"
-          value={projection.portfolio.requiringAttention}
-        />
-        <Card label="Archived" value={archived} />
-        <Card
-          label="Properties covered"
-          value={`${published.length}/${projection.portfolio.totalProperties}`}
-        />
+      <section aria-labelledby="guidebook-operations">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-700">
+            Guidebook operations
+          </p>
+          <h2 id="guidebook-operations" className="mt-1 text-xl font-semibold">
+            Publishing and property coverage
+          </h2>
+        </div>
+        <div className="mt-4 grid overflow-hidden rounded-2xl border bg-white sm:grid-cols-2 xl:grid-cols-5">
+          {operations.map(([label, value, note, href]) => (
+            <article
+              key={label}
+              className="border-b p-5 last:border-b-0 sm:border-r xl:border-b-0"
+            >
+              <p className="text-xs font-semibold text-stone-600">{label}</p>
+              <p className="mt-2 text-2xl font-semibold">{value}</p>
+              <p className="mt-1 min-h-8 text-xs text-stone-500">{note}</p>
+              <Link
+                href={href}
+                className="mt-2 inline-flex text-xs font-semibold text-emerald-800"
+              >
+                View →
+              </Link>
+            </article>
+          ))}
+        </div>
       </section>
       <div className="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
         <section className="rounded-2xl border bg-white p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-700">
-                Portfolio
+                Guidebooks requiring attention
               </p>
-              <h2 className="mt-1 text-xl font-semibold">Guidebook health</h2>
+              <h2 className="mt-1 text-xl font-semibold">
+                What should I work on next?
+              </h2>
             </div>
             <Link
               href="/admin/guidebooks/list"
@@ -174,34 +228,75 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
             </Link>
           </div>
           <div className="mt-5 space-y-3">
-            {projection.library.slice(0, 6).map((item) => (
+            {attention.map((item) => (
               <div
                 key={item.property.id}
-                className="flex items-center justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3"
+                className="grid gap-3 rounded-xl border bg-stone-50 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center"
               >
                 <div>
                   <p className="font-semibold">
                     {item.guidebook?.title ?? item.property.name}
                   </p>
-                  <p className="text-xs text-stone-500">{item.health.label}</p>
+                  <p className="mt-1 text-xs text-stone-500">
+                    {item.property.name} ·{" "}
+                    <span
+                      className={
+                        item.health.requiresAttention
+                          ? "font-semibold text-amber-800"
+                          : "font-semibold text-emerald-800"
+                      }
+                    >
+                      {item.health.requiresAttention
+                        ? "Needs attention"
+                        : "Healthy"}
+                    </span>
+                  </p>
+                  {item.requiredSections.missing.length ? (
+                    <p className="mt-2 text-xs text-stone-600">
+                      <strong>Missing:</strong>{" "}
+                      {item.requiredSections.missing
+                        .slice(0, 4)
+                        .map(humanize)
+                        .join(", ")}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-stone-600">
+                      Ready for its next publishing step.
+                    </p>
+                  )}
                 </div>
-                <Status value={item.status} />
+                <div className="flex items-center gap-2">
+                  <Status value={item.status} />
+                  <Link
+                    href={
+                      item.suggestedActions[0]?.href ??
+                      (item.guidebook
+                        ? `/dashboard/guidebooks/${item.guidebook.id}`
+                        : `/dashboard/guidebooks/new?property=${item.property.id}`)
+                    }
+                    className="rounded-lg border border-emerald-700 bg-white px-3 py-2 text-xs font-semibold text-emerald-800"
+                  >
+                    {item.suggestedActions[0]?.label ?? "Open guidebook"}
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
         </section>
         <section className="rounded-2xl border bg-white p-6">
           <p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-700">
-            Operational record
+            Recent activity
           </p>
           <h2 className="mt-1 text-xl font-semibold">Recent activity</h2>
           <div className="mt-5 space-y-4">
             {projection.recentActivity.length ? (
               projection.recentActivity.slice(0, 7).map((item) => (
                 <div key={item.id} className="border-l-2 border-amber-400 pl-3">
-                  <p className="text-sm font-semibold">{item.summary}</p>
+                  <p className="text-sm font-semibold">
+                    {businessActivity(item.summary, item.eventType)}
+                  </p>
                   <p className="mt-1 text-xs text-stone-500">
-                    {new Date(item.occurredAt).toLocaleString()}
+                    {relativeTime(item.occurredAt)}
                   </p>
                 </div>
               ))
@@ -215,6 +310,37 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
       </div>
     </>
   );
+}
+
+function humanize(value: string) {
+  return value
+    .replaceAll("-", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function businessActivity(summary: string, eventType: string) {
+  if (/guidebook command/i.test(summary))
+    return /fail/i.test(summary)
+      ? "Guidebook update failed"
+      : "Guidebook updated";
+  const normalized = summary
+    .replaceAll(/\bcommand\b/gi, "update")
+    .replaceAll(/\bentered\b/gi, "started")
+    .replaceAll(/\bcompleted\b/gi, "completed");
+  if (/publish/i.test(eventType) && !/publish/i.test(normalized))
+    return "Guidebook published";
+  return normalized;
+}
+
+function relativeTime(value: string) {
+  const seconds = Math.round((Date.parse(value) - Date.now()) / 1000);
+  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  if (Math.abs(seconds) < 60) return formatter.format(seconds, "second");
+  const minutes = Math.round(seconds / 60);
+  if (Math.abs(minutes) < 60) return formatter.format(minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  if (Math.abs(hours) < 24) return formatter.format(hours, "hour");
+  return formatter.format(Math.round(hours / 24), "day");
 }
 function GuidebookList({ projection }: Readonly<{ projection: Projection }>) {
   return (
