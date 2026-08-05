@@ -61,7 +61,7 @@ export default function ResourcesPage() {
               Resources
             </p>
             <h1 className="mt-5 max-w-xl font-serif text-5xl leading-[1.08] md:text-6xl">
-              Practical insights for better hospitality outcomes.
+              Knowledge for better hospitality outcomes.
             </h1>
             <p className="mt-6 max-w-lg text-base leading-8 text-stone-600">
               Actionable publications, proven playbooks, and operational tools
@@ -95,8 +95,8 @@ export default function ResourcesPage() {
       </section>
       <nav aria-label="Resource categories" className="border-b bg-white">
         <div className="container-shell grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-          {resourceLinks.map(([label, href], index) => {
-            const Icon = icons[index];
+          {resourceLinks.slice(1).map(([label, href], index) => {
+            const Icon = icons[index + 1];
             return (
               <Link
                 key={href}

@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { BookOpen, FileText, Search } from "lucide-react";
 import { SafeImage } from "@/components/shared/safe-image";
-import { ResourcesNavigation } from "./resources-navigation";
 import { mesaAirbnbImages } from "@/lib/mesa-airbnb";
 
 type Card = {
@@ -11,10 +11,8 @@ type Card = {
   action: string;
   image?: string;
 };
-
 export function ResourcePage({
   active,
-  eyebrow,
   title,
   description,
   cards,
@@ -27,86 +25,122 @@ export function ResourcePage({
   cards: Card[];
   categories?: string[];
 }) {
+  const playbooks = active === "Playbooks";
+  const templates = active === "Templates";
+  const markets = active === "Market Reports";
+  const insights = active === "Insights";
   return (
     <main className="bg-[#fffdf9]">
-      <section className="border-b">
-        <div className="container-shell grid min-h-[330px] gap-8 py-12 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[.16em] text-[#a56b19]">
-              {eyebrow}
-            </p>
-            <h1 className="mt-5 max-w-xl font-serif text-5xl leading-[1.08] md:text-6xl">
-              {title}
-            </h1>
-            <p className="mt-5 max-w-xl text-sm leading-7 text-stone-600">
-              {description}
-            </p>
-          </div>
-          <div className="relative hidden h-[270px] overflow-hidden rounded-xl lg:block">
-            <SafeImage
-              src={
-                mesaAirbnbImages[
-                  active === "Insights" ? 1 : active === "Templates" ? 2 : 0
-                ]
-              }
-              alt="Luxe Haven hospitality resource collection"
-              fill
-              priority
-              className="object-cover"
-              sizes="55vw"
-            />
+      <section className="border-b py-10">
+        <div className="container-shell">
+          <nav className="text-xs text-stone-500">
+            <Link href="/resources">Resources</Link>
+            <span className="mx-2">›</span>
+            <span>{active}</span>
+          </nav>
+          <h1 className="mt-6 font-serif text-5xl">{title}</h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-stone-600">
+            {description}
+          </p>
+          <div className="mt-7 flex flex-wrap items-center gap-2">
+            {categories.map((category, index) => (
+              <span
+                key={category}
+                className={
+                  index === 0
+                    ? "rounded-md bg-emerald-950 px-4 py-2 text-xs text-white"
+                    : "rounded-md border bg-white px-4 py-2 text-xs text-stone-600"
+                }
+              >
+                {category}
+              </span>
+            ))}
+            {insights ? (
+              <form
+                action="/resources/insights"
+                className="relative ml-auto hidden md:block"
+              >
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+                <input
+                  name="q"
+                  aria-label="Search insights"
+                  placeholder="Search insights"
+                  className="rounded-md border bg-white py-2 pl-9 pr-3 text-xs"
+                />
+              </form>
+            ) : null}
           </div>
         </div>
       </section>
-      <ResourcesNavigation active={active} />
-      {categories.length ? (
-        <div className="container-shell flex flex-wrap gap-2 py-7">
-          {categories.map((category, index) => (
-            <span
-              key={category}
-              className={
-                index === 0
-                  ? "rounded-full bg-emerald-950 px-4 py-2 text-xs text-white"
-                  : "rounded-full border bg-white px-4 py-2 text-xs text-stone-600"
-              }
-            >
-              {category}
-            </span>
-          ))}
-        </div>
-      ) : null}
-      <section className="pb-16 pt-8">
-        <div className="container-shell grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="py-12">
+        <div
+          className={
+            playbooks || templates
+              ? "container-shell grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+              : "container-shell grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          }
+        >
           {cards.map((card, index) => (
             <article
               key={card.title}
-              className="overflow-hidden rounded-xl border bg-white"
+              className={`${playbooks || templates || markets ? "flex" : "flex flex-col"} overflow-hidden rounded-xl border bg-white`}
             >
-              <div className="relative aspect-[1.55/1]">
-                <SafeImage
-                  src={
-                    card.image ??
-                    mesaAirbnbImages[index % mesaAirbnbImages.length]
-                  }
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(min-width:1280px) 25vw,50vw"
-                />
-              </div>
-              <div className="p-5">
-                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#a56b19]">
-                  {card.eyebrow}
-                </p>
-                <h2 className="mt-3 font-serif text-2xl leading-tight">
+              {playbooks ? (
+                <div className="flex w-28 shrink-0 items-center justify-center bg-[#f1ece1] p-4">
+                  <div
+                    className={
+                      index % 2
+                        ? "grid aspect-[.7/1] w-full place-items-center rounded-sm bg-[#e8dfcf] p-2 text-center text-[8px] font-bold uppercase text-stone-700 shadow-lg"
+                        : "grid aspect-[.7/1] w-full place-items-center rounded-sm bg-emerald-950 p-2 text-center text-[8px] font-bold uppercase text-white shadow-lg"
+                    }
+                  >
+                    {card.title}
+                  </div>
+                </div>
+              ) : templates ? (
+                <div className="flex w-28 shrink-0 items-center justify-center bg-stone-50">
+                  <FileText className="size-14 text-stone-400" />
+                </div>
+              ) : (
+                <div
+                  className="relative w-full shrink-0 self-start"
+                  style={{ maxWidth: markets ? "45%" : "100%" }}
+                >
+                  <div className="relative aspect-[1.7/1]">
+                    <SafeImage
+                      src={
+                        card.image ??
+                        mesaAirbnbImages[index % mesaAirbnbImages.length]
+                      }
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="33vw"
+                    />
+                  </div>
+                </div>
+              )}
+              <div
+                className={
+                  playbooks || templates || markets
+                    ? "flex min-w-0 flex-1 flex-col p-5"
+                    : "p-5"
+                }
+              >
+                {!playbooks && !templates && !markets ? (
+                  <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#a56b19]">
+                    {card.eyebrow}
+                  </p>
+                ) : null}
+                <h2 className="font-serif text-xl leading-tight">
                   {card.title}
                 </h2>
-                <p className="mt-3 text-xs leading-5 text-stone-600">
+                <p className="mt-3 flex-1 text-xs leading-5 text-stone-600">
                   {card.description}
                 </p>
                 <Link
                   href={card.href}
-                  className="mt-6 inline-flex text-xs font-semibold text-emerald-800"
+                  className="mt-5 inline-flex text-xs font-semibold text-emerald-800"
                 >
                   {card.action} →
                 </Link>
@@ -115,21 +149,28 @@ export function ResourcePage({
           ))}
         </div>
       </section>
-      <section className="pb-16">
-        <div className="container-shell flex flex-wrap items-center justify-between gap-5 rounded-xl bg-emerald-950 p-8 text-white">
+      <section className="pb-14">
+        <div className="container-shell flex flex-wrap items-center justify-between gap-5 rounded-xl border bg-[#f8f4eb] p-7">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[.15em] text-[#d6a04c]">
-              Stay informed
-            </p>
-            <h2 className="mt-2 font-serif text-3xl">
-              Practical hospitality resources, delivered thoughtfully.
+            <BookOpen className="size-6 text-emerald-800" />
+            <h2 className="mt-3 font-serif text-2xl">
+              {markets
+                ? "Want a market that’s not listed?"
+                : templates
+                  ? "Need a custom template?"
+                  : playbooks
+                    ? "Need something custom?"
+                    : "Looking for a specific insight?"}
             </h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Tell us what you need and we’ll help identify the right resource.
+            </p>
           </div>
           <Link
             href="/contact?service=general"
-            className="rounded-md bg-white px-5 py-3 text-sm font-semibold text-emerald-950"
+            className="rounded-md bg-emerald-950 px-5 py-3 text-sm font-semibold text-white"
           >
-            Join the conversation →
+            Contact us →
           </Link>
         </div>
       </section>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Building2, House, Landmark, Users } from "lucide-react";
-import { ResourcesNavigation } from "@/components/marketing/resources-navigation";
 
 const faqs = [
   [
@@ -38,10 +37,14 @@ export default function FAQPage() {
     <main className="bg-[#fffdf9]">
       <section className="py-14">
         <div className="container-shell">
-          <p className="text-xs font-bold uppercase tracking-[.16em] text-[#a56b19]">
-            FAQ
-          </p>
-          <h1 className="mt-5 font-serif text-6xl">Find answers quickly.</h1>
+          <nav className="text-xs text-stone-500">
+            <Link href="/resources">Resources</Link>
+            <span className="mx-2">›</span>
+            <span>FAQs</span>
+          </nav>
+          <h1 className="mt-6 font-serif text-5xl">
+            Frequently Asked Questions
+          </h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-stone-600">
             Choose a topic below to find answers about working with Luxe Haven.
           </p>
@@ -81,7 +84,6 @@ export default function FAQPage() {
           </div>
         </div>
       </section>
-      <ResourcesNavigation active="FAQs" />
       <section className="py-14">
         <div className="container-shell grid gap-8 lg:grid-cols-[.3fr_1fr]">
           <aside>
