@@ -18,6 +18,7 @@ import {
   importLibraryContentAction,
 } from "@/app/actions/guidebook-libraries";
 import type { LibraryArtifactType } from "@/features/guidebook-libraries";
+import { AdminGuidebookNavigation } from "./admin-guidebook-navigation";
 
 type Row = Record<string, unknown>;
 const routeByType: Record<LibraryArtifactType, string> = {
@@ -491,6 +492,17 @@ function LibraryHeader({
         <h1 className="mt-2 text-4xl font-semibold tracking-tight">{title}</h1>
         <p className="mt-2 text-stone-600">{description}</p>
       </header>
+      <AdminGuidebookNavigation
+        current={
+          current === "component"
+            ? "experience-components"
+            : current === "media"
+              ? "media-library"
+              : current === "template"
+                ? "templates"
+                : "content-library"
+        }
+      />
     </>
   );
 }

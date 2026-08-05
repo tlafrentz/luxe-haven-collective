@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminGuidebookNavigation } from "@/components/guidebooks/admin-guidebook-navigation";
 import { notFound } from "next/navigation";
 import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
 import { loadGuidebookAuthoringAction } from "@/app/actions/guidebook-authoring";
@@ -40,7 +41,7 @@ export default async function AdminGuidebookEditorPage({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Link
-            href="/admin/guidebooks/list"
+            href="/admin/guidebooks/guidebooks"
             className="text-sm font-semibold text-emerald-800"
           >
             ← All guidebooks
@@ -79,6 +80,7 @@ export default async function AdminGuidebookEditorPage({
           ) : null}
         </div>
       </header>
+      <AdminGuidebookNavigation current="guidebooks" />
       <section className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm text-blue-950">
         <strong>Draft workspace:</strong> edits update the durable working
         draft. Guests continue seeing the immutable published version until

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getGuidebookStudioRequest } from "@/app/actions/guidebook-studio";
+import { AdminGuidebookNavigation } from "./admin-guidebook-navigation";
 import { LibraryOverviewSection } from "./canonical-library-workspace";
 
 export type AdminGuidebookView =
@@ -100,6 +101,7 @@ export async function AdminGuidebookWorkspace({
           ) : null}
         </div>
       </header>
+      <AdminGuidebookNavigation current={view} />
       {view === "overview" ? <Overview projection={projection} /> : null}
       {view === "guidebooks" ? <GuidebookList projection={projection} /> : null}
       {view === "analytics" ? <Analytics projection={projection} /> : null}
@@ -139,7 +141,7 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
       published.length
         ? "Live guest experiences"
         : "Publish your first guidebook",
-      "/admin/guidebooks/list",
+      "/admin/guidebooks/guidebooks",
       "View guidebooks",
     ],
     [
@@ -148,7 +150,7 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
       projection.portfolio.draftGuidebooks
         ? "In progress"
         : "No drafts in progress",
-      "/admin/guidebooks/list?status=draft",
+      "/admin/guidebooks/guidebooks?status=draft",
       "Continue editing",
     ],
     [
@@ -157,21 +159,21 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
       projection.portfolio.requiringAttention
         ? "Requires attention"
         : "Everything is current",
-      "/admin/guidebooks/list?status=needs-update",
+      "/admin/guidebooks/guidebooks?status=needs-update",
       "Review guidebooks",
     ],
     [
       "Archived",
       archived,
       archived ? "Not in use" : "No archived guidebooks",
-      "/admin/guidebooks/list?status=archived",
+      "/admin/guidebooks/guidebooks?status=archived",
       "View archived",
     ],
     [
       "Property coverage",
       `${published.length}/${projection.portfolio.totalProperties}`,
       `${projection.portfolio.unpublishedProperties} ${projection.portfolio.unpublishedProperties === 1 ? "property has" : "properties have"} no published guidebook`,
-      "/admin/guidebooks/list",
+      "/admin/guidebooks/guidebooks",
       "View coverage",
     ],
   ] as const;
@@ -224,7 +226,7 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
               </h2>
             </div>
             <Link
-              href="/admin/guidebooks/list"
+              href="/admin/guidebooks/guidebooks"
               className="text-sm font-semibold text-emerald-800"
             >
               View all
