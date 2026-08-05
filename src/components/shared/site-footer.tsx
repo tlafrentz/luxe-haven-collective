@@ -4,12 +4,10 @@ const groups = [
   [
     "Solutions",
     [
-      ["Hospitality Management", "/solutions/operations"],
-      ["Revenue Optimization", "/solutions/revenue"],
-      ["Hospitality Consulting", "/solutions/property-launch"],
-      ["Professional Services", "/notary"],
-      ["HPM Platform", "/platform"],
-      ["Co-Hosting", "/owners"],
+      ["Improve Guest Experience", "/solutions/guest-experience"],
+      ["Invest Better", "/solutions/investment"],
+      ["Launch a Property", "/solutions/property-launch"],
+      ["Operate Better", "/solutions/operations"],
     ],
   ],
   [

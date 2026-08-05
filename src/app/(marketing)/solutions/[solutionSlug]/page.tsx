@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CTASection } from "@/components/marketing/cta-section";
+import { SolutionLanding } from "@/components/marketing/solution-landing";
+import { solutionJourneys, type SolutionSlug } from "@/lib/solution-journeys";
 import {
   findPublicJourney,
   publicJourneys,
@@ -28,7 +30,11 @@ export default async function SolutionPage({
 }: {
   params: Promise<{ solutionSlug: string }>;
 }) {
-  const journey = findPublicJourney((await params).solutionSlug);
+  const solutionSlug = (await params).solutionSlug;
+  if (solutionSlug in solutionJourneys) {
+    return <SolutionLanding slug={solutionSlug as SolutionSlug} />;
+  }
+  const journey = findPublicJourney(solutionSlug);
   if (!journey) notFound();
   return (
     <main>
