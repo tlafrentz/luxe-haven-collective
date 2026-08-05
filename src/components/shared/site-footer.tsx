@@ -15,14 +15,10 @@ const groups = [
   [
     "Platform",
     [
-      ["Hospitality Performance Platform", "/platform"],
-      ["Guidebook Studio", "/solutions/guest-experience"],
-      ["Furnishing Studio", "/solutions/property-launch"],
-      ["Investment Intelligence", "/solutions/investment"],
-      [
-        "Executive Intelligence",
-        "/solutions/hospitality-performance-management",
-      ],
+      ["HPM Platform", "/platform/hpm/journey"],
+      ["Guidebook Studio", "/platform/guidebook-studio/journey"],
+      ["Furnishing Studio", "/platform/furnishing-studio/journey"],
+      ["Investment Intelligence", "/platform/investment-intelligence/journey"],
     ],
   ],
   [

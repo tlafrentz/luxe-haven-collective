@@ -22,6 +22,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/faq",
     "/contact",
     "/lead-magnet",
+    "/platform/hpm/journey",
+    "/platform/guidebook-studio/journey",
+    "/platform/furnishing-studio/journey",
+    "/platform/investment-intelligence/journey",
   ];
   return [
     ...staticRoutes.map((path) => ({

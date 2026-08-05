@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { getSessionProfile } from "@/lib/auth/session";
 import { resourceLinks } from "@/components/marketing/resources-navigation";
+import { platformLinks } from "@/lib/platform-journeys";
 
 const nav = [
   { href: "/solutions", label: "Solutions" },
@@ -35,13 +36,16 @@ export async function SiteHeader() {
           className="hidden items-center gap-7 text-sm font-medium text-[#26342e] lg:flex"
         >
           {nav.map((item) =>
-            item.label === "Resources" ? (
+            item.label === "Resources" || item.label === "Platform" ? (
               <details key={item.href} className="group relative">
                 <summary className="cursor-pointer list-none transition hover:text-[#074e38]">
-                  Resources⌄
+                  {item.label}⌄
                 </summary>
                 <div className="absolute left-1/2 top-8 w-56 -translate-x-1/2 rounded-xl border bg-white p-2 shadow-xl">
-                  {resourceLinks.map(([label, href]) => (
+                  {(item.label === "Resources"
+                    ? resourceLinks
+                    : platformLinks
+                  ).map(([label, href]) => (
                     <Link
                       key={href}
                       href={href}
@@ -97,6 +101,21 @@ export async function SiteHeader() {
               ))}
             </nav>
             <div className="mt-2 border-t pt-2">
+              <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                Platform
+              </p>
+              {platformLinks.map(([label, href]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="block rounded-lg px-3 py-2 text-xs text-stone-500 hover:bg-stone-50"
+                >
+                  {label}
+                </Link>
+              ))}
+              <p className="mt-2 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                Resources
+              </p>
               {resourceLinks.slice(1).map(([label, href]) => (
                 <Link
                   key={href}
