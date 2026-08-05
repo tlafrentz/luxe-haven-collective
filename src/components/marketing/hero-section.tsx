@@ -2,79 +2,84 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { SafeImage } from "@/components/shared/safe-image";
 
-const trustMarks = ["Airbnb", "Vrbo", "Booking.com", "Google"];
+const metrics = [
+  ["2,000+", "Guests Hosted"],
+  ["4.9 ★", "Average Review"],
+  ["100+", "Properties Supported"],
+  ["$45M+", "Revenue Influenced"],
+] as const;
 
 export function HeroSection() {
   return (
-    <section className="bg-[#f7f7f3] px-3 pb-5 pt-3 sm:px-5 sm:pb-8 lg:px-8">
-      <div className="mx-auto max-w-[1440px] overflow-hidden rounded-[1.4rem] border border-[#cdd3ce] bg-white shadow-[0_18px_60px_rgba(20,45,35,0.08)]">
-        <div className="grid min-h-[590px] lg:grid-cols-[0.88fr_1.12fr]">
-          <div className="relative z-10 flex flex-col justify-center px-7 py-14 sm:px-12 lg:px-16 xl:px-20">
-            <h1 className="max-w-xl font-serif text-[3.35rem] leading-[0.98] tracking-[-0.04em] text-[#161b18] sm:text-7xl lg:text-[5rem]">
-              Operate.
-              <br />
-              Optimize.
-              <br />
-              Outperform.
-            </h1>
-            <p className="mt-8 max-w-lg text-base leading-7 text-[#56605a] sm:text-lg">
-              The performance platform for independent hospitality businesses.
-            </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/solutions"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#074e38] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#053d2c]"
-              >
-                Explore Solutions <ArrowRight aria-hidden size={16} />
-              </Link>
-              <Link
-                href="/packages"
-                className="inline-flex min-h-12 items-center justify-center rounded-md border border-[#9ca8a1] bg-white px-6 text-sm font-semibold text-[#18352b] transition hover:border-[#074e38] hover:bg-[#f2f7f4]"
-              >
-                View Packages
-              </Link>
-            </div>
+    <section className="pb-8 pt-10 lg:pb-0 lg:pt-7">
+      <div className="container-shell grid gap-8 lg:grid-cols-[.75fr_1.25fr] lg:items-center">
+        <div className="py-6">
+          <p className="text-[11px] font-bold uppercase leading-5 tracking-[.16em] text-[#a56b19]">
+            The performance platform
+            <br />
+            for hospitality business
+          </p>
+          <h1 className="mt-5 font-serif text-6xl leading-[.98] tracking-[-.035em] md:text-7xl">
+            <span className="block">Operate.</span>
+            <span className="block">Optimize.</span>
+            <span className="block text-[#07533a]">Outperform.</span>
+          </h1>
+          <p className="mt-7 max-w-lg text-base leading-7 text-stone-600">
+            The hospitality operating system for owners who want exceptional
+            guest experiences, stronger financial performance, and smarter
+            operational decisions.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link
+              href="/solutions"
+              className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#07533a] px-5 text-sm font-semibold text-white"
+            >
+              Explore Solutions <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              href="/platform"
+              className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#789487] bg-white px-5 text-sm font-semibold"
+            >
+              See How It Works <ArrowRight className="size-4" />
+            </Link>
           </div>
-
-          <div className="relative min-h-[380px] overflow-hidden lg:min-h-full">
-            <div className="absolute inset-y-0 left-0 z-10 hidden w-24 -translate-x-12 skew-x-[-12deg] bg-white lg:block" />
-            <SafeImage
-              src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=88&w=1800&auto=format&fit=crop"
-              alt="Refined hospitality interior managed through Luxe Haven Collective"
-              fill
-              priority
-              sizes="(min-width: 1024px) 58vw, 100vw"
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0b2118]/20 via-transparent to-transparent" />
-            <div className="absolute bottom-6 right-6 z-20 flex items-center gap-3 rounded-full border border-white/50 bg-white/90 px-4 py-2 text-xs font-semibold text-[#18352b] shadow-lg backdrop-blur">
-              Hospitality, measured better <ArrowRight aria-hidden size={14} />
+          <div className="mt-12">
+            <p className="text-[9px] font-bold uppercase tracking-[.15em] text-stone-500">
+              Trusted by operators worldwide
+            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-x-7 gap-y-3 text-sm font-semibold text-stone-700">
+              <span>airbnb</span>
+              <span className="font-serif italic">Vrbo</span>
+              <span>Booking.com</span>
+              <span>Google</span>
+              <span className="text-[#d09024]">★★★★★</span>
+              <span className="text-xs font-normal">
+                4.9/5 · from 2,000+ reviews
+              </span>
             </div>
           </div>
         </div>
-
-        <div className="grid gap-7 border-t border-[#dde1dd] bg-[#fbfbf8] px-7 py-7 sm:px-12 lg:grid-cols-[1fr_2.4fr_auto] lg:items-center lg:px-16">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#68716c]">
-            Trusted by operators worldwide
-          </p>
-          <div className="grid grid-cols-2 items-center gap-x-8 gap-y-4 text-center sm:grid-cols-4">
-            {trustMarks.map((mark) => (
-              <span
-                key={mark}
-                className="font-serif text-lg font-semibold text-[#46504a]"
-              >
-                {mark}
-              </span>
-            ))}
+        <div className="relative pb-10 lg:pb-16">
+          <div className="relative aspect-[1.48/1] overflow-hidden rounded-xl">
+            <SafeImage
+              src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=90&w=1800&auto=format&fit=crop"
+              alt="Premium coastal hospitality interior"
+              fill
+              priority
+              sizes="(min-width:1024px) 62vw,100vw"
+              className="object-cover"
+            />
           </div>
-          <div className="flex items-center gap-3 lg:justify-end">
-            <span className="text-lg tracking-[0.12em] text-[#d99018]">
-              ★★★★★
-            </span>
-            <span className="text-[10px] leading-4 text-[#68716c]">
-              <strong className="text-[#29322d]">4.9/5</strong> from 2,000+
-              reviews
-            </span>
+          <div className="absolute inset-x-8 bottom-0 grid grid-cols-2 overflow-hidden rounded-xl border bg-white shadow-xl sm:grid-cols-4">
+            {metrics.map(([value, label]) => (
+              <div
+                key={label}
+                className="border-r p-4 text-center last:border-0"
+              >
+                <p className="text-xl font-semibold">{value}</p>
+                <p className="mt-1 text-[10px] text-stone-500">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>

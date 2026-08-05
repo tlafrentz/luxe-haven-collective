@@ -1,325 +1,463 @@
 import Link from "next/link";
-
-import { CTASection } from "@/components/marketing/cta-section";
-import { FeaturedProperties } from "@/components/marketing/featured-properties";
+import {
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  Check,
+  Clock3,
+  FileText,
+  House,
+  Medal,
+  Settings,
+  Sparkles,
+  TrendingUp,
+  UserRoundCheck,
+} from "lucide-react";
 import { HeroSection } from "@/components/marketing/hero-section";
-import { SectionHeading } from "@/components/marketing/section-heading";
-import { ValueProps } from "@/components/marketing/value-props";
+import { SafeImage } from "@/components/shared/safe-image";
+import { getPublishedProperties, propertyImage } from "@/lib/properties";
 
-const serviceGroups = [
-  {
-    number: "01",
-    title: "Hospitality Management",
-    description:
-      "Thoughtful guest communication, turnover quality, maintenance coordination, and operating standards designed around a consistently elevated stay.",
-    services: [
+const goals = [
+  [
+    "Increase Revenue",
+    "Optimize pricing, listings, and performance to grow profits.",
+    "/solutions/revenue",
+    TrendingUp,
+  ],
+  [
+    "Improve Guest Experience",
+    "Deliver exceptional stays that drive five-star reviews.",
+    "/solutions/guest-experience",
+    Sparkles,
+  ],
+  [
+    "Launch a Property",
+    "Get your short-term rental market-ready with confidence.",
+    "/solutions/property-launch",
+    House,
+  ],
+  [
+    "Operate Better",
+    "Streamline operations, save time, and reduce owner stress.",
+    "/solutions/operations",
+    Clock3,
+  ],
+  [
+    "Invest Smarter",
+    "Make better decisions with data, trends, and market intelligence.",
+    "/solutions/investment",
+    BarChart3,
+  ],
+] as const;
+
+const solutions = [
+  [
+    "01",
+    "Hospitality Management",
+    "End-to-end operations including guest communication, turnovers, maintenance, and owner reporting.",
+    [
       "Guest communication",
       "Turnover coordination",
       "Maintenance workflows",
       "Owner communication",
     ],
-  },
-  {
-    number: "02",
-    title: "Revenue Optimization",
-    description:
-      "Conversion-focused listing strategy, pricing guidance, performance reviews, and market positioning that support stronger owner outcomes.",
-    services: [
+    "/solutions/operations",
+    UserRoundCheck,
+  ],
+  [
+    "02",
+    "Revenue Optimization",
+    "Data-driven pricing, listing strategy, and performance reviews that maximize revenue.",
+    [
       "Listing optimization",
       "Pricing strategy",
       "Performance reviews",
       "Direct booking readiness",
     ],
-  },
-  {
-    number: "03",
-    title: "Hospitality Consulting",
-    description:
-      "Practical guidance for owners launching, improving, or scaling short-term rental operations with greater clarity and confidence.",
-    services: [
+    "/solutions/revenue",
+    TrendingUp,
+  ],
+  [
+    "03",
+    "Hospitality Consulting",
+    "Expert guidance to launch, improve, or scale your short-term rental business.",
+    [
       "STR launch planning",
       "Operations systems",
       "Guest experience design",
       "SOP development",
     ],
-  },
-  {
-    number: "04",
-    title: "Professional Services",
-    description:
-      "Responsive Texas mobile and remote online notary support for eligible personal, business, and real estate documents.",
-    services: [
+    "/solutions/property-launch",
+    BookOpen,
+  ],
+  [
+    "04",
+    "Professional Services",
+    "Texas mobile and remote online notary services for personal, business, and real estate documents.",
+    [
       "Mobile notary",
       "Remote online notarization",
       "Business documents",
       "Real estate documents",
     ],
-  },
-];
+    "/notary",
+    FileText,
+  ],
+] as const;
 
 const process = [
-  {
-    number: "01",
-    title: "Discover",
-    description:
-      "We learn the property, market, owner goals, operational challenges, and guest experience you want to create.",
-  },
-  {
-    number: "02",
-    title: "Optimize",
-    description:
-      "We identify opportunities across positioning, pricing, presentation, systems, amenities, and the guest journey.",
-  },
-  {
-    number: "03",
-    title: "Operate",
-    description:
-      "We bring clarity and consistency to communication, turnovers, maintenance, reporting, and day-to-day execution.",
-  },
-  {
-    number: "04",
-    title: "Grow",
-    description:
-      "We review performance, refine the strategy, and help the hospitality business improve over time.",
-  },
-];
+  [
+    "01",
+    "Discover",
+    "We learn the property, market, and your goals to understand the full opportunity.",
+  ],
+  [
+    "02",
+    "Plan",
+    "We build a tailored strategy across pricing, positioning, systems, and guest experience.",
+  ],
+  [
+    "03",
+    "Operate",
+    "We execute with consistency and care across daily operations, communication, and reporting.",
+  ],
+  [
+    "04",
+    "Grow",
+    "We review performance, refine the strategy, and help your business improve over time.",
+  ],
+] as const;
 
 const insights = [
-  {
-    category: "Owner Playbook",
-    title: "STR Revenue Readiness Checklist",
-    description:
-      "A practical assessment for owners who want to understand where their property may be leaving revenue, reviews, or operational efficiency on the table.",
-    href: "/lead-magnet",
-    action: "Download the checklist",
-  },
-  {
-    category: "Revenue Optimization",
-    title: "Build a stronger listing before lowering your rate",
-    description:
-      "Learn how positioning, photography, amenities, and guest clarity can improve conversion before price becomes the only strategy.",
-    href: "/resources",
-    action: "Explore revenue insights",
-  },
-  {
-    category: "Hospitality Operations",
-    title: "Create consistency guests can feel",
-    description:
-      "Explore the systems, standards, and operating decisions that help create polished stays and stronger owner confidence.",
-    href: "/resources",
-    action: "Browse operational guidance",
-  },
-];
+  [
+    "Owner Playbook",
+    "STR Revenue Readiness Checklist",
+    "A practical assessment to find revenue, review, and operational opportunities.",
+    "/lead-magnet",
+    "Download the checklist",
+  ],
+  [
+    "Revenue Optimization",
+    "Build a stronger listing before lowering your rate",
+    "Learn how positioning, photography, amenities, and clarity improve conversion.",
+    "/resources",
+    "Explore insights",
+  ],
+  [
+    "Operations",
+    "Create consistency guests can feel",
+    "Explore the systems and standards that create polished stays and owner confidence.",
+    "/resources",
+    "Explore insights",
+  ],
+] as const;
 
-export default function HomePage() {
+export default async function HomePage() {
+  const properties = (await getPublishedProperties()).slice(0, 3);
   return (
-    <main>
+    <main className="bg-[#fffdf9] text-[#17231d]">
       <HeroSection />
 
-      <section className="border-b border-[#dce2dd] bg-[#f7f7f3] py-20 md:py-28">
-        <div className="container-shell grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
+      <section className="border-y border-[#e8e1d7] bg-[#faf6ef] py-12">
+        <div className="container-shell grid gap-8 lg:grid-cols-[1.15fr_2fr] lg:items-center">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent">
+            <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#a56b19]">
               Our philosophy
             </p>
-          </div>
-
-          <div>
-            <h2 className="max-w-4xl font-serif text-4xl leading-tight md:text-6xl">
-              Performance starts with a better operating system.
+            <h2 className="mt-4 max-w-md font-serif text-3xl leading-tight md:text-4xl">
+              What is Hospitality Performance Management?
             </h2>
-
-            <div className="mt-8 grid gap-6 text-lg leading-8 text-muted-foreground md:grid-cols-2">
-              <p>
-                Every home tells a story. Every stay shapes a memory. Every
-                operational decision influences an owner’s investment.
-              </p>
-
-              <p>
-                Luxe Haven Collective helps owners build hospitality businesses
-                that guests remember, teams can operate consistently, and
-                investments can grow with greater confidence.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <ValueProps />
-
-      <section className="bg-muted/40 py-20 md:py-28">
-        <div className="container-shell">
-          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
-            <SectionHeading
-              eyebrow="What we do"
-              title="A connected hospitality system for owners who care about the details."
-              description="From listing strategy to operational execution, every service is designed to strengthen the guest experience and support better owner decisions."
-            />
-
-            <p className="max-w-xl text-sm leading-7 text-muted-foreground lg:justify-self-end">
-              Engage Luxe Haven for focused consulting, hands-on operational
-              support, or a broader hospitality partnership shaped around your
-              property and goals.
+            <p className="mt-4 max-w-xl text-sm leading-6 text-stone-600">
+              It’s the connected system behind every exceptional stay and
+              successful hospitality business. We combine data, experience, and
+              operational discipline to help owners grow with confidence.
             </p>
           </div>
-
-          <div className="mt-12 grid gap-5 lg:grid-cols-2">
-            {serviceGroups.map((group) => (
-              <article
-                key={group.title}
-                className="rounded-[2rem] border border-border bg-background p-7 md:p-9"
-              >
-                <div className="flex items-start justify-between gap-5">
-                  <p className="text-sm font-semibold text-accent">
-                    {group.number}
-                  </p>
-
-                  <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    Luxe Haven
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              [
+                "Data-Driven",
+                "Real-time insights that improve revenue and operational performance.",
+                BarChart3,
+              ],
+              [
+                "Guest-Centered",
+                "Experiences designed to delight guests and earn five-star reviews.",
+                UserRoundCheck,
+              ],
+              [
+                "Operator-Built",
+                "Tools, playbooks, and systems created by real hospitality operators.",
+                Settings,
+              ],
+              [
+                "Results Focused",
+                "Clear strategies that drive measurable owner outcomes.",
+                Medal,
+              ],
+            ].map(([title, text, Icon]) => {
+              const Mark = Icon as typeof BarChart3;
+              return (
+                <article key={String(title)}>
+                  <span className="grid size-12 place-items-center rounded-full bg-[#f3eadb] text-[#174c3a]">
+                    <Mark className="size-6" />
                   </span>
-                </div>
-
-                <h3 className="mt-8 font-serif text-3xl md:text-4xl">
-                  {group.title}
-                </h3>
-
-                <p className="mt-4 max-w-xl leading-7 text-muted-foreground">
-                  {group.description}
-                </p>
-
-                <div className="mt-7 flex flex-wrap gap-2">
-                  {group.services.map((service) => (
-                    <span
-                      key={service}
-                      className="rounded-full bg-muted px-4 py-2 text-sm font-medium"
-                    >
-                      {service}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="mt-10 text-center">
-            <Link
-              href="/solutions"
-              className="inline-flex rounded-full border border-border bg-background px-6 py-3 text-sm font-semibold transition hover:bg-muted"
-            >
-              Explore All Solutions
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <FeaturedProperties />
-
-      <section className="border-y border-border bg-[#171412] py-20 text-white md:py-28">
-        <div className="container-shell">
-          <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent">
-                How we work
-              </p>
-
-              <h2 className="mt-5 max-w-xl font-serif text-4xl leading-tight md:text-6xl">
-                A clear path from opportunity to performance.
-              </h2>
-
-              <p className="mt-6 max-w-xl leading-8 text-white/60">
-                Our process keeps strategy connected to execution, so owners
-                understand what is changing, why it matters, and what happens
-                next.
-              </p>
-            </div>
-
-            <div className="grid gap-8 sm:grid-cols-2">
-              {process.map((step) => (
-                <article
-                  key={step.number}
-                  className="border-t border-white/15 pt-6"
-                >
-                  <p className="text-sm font-semibold text-accent">
-                    {step.number}
-                  </p>
-
-                  <h3 className="mt-4 font-serif text-3xl">{step.title}</h3>
-
-                  <p className="mt-4 text-sm leading-7 text-white/55">
-                    {step.description}
+                  <h3 className="mt-4 font-semibold">{String(title)}</h3>
+                  <p className="mt-2 text-xs leading-5 text-stone-600">
+                    {String(text)}
                   </p>
                 </article>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      <section className="py-20 md:py-28">
-        <div className="container-shell">
-          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <SectionHeading
-              eyebrow="Luxe Insights"
-              title="Practical intelligence for better hospitality decisions."
-              description="Owner playbooks, revenue guidance, operational systems, and market insights designed to make complex decisions easier."
-            />
+      <section className="py-14">
+        <div className="container-shell text-center">
+          <h2 className="font-serif text-4xl">What is your next goal?</h2>
+          <p className="mt-2 text-sm text-stone-600">
+            Choose what matters most right now. We’ll show you how we can help.
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {goals.map(([title, text, href, Icon]) => (
+              <Link
+                key={title}
+                href={href}
+                className="group rounded-xl border bg-white p-5 transition hover:-translate-y-1 hover:shadow-lg"
+              >
+                <Icon className="mx-auto size-9 text-[#174c3a]" />
+                <h3 className="mt-4 font-semibold">{title}</h3>
+                <p className="mt-3 text-xs leading-5 text-stone-600">{text}</p>
+                <span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-emerald-800">
+                  Learn more{" "}
+                  <ArrowRight className="size-3 transition group-hover:translate-x-1" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
+      <section className="border-y border-[#eee7dd] bg-[#faf7f1] py-14">
+        <div className="container-shell grid gap-8 lg:grid-cols-[.72fr_2.28fr]">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#a56b19]">
+              Our solutions
+            </p>
+            <h2 className="mt-4 font-serif text-4xl leading-tight">
+              A connected system for hospitality success.
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-stone-600">
+              From strategy to execution, every solution strengthens the guest
+              experience and owner performance.
+            </p>
             <Link
-              href="/resources"
-              className="shrink-0 text-sm font-semibold uppercase tracking-[0.18em] text-accent"
+              href="/solutions"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800"
             >
-              Browse Luxe Insights →
+              Explore all solutions <ArrowRight className="size-4" />
             </Link>
           </div>
-
-          <div className="mt-12 grid gap-5 lg:grid-cols-3">
-            {insights.map((insight, index) => (
-              <article
-                key={insight.title}
-                className={`flex min-h-[360px] flex-col rounded-[2rem] border p-7 ${
-                  index === 0
-                    ? "border-[#171412] bg-[#171412] text-white"
-                    : "border-border bg-card"
-                }`}
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {solutions.map(([number, title, text, bullets, href, Icon]) => (
+              <Link
+                key={title}
+                href={href}
+                className="rounded-xl border bg-white p-5 transition hover:shadow-lg"
               >
-                <p
-                  className={`text-xs font-semibold uppercase tracking-[0.22em] ${
-                    index === 0 ? "text-accent" : "text-muted-foreground"
-                  }`}
-                >
-                  {insight.category}
-                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold">{number}</span>
+                  <Icon className="size-6" />
+                </div>
+                <h3 className="mt-6 text-lg font-semibold">{title}</h3>
+                <p className="mt-3 text-xs leading-5 text-stone-600">{text}</p>
+                <ul className="mt-4 space-y-2">
+                  {bullets.map((bullet) => (
+                    <li key={bullet} className="flex gap-2 text-xs">
+                      <Check className="mt-0.5 size-3 shrink-0 text-emerald-700" />
+                      {bullet}
+                    </li>
+                  ))}
+                </ul>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
-                <h3 className="mt-6 font-serif text-3xl leading-tight">
-                  {insight.title}
-                </h3>
-
-                <p
-                  className={`mt-5 text-sm leading-7 ${
-                    index === 0 ? "text-white/60" : "text-muted-foreground"
-                  }`}
-                >
-                  {insight.description}
-                </p>
-
+      <section className="py-14">
+        <div className="container-shell grid gap-8 lg:grid-cols-[.65fr_2.35fr]">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#a56b19]">
+              Featured properties
+            </p>
+            <h2 className="mt-4 font-serif text-4xl leading-tight">
+              Thoughtfully designed.
+              <br />
+              Expertly operated.
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-stone-600">
+              See how our operational standards and design come together.
+            </p>
+            <Link
+              href="/stays/mesa-downtown-retreat"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800"
+            >
+              View all properties <ArrowRight className="size-4" />
+            </Link>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {properties.length ? (
+              properties.map((property) => (
                 <Link
-                  href={insight.href}
-                  className={`mt-auto pt-8 text-sm font-semibold ${
-                    index === 0 ? "text-white" : "text-foreground"
-                  }`}
+                  key={property.id}
+                  href={`/stays/${property.slug}`}
+                  className="overflow-hidden rounded-xl border bg-white transition hover:shadow-lg"
                 >
-                  {insight.action} →
+                  <div className="relative aspect-[16/10]">
+                    <SafeImage
+                      src={propertyImage(property)}
+                      alt={property.name}
+                      fill
+                      className="object-cover"
+                      sizes="(min-width:1024px) 25vw,100vw"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <p className="text-[10px] uppercase text-stone-500">
+                      {property.city}, {property.state}
+                    </p>
+                    <h3 className="mt-1 font-semibold">{property.name}</h3>
+                    <p className="mt-1 text-xs text-stone-600">
+                      Sleeps {property.max_guests} · {property.bedrooms} bed ·{" "}
+                      {property.bathrooms} bath
+                    </p>
+                    <p className="mt-3 font-semibold">
+                      ${Number(property.nightly_rate).toLocaleString()}
+                      <span className="text-xs font-normal text-stone-500">
+                        {" "}
+                        /night
+                      </span>
+                    </p>
+                  </div>
                 </Link>
+              ))
+            ) : (
+              <div className="col-span-full rounded-xl border p-8 text-sm text-stone-600">
+                Published properties will appear here when available.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#06452f] py-14 text-white">
+        <div className="container-shell grid gap-10 lg:grid-cols-[.7fr_2.3fr]">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#d5a34b]">
+              Our process
+            </p>
+            <h2 className="mt-4 font-serif text-4xl leading-tight">
+              A clear path from hospitality to performance.
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-white/70">
+              Our proven process keeps strategy connected to execution—so owners
+              know what’s changing, why it matters, and what happens next.
+            </p>
+            <Link
+              href="/about"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold"
+            >
+              Learn more about our process <ArrowRight className="size-4" />
+            </Link>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            {process.map(([number, title, text]) => (
+              <article
+                key={number}
+                className="relative border-t border-[#d5a34b]/60 pt-6"
+              >
+                <span className="absolute -top-5 left-0 grid size-10 place-items-center rounded-full bg-[#c58b2e] font-semibold">
+                  {number}
+                </span>
+                <h3 className="mt-4 font-semibold">{title}</h3>
+                <p className="mt-3 text-xs leading-5 text-white/70">{text}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <CTASection
-        title="Ready to build a better hospitality business?"
-        description="Let’s identify the clearest opportunities to strengthen your property, guest experience, operations, and owner performance."
-      />
+      <section className="py-14">
+        <div className="container-shell grid gap-8 lg:grid-cols-[.7fr_2.3fr]">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#a56b19]">
+              Luxe insights
+            </p>
+            <h2 className="mt-4 font-serif text-4xl leading-tight">
+              Practical intelligence for better hospitality decisions.
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-stone-600">
+              Actionable guides, playbooks, and insights to help you operate
+              smarter and grow with confidence.
+            </p>
+            <Link
+              href="/resources"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800"
+            >
+              Browse all insights <ArrowRight className="size-4" />
+            </Link>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {insights.map(([category, title, text, href, action]) => (
+              <Link
+                key={title}
+                href={href}
+                className="flex min-h-64 flex-col rounded-xl border bg-white p-5 transition hover:shadow-lg"
+              >
+                <span className="w-fit rounded-full bg-stone-100 px-3 py-1 text-[10px] uppercase">
+                  {category}
+                </span>
+                <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+                <p className="mt-3 text-xs leading-5 text-stone-600">{text}</p>
+                <span className="mt-auto pt-6 text-xs font-semibold text-emerald-800">
+                  {action} →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#063b2b] py-10 text-white">
+        <div className="container-shell flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#d5a34b]">
+              Ready to get started?
+            </p>
+            <h2 className="mt-2 font-serif text-4xl">What’s your next move?</h2>
+            <p className="mt-2 max-w-xl text-sm text-white/70">
+              Let’s identify the clearest opportunities to strengthen your
+              property, guest experience, operations, and performance.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/contact"
+              className="rounded-lg border border-[#b98b3d] px-6 py-4 font-semibold"
+            >
+              Talk with an Expert
+            </Link>
+            <Link
+              href="/lead-magnet"
+              className="rounded-lg border border-[#b98b3d] px-6 py-4 font-semibold"
+            >
+              Download Owner Checklist
+            </Link>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }

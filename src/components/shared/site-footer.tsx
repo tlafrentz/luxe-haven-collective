@@ -1,109 +1,127 @@
 import Link from "next/link";
 
-const exploreLinks = [
-  ["Stay With Us", "/stays/mesa-downtown-retreat"],
-  ["Solutions", "/solutions"],
-  ["Owners", "/owners"],
-  ["Resources", "/resources"],
-  ["FAQ", "/faq"],
-];
-
-const serviceLinks = [
-  ["Guest Experience", "/solutions/guest-experience"],
-  ["Investment", "/solutions/investment"],
-  ["Property Launch", "/solutions/property-launch"],
-  ["HPM Platform", "/platform"],
-  ["Co-Hosting", "/owners"],
-  ["Texas Notary", "/notary"],
-  ["Contact", "/contact"],
-];
+const groups = [
+  [
+    "Solutions",
+    [
+      ["Hospitality Management", "/solutions/operations"],
+      ["Revenue Optimization", "/solutions/revenue"],
+      ["Hospitality Consulting", "/solutions/property-launch"],
+      ["Professional Services", "/notary"],
+      ["HPM Platform", "/platform"],
+      ["Co-Hosting", "/owners"],
+    ],
+  ],
+  [
+    "Platform",
+    [
+      ["Hospitality Performance Platform", "/platform"],
+      ["Guidebook Studio", "/solutions/guest-experience"],
+      ["Furnishing Studio", "/solutions/property-launch"],
+      ["Investment Intelligence", "/solutions/investment"],
+      [
+        "Executive Intelligence",
+        "/solutions/hospitality-performance-management",
+      ],
+    ],
+  ],
+  [
+    "Resources",
+    [
+      ["Insights", "/resources"],
+      ["Playbooks", "/resources"],
+      ["Templates", "/resources"],
+      ["Market Reports", "/resources"],
+      ["FAQ", "/faq"],
+    ],
+  ],
+  [
+    "About",
+    [
+      ["About Us", "/about"],
+      ["Our Approach", "/about"],
+      ["Contact", "/contact"],
+    ],
+  ],
+] as const;
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border bg-[#171412] text-primary-foreground">
-      <div className="container-shell grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+    <footer className="border-t bg-white">
+      <div className="container-shell grid gap-10 py-12 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(4,1fr)_1.15fr]">
         <div>
-          <p className="text-lg font-semibold uppercase tracking-[0.28em]">
-            Luxe Haven
-          </p>
-
-          <p className="mt-4 max-w-md text-sm leading-7 text-primary-foreground/70">
+          <Link href="/" className="font-serif text-xl text-emerald-900">
+            LH{" "}
+            <span className="ml-2 text-xs font-sans font-bold uppercase tracking-[.15em]">
+              Luxe Haven Collective
+            </span>
+          </Link>
+          <p className="mt-5 max-w-sm text-xs leading-6 text-stone-600">
             Boutique hospitality, short-term rental performance systems, and
             professional Texas notary services—delivered with care,
             responsiveness, and modern design.
           </p>
-
-          <Link
-            href="/contact"
-            className="mt-6 inline-flex rounded-full border border-white/15 px-5 py-3 text-sm font-semibold transition hover:bg-white/10"
-          >
-            Start a Conversation
-          </Link>
-        </div>
-
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">
-            Explore
-          </p>
-
-          <div className="mt-4 grid gap-3 text-sm text-primary-foreground/70">
-            {exploreLinks.map(([label, href]) => (
-              <Link
-                key={href}
-                href={href}
-                className="hover:text-primary-foreground"
-              >
-                {label}
-              </Link>
-            ))}
+          <div className="mt-5 flex gap-4 text-xs">
+            <a href="https://www.facebook.com" target="_blank" rel="noreferrer">
+              Facebook
+            </a>
+            <a
+              href="https://www.instagram.com"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Instagram
+            </a>
+            <a href="https://www.linkedin.com" target="_blank" rel="noreferrer">
+              LinkedIn
+            </a>
           </div>
         </div>
-
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">
-            Services
-          </p>
-
-          <div className="mt-4 grid gap-3 text-sm text-primary-foreground/70">
-            {serviceLinks.map(([label, href]) => (
-              <Link
-                key={`${label}-${href}`}
-                href={href}
-                className="hover:text-primary-foreground"
-              >
-                {label}
-              </Link>
-            ))}
+        {groups.map(([title, links]) => (
+          <div key={title}>
+            <p className="text-xs font-bold uppercase tracking-[.12em]">
+              {title}
+            </p>
+            <div className="mt-4 grid gap-2.5">
+              {links.map(([label, href]) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="text-xs text-stone-600 hover:text-emerald-800"
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">
-            For Owners
+        ))}
+        <div className="rounded-xl border p-5">
+          <p className="text-xs font-bold uppercase tracking-[.12em]">
+            For owners
           </p>
-
-          <p className="mt-4 text-sm leading-7 text-primary-foreground/70">
+          <p className="mt-3 text-xs leading-5 text-stone-600">
             Discover where your property may be leaving revenue, reviews, or
             repeat stays on the table.
           </p>
-
           <Link
             href="/lead-magnet"
-            className="mt-5 inline-flex text-sm font-semibold text-primary-foreground underline decoration-accent underline-offset-4"
+            className="mt-5 inline-flex text-xs font-semibold text-emerald-800"
           >
-            Get the free checklist
+            Get the free checklist →
           </Link>
         </div>
       </div>
-
-      <div className="border-t border-white/10 py-6">
-        <div className="container-shell flex flex-col gap-3 text-xs text-primary-foreground/50 sm:flex-row sm:items-center sm:justify-between">
+      <div className="border-t py-5">
+        <div className="container-shell flex flex-wrap justify-between gap-3 text-[10px] text-stone-500">
           <p>
             © {new Date().getFullYear()} Luxe Haven Collective. All rights
             reserved.
           </p>
-
-          <p>Hospitality consulting and Texas notary services.</p>
+          <div className="flex gap-5">
+            <Link href="/contact">Privacy inquiries</Link>
+            <Link href="/contact">Terms of Service</Link>
+            <Link href="/notary">Notary Disclaimer</Link>
+          </div>
         </div>
       </div>
     </footer>

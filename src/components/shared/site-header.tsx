@@ -4,8 +4,9 @@ import { getSessionProfile } from "@/lib/auth/session";
 
 const nav = [
   { href: "/solutions", label: "Solutions" },
+  { href: "/platform", label: "Platform" },
   { href: "/resources", label: "Resources" },
-  { href: "/stays/mesa-downtown-retreat", label: "Stay With Us" },
+  { href: "/stays/mesa-downtown-retreat", label: "Properties" },
   { href: "/about", label: "About" },
   { href: "/pricing", label: "Pricing" },
 ];
@@ -30,7 +31,7 @@ export async function SiteHeader() {
         </Link>
         <nav
           aria-label="Primary navigation"
-          className="hidden items-center gap-8 text-sm font-medium text-[#4f5953] lg:flex"
+          className="hidden items-center gap-7 text-sm font-medium text-[#26342e] lg:flex"
         >
           {nav.map((item) => (
             <Link
@@ -42,11 +43,11 @@ export async function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <div className="hidden items-center gap-6 md:flex">
+        <div className="hidden items-center gap-3 md:flex">
           {!user ? (
             <Link
               href="/login"
-              className="text-sm font-semibold text-[#34423b] transition hover:text-[#074e38]"
+              className="inline-flex min-h-11 items-center rounded-md border border-[#6f8b7f] px-5 text-sm font-semibold text-[#34423b] transition hover:bg-[#f1f5f2]"
             >
               Sign in
             </Link>
@@ -55,7 +56,7 @@ export async function SiteHeader() {
             href={user ? portalHref : "/get-started"}
             className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#074e38] px-5 text-sm font-semibold text-white transition hover:bg-[#053d2c]"
           >
-            {user ? "Open Portal" : "Get Started"}
+            {user ? "Open Portal" : "Talk with an Expert"}
             <ArrowUpRight aria-hidden size={15} />
           </Link>
         </div>
