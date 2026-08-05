@@ -40,11 +40,15 @@ export async function SiteHeader() {
             item.label === "Resources" ||
             item.label === "Platform" ||
             item.label === "Solutions" ? (
-              <details key={item.href} className="group relative">
-                <summary className="cursor-pointer list-none transition hover:text-[#074e38]">
-                  {item.label}⌄
-                </summary>
-                <div className="absolute left-1/2 top-8 w-56 -translate-x-1/2 rounded-xl border bg-white p-2 shadow-xl">
+              <div key={item.href} className="group relative py-2">
+                <Link
+                  href={item.href}
+                  className="transition hover:text-[#074e38] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
+                >
+                  {item.label}
+                  <span aria-hidden>⌄</span>
+                </Link>
+                <div className="pointer-events-none invisible absolute left-1/2 top-full w-60 -translate-x-1/2 translate-y-1 rounded-xl border bg-white p-2 opacity-0 shadow-xl transition group-hover:pointer-events-auto group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
                   {(item.label === "Resources"
                     ? resourceLinks
                     : item.label === "Platform"
@@ -60,7 +64,7 @@ export async function SiteHeader() {
                     </Link>
                   ))}
                 </div>
-              </details>
+              </div>
             ) : (
               <Link
                 key={item.href}
