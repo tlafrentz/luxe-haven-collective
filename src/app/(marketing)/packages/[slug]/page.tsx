@@ -1,1 +1,3 @@
-export { default, dynamic } from "../../store/[slug]/page";
+export const dynamic = "force-dynamic";
+
+export { default } from "../../store/[slug]/page";
