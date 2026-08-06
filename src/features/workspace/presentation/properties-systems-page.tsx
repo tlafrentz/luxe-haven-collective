@@ -13,13 +13,13 @@ const badge = (status: string) => (
   </span>
 );
 
-export function WorkspacePropertiesPage({ overview, canManage }: Readonly<{
-  overview: PropertiesAndSystemsOverview; canManage: boolean;
+export function WorkspacePropertiesPage({ overview, canManage, title = "Properties", description = "Configure which canonical hospitality assets belong to this workspace. Day-to-day guest operations remain in Operational Properties." }: Readonly<{
+  overview: PropertiesAndSystemsOverview; canManage: boolean; title?: string; description?: string;
 }>) {
   return (
     <WorkspacePage width="wide">
-      <WorkspaceHeader eyebrow="Workspace configuration" title="Properties"
-        description="Configure which canonical hospitality assets belong to this workspace. Day-to-day guest operations remain in Operational Properties." />
+      <WorkspaceHeader eyebrow="Workspace configuration" title={title}
+        description={description} />
       <WorkspaceContent>
         <WorkspaceGrid>
           <Summary label="Configured" value={overview.health.propertiesConfigured} />

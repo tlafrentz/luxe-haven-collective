@@ -7,7 +7,7 @@ import { solutionLinks } from "@/lib/solution-journeys";
 
 const nav = [
   { href: "/solutions", label: "Solutions" },
-  { href: "/platform", label: "Platform" },
+  { href: "/performance", label: "Platform" },
   { href: "/resources", label: "Resources" },
   { href: "/stays", label: "Properties" },
   { href: "/about", label: "About" },

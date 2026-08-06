@@ -1,4 +1,8 @@
+import { formatMonthlyPrice, hpmTierMonthlyPrices } from "./pricing/hpm-tier-prices";
+
 export const platformLinks = [
+  ["Platform Overview", "/performance/overview"],
+  ["Compare Plans", "/performance/plans"],
   ["HPM Platform", "/platform/hpm/journey"],
   ["Guidebook Studio", "/platform/guidebook-studio/journey"],
   ["Furnishing Studio", "/platform/furnishing-studio/journey"],
@@ -169,18 +173,18 @@ export const platformJourneys: Record<string, Journey> = {
     packages: [
       {
         name: "Starter",
-        price: "$99 / month",
+        price: formatMonthlyPrice(hpmTierMonthlyPrices.starter),
         description: "For individual owners.",
       },
       {
         name: "Professional",
-        price: "$249 / month",
+        price: formatMonthlyPrice(hpmTierMonthlyPrices.professional),
         description: "For growing operators.",
         popular: true,
       },
       {
         name: "Portfolio",
-        price: "$599 / month",
+        price: formatMonthlyPrice(hpmTierMonthlyPrices.portfolio),
         description: "For enterprise teams.",
       },
     ],

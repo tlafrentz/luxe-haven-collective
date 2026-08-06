@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getPublishedProperties } from "@/lib/properties";
+import { plans } from "@/lib/plans";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl =
@@ -26,6 +27,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/faq",
     "/contact",
     "/lead-magnet",
+    "/get-started",
+    "/performance",
+    "/performance/overview",
+    "/performance/plans",
+    ...plans.map((plan) => `/performance/plans/${plan.slug}`),
     "/platform/hpm/journey",
     "/platform/guidebook-studio/journey",
     "/platform/furnishing-studio/journey",

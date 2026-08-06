@@ -7,7 +7,7 @@ export const roleHome: Record<UserRole, string> = {
   cleaner: "/dashboard"
 };
 
-export const protectedRoutes = ["/dashboard", "/properties", "/bookings", "/messages", "/reports", "/guidebooks", "/admin"];
+export const protectedRoutes = ["/dashboard", "/properties", "/bookings", "/messages", "/reports", "/guidebooks", "/admin", "/commerce/review", "/commerce/checkout", "/commerce/complete", "/commerce/welcome", "/commerce/activate"];
 export const adminRoutes = ["/admin"];
 
 export function isProtectedRoute(pathname: string) {
