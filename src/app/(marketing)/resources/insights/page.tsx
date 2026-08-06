@@ -37,7 +37,7 @@ const cards = [
     title: "Stop Guessing: Use Data to Make Better Decisions",
     description:
       "Turn signals into priorities without creating another dashboard to monitor.",
-    href: "/platform",
+    href: "/performance/overview",
     action: "See the platform",
   },
   {

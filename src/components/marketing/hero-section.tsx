@@ -37,7 +37,7 @@ export function HeroSection() {
               Explore Solutions <ArrowRight className="size-4" />
             </Link>
             <Link
-              href="/platform"
+              href="/performance"
               className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#789487] bg-white px-5 text-sm font-semibold"
             >
               See How It Works <ArrowRight className="size-4" />

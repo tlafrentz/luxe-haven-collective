@@ -44,7 +44,7 @@ export default function AboutPage() {
                 Our Approach →
               </Link>
               <Link
-                href="/platform"
+                href="/performance"
                 className="rounded-md border px-5 py-3 text-sm font-semibold"
               >
                 Explore the Platform →
@@ -164,7 +164,7 @@ export default function AboutPage() {
               return (
                 <Link
                   key={String(label)}
-                  href="/platform"
+                  href="/performance/overview"
                   className="text-center"
                 >
                   <Mark className="mx-auto size-6" />

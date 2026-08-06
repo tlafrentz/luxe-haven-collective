@@ -16,7 +16,13 @@ import { SolutionsNavigation } from "./solutions-navigation";
 export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
   const solution = solutionJourneys[slug];
   const journey = platformJourneys[solution.journey];
-  const start = `/platform/${solution.journey}/select-package`;
+  const isHpm = solution.journey === "hpm";
+  const start = isHpm
+    ? "/performance/plans"
+    : `/platform/${solution.journey}/select-package`;
+  const howItWorksHref = isHpm
+    ? "/performance/overview"
+    : `/platform/${solution.journey}/journey`;
   return (
     <main className="bg-[#fffdf9]">
       <section className="border-b">
@@ -39,7 +45,7 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
                 {solution.packageLabel} →
               </Link>
               <Link
-                href={`/platform/${solution.journey}/journey`}
+                href={howItWorksHref}
                 className="rounded-md border px-6 py-3 text-sm font-semibold"
               >
                 How it works →
@@ -132,7 +138,11 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
                   <p className="mt-2 text-xl font-bold">{p.price}</p>
                   <p className="mt-3 text-sm text-stone-600">{p.description}</p>
                   <Link
-                    href={`/platform/${solution.journey}/package-details?package=${encodeURIComponent(p.name)}`}
+                    href={
+                      isHpm
+                        ? `/performance/plans/${p.name.toLowerCase()}`
+                        : `/platform/${solution.journey}/package-details?package=${encodeURIComponent(p.name)}`
+                    }
                     className="mt-6 inline-flex text-sm font-semibold text-emerald-800"
                   >
                     Learn more →
@@ -154,7 +164,7 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
               Compare packages or use our guided recommendation.
             </p>
             <Link
-              href={start}
+              href="/get-started"
               className="mt-6 inline-flex rounded-md bg-white px-5 py-3 text-sm font-semibold text-emerald-950"
             >
               Find My Best Fit →
@@ -180,19 +190,31 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
             From selection to activation in clear steps.
           </h2>
           <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              "Select package",
-              "Package details",
-              "Customize",
-              "Review order",
-              "Secure checkout",
-              "Confirmation",
-              "Activation",
-              "Your workspace",
-            ].map((x, i) => (
+            {(isHpm
+              ? [
+                  ["Compare plans", "/performance/plans"],
+                  ["Plan details", "/performance/plans/professional"],
+                  ["Configure workspace", "/commerce/configure-workspace?plan=professional&billing=monthly"],
+                  ["Create account", "/commerce/create-account?plan=professional&billing=monthly"],
+                  ["Review & checkout", "/commerce/review?plan=professional&billing=monthly"],
+                  ["Welcome", "/commerce/welcome"],
+                  ["Begin activation", "/commerce/activate"],
+                  ["Your workspace", "/dashboard/setup"],
+                ]
+              : [
+                  ["Select package", `/platform/${solution.journey}/select-package`],
+                  ["Package details", `/platform/${solution.journey}/package-details`],
+                  ["Customize", `/platform/${solution.journey}/customize`],
+                  ["Review order", `/platform/${solution.journey}/review`],
+                  ["Secure checkout", `/platform/${solution.journey}/checkout`],
+                  ["Confirmation", `/platform/${solution.journey}/confirmation`],
+                  ["Activation", `/platform/${solution.journey}/confirmation`],
+                  ["Your workspace", `/platform/${solution.journey}/confirmation`],
+                ]
+            ).map(([x, href], i) => (
               <Link
                 key={x}
-                href={`/platform/${solution.journey}/${i === 0 ? "select-package" : i === 1 ? "package-details" : i === 2 ? "customize" : i === 3 ? "review" : i === 4 ? "checkout" : "confirmation"}`}
+                href={href}
                 className="rounded-xl border bg-white p-4"
               >
                 <span className="text-xs text-[#a56b19]">0{i + 1}</span>

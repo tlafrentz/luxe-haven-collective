@@ -3,7 +3,6 @@ import { formatMonthlyPrice, hpmTierMonthlyPrices } from "./pricing/hpm-tier-pri
 export const platformLinks = [
   ["Platform Overview", "/performance/overview"],
   ["Compare Plans", "/performance/plans"],
-  ["HPM Platform", "/platform/hpm/journey"],
   ["Guidebook Studio", "/platform/guidebook-studio/journey"],
   ["Furnishing Studio", "/platform/furnishing-studio/journey"],
   ["Investment Intelligence", "/platform/investment-intelligence/journey"],
