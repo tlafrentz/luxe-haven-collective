@@ -3,53 +3,28 @@ import {
   BarChart3,
   BookOpen,
   CircleHelp,
-  FileText,
+  LayoutTemplate,
   Lightbulb,
-  MapPin,
   Search,
-  ShieldCheck,
-  Sparkles,
-  Target,
 } from "lucide-react";
 import { SafeImage } from "@/components/shared/safe-image";
 import { mesaAirbnbImages } from "@/lib/mesa-airbnb";
 import { resourceLinks } from "@/components/marketing/resources-navigation";
+import { NewsletterSignupForm } from "@/components/marketing/newsletter-signup-form";
+import { insightsCards } from "@/lib/insights";
 
-const icons = [BookOpen, Lightbulb, FileText, FileText, BarChart3, CircleHelp];
-const cards = [
-  {
-    eyebrow: "Luxe Haven Press",
-    title: "Hospitality Performance Outlook",
-    description:
-      "Key signals shaping independent hospitality performance and owner decisions.",
-    href: "/resources/market-reports",
-    meta: "Market perspective",
-  },
-  {
-    eyebrow: "Insights",
-    title: "Pricing for Profit, Not Just Occupancy",
-    description:
-      "How to protect rate quality while staying competitive in changing demand.",
-    href: "/resources/insights",
-    meta: "6 min read",
-  },
-  {
-    eyebrow: "Playbook",
-    title: "The 5-Star Guest Experience Playbook",
-    description:
-      "A practical path to clearer communication and memorable guest stays.",
-    href: "/resources/playbooks",
-    meta: "12 min read",
-  },
-  {
-    eyebrow: "Template",
-    title: "Owner Monthly Performance Report",
-    description:
-      "Review the measures, decisions, and actions that matter most.",
-    href: "/resources/templates",
-    meta: "Reusable template",
-  },
-] as const;
+const icons = [BookOpen, Lightbulb, BookOpen, LayoutTemplate, BarChart3, CircleHelp];
+
+const featuredTitles = [
+  "How to Price for Events Without Losing Weekday Bookings",
+  "The Small Touches That Drive 5-Star Reviews",
+  "Turnover Checklists That Protect Quality",
+  "What Investors Look for in Short-Term Rentals",
+];
+
+const cards = featuredTitles
+  .map((title) => insightsCards.find((card) => card.title === title))
+  .filter((card): card is (typeof insightsCards)[number] => Boolean(card));
 
 export default function ResourcesPage() {
   return (
@@ -119,12 +94,12 @@ export default function ResourcesPage() {
       <section className="py-14">
         <div className="container-shell">
           <div className="flex items-center justify-between">
-            <h2 className="font-serif text-3xl">Featured publications</h2>
+            <h2 className="font-serif text-3xl">Featured this week</h2>
             <Link
               href="/resources/insights"
               className="text-sm font-semibold text-emerald-800"
             >
-              View all →
+              View all Insights →
             </Link>
           </div>
           <div className="mt-7 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
@@ -164,42 +139,16 @@ export default function ResourcesPage() {
         </div>
       </section>
       <section className="pb-14">
-        <div className="container-shell grid gap-5 rounded-xl bg-emerald-950 p-7 text-white md:grid-cols-4">
-          {[
-            [
-              ShieldCheck,
-              "Curated by experts",
-              "Practical guidance from hospitality operators and analysts.",
-            ],
-            [
-              Target,
-              "Actionable content",
-              "Tools and insights you can implement right away.",
-            ],
-            [
-              Sparkles,
-              "Built for owners",
-              "Everything needed to run smarter, not harder.",
-            ],
-            [
-              MapPin,
-              "Always up to date",
-              "Fresh perspectives on markets, operations, and guests.",
-            ],
-          ].map(([Icon, title, text]) => {
-            const Mark = Icon as typeof ShieldCheck;
-            return (
-              <div key={String(title)} className="flex gap-4">
-                <Mark className="size-7 shrink-0 text-[#d6a04c]" />
-                <div>
-                  <h3 className="font-semibold">{String(title)}</h3>
-                  <p className="mt-1 text-xs leading-5 text-white/65">
-                    {String(text)}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+        <div className="container-shell flex flex-wrap items-center justify-between gap-6 rounded-xl bg-emerald-950 p-8 text-white">
+          <div>
+            <h2 className="font-serif text-3xl">Stay Informed</h2>
+            <p className="mt-2 max-w-md text-sm leading-6 text-white/70">
+              Get fresh insights, playbooks, and market reports delivered to your inbox.
+            </p>
+          </div>
+          <div className="w-full max-w-md">
+            <NewsletterSignupForm />
+          </div>
         </div>
       </section>
     </main>

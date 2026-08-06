@@ -10,6 +10,8 @@ type Card = {
   href: string;
   action: string;
   image?: string;
+  category?: string;
+  meta?: string;
 };
 export function ResourcePage({
   active,
@@ -17,6 +19,10 @@ export function ResourcePage({
   description,
   cards,
   categories = [],
+  activeCategory,
+  basePath,
+  hideBottomBand = false,
+  searchQuery,
 }: {
   active: string;
   eyebrow: string;
@@ -24,11 +30,16 @@ export function ResourcePage({
   description: string;
   cards: Card[];
   categories?: string[];
+  activeCategory?: string;
+  basePath?: string;
+  hideBottomBand?: boolean;
+  searchQuery?: string;
 }) {
   const playbooks = active === "Playbooks";
   const templates = active === "Templates";
   const markets = active === "Market Reports";
   const insights = active === "Insights";
+  const resolvedActiveCategory = activeCategory ?? categories[0];
   return (
     <main className="bg-[#fffdf9]">
       <section className="border-b py-10">
@@ -43,18 +54,27 @@ export function ResourcePage({
             {description}
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-2">
-            {categories.map((category, index) => (
-              <span
-                key={category}
-                className={
-                  index === 0
-                    ? "rounded-md bg-emerald-950 px-4 py-2 text-xs text-white"
-                    : "rounded-md border bg-white px-4 py-2 text-xs text-stone-600"
-                }
-              >
-                {category}
-              </span>
-            ))}
+            {categories.map((category, index) => {
+              const isActive = category === resolvedActiveCategory;
+              const href =
+                index === 0
+                  ? (basePath ?? "#")
+                  : `${basePath ?? "#"}?category=${encodeURIComponent(category)}`;
+              return (
+                <Link
+                  key={category}
+                  href={href}
+                  aria-current={isActive ? "true" : undefined}
+                  className={
+                    isActive
+                      ? "rounded-md bg-emerald-950 px-4 py-2 text-xs text-white"
+                      : "rounded-md border bg-white px-4 py-2 text-xs text-stone-600 hover:border-stone-400"
+                  }
+                >
+                  {category}
+                </Link>
+              );
+            })}
             {insights ? (
               <form
                 action="/resources/insights"
@@ -65,6 +85,7 @@ export function ResourcePage({
                   name="q"
                   aria-label="Search insights"
                   placeholder="Search insights"
+                  defaultValue={searchQuery}
                   className="rounded-md border bg-white py-2 pl-9 pr-3 text-xs"
                 />
               </form>
@@ -138,6 +159,9 @@ export function ResourcePage({
                 <p className="mt-3 flex-1 text-xs leading-5 text-stone-600">
                   {card.description}
                 </p>
+                {insights && card.meta ? (
+                  <p className="mt-3 text-[11px] text-stone-500">{card.meta}</p>
+                ) : null}
                 <Link
                   href={card.href}
                   className="mt-5 inline-flex text-xs font-semibold text-emerald-800"
@@ -149,31 +173,33 @@ export function ResourcePage({
           ))}
         </div>
       </section>
-      <section className="pb-14">
-        <div className="container-shell flex flex-wrap items-center justify-between gap-5 rounded-xl border bg-[#f8f4eb] p-7">
-          <div>
-            <BookOpen className="size-6 text-emerald-800" />
-            <h2 className="mt-3 font-serif text-2xl">
-              {markets
-                ? "Want a market that’s not listed?"
-                : templates
-                  ? "Need a custom template?"
-                  : playbooks
-                    ? "Need something custom?"
-                    : "Looking for a specific insight?"}
-            </h2>
-            <p className="mt-1 text-sm text-stone-600">
-              Tell us what you need and we’ll help identify the right resource.
-            </p>
+      {hideBottomBand ? null : (
+        <section className="pb-14">
+          <div className="container-shell flex flex-wrap items-center justify-between gap-5 rounded-xl border bg-[#f8f4eb] p-7">
+            <div>
+              <BookOpen className="size-6 text-emerald-800" />
+              <h2 className="mt-3 font-serif text-2xl">
+                {markets
+                  ? "Want a market that’s not listed?"
+                  : templates
+                    ? "Need a custom template?"
+                    : playbooks
+                      ? "Need something custom?"
+                      : "Looking for a specific insight?"}
+              </h2>
+              <p className="mt-1 text-sm text-stone-600">
+                Tell us what you need and we’ll help identify the right resource.
+              </p>
+            </div>
+            <Link
+              href="/contact?service=general"
+              className="rounded-md bg-emerald-950 px-5 py-3 text-sm font-semibold text-white"
+            >
+              Contact us →
+            </Link>
           </div>
-          <Link
-            href="/contact?service=general"
-            className="rounded-md bg-emerald-950 px-5 py-3 text-sm font-semibold text-white"
-          >
-            Contact us →
-          </Link>
-        </div>
-      </section>
+        </section>
+      )}
     </main>
   );
 }

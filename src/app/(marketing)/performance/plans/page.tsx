@@ -22,7 +22,7 @@ export default async function ComparePlansPage({
   const billing: BillingCycle = params.billing === "annual" ? "annual" : "monthly";
   const selectedPlan = params.plan;
   const pricingFaqs = faqs.filter(
-    (faq) => faq.category === "pricing" || faq.category === "billing",
+    (faq) => faq.audience === "owners" && faq.category === "revenue-pricing",
   );
 
   return (

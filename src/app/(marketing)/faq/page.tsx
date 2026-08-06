@@ -1,31 +1,51 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Building2, House, Landmark, Users } from "lucide-react";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
-import { faqCategories, faqs, type FaqCategory } from "@/lib/faqs";
+import {
+  faqAudiences,
+  faqCategoriesByAudience,
+  faqs,
+  type FaqAudience,
+} from "@/lib/faqs";
 
 export const metadata: Metadata = {
   title: "FAQ",
-  description:
-    "Answers to common questions about pricing, implementation, security, support, billing, and cancellation.",
+  description: "Choose the audience that best matches you to find answers about working with Luxe Haven.",
 };
 
-const categorySlugs = new Set(faqCategories.map((category) => category.slug));
+const audienceIcons: Record<FaqAudience, typeof House> = {
+  owners: House,
+  guests: Users,
+  partners: Building2,
+  investors: Landmark,
+};
+
+const audienceSlugs = new Set(faqAudiences.map((audience) => audience.slug));
 
 export default async function FAQPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ audience?: string; category?: string }>;
 }) {
-  const { category } = await searchParams;
-  const activeCategory: FaqCategory | "all" =
-    category && categorySlugs.has(category as FaqCategory)
-      ? (category as FaqCategory)
-      : "all";
+  const { audience, category } = await searchParams;
+  const activeAudience: FaqAudience =
+    audience && audienceSlugs.has(audience as FaqAudience)
+      ? (audience as FaqAudience)
+      : "owners";
 
-  const visibleFaqs =
-    activeCategory === "all"
-      ? faqs
-      : faqs.filter((faq) => faq.category === activeCategory);
+  const categories = faqCategoriesByAudience[activeAudience];
+  const activeCategory =
+    category && categories.some((cat) => cat.slug === category) ? category : "all";
+
+  const visibleFaqs = faqs.filter(
+    (faq) =>
+      faq.audience === activeAudience &&
+      (activeCategory === "all" || faq.category === activeCategory),
+  );
+
+  const audienceLabel =
+    faqAudiences.find((item) => item.slug === activeAudience)?.label ?? "Owners";
 
   return (
     <main className="bg-[#fffdf9]">
@@ -40,27 +60,31 @@ export default async function FAQPage({
             Frequently Asked Questions
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-stone-600">
-            Choose a topic below to find answers about pricing,
-            implementation, security, support, billing, and cancellation.
+            Choose the audience that best matches you. We&apos;ll show answers tailored to you.
           </p>
-          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {faqCategories.map((cat) => (
-              <Link
-                key={cat.slug}
-                href={`/faq?category=${cat.slug}`}
-                aria-current={activeCategory === cat.slug ? "page" : undefined}
-                className={`rounded-xl border p-5 text-left transition ${
-                  activeCategory === cat.slug
-                    ? "border-emerald-800 bg-white shadow-sm"
-                    : "border-[#dce2dd] bg-white hover:border-[#8da098]"
-                }`}
-              >
-                <h2 className="font-semibold">{cat.label}</h2>
-                <p className="mt-2 text-xs leading-5 text-stone-600">
-                  {cat.blurb}
-                </p>
-              </Link>
-            ))}
+          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {faqAudiences.map((item) => {
+              const Icon = audienceIcons[item.slug];
+              const active = item.slug === activeAudience;
+              return (
+                <Link
+                  key={item.slug}
+                  href={`/faq?audience=${item.slug}`}
+                  aria-current={active ? "page" : undefined}
+                  className={`rounded-xl border p-5 text-left transition ${
+                    active
+                      ? "border-emerald-800 bg-white shadow-sm"
+                      : "border-[#dce2dd] bg-white hover:border-[#8da098]"
+                  }`}
+                >
+                  <Icon className="size-6 text-emerald-800" />
+                  <h2 className="mt-5 font-semibold">{item.label}</h2>
+                  <p className="mt-2 text-xs leading-5 text-stone-600">
+                    {item.blurb}
+                  </p>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -68,11 +92,11 @@ export default async function FAQPage({
         <div className="container-shell grid gap-8 lg:grid-cols-[.3fr_1fr]">
           <aside>
             <p className="text-xs font-bold uppercase tracking-[.14em] text-[#a56b19]">
-              Topics
+              {audienceLabel}
             </p>
             <nav aria-label="FAQ categories" className="mt-5 grid gap-3 text-sm">
               <Link
-                href="/faq"
+                href={`/faq?audience=${activeAudience}`}
                 aria-current={activeCategory === "all" ? "page" : undefined}
                 className={
                   activeCategory === "all"
@@ -80,12 +104,12 @@ export default async function FAQPage({
                     : "text-stone-600 hover:text-emerald-900"
                 }
               >
-                All
+                All Questions
               </Link>
-              {faqCategories.map((cat) => (
+              {categories.map((cat) => (
                 <Link
                   key={cat.slug}
-                  href={`/faq?category=${cat.slug}`}
+                  href={`/faq?audience=${activeAudience}&category=${cat.slug}`}
                   aria-current={activeCategory === cat.slug ? "page" : undefined}
                   className={
                     activeCategory === cat.slug

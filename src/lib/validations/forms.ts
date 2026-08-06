@@ -117,5 +117,10 @@ export const leadMagnetSchema = z.object({
   ),
 });
 
+export const newsletterSchema = z.object({
+  email,
+});
+
 export type ContactInquiryInput = z.infer<typeof contactInquirySchema>;
 export type LeadMagnetInput = z.infer<typeof leadMagnetSchema>;
+export type NewsletterInput = z.infer<typeof newsletterSchema>;
