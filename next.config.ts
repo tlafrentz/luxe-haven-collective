@@ -52,6 +52,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    webpackBuildWorker: true,
+    webpackMemoryOptimizations: true,
   },
   images: {
     remotePatterns: [
