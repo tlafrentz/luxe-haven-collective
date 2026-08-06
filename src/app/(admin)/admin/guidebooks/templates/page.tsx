@@ -1,4 +1,4 @@
-import { CanonicalLibraryBrowser } from "@/components/guidebooks/canonical-library-workspace";
+import { TemplateLibraryWorkspace } from "@/components/guidebooks/template-library-workspace";
 export const dynamic = "force-dynamic";
 export default async function Page({
   searchParams,
@@ -10,7 +10,5 @@ export default async function Page({
     tag?: string;
   }>;
 }) {
-  return (
-    <CanonicalLibraryBrowser type="template" filters={await searchParams} />
-  );
+  return <TemplateLibraryWorkspace filters={await searchParams} />;
 }

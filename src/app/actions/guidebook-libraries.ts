@@ -211,13 +211,17 @@ export async function createLibraryArtifactAction(formData: FormData) {
   const body = String(formData.get("body") ?? description);
   const payload =
     type === "content"
-      ? contentPayload(
-          body,
-          String(formData.get("requiredVariables") ?? "")
-            .split(",")
-            .map((x) => x.trim())
-            .filter(Boolean),
-        )
+      ? {
+          ...contentPayload(
+            body,
+            String(formData.get("requiredVariables") ?? "")
+              .split(",")
+              .map((x) => x.trim())
+              .filter(Boolean),
+          ),
+          recordType: String(formData.get("recordType") ?? "rich_text"),
+          fields: parseStructuredFields(formData.get("typedFieldsJson")),
+        }
       : { variant: "minimal", settings: {}, sections: [] };
   const { data: artifact, error } = await db
     .from("guidebook_library_artifacts")
@@ -232,6 +236,9 @@ export async function createLibraryArtifactAction(formData: FormData) {
         .map((x) => x.trim())
         .filter(Boolean),
       status: "draft",
+      ...(type === "content"
+        ? { content_record_type: String(formData.get("recordType") ?? "rich_text") }
+        : {}),
       current_version_number: 1,
       created_by: user.id,
     })
@@ -285,13 +292,17 @@ export async function saveLibraryArtifactAction(formData: FormData) {
   const body = String(formData.get("body") ?? "");
   const payload =
     type === "content"
-      ? contentPayload(
-          body,
-          String(formData.get("requiredVariables") ?? "")
-            .split(",")
-            .map((x) => x.trim())
-            .filter(Boolean),
-        )
+      ? {
+          ...contentPayload(
+            body,
+            String(formData.get("requiredVariables") ?? "")
+              .split(",")
+              .map((x) => x.trim())
+              .filter(Boolean),
+          ),
+          recordType: String(formData.get("recordType") ?? artifact.content_record_type ?? "rich_text"),
+          fields: parseStructuredFields(formData.get("typedFieldsJson")),
+        }
       : JSON.parse(
           String(
             formData.get("payload") ?? JSON.stringify(current.payload ?? {}),
@@ -351,6 +362,14 @@ export async function saveLibraryArtifactAction(formData: FormData) {
     metadata: { artifactType: type, version },
   });
   revalidatePath(`${routes[type]}/${id}`);
+}
+
+function parseStructuredFields(value: FormDataEntryValue | null) {
+  if (typeof value !== "string" || !value.trim()) return {};
+  const parsed: unknown = JSON.parse(value);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+    throw new Error("content_fields_invalid");
+  return parsed as Record<string, unknown>;
 }
 
 export async function transitionLibraryArtifactAction(formData: FormData) {

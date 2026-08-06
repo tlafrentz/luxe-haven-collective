@@ -59,6 +59,12 @@ export default async function AdminGuidebookEditorPage({
         </div>
         <div className="flex gap-2">
           <Link
+            href={`/admin/guidebooks/${guidebookId}/versions/${result.guidebook.revision}/edit`}
+            className="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white"
+          >
+            Open Builder
+          </Link>
+          <Link
             href={`/dashboard/guidebooks/${guidebookId}/preview`}
             className="rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold"
           >
@@ -73,7 +79,7 @@ export default async function AdminGuidebookEditorPage({
           {result.guidebook.status === "published" ? (
             <Link
               href={`/g/${result.guidebook.public_slug}`}
-              className="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white"
+              className="rounded-xl bg-stone-950 px-4 py-2.5 text-sm font-semibold text-white"
             >
               Guest portal
             </Link>

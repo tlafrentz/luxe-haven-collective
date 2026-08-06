@@ -1,4 +1,4 @@
-import { CanonicalLibraryBrowser } from "@/components/guidebooks/canonical-library-workspace";
+import { MediaLibraryWorkspace } from "@/components/guidebooks/media-library-workspace";
 export const dynamic = "force-dynamic";
 export default async function Page({
   searchParams,
@@ -8,7 +8,10 @@ export default async function Page({
     category?: string;
     status?: string;
     tag?: string;
+    type?: string;
+    orientation?: string;
+    view?: string;
   }>;
 }) {
-  return <CanonicalLibraryBrowser type="media" filters={await searchParams} />;
+  return <MediaLibraryWorkspace filters={await searchParams} />;
 }

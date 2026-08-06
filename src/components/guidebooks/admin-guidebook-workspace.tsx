@@ -539,6 +539,8 @@ function Templates() {
     </section>
   );
 }
+void ContentLibrary;
+void Templates;
 function Analytics({ projection }: Readonly<{ projection: Projection }>) {
   return (
     <>

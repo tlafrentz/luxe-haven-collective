@@ -1,0 +1,1 @@
+import{NewTemplateWorkspace}from"@/components/guidebooks/template-library-workspace";export default async function Page({searchParams}:{searchParams:Promise<{duplicate?:string}>}){return <NewTemplateWorkspace duplicate={(await searchParams).duplicate}/>}

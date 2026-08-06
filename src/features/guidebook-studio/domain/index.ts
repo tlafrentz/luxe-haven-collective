@@ -5,3 +5,4 @@ export * from "./public-guidebook";
 export * from "./guest-delivery";
 export * from "./guidebook-history";
 export * from "./authoring";
+export * from "./canonical-guidebook";

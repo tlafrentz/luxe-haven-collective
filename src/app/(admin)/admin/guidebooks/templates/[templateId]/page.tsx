@@ -1,11 +1,11 @@
-import { CanonicalLibraryEditor } from "@/components/guidebooks/canonical-library-workspace";
+import { TemplateDetailWorkspace } from "@/components/guidebooks/template-library-workspace";
 export const dynamic = "force-dynamic";
 export default async function Page({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ templateId: string }>;
+  searchParams: Promise<{tab?:string;channel?:string}>;
 }) {
-  return (
-    <CanonicalLibraryEditor type="template" id={(await params).templateId} />
-  );
+  const [{templateId},query]=await Promise.all([params,searchParams]);
+  return <TemplateDetailWorkspace id={templateId} tab={query.tab} channel={query.channel}/>;
 }

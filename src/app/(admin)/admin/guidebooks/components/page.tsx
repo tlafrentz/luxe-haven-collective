@@ -1,4 +1,4 @@
-import { CanonicalLibraryBrowser } from "@/components/guidebooks/canonical-library-workspace";
+import { ExperienceComponentLibrary } from "@/components/guidebooks/experience-component-library";
 export const dynamic = "force-dynamic";
 export default async function Page({
   searchParams,
@@ -7,10 +7,12 @@ export default async function Page({
     q?: string;
     category?: string;
     status?: string;
-    tag?: string;
+    channel?: string;
+    sort?: string;
+    view?: string;
   }>;
 }) {
   return (
-    <CanonicalLibraryBrowser type="component" filters={await searchParams} />
+    <ExperienceComponentLibrary filters={await searchParams} />
   );
 }

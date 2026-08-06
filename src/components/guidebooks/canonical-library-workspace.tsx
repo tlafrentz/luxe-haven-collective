@@ -977,7 +977,6 @@ function LivePreview({
   );
 }
 function MediaDetail({
-  artifact: _artifact,
   version,
   file,
   usages,

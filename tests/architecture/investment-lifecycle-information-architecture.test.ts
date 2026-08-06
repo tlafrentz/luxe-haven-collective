@@ -45,20 +45,19 @@ describe("INV-UX-001 investment lifecycle information architecture", () => {
     expect(overview).not.toContain("Investment scope:");
   });
 
-  it("uses strategy selection before the canonical five-step analysis workflow", () => {
+  it("uses strategy selection in the canonical four-step analysis workflow", () => {
     const workspace = source("src/features/investment-intelligence/components/investment-workspace.tsx");
     const pages = source("src/features/investment-intelligence/components/investment-analysis-step-pages.tsx");
     expect(workspace).toContain("InvestmentAnalysisStepPages");
     expect(workspace).not.toContain("AcquisitionSetup");
-    for (const label of ["Property", "Capital Structure", "Revenue & Operations", "Intelligence", "Decision"]) {
+    for (const label of ["Property", "Strategy", "Assumptions", "Ready"]) {
       expect(pages).toContain(`label: "${label}"`);
     }
     expect(pages).toContain("Continue");
     expect(pages).toContain("Back");
     const entry = source("src/app/(dashboard)/dashboard/investments/new/page.tsx");
-    expect(entry).toContain("Choose an investment strategy");
     expect(entry).toContain("AcquisitionType.Purchase");
     expect(entry).toContain("AcquisitionType.RentalArbitrage");
-    expect(pages).not.toContain("AcquisitionTypeSelector");
+    expect(pages).toContain("AcquisitionTypeSelector");
   });
 });

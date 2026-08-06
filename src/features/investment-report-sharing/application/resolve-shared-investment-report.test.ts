@@ -5,7 +5,7 @@ import { investmentReportExportFixture } from "@/features/investment-report-expo
 
 function setup(overrides: Partial<InvestmentReportShareGrant> = {}) {
   const credential = generateShareCredential(), report = investmentReportExportFixture("complete-purchase");
-  const grant: InvestmentReportShareGrant = { id: "investment-report-share-a", ownerId: "owner-a", reportId: report.id, credentialDigest: credential.digest, credentialVersion: "sha256.v1", policyVersion: "investment-report-sharing.v1", reportSchemaVersion: "investment-report.v1", exportTemplateVersion: "investment-report-pdf.v1", recipientLabel: "Private recipient", allowPdfDownload: true, createdAt: "2026-07-30T00:00:00Z", expiresAt: "2026-08-06T00:00:00Z", revokedAt: null, replacesShareId: null, replacedByShareId: null, ...overrides };
+  const grant: InvestmentReportShareGrant = { id: "investment-report-share-a", ownerId: "owner-a", reportId: report.id, credentialDigest: credential.digest, credentialVersion: "sha256.v1", policyVersion: "investment-report-sharing.v1", reportSchemaVersion: "investment-report.v1", exportTemplateVersion: "investment-report-pdf.v1", recipientLabel: "Private recipient", allowPdfDownload: true, createdAt: "2026-07-30T00:00:00Z", expiresAt: "2099-08-06T00:00:00Z", revokedAt: null, replacesShareId: null, replacedByShareId: null, ...overrides };
   const record = vi.fn().mockResolvedValue(undefined), repository: SharedAccessRepository = { findGrant: vi.fn().mockResolvedValue(grant), findReport: vi.fn().mockResolvedValue({ title: report.title, strategy: report.strategy, generatedAt: report.generatedAt, snapshot: report.snapshot }), record };
   return { credential, grant, report, repository, record };
 }

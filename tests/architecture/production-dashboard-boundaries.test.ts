@@ -10,7 +10,7 @@ describe("production dashboard boundaries", () => {
     expect(route("observe/financial")).toContain("financial/page");
     expect(route("understand/executive")).toContain("ExecutivePageView");
     expect(route("understand/portfolio")).toContain("portfolio/page");
-    expect(route("investments")).toContain("InvestmentPortfolioPage");
+    expect(route("investments")).toContain("InvestmentIntelligenceOverview");
     expect(route("learning")).toContain("health/page");
   });
 

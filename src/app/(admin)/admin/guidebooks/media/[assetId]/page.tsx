@@ -1,9 +1,11 @@
-import { CanonicalLibraryEditor } from "@/components/guidebooks/canonical-library-workspace";
+import { MediaAssetWorkspace } from "@/components/guidebooks/media-library-workspace";
 export const dynamic = "force-dynamic";
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ assetId: string }>;
+  searchParams: Promise<{tab?:string}>;
 }) {
-  return <CanonicalLibraryEditor type="media" id={(await params).assetId} />;
+  const [{assetId},query]=await Promise.all([params,searchParams]);return <MediaAssetWorkspace id={assetId} tab={query.tab}/>;
 }

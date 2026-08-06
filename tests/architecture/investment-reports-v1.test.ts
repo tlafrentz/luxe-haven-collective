@@ -23,6 +23,6 @@ describe("Investment Reports v1 boundaries", () => {
     expect(migration).not.toMatch(/delete from public\.generated_reports/);
   });
   it("uses the approved Investment navigation order", () => {
-    expect([...navigation.matchAll(/label: "([^"]+)"/g)].map(match => match[1])).toEqual(["Analyze", "Scenarios", "Opportunities"]);
+    expect([...navigation.matchAll(/label: "([^"]+)"/g)].map(match => match[1])).toEqual(["Overview", "Analyze", "Scenarios", "Opportunities", "Reports", "Settings"]);
   });
 });
