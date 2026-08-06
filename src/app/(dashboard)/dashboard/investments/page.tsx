@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
-import InvestmentPortfolioPage from "./portfolio/page";
+import { getInvestmentOpportunityRequestContext } from "@/app/actions/investment-opportunity-runtime";
+import { loadPortfolioWorkspace } from "@/features/investment-opportunity";
+import { InvestmentIntelligenceOverview } from "@/features/investment-intelligence";
 
 export default async function InvestmentIntelligencePage({
   searchParams,
@@ -14,5 +16,8 @@ export default async function InvestmentIntelligencePage({
     }
     redirect(`/dashboard/investments/new?${query}`);
   }
-  return <InvestmentPortfolioPage searchParams={searchParams} />;
+  const context = await getInvestmentOpportunityRequestContext();
+  if (!context.ok) return <InvestmentIntelligenceOverview failed />;
+  const view = await loadPortfolioWorkspace(context.repository, context.ownerId, {});
+  return <InvestmentIntelligenceOverview view={view} draftScope={context.actorId} />;
 }

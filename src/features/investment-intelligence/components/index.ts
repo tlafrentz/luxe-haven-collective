@@ -15,6 +15,10 @@ export {
 } from "./investment-analysis-results";
 
 export {
+  InvestmentIntelligenceOverview,
+} from "./investment-intelligence-overview";
+
+export {
   InvestmentDecisionContext,
 } from "./investment-decision-context";
 

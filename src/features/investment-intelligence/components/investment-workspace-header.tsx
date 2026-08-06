@@ -20,9 +20,9 @@ export function InvestmentWorkspaceHeader() {
   return (
     <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500">Investment Workspace</p>
-        <h1 className="mt-2 max-w-4xl text-3xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">Build an investment decision you can preserve.</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral-600">Move from strategy and assumptions to an immutable analysis, report, export, and controlled share.</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">Investment Intelligence</p>
+        <h1 className="mt-2 max-w-4xl font-serif text-3xl tracking-tight text-neutral-950 sm:text-5xl">Let’s build the investment case.</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral-600">Move from a property and strategy to transparent market evidence, financial outcomes, and a recommendation you can explain.</p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-3">
         <div aria-live="polite" className="text-right text-xs text-neutral-600">

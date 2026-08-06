@@ -923,6 +923,15 @@ export function pageDetails(
         { id: "current", label: "Guidebook Studio", current: true },
       ],
     };
+  if (pathname.startsWith("/dashboard/furnishing"))
+    return {
+      eyebrow: "Launch a property · Physical experience",
+      title: "Furnishing Studio",
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "current", label: "Furnishing Studio", current: true },
+      ],
+    };
   return {
     eyebrow: "Home",
     title: "Home",

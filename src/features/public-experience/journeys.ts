@@ -46,26 +46,27 @@ export const publicJourneys: PublicJourney[] = [
   },
   {
     slug: "investment",
-    title: "Invest Better",
+    title: "Make smarter investment decisions with confidence.",
     eyebrow: "Decide with confidence",
     promise:
-      "Make confident investment decisions with data, insights, and expertise.",
+      "Build a transparent investment case from property discovery through market evidence, financial modeling, scenarios, and a durable recommendation.",
     description:
       "Evaluate an opportunity with transparent assumptions, market evidence, risk analysis, and a durable recommendation.",
     problem:
       "A promising property is not an investment thesis. Decisions need traceable assumptions, comparable evidence, and a clear view of downside risk.",
     capability: "Investment Intelligence",
-    supporting: ["Market Analysis", "Underwriting", "Decision Records"],
+    supporting: ["Curated market evidence", "Explainable financial models", "Scenario comparisons", "Executive reports"],
     outcomes: [
-      "Model returns clearly",
-      "Understand material risk",
-      "Preserve decision evidence",
+      "Understand the subject property and its market",
+      "Trace every metric to its source and limitations",
+      "Compare base, optimistic, conservative, and custom cases",
+      "Save opportunities for future reanalysis",
     ],
     steps: [
-      "Choose an analysis",
-      "Provide property basics",
-      "Review evidence and assumptions",
-      "Receive a decision output",
+      "Choose a property and investment strategy",
+      "Shape the assumptions and financial case",
+      "Review market evidence and comparable properties",
+      "Receive, save, and share the recommendation",
     ],
     offerCategory: "investment",
     cta: "Explore investment packages",

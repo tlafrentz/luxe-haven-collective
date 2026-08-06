@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DecisionReadinessCard } from "./decision-readiness-card";
 import { FinancingCard } from "./financing-card";
+import { AcquisitionTypeSelector } from "./acquisition-type-selector";
 import { GenerateInvestmentAnalysisCard } from "./generate-investment-analysis-card";
 import { InvestmentAnalysisResults } from "./investment-analysis-results";
 import { InvestmentMarketEvidencePanel } from "./investment-market-evidence-panel";
@@ -16,11 +17,10 @@ import { RevenueAssumptionsCard } from "./revenue-assumptions-card";
 import { useInvestmentWorkspaceState } from "./investment-workspace-state";
 
 const STEPS = [
-  { id: "property", label: "Property", description: "Identify the subject property and its physical profile." },
-  { id: "capital-structure", label: "Capital Structure", description: "Enter the purchase financing or rental-arbitrage lease structure." },
-  { id: "revenue-operations", label: "Revenue & Operations", description: "Set revenue assumptions and recurring operating costs." },
-  { id: "intelligence", label: "Intelligence", description: "Review provider evidence, market context, gaps, and confidence." },
-  { id: "decision", label: "Decision", description: "Review assumptions, resolve blockers, and generate the decision summary." },
+  { id: "property", label: "Property", description: "Choose the opportunity you want to understand." },
+  { id: "strategy", label: "Strategy", description: "Define how this property fits your investment thesis." },
+  { id: "assumptions", label: "Assumptions", description: "Shape the operating case and see the financial preview respond." },
+  { id: "ready", label: "Ready", description: "Review the case, its evidence, and any limitations before analysis." },
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
@@ -58,7 +58,7 @@ export function InvestmentAnalysisStepPages({ resultsActions }: { resultsActions
   return (
     <div className="space-y-7">
       <nav aria-label="Investment analysis progress" className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-        <ol className="grid divide-y divide-neutral-200 lg:grid-cols-5 lg:divide-x lg:divide-y-0">
+        <ol className="grid divide-y divide-neutral-200 lg:grid-cols-4 lg:divide-x lg:divide-y-0">
           {STEPS.map((item, itemIndex) => {
             const active = item.id === step;
             const state = active && completion[item.id] !== "Needs attention" ? "In progress" : completion[item.id];
@@ -89,10 +89,9 @@ export function InvestmentAnalysisStepPages({ resultsActions }: { resultsActions
         {validationMessage ? <div role="alert" className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><CircleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" /><span>{validationMessage}</span></div> : null}
 
         {step === "property" ? <div className="mx-auto max-w-4xl"><PropertyProfileCard /></div> : null}
-        {step === "capital-structure" ? <div className="mx-auto max-w-4xl"><FinancingCard /></div> : null}
-        {step === "revenue-operations" ? <div className="grid gap-6 xl:grid-cols-2"><RevenueAssumptionsCard /><OperatingPlanCard /></div> : null}
-        {step === "intelligence" ? <InvestmentMarketEvidencePanel /> : null}
-        {step === "decision" ? <div className="space-y-7"><LiveInvestmentSummary /><div className="grid gap-8 xl:grid-cols-[minmax(0,0.7fr)_minmax(0,1.5fr)]"><DecisionReadinessCard /><GenerateInvestmentAnalysisCard /></div>{workspace.currentAnalysis.status === "completed" ? <><InvestmentAnalysisResults />{resultsActions}</> : null}</div> : null}
+        {step === "strategy" ? <div className="space-y-6"><div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6"><AcquisitionTypeSelector /></div><div className="mx-auto max-w-4xl"><FinancingCard /></div></div> : null}
+        {step === "assumptions" ? <div className="space-y-6"><LiveInvestmentSummary /><div className="grid gap-6 xl:grid-cols-2"><RevenueAssumptionsCard /><OperatingPlanCard /></div></div> : null}
+        {step === "ready" ? <div className="space-y-7"><InvestmentMarketEvidencePanel /><div className="grid gap-8 xl:grid-cols-[minmax(0,0.7fr)_minmax(0,1.5fr)]"><DecisionReadinessCard /><GenerateInvestmentAnalysisCard /></div>{workspace.currentAnalysis.status === "completed" ? <><div className="rounded-3xl border border-emerald-200 bg-emerald-950 px-6 py-7 text-white"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">Investment case complete</p><h3 className="mt-2 text-2xl font-semibold">Evidence, model, scenarios, and recommendation are ready.</h3><p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-100/80">Every conclusion below remains connected to its source, confidence, timestamp, and known limitations.</p></div><InvestmentAnalysisResults />{resultsActions}</> : null}</div> : null}
       </section>
 
       <div className="flex items-center justify-between border-t border-neutral-200 pt-6">
@@ -107,12 +106,11 @@ function buildCompletion(workspace: ReturnType<typeof useInvestmentWorkspaceStat
   const { values, currentAnalysis } = workspace;
   return {
     property: values.address1.trim() && values.city.trim() && values.state.trim() && values.postalCode.trim() ? "Complete" : "Needs attention",
-    "capital-structure": values.acquisitionType === "purchase"
+    strategy: values.acquisitionType === "purchase"
       ? values.purchasePrice > 0 && values.downPaymentPercentage >= 0 ? "Complete" : "Needs attention"
       : values.monthlyLease > 0 && values.leaseTermMonths > 0 ? "Complete" : "Needs attention",
-    "revenue-operations": values.projectedAdr > 0 && values.projectedOccupancyPercentage > 0 && values.projectedOccupancyPercentage <= 100 ? "Complete" : "Needs attention",
-    intelligence: values.address1.trim() ? "Complete" : "Not started",
-    decision: currentAnalysis.status === "completed" ? "Complete" : currentAnalysis.status === "failed" ? "Needs attention" : "Not started",
+    assumptions: values.projectedAdr > 0 && values.projectedOccupancyPercentage > 0 && values.projectedOccupancyPercentage <= 100 ? "Complete" : "Needs attention",
+    ready: currentAnalysis.status === "completed" ? "Complete" : currentAnalysis.status === "failed" ? "Needs attention" : values.address1.trim() ? "In progress" : "Not started",
   };
 }
 
@@ -121,13 +119,13 @@ function validateStep(step: StepId, workspace: ReturnType<typeof useInvestmentWo
   if (step === "property" && (!values.address1.trim() || !values.city.trim() || !values.state.trim() || !values.postalCode.trim())) {
     return "Enter the street address, city, state, and postal code before continuing.";
   }
-  if (step === "revenue-operations" && (values.projectedAdr <= 0 || values.projectedOccupancyPercentage <= 0 || values.projectedOccupancyPercentage > 100)) {
+  if (step === "assumptions" && (values.projectedAdr <= 0 || values.projectedOccupancyPercentage <= 0 || values.projectedOccupancyPercentage > 100)) {
     return "Enter a positive nightly rate and an occupancy assumption between 0% and 100% before continuing.";
   }
-  if (step === "capital-structure" && values.acquisitionType === "purchase" && values.purchasePrice <= 0) {
+  if (step === "strategy" && values.acquisitionType === "purchase" && values.purchasePrice <= 0) {
     return "Enter a purchase price before reviewing the decision.";
   }
-  if (step === "capital-structure" && values.acquisitionType === "rental-arbitrage" && values.monthlyLease <= 0) {
+  if (step === "strategy" && values.acquisitionType === "rental-arbitrage" && values.monthlyLease <= 0) {
     return "Enter the monthly rent before reviewing the decision.";
   }
   return null;
