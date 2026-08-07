@@ -1,0 +1,10 @@
+import type {Metadata} from "next";
+import {redirect} from "next/navigation";
+import {getPublicGuidebookDeliveryRequest} from "@/app/actions/guidebook-delivery";
+import {PublicGuidebookExperience} from "@/components/guidebooks/public-guidebook-experience";
+import {guidebookPublicRenderer,type GuidebookArtifactPayload,type PublicGuidebookView} from "@/features/guidebook-studio";
+import {ArtifactRenderingEngine,type PublishedArtifactEnvelope} from "@/platform/artifact-rendering";
+export const dynamic="force-dynamic";
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const result=await getPublicGuidebookDeliveryRequest((await params).slug);return result.state==="active"?{title:"Your Guest Guide | Luxe Haven Collective",description:"Everything you need for a comfortable stay."}:{title:"Guest Guide | Luxe Haven Collective",robots:{index:false,follow:false}}}
+export default async function StayGuidebookPage({params,searchParams}:{params:Promise<{slug:string}>;searchParams:Promise<{source?:string}>}){const{slug}=await params,{source}=await searchParams,result=await getPublicGuidebookDeliveryRequest(slug);if(result.state==="redirect")redirect(`/stay/${result.slug}`);if(result.state!=="active")return <Unavailable/>;let guidebook:PublicGuidebookView|null=null;try{guidebook=new ArtifactRenderingEngine().register(guidebookPublicRenderer).render<GuidebookArtifactPayload,PublicGuidebookView>(result.envelope as PublishedArtifactEnvelope<GuidebookArtifactPayload>)}catch{}return guidebook?<PublicGuidebookExperience slug={slug} guidebook={guidebook} source={source==="qr"?"qr":"link"}/>:<Unavailable/>}
+function Unavailable(){return <main className="grid min-h-screen place-items-center bg-[#f2ede4] p-6"><section role="status" className="max-w-lg rounded-3xl bg-white p-10 text-center"><h1 className="font-serif text-4xl">This guidebook is unavailable.</h1><p className="mt-4 text-stone-600">Check the link or contact your host.</p></section></main>}

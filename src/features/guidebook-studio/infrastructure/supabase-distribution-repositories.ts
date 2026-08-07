@@ -9,6 +9,31 @@ export class SupabaseGuidebookMediaRepository
   implements GuidebookMediaRepository
 {
   constructor(private readonly client: Client = createAdminClient()) {}
+  async listReady(
+    input: Parameters<GuidebookMediaRepository["listReady"]>[0],
+  ) {
+    const { data, error } = await this.client
+      .from("guidebook_media_assets")
+      .select("id,mime_type,authoring_path")
+      .eq("workspace_id", input.workspaceId)
+      .eq("guidebook_id", input.guidebookId)
+      .eq("upload_state", "ready")
+      .order("created_at", { ascending: false });
+    if (error || !data?.length) return [];
+    const results = await Promise.all(
+      data.map(async (row) => {
+        const { data: signed } = await this.client.storage
+          .from("guidebook-authoring-media")
+          .createSignedUrl(String(row.authoring_path), 3600);
+        return signed?.signedUrl
+          ? { id: String(row.id), mimeType: String(row.mime_type), url: signed.signedUrl }
+          : null;
+      }),
+    );
+    return results.filter(
+      (item): item is { id: string; mimeType: string; url: string } => item !== null,
+    );
+  }
   async createUpload(
     input: Parameters<GuidebookMediaRepository["createUpload"]>[0],
   ) {

@@ -110,6 +110,54 @@ export const faqs: Faq[] = [
       "Yes. Guidebook Studio offers DIY templates, a done-for-you design service, and premium options with advanced integrations depending on how hands-on you'd like to be.",
   },
   {
+    id: "guidebook-what-is-it",
+    audience: "owners",
+    category: "guidebooks",
+    question: "What is a digital guidebook?",
+    answer:
+      "A digital guidebook is a mobile-friendly guide to your property that guests open from any device — no app required. It covers check-in, Wi-Fi, house rules, and local recommendations in one place.",
+  },
+  {
+    id: "guidebook-how-long",
+    audience: "owners",
+    category: "guidebooks",
+    question: "How long does it take to build?",
+    answer:
+      "A DIY guidebook can be published in about 10 minutes using our templates. Done For You and Premium projects typically take a few business days depending on revisions and rush delivery.",
+  },
+  {
+    id: "guidebook-update-later",
+    audience: "owners",
+    category: "guidebooks",
+    question: "Can I update my guidebook later?",
+    answer:
+      "Yes. You can edit content, photos, and details at any time from your dashboard and republish a new version whenever you make a change.",
+  },
+  {
+    id: "guidebook-offline",
+    audience: "owners",
+    category: "guidebooks",
+    question: "Will my guidebook work offline?",
+    answer:
+      "Guests can load your guidebook once with any connection and revisit recently viewed pages without a signal, though a live connection is recommended for the best experience.",
+  },
+  {
+    id: "guidebook-custom-design",
+    audience: "owners",
+    category: "guidebooks",
+    question: "Do you offer custom design?",
+    answer:
+      "Yes. The Premium package includes fully custom design and branding, and Done For You includes custom template selection with your property's photos and voice.",
+  },
+  {
+    id: "guidebook-need-help",
+    audience: "owners",
+    category: "guidebooks",
+    question: "What if I need help?",
+    answer:
+      "Every package includes support — email support on DIY, priority support on Done For You, and dedicated concierge support on Premium.",
+  },
+  {
     id: "hpm-definition",
     audience: "owners",
     category: "platform-reporting",

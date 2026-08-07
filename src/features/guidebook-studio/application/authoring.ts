@@ -126,11 +126,15 @@ export interface GuidebookAnalyticsRepository {
   summary(
     scope: Pick<CommandContext, "workspaceId" | "guidebookId" | "actorId">,
   ): Promise<
-    | readonly Readonly<{
-        eventType: string;
-        sectionId?: string;
-        count: number;
-      }>[]
+    | Readonly<{
+        events: readonly Readonly<{
+          eventType: string;
+          sectionId?: string;
+          count: number;
+        }>[];
+        uniqueVisitors: number;
+        viewsByDay: readonly Readonly<{ date: string; count: number }>[];
+      }>
     | null
   >;
 }
@@ -388,7 +392,7 @@ export const deleteGuidebookSection = (
 export const createGuidebookBlock = (
   deps: AuthoringDependencies,
   context: CommandContext,
-  input: Readonly<{ sectionId: string; type: AuthoringBlockType }>,
+  input: Readonly<{ sectionId: string; type: AuthoringBlockType; componentKey?: string }>,
 ) =>
   executeMutation(
     deps,
@@ -400,7 +404,7 @@ export const createGuidebookBlock = (
         ...section,
         blocks: [
           ...section.blocks,
-          initialBlock(input.type, id(), section.blocks.length),
+          initialBlock(input.type, id(), section.blocks.length, input.componentKey),
         ],
       })),
   );
@@ -628,6 +632,8 @@ export async function loadGuidebookEngagementSummary(
         sectionId?: string;
         count: number;
       }>[];
+      uniqueVisitors: number;
+      viewsByDay: readonly Readonly<{ date: string; count: number }>[];
     }>
   >
 > {
@@ -662,8 +668,13 @@ export async function loadGuidebookEngagementSummary(
       status: "completed",
       value:
         rows === null
-          ? { available: false, events: [] }
-          : { available: true, events: rows },
+          ? { available: false, events: [], uniqueVisitors: 0, viewsByDay: [] }
+          : {
+              available: true,
+              events: rows.events,
+              uniqueVisitors: rows.uniqueVisitors,
+              viewsByDay: rows.viewsByDay,
+            },
     });
   } catch (error) {
     const timedOut =

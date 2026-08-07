@@ -3,7 +3,7 @@ import { formatMonthlyPrice, hpmTierMonthlyPrices } from "./pricing/hpm-tier-pri
 export const platformLinks = [
   ["Platform Overview", "/performance/overview"],
   ["Compare Plans", "/performance/plans"],
-  ["Guidebook Studio", "/platform/guidebook-studio/journey"],
+  ["Guidebook Studio", "/guidebook-studio"],
   ["Furnishing Studio", "/platform/furnishing-studio/journey"],
   ["Investment Intelligence", "/platform/investment-intelligence/journey"],
 ] as const;
@@ -131,18 +131,18 @@ export const platformJourneys: Record<string, Journey> = {
     packages: [
       {
         name: "DIY",
-        price: "$149",
+        price: "$99",
         description: "Templates and tools to build it yourself.",
       },
       {
         name: "Done For You",
-        price: "$349",
+        price: "$249",
         description: "We build and design your guidebook.",
         popular: true,
       },
       {
         name: "Premium",
-        price: "$599",
+        price: "$499",
         description: "Advanced features and integrations.",
       },
     ],

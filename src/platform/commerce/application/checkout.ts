@@ -4,9 +4,10 @@ import type { CommerceCatalogRepository, CommerceOrderRepository } from "./catal
 export type CommerceEnvironment = "test" | "live";
 export type ProviderCustomer = Readonly<{ id: string; email: string }>;
 export type ProviderCheckout = Readonly<{ id: string; url?: string; status: "open" | "complete" | "expired"; expiresAt: Date; environment: CommerceEnvironment }>;
+export type CommerceCheckoutAddOn = Readonly<{ name: string; amountMinor: number; currency: string }>;
 export interface CommerceProvider {
   resolveCustomer(input: Readonly<{ commerceCustomerId: string; email: string; existingProviderCustomerId?: string; idempotencyKey: string }>): Promise<ProviderCustomer>;
-  createCheckoutSession(input: Readonly<{ mode: "payment" | "subscription"; providerCustomerId: string; providerPriceId: string; quantity: number; successUrl: string; cancelUrl: string; metadata: Readonly<Record<string,string>>; idempotencyKey: string }>): Promise<ProviderCheckout>;
+  createCheckoutSession(input: Readonly<{ mode: "payment" | "subscription"; providerCustomerId: string; providerPriceId: string; quantity: number; successUrl: string; cancelUrl: string; metadata: Readonly<Record<string,string>>; idempotencyKey: string; addOn?: CommerceCheckoutAddOn }>): Promise<ProviderCheckout>;
   getCheckout(id: string): Promise<ProviderCheckout>;
 }
 export interface CommerceCustomerStore {
@@ -27,7 +28,7 @@ export async function resolveCommerceCustomer(store: CommerceCustomerStore, prov
   await store.save(mapped); return mapped;
 }
 
-export async function createCommerceCheckout(dependencies: Readonly<{catalog:CommerceCatalogRepository;customers:CommerceCustomerStore;orders:CommerceOrderRepository;checkouts:CommerceCheckoutRepository;provider:CommerceProvider;environment:CommerceEnvironment}>, input: Readonly<{offerId:string;commerceCustomerId:string;email:string;profileId?:string;workspaceId?:string;baseUrl:string;idempotencyKey:string;now?:Date;successPath?:string;cancelPath?:string}>) {
+export async function createCommerceCheckout(dependencies: Readonly<{catalog:CommerceCatalogRepository;customers:CommerceCustomerStore;orders:CommerceOrderRepository;checkouts:CommerceCheckoutRepository;provider:CommerceProvider;environment:CommerceEnvironment}>, input: Readonly<{offerId:string;commerceCustomerId:string;email:string;profileId?:string;workspaceId?:string;baseUrl:string;idempotencyKey:string;now?:Date;successPath?:string;cancelPath?:string;addOns?: readonly Readonly<{name:string;amountMinor:number}>[]}>) {
   const [offers,products,prices]=await Promise.all([dependencies.catalog.listOffers(),dependencies.catalog.listProducts(),dependencies.catalog.listPrices()]);
   const offer=offers.find(value=>value.id===input.offerId&&value.status==="active"); if(!offer)throw new CommerceCheckoutError("OFFER_UNAVAILABLE","The selected offer is unavailable.");
   if(offer.productIds.length!==1||offer.priceIds.length!==1)throw new CommerceCheckoutError("OFFER_CHECKOUT_UNSUPPORTED","This offer is not eligible for single-session checkout.");
@@ -37,7 +38,9 @@ export async function createCommerceCheckout(dependencies: Readonly<{catalog:Com
   const customer=await resolveCommerceCustomer(dependencies.customers,dependencies.provider,{id:input.commerceCustomerId,email:input.email,profileId:input.profileId,workspaceId:input.workspaceId,idempotencyKey:`${input.idempotencyKey}:customer`,now:input.now});
   const now=input.now??new Date(),order=createCommerceOrder({id:`commerce-order-${crypto.randomUUID()}`,orderNumber:`LHC-${now.getTime()}`,customerId:customer.id,workspaceId:input.workspaceId,currency:price.amount.currency,lines:[{id:`commerce-line-${crypto.randomUUID()}`,product,price,quantity:1}],createdAt:now});
   await dependencies.orders.save(Object.freeze({...order,status:"pending-payment"} as CommerceOrder));
-  const checkout=await dependencies.provider.createCheckoutSession({mode:price.type==="monthly"||price.type==="annual"?"subscription":"payment",providerCustomerId:customer.providerReferences.stripeCustomerId!,providerPriceId,quantity:1,successUrl:`${input.baseUrl}${input.successPath??"/checkout/success"}${(input.successPath??"").includes("?")?"&":"?"}session_id={CHECKOUT_SESSION_ID}`,cancelUrl:`${input.baseUrl}${input.cancelPath??"/checkout/cancel"}${(input.cancelPath??"").includes("?")?"&":"?"}order=${order.id}`,metadata:{...(input.workspaceId?{workspace_id:input.workspaceId}:{}),commerce_customer_id:customer.id,order_id:order.id,product_id:product.id,offer_id:offer.id},idempotencyKey:`${input.idempotencyKey}:checkout`});
+  const addOnsTotalMinor=(input.addOns??[]).reduce((sum,addOn)=>sum+addOn.amountMinor,0);
+  const addOn=addOnsTotalMinor>0?{name:(input.addOns??[]).map(item=>item.name).join(", "),amountMinor:addOnsTotalMinor,currency:price.amount.currency}:undefined;
+  const checkout=await dependencies.provider.createCheckoutSession({mode:price.type==="monthly"||price.type==="annual"?"subscription":"payment",providerCustomerId:customer.providerReferences.stripeCustomerId!,providerPriceId,quantity:1,successUrl:`${input.baseUrl}${input.successPath??"/checkout/success"}${(input.successPath??"").includes("?")?"&":"?"}session_id={CHECKOUT_SESSION_ID}`,cancelUrl:`${input.baseUrl}${input.cancelPath??"/checkout/cancel"}${(input.cancelPath??"").includes("?")?"&":"?"}order=${order.id}`,metadata:{...(input.workspaceId?{workspace_id:input.workspaceId}:{}),commerce_customer_id:customer.id,order_id:order.id,product_id:product.id,offer_id:offer.id},idempotencyKey:`${input.idempotencyKey}:checkout`,...(addOn?{addOn}:{})});
   const record:CommerceCheckoutRecord=Object.freeze({id:`commerce-checkout-${crypto.randomUUID()}`,providerSessionId:checkout.id,orderId:order.id,customerId:customer.id,...(input.workspaceId?{workspaceId:input.workspaceId}:{}),productId:product.id,offerId:offer.id,priceId:price.id,environment:dependencies.environment,status:"pending",...(checkout.url?{checkoutUrl:checkout.url}:{}),expiresAt:checkout.expiresAt,createdAt:now});await dependencies.checkouts.save(record);
   return Object.freeze({order,checkout:record,redirectUrl:checkout.url});
 }

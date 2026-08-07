@@ -1,5 +1,6 @@
 "use server";
 import "server-only";
+import { createClient } from "@/lib/supabase/server";
 import {
   evaluatePropertyAccess,
   evaluateWorkspacePermission,
@@ -53,7 +54,12 @@ type Command =
   | { type: "section-visibility"; sectionId: string; visible: boolean }
   | { type: "duplicate-section"; sectionId: string }
   | { type: "delete-section"; sectionId: string }
-  | { type: "create-block"; sectionId: string; blockType: AuthoringBlockType }
+  | {
+      type: "create-block";
+      sectionId: string;
+      blockType: AuthoringBlockType;
+      componentKey?: string;
+    }
   | { type: "update-block"; sectionId: string; block: AuthoringBlock }
   | {
       type: "reorder-block";
@@ -117,6 +123,18 @@ export async function uploadGuidebookMediaAction(formData: FormData) {
   }
 }
 
+export async function listGuidebookDraftMediaAction(input: {
+  workspaceId: string;
+  guidebookId: string;
+}): Promise<{ id: string; mimeType: string; url: string }[]> {
+  const { access } = await authorized(input.workspaceId, "guidebooks.manage");
+  const media = await new SupabaseGuidebookMediaRepository().listReady({
+    workspaceId: access.workspaceId,
+    guidebookId: input.guidebookId,
+  });
+  return [...media];
+}
+
 export async function rotateGuidebookPublicSlugAction(formData: FormData) {
   try {
     const guidebookId = String(formData.get("guidebookId") ?? ""),
@@ -165,6 +183,92 @@ export async function rotateGuidebookPublicSlugAction(formData: FormData) {
 export async function createGuidebookAction(formData: FormData) {
   await createGuidebookResultAction(formData);
 }
+
+export async function createGuidebookPropertyAction(
+  input: Readonly<{
+    workspaceId: string;
+    name: string;
+    address: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    propertyType: string;
+    timezone: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    guestCapacity?: number;
+    shortDescription?: string;
+    createAnyway?: boolean;
+    commandId: string;
+  }>,
+) {
+  try {
+    const { access } = await authorized(input.workspaceId, "guidebooks.manage");
+    const required = [
+      input.name,
+      input.address,
+      input.city,
+      input.state,
+      input.postalCode,
+      input.country,
+      input.propertyType,
+      input.timezone,
+    ];
+    if (required.some((value) => !value.trim()))
+      return {
+        ok: false as const,
+        code: "PROPERTY_INVALID",
+        message: "Complete every required property field.",
+      };
+    // This RPC intentionally derives the actor from auth.uid(). Use the
+    // request-scoped client so the customer's JWT reaches the security-definer
+    // function; the service-role client has no user identity.
+    const client = await createClient();
+    const { data, error } = await client.rpc("create_guidebook_flow_property", {
+      p_workspace_id: access.workspaceId,
+      p_name: input.name.trim(),
+      p_address: input.address.trim(),
+      p_city: input.city.trim(),
+      p_state: input.state.trim(),
+      p_postal_code: input.postalCode.trim(),
+      p_country: input.country.trim(),
+      p_property_type: input.propertyType,
+      p_timezone: input.timezone,
+      p_bedrooms: input.bedrooms ?? 1,
+      p_bathrooms: input.bathrooms ?? 1,
+      p_max_guests: input.guestCapacity ?? 2,
+      p_short_description: input.shortDescription ?? "",
+      p_command_id: input.commandId,
+      p_create_anyway: input.createAnyway ?? false,
+    });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row?.duplicate_property_id && !row?.property_id)
+      return {
+        ok: false as const,
+        code: "DUPLICATE_PROPERTY",
+        duplicatePropertyId: String(row.duplicate_property_id),
+        message: "We found a property that may already match this address.",
+      };
+    if (!row?.property_id) throw new Error("property_not_created");
+    return {
+      ok: true as const,
+      property: {
+        id: String(row.property_id),
+        name: input.name.trim(),
+        location: [input.city, input.state].join(", "),
+        image: null,
+      },
+    };
+  } catch {
+    return {
+      ok: false as const,
+      code: "PROPERTY_CREATE_FAILED",
+      message: "We couldn't save the property. Please try again.",
+    };
+  }
+}
 export async function createGuidebookResultAction(formData: FormData) {
   const workspaceId = String(formData.get("workspaceId") ?? ""),
     propertyId = String(formData.get("propertyId") ?? ""),
@@ -173,7 +277,11 @@ export async function createGuidebookResultAction(formData: FormData) {
   const { user, access } = await authorized(workspaceId, "guidebooks.manage");
   if (!evaluatePropertyAccess(access, propertyId)) return denied();
   const commerce = await withGuidebookOperationDeadline(
-      () => getCommerceAccessWorkspace({ workspaceId: access.workspaceId, propertyId }),
+      () =>
+        getCommerceAccessWorkspace({
+          workspaceId: access.workspaceId,
+          propertyId,
+        }),
       5000,
       "COMMAND_TIMEOUT",
     ),
@@ -198,9 +306,10 @@ export async function createGuidebookResultAction(formData: FormData) {
     expectedRevision: 0,
     enteredAt: new Date().toISOString(),
   };
+  const drafts = new SupabaseGuidebookDraftRepository();
   const result = await createGuidebookWithReceipt(
     {
-      drafts: new SupabaseGuidebookDraftRepository(),
+      drafts,
       receipts: new SupabaseGuidebookCommandReceiptRepository(user.id),
       creation: new SupabaseGuidebookCreationRepository(),
       timeoutMs: 5000,
@@ -208,7 +317,27 @@ export async function createGuidebookResultAction(formData: FormData) {
     context,
     { propertyId, title },
   );
-  if (result.ok) redirect(`/dashboard/guidebooks/${result.value.guidebookId}`);
+  if (result.ok) {
+    const brand = {
+      logoUrl: String(formData.get("brandLogoUrl") ?? ""),
+      primaryColor: String(formData.get("brandPrimaryColor") ?? ""),
+      accentColor: String(formData.get("brandAccentColor") ?? ""),
+    };
+    if (brand.logoUrl || brand.primaryColor || brand.accentColor) {
+      const draft = await drafts.load({
+        workspaceId: access.workspaceId,
+        guidebookId: result.value.guidebookId,
+        actorId: user.id,
+      });
+      if (draft) {
+        await drafts.save(
+          { ...context, guidebookId: result.value.guidebookId, expectedRevision: draft.revision },
+          { ...draft, brand },
+        );
+      }
+    }
+    redirect(`/dashboard/guidebooks/${result.value.guidebookId}/edit`);
+  }
   return result;
 }
 
@@ -351,7 +480,11 @@ export async function publishCanonicalGuidebookAction(
     if (!draft || !evaluatePropertyAccess(access, draft.propertyId))
       return denied();
     const commerce = await withGuidebookOperationDeadline(
-        () => getCommerceAccessWorkspace({ workspaceId: access.workspaceId, propertyId: draft.propertyId }),
+        () =>
+          getCommerceAccessWorkspace({
+            workspaceId: access.workspaceId,
+            propertyId: draft.propertyId,
+          }),
         5000,
         "PUBLICATION_TIMEOUT",
       ),
@@ -514,6 +647,7 @@ export async function guidebookAuthoringCommandAction(
         return createGuidebookBlock(deps, context, {
           sectionId: input.command.sectionId,
           type: input.command.blockType,
+          componentKey: input.command.componentKey,
         });
       case "update-block":
         return updateGuidebookBlock(deps, context, input.command);

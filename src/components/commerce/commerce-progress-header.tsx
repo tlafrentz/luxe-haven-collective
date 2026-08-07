@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 
-const steps = ["plan", "workspace", "account", "review", "checkout"] as const;
-export type CommerceStep = (typeof steps)[number];
+const defaultSteps = ["plan", "workspace", "account", "review", "checkout"] as const;
+export type CommerceStep = (typeof defaultSteps)[number];
 
-const stepLabels: Record<CommerceStep, string> = {
+const defaultStepLabels: Record<CommerceStep, string> = {
   plan: "Plan",
   workspace: "Workspace",
   account: "Account",
@@ -12,7 +12,15 @@ const stepLabels: Record<CommerceStep, string> = {
   checkout: "Checkout",
 };
 
-export function CommerceProgressHeader({ current }: { current: CommerceStep }) {
+export function CommerceProgressHeader({
+  current,
+  steps = defaultSteps,
+  labels = defaultStepLabels,
+}: {
+  current: string;
+  steps?: readonly string[];
+  labels?: Record<string, string>;
+}) {
   const currentIndex = steps.indexOf(current);
   return (
     <header className="border-b border-[#dde1dd] bg-white/95 backdrop-blur-xl">
@@ -43,7 +51,7 @@ export function CommerceProgressHeader({ current }: { current: CommerceStep }) {
                   {state === "done" ? <Check className="size-3.5" /> : index + 1}
                 </span>
                 <span className={state === "future" ? "" : "text-[#171c19]"}>
-                  {stepLabels[step]}
+                  {labels[step] ?? step}
                 </span>
                 {index < steps.length - 1 ? (
                   <span aria-hidden className="mx-1 text-stone-300">

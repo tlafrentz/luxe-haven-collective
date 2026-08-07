@@ -68,6 +68,9 @@ export class SupabaseGuidebookDraftRepository
         ...(stored.base_publication_version
           ? { basePublicationVersion: Number(stored.base_publication_version) }
           : {}),
+        ...(composition.brand
+          ? { brand: composition.brand as GuidebookDraft["brand"] }
+          : {}),
       });
     }
     const { data: sections, error: sectionError } = await this.client
@@ -108,6 +111,7 @@ export class SupabaseGuidebookDraftRepository
       title: valid.title,
       description: valid.description,
       sections: valid.sections,
+      ...(valid.brand ? { brand: valid.brand } : {}),
     };
     const { error } = await this.client.rpc("persist_guidebook_draft", {
       p_guidebook_id: scope.guidebookId,
@@ -212,26 +216,44 @@ export class SupabaseGuidebookAnalyticsRepository
     if (!guidebook) throw classified("GUIDEBOOK_UNAUTHORIZED");
     const { data, error } = await this.client
       .from("guidebook_analytics")
-      .select("event_type,section_key")
+      .select("event_type,section_key,visitor_hash,occurred_at")
       .eq("guidebook_id", scope.guidebookId)
       .limit(5000);
     if (error) throw classified("ANALYTICS_UNAVAILABLE");
     if (!data?.length) return null;
     const counts = new Map<string, number>();
+    const visitors = new Set<string>();
+    const dayCounts = new Map<string, number>();
     for (const row of data) {
       const key = `${row.event_type}:${row.section_key ?? ""}`;
       counts.set(key, (counts.get(key) ?? 0) + 1);
+      if (row.visitor_hash) visitors.add(String(row.visitor_hash));
+      if (
+        (row.event_type === "view" || row.event_type === "qr-scan") &&
+        row.occurred_at
+      ) {
+        const day = String(row.occurred_at).slice(0, 10);
+        dayCounts.set(day, (dayCounts.get(day) ?? 0) + 1);
+      }
     }
-    return Object.freeze(
-      [...counts].map(([key, count]) => {
-        const [eventType, sectionId] = key.split(":");
-        return Object.freeze({
-          eventType: eventType!,
-          ...(sectionId ? { sectionId } : {}),
-          count,
-        });
-      }),
-    );
+    return Object.freeze({
+      events: Object.freeze(
+        [...counts].map(([key, count]) => {
+          const [eventType, sectionId] = key.split(":");
+          return Object.freeze({
+            eventType: eventType!,
+            ...(sectionId ? { sectionId } : {}),
+            count,
+          });
+        }),
+      ),
+      uniqueVisitors: visitors.size,
+      viewsByDay: Object.freeze(
+        [...dayCounts]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, count]) => Object.freeze({ date, count })),
+      ),
+    });
   }
 }
 export class SupabaseGuidebookPropertyProjectionRepository
@@ -440,6 +462,21 @@ function legacyBlock(row: Record<string, unknown>): AuthoringBlock {
       visible: row.guest_safe !== false,
     };
   switch (type) {
+    case "component":
+      return {
+        ...base,
+        type,
+        content: {
+          componentKey: String(content.componentKey ?? "rich_text"),
+          componentVersionId: String(content.componentVersionId ?? `${String(content.componentKey ?? "rich_text")}-v1`),
+          source: content.source === "content_record" ? "content_record" : "inline",
+          fields: (content.fields ?? {}) as Record<string,string>,
+          ...(content.contentRecordId ? { contentRecordId: String(content.contentRecordId) } : {}),
+          variableBindings: (content.variableBindings ?? {}) as Record<string,string>,
+          mediaRefs: Array.isArray(content.mediaRefs) ? content.mediaRefs as {assetId:string;versionId:string;alt:string;decorative:boolean}[] : [],
+          layout: (content.layout ?? {width:"standard",alignment:"left",variant:"standard"}) as {width:"standard"|"wide";alignment:"left"|"center";variant:"compact"|"standard"|"featured"},
+        },
+      };
     case "heading":
       return {
         ...base,

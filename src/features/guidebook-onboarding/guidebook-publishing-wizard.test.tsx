@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GuidebookPublishingWizard } from "./guidebook-publishing-wizard";
 
@@ -17,6 +17,14 @@ vi.mock("next/image", () => ({
   },
 }));
 
+const mockTemplates = [
+  { id: "template-1", name: "Mesa Modern", description: "", category: "modern", tags: [] },
+];
+
+vi.mock("@/app/actions/guidebook-templates", () => ({
+  getPublishedGuidebookTemplates: vi.fn(async () => mockTemplates),
+}));
+
 const properties = [
   {
     id: "property-1",
@@ -29,7 +37,7 @@ const properties = [
 afterEach(cleanup);
 
 describe("GuidebookPublishingWizard", () => {
-  it("uses an editorial creation sequence instead of workspace setup language", () => {
+  it("uses the seven-step Builder foundation sequence", () => {
     render(
       <GuidebookPublishingWizard
         workspaceId="workspace-1"
@@ -39,15 +47,14 @@ describe("GuidebookPublishingWizard", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Choose your property" }),
+      screen.getByRole("heading", { name: "Welcome to Guidebook Studio!" }),
     ).toBeTruthy();
-    expect(screen.getByText("Property", { selector: "span" })).toBeTruthy();
-    expect(screen.getByText("Brand", { selector: "span" })).toBeTruthy();
-    expect(screen.getByText("Publish", { selector: "span" })).toBeTruthy();
-    expect(screen.queryByText("Import portfolio", { exact: false })).toBeNull();
+    for (const label of ["Welcome", "Property", "Style", "Template", "Brand", "Details", "Create"]) {
+      expect(screen.getByText(label, { selector: "li" })).toBeTruthy();
+    }
   });
 
-  it("moves from property selection into visual brand direction", () => {
+  it("supports selecting an existing property and a real template", async () => {
     render(
       <GuidebookPublishingWizard
         workspaceId="workspace-1"
@@ -56,12 +63,47 @@ describe("GuidebookPublishingWizard", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Let's Get Started" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Select Existing Property/ }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /Desert Retreat/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Save & continue/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(
-      screen.getByRole("heading", { name: "Let’s match your style" }),
+      screen.getByRole("heading", { name: "Let's match your style." }),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Luxury/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Choose a template to get started." }),
+    ).toBeTruthy();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(await screen.findByText("Mesa Modern")).toBeTruthy();
+  });
+
+  it("offers canonical property creation when the workspace is empty", () => {
+    render(
+      <GuidebookPublishingWizard
+        workspaceId="workspace-1"
+        properties={[]}
+        createAction={vi.fn()}
+        createPropertyAction={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Let's Get Started" }));
+    fireEvent.click(screen.getByRole("button", { name: /Add New Property/ }));
+    expect(screen.getByLabelText("Address *")).toBeTruthy();
+    expect(screen.getByLabelText("State / region *").tagName).toBe("SELECT");
+    expect(screen.getByLabelText("Time zone *").tagName).toBe("SELECT");
+    expect(screen.getByRole("option", { name: "Arizona" })).toBeTruthy();
+    expect(
+      screen.getByRole("option", {
+        name: "Arizona Time (America/Phoenix)",
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/HPM subscription/i)).toBeNull();
   });
 });

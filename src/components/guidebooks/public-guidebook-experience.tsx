@@ -201,12 +201,11 @@ export function PublicGuidebookExperience({
             {new Date(guidebook.meta.publishedAt).toLocaleDateString()} ·
             Guidebook v{guidebook.meta.guidebookVersion}
           </p>
-          <p className="mt-1 text-[10px] text-stone-400">
-            Artifact {guidebook.meta.artifactVersion} · Renderer{" "}
-            {guidebook.meta.rendererVersion}
-          </p>
           <p className="mt-5 text-xs font-semibold uppercase tracking-[.18em] text-stone-600">
-            Luxe Haven Collective
+            Crafted with Guidebook Studio
+          </p>
+          <p className="mt-1 text-[10px] uppercase tracking-[.14em] text-stone-400">
+            by Luxe Haven Collective
           </p>
         </footer>
       </article>

@@ -24,6 +24,9 @@ export type MediaPromotion = Readonly<{
   newlyPromoted: readonly string[];
 }>;
 export interface GuidebookMediaRepository {
+  listReady(
+    input: Readonly<{ workspaceId: string; guidebookId: string }>,
+  ): Promise<readonly Readonly<{ id: string; mimeType: string; url: string }>[]>;
   createUpload(
     input: Readonly<{
       context: CommandContext;

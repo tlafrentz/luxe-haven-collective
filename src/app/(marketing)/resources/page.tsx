@@ -13,7 +13,14 @@ import { resourceLinks } from "@/components/marketing/resources-navigation";
 import { NewsletterSignupForm } from "@/components/marketing/newsletter-signup-form";
 import { insightsCards } from "@/lib/insights";
 
-const icons = [BookOpen, Lightbulb, BookOpen, LayoutTemplate, BarChart3, CircleHelp];
+const icons = [
+  BookOpen,
+  Lightbulb,
+  BookOpen,
+  LayoutTemplate,
+  BarChart3,
+  CircleHelp,
+];
 
 const featuredTitles = [
   "How to Price for Events Without Losing Weekday Bookings",
@@ -30,40 +37,39 @@ export default function ResourcesPage() {
   return (
     <main className="bg-[#fffdf9]">
       <section className="border-b">
-        <div className="container-shell grid min-h-[500px] overflow-hidden lg:grid-cols-[.85fr_1.15fr]">
-          <div className="relative z-10 flex flex-col justify-center py-14 lg:pr-12">
+        <div className="container-shell grid gap-10 py-12 lg:min-h-[560px] lg:grid-cols-2 lg:items-center lg:gap-14 lg:py-16">
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[.16em] text-[#a56b19]">
               Resources
             </p>
-            <h1 className="mt-5 max-w-xl font-serif text-5xl leading-[1.08] md:text-6xl">
+            <h1 className="mt-5 max-w-[10ch] font-serif text-5xl leading-[1.04] md:text-6xl">
               Knowledge for better hospitality outcomes.
             </h1>
-            <p className="mt-6 max-w-lg text-base leading-8 text-stone-600">
+            <p className="mt-6 max-w-md text-base leading-8 text-stone-600">
               Actionable publications, proven playbooks, and operational tools
               to help owners and operators run stronger businesses.
             </p>
             <form
               action="/resources/insights"
-              className="relative mt-7 max-w-lg"
+              className="relative mt-8 w-full max-w-md"
             >
               <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-stone-500" />
               <input
                 name="q"
                 aria-label="Search resources"
                 placeholder="Search resources..."
-                className="min-h-13 w-full rounded-lg border bg-white pl-12 pr-4 shadow-sm"
+                className="min-h-13 w-full rounded-xl border border-stone-300 bg-white pl-12 pr-4 shadow-sm outline-none transition focus:border-emerald-800 focus:ring-2 focus:ring-emerald-800/15"
               />
             </form>
           </div>
-          <div className="relative min-h-[360px]">
-            <div className="absolute inset-y-0 -left-20 z-10 hidden w-40 bg-gradient-to-r from-[#fffdf9] to-transparent lg:block" />
+          <div className="relative min-h-[360px] overflow-hidden rounded-2xl shadow-sm lg:min-h-[480px]">
             <SafeImage
               src={mesaAirbnbImages[0]}
               alt="Luxe Haven hospitality property"
               fill
               priority
               className="object-cover"
-              sizes="58vw"
+              sizes="(min-width: 1024px) 50vw, 100vw"
             />
           </div>
         </div>
@@ -143,7 +149,8 @@ export default function ResourcesPage() {
           <div>
             <h2 className="font-serif text-3xl">Stay Informed</h2>
             <p className="mt-2 max-w-md text-sm leading-6 text-white/70">
-              Get fresh insights, playbooks, and market reports delivered to your inbox.
+              Get fresh insights, playbooks, and market reports delivered to
+              your inbox.
             </p>
           </div>
           <div className="w-full max-w-md">

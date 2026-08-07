@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getPublishedProperties } from "@/lib/properties";
 import { plans } from "@/lib/plans";
+import { guidebookPackages } from "@/lib/guidebook-packages";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl =
@@ -33,7 +34,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/performance/overview",
     "/performance/plans",
     ...plans.map((plan) => `/performance/plans/${plan.slug}`),
-    "/platform/guidebook-studio/journey",
+    "/guidebook-studio",
+    "/guidebook-studio/packages",
+    ...guidebookPackages.map((pkg) => `/guidebook-studio/packages/${pkg.slug}`),
+    "/guidebook-studio/examples",
+    "/guidebook-studio/templates",
+    "/guidebook-studio/faq",
+    "/guidebook-studio/find-my-fit",
     "/platform/furnishing-studio/journey",
     "/platform/investment-intelligence/journey",
   ];

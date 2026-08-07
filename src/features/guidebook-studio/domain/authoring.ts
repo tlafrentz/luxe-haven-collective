@@ -3,6 +3,7 @@ export const GUIDEBOOK_BLOCK_SCHEMA = "guidebook-block.v1" as const;
 export const GUIDEBOOK_MEDIA_REFERENCE = /^gbm_[a-z0-9]{26}$/;
 
 export type AuthoringBlockType =
+  | "component"
   | "heading"
   | "rich-text"
   | "image"
@@ -55,7 +56,18 @@ export type ChecklistBlock = BaseBlock<
   "checklist",
   { title?: string; items: readonly Readonly<{ id: string; text: string }>[] }
 >;
+export type ComponentBlock = BaseBlock<"component", {
+  componentKey: string;
+  componentVersionId: string;
+  source: "inline" | "content_record";
+  fields: Readonly<Record<string, string>>;
+  contentRecordId?: string;
+  variableBindings: Readonly<Record<string, string>>;
+  mediaRefs: readonly Readonly<{ assetId: string; versionId: string; alt: string; decorative: boolean }>[];
+  layout: Readonly<{ width: "standard" | "wide"; alignment: "left" | "center"; variant: "compact" | "standard" | "featured" }>;
+}>;
 export type AuthoringBlock =
+  | ComponentBlock
   | HeadingBlock
   | RichTextBlock
   | ImageBlock
@@ -72,6 +84,11 @@ export type AuthoringSection = Readonly<{
   position: number;
   blocks: readonly AuthoringBlock[];
 }>;
+export type GuidebookBrandIdentity = Readonly<{
+  logoUrl?: string;
+  primaryColor?: string;
+  accentColor?: string;
+}>;
 export type GuidebookDraft = Readonly<{
   guidebookId: string;
   workspaceId: string;
@@ -84,6 +101,7 @@ export type GuidebookDraft = Readonly<{
   persistedAt: string;
   persistedBy: string;
   basePublicationVersion?: number;
+  brand?: GuidebookBrandIdentity;
 }>;
 export type ReadinessIssue = Readonly<{
   code: string;
@@ -163,6 +181,7 @@ export function initialBlock(
   type: AuthoringBlockType,
   id: string,
   position: number,
+  componentKey?: string,
 ): AuthoringBlock {
   const base = {
     id,
@@ -171,6 +190,8 @@ export function initialBlock(
     visible: true,
   };
   switch (type) {
+    case "component":
+      return { ...base, type, content: { componentKey: text(componentKey,100,true), componentVersionId: `${componentKey}-v1`, source:"inline", fields:{}, variableBindings:{}, mediaRefs:[], layout:{width:"standard",alignment:"left",variant:"standard"} } };
     case "heading":
       return { ...base, type, content: { text: "", level: 2 } };
     case "rich-text":
@@ -204,6 +225,7 @@ export function validateBlock(
     type = row.type as GuidebookBlockType;
   if (
     ![
+      "component",
       "heading",
       "rich-text",
       "image",
@@ -234,6 +256,12 @@ export function validateBlock(
     c = (row.content ?? {}) as Record<string, unknown>,
     required = mode === "publish" && base.visible;
   switch (type) {
+    case "component": {
+      const fields=Object.fromEntries(Object.entries((c.fields??{}) as Record<string,unknown>).map(([key,value])=>[text(key,100,true),text(value,20000)]));
+      const variableBindings=Object.fromEntries(Object.entries((c.variableBindings??{}) as Record<string,unknown>).map(([key,value])=>[text(key,100,true),text(value,100,true)]));
+      const layout=(c.layout??{}) as Record<string,unknown>;
+      return {...base,type,content:{componentKey:text(c.componentKey,100,true),componentVersionId:text(c.componentVersionId,150,true),source:c.source==="content_record"?"content_record":"inline",fields,...(c.contentRecordId?{contentRecordId:text(c.contentRecordId,100,true)}:{}),variableBindings,mediaRefs:Array.isArray(c.mediaRefs)?c.mediaRefs.slice(0,12).map(item=>{const media=item as Record<string,unknown>;return{assetId:text(media.assetId,100,true),versionId:text(media.versionId,100,true),alt:text(media.alt,500),decorative:media.decorative===true}}):[],layout:{width:layout.width==="wide"?"wide":"standard",alignment:layout.alignment==="center"?"center":"left",variant:layout.variant==="compact"||layout.variant==="featured"?layout.variant:"standard"}}};
+    }
     case "heading": {
       const level = Number(c.level);
       if (![2, 3, 4].includes(level))
@@ -425,6 +453,19 @@ export function evaluateReadiness(draft: GuidebookDraft): ReadinessResult {
         });
       }
   }
+  const components=visible.flatMap(section=>section.blocks.filter((block):block is ComponentBlock=>block.visible&&block.type==="component"));
+  if(components.length){
+    const keys=new Set(components.map(block=>block.content.componentKey));
+    for(const [key,label] of [["hero","Hero"],["wifi_card","Wi-Fi Card"],["emergency_contact_card","Emergency Contact Card"],["departure_checklist","Departure Checklist"]] as const)
+      if(!keys.has(key))issues.push({code:`MISSING_${key.toUpperCase()}`,severity:"error",message:`Add a ${label} before publishing.`,target:"components"});
+    for(const block of components){
+      const requiredVariables:Record<string,readonly string[]>={wifi_card:["wifi.network","wifi.password"],arrival_instructions:["stay.check_in_time"],departure_checklist:["stay.check_out_time"],emergency_contact_card:["emergency.contact"]};
+      for(const key of requiredVariables[block.content.componentKey]??[]){const inline=Object.values(block.content.fields).some(value=>value.includes(`{{${key}}}`));if(!inline&&!block.content.variableBindings[key])issues.push({code:"VARIABLE_BINDING_MISSING",severity:"error",message:`Bind ${key} before publishing.`,blockId:block.id,target:`block:${block.id}`})}
+      if(block.content.componentKey==="hero"&&!block.content.mediaRefs.length)issues.push({code:"HERO_MEDIA_MISSING",severity:"error",message:"Choose a hero image before publishing.",blockId:block.id,target:`block:${block.id}`});
+      for(const media of block.content.mediaRefs)if(!media.decorative&&!media.alt.trim())issues.push({code:"MEDIA_ALT_MISSING",severity:"warning",message:"Add alt text to this image.",blockId:block.id,target:`block:${block.id}`});
+    }
+    if(!keys.has("review_cta"))issues.push({code:"REVIEW_CTA_MISSING",severity:"warning",message:"Consider adding a Review CTA.",target:"components"});
+  }
   return freeze({
     status: issues.some((issue) => issue.severity === "error")
       ? "not-ready"
@@ -452,6 +493,7 @@ export function buildSnapshot(
     title: valid.title,
     description: valid.description,
     property: { ...property },
+    brand: { ...(valid.brand ?? {}) },
     sections: valid.sections
       .filter((section) => section.visible)
       .map((section) => ({

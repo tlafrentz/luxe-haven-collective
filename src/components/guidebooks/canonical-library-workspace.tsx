@@ -970,7 +970,7 @@ function LivePreview({
                 .replaceAll("{{wifi_name}}", "LuxeHaven_Guest")
                 .replaceAll("{{wifi_password}}", "••••••••")
                 .replaceAll("{{host_phone}}", "(555) 010-0200")
-            : "Configuration preview uses placeholders only—never live customer data."}
+            : "Configuration preview uses sample values—never live customer data."}
         </div>
       </div>
     </aside>

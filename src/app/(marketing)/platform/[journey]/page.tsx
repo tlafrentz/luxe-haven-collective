@@ -7,6 +7,7 @@ export default async function Page({
   params: Promise<{ journey: string }>;
 }) {
   const { journey } = await params;
+  if (journey === "guidebook-studio") redirect("/guidebook-studio");
   if (!platformJourneys[journey]) notFound();
   redirect(`/platform/${journey}/journey`);
 }

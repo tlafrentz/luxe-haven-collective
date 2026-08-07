@@ -10,6 +10,7 @@ import {
 import { SafeImage } from "@/components/shared/safe-image";
 import { mesaAirbnbImages } from "@/lib/mesa-airbnb";
 import { platformJourneys } from "@/lib/platform-journeys";
+import { guidebookPackages } from "@/lib/guidebook-packages";
 import { solutionJourneys, type SolutionSlug } from "@/lib/solution-journeys";
 import { SolutionsNavigation } from "./solutions-navigation";
 
@@ -17,12 +18,17 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
   const solution = solutionJourneys[slug];
   const journey = platformJourneys[solution.journey];
   const isHpm = solution.journey === "hpm";
+  const isGuidebookStudio = solution.journey === "guidebook-studio";
   const start = isHpm
     ? "/performance/plans"
-    : `/platform/${solution.journey}/select-package`;
+    : isGuidebookStudio
+      ? "/guidebook-studio/packages"
+      : `/platform/${solution.journey}/select-package`;
   const howItWorksHref = isHpm
     ? "/performance/overview"
-    : `/platform/${solution.journey}/journey`;
+    : isGuidebookStudio
+      ? "/guidebook-studio"
+      : `/platform/${solution.journey}/journey`;
   return (
     <main className="bg-[#fffdf9]">
       <section className="border-b">
@@ -115,41 +121,69 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
             </Link>
           </div>
           <div className="mt-7 grid gap-5 md:grid-cols-3">
-            {journey.packages.map((p) => (
-              <article
-                key={p.name}
-                className="overflow-hidden rounded-xl border bg-white"
-              >
-                <div className="relative aspect-[1.65/1]">
-                  <SafeImage
-                    src={
-                      mesaAirbnbImages[
-                        journey.packages.indexOf(p) % mesaAirbnbImages.length
-                      ]
-                    }
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="33vw"
-                  />
-                </div>
-                <div className="p-5">
-                  <h3 className="font-serif text-2xl">{p.name}</h3>
-                  <p className="mt-2 text-xl font-bold">{p.price}</p>
-                  <p className="mt-3 text-sm text-stone-600">{p.description}</p>
-                  <Link
-                    href={
-                      isHpm
-                        ? `/performance/plans/${p.name.toLowerCase()}`
-                        : `/platform/${solution.journey}/package-details?package=${encodeURIComponent(p.name)}`
-                    }
-                    className="mt-6 inline-flex text-sm font-semibold text-emerald-800"
+            {isGuidebookStudio
+              ? guidebookPackages.map((p, i) => (
+                  <article
+                    key={p.slug}
+                    className="overflow-hidden rounded-xl border bg-white"
                   >
-                    Learn more →
-                  </Link>
-                </div>
-              </article>
-            ))}
+                    <div className="relative aspect-[1.65/1]">
+                      <SafeImage
+                        src={mesaAirbnbImages[i % mesaAirbnbImages.length]}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        sizes="33vw"
+                      />
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-serif text-2xl">{p.name}</h3>
+                      <p className="mt-2 text-xl font-bold">{p.priceLabel}</p>
+                      <p className="mt-3 text-sm text-stone-600">{p.tagline}</p>
+                      <Link
+                        href={`/guidebook-studio/packages/${p.slug}`}
+                        className="mt-6 inline-flex text-sm font-semibold text-emerald-800"
+                      >
+                        Learn more →
+                      </Link>
+                    </div>
+                  </article>
+                ))
+              : journey.packages.map((p) => (
+                  <article
+                    key={p.name}
+                    className="overflow-hidden rounded-xl border bg-white"
+                  >
+                    <div className="relative aspect-[1.65/1]">
+                      <SafeImage
+                        src={
+                          mesaAirbnbImages[
+                            journey.packages.indexOf(p) % mesaAirbnbImages.length
+                          ]
+                        }
+                        alt=""
+                        fill
+                        className="object-cover"
+                        sizes="33vw"
+                      />
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-serif text-2xl">{p.name}</h3>
+                      <p className="mt-2 text-xl font-bold">{p.price}</p>
+                      <p className="mt-3 text-sm text-stone-600">{p.description}</p>
+                      <Link
+                        href={
+                          isHpm
+                            ? `/performance/plans/${p.name.toLowerCase()}`
+                            : `/platform/${solution.journey}/package-details?package=${encodeURIComponent(p.name)}`
+                        }
+                        className="mt-6 inline-flex text-sm font-semibold text-emerald-800"
+                      >
+                        Learn more →
+                      </Link>
+                    </div>
+                  </article>
+                ))}
           </div>
         </div>
       </section>
@@ -201,16 +235,27 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
                   ["Begin activation", "/commerce/activate"],
                   ["Your workspace", "/dashboard/setup"],
                 ]
-              : [
-                  ["Select package", `/platform/${solution.journey}/select-package`],
-                  ["Package details", `/platform/${solution.journey}/package-details`],
-                  ["Customize", `/platform/${solution.journey}/customize`],
-                  ["Review order", `/platform/${solution.journey}/review`],
-                  ["Secure checkout", `/platform/${solution.journey}/checkout`],
-                  ["Confirmation", `/platform/${solution.journey}/confirmation`],
-                  ["Activation", `/platform/${solution.journey}/confirmation`],
-                  ["Your workspace", `/platform/${solution.journey}/confirmation`],
-                ]
+              : isGuidebookStudio
+                ? [
+                    ["Compare packages", "/guidebook-studio/packages"],
+                    ["Package details", "/guidebook-studio/packages/done-for-you"],
+                    ["Configure purchase", "/guidebook-studio/purchase/configure?package=done-for-you"],
+                    ["Create account", "/guidebook-studio/purchase/account?package=done-for-you"],
+                    ["Review & checkout", "/guidebook-studio/purchase/review?package=done-for-you"],
+                    ["Purchase confirmed", "/guidebook-studio/purchase/confirmed"],
+                    ["Begin setup", "/dashboard/guidebooks/new"],
+                    ["Your guidebook", "/dashboard/guidebooks"],
+                  ]
+                : [
+                    ["Select package", `/platform/${solution.journey}/select-package`],
+                    ["Package details", `/platform/${solution.journey}/package-details`],
+                    ["Customize", `/platform/${solution.journey}/customize`],
+                    ["Review order", `/platform/${solution.journey}/review`],
+                    ["Secure checkout", `/platform/${solution.journey}/checkout`],
+                    ["Confirmation", `/platform/${solution.journey}/confirmation`],
+                    ["Activation", `/platform/${solution.journey}/confirmation`],
+                    ["Your workspace", `/platform/${solution.journey}/confirmation`],
+                  ]
             ).map(([x, href], i) => (
               <Link
                 key={x}

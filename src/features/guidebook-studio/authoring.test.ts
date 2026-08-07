@@ -222,6 +222,8 @@ describe("GB-001B authoring application", () => {
       "checklist",
     ] as const)
       expect(validateBlock(initialBlock(type, `b-${type}`, 0)).type).toBe(type);
+    const component=validateBlock(initialBlock("component","b-hero",0,"hero"));
+    expect(component.type==="component"&&component.content).toMatchObject({componentKey:"hero",componentVersionId:"hero-v1",source:"inline"});
     expect(() =>
       validateBlock({
         id: "bad",
@@ -425,7 +427,7 @@ describe("GB-001B authoring application", () => {
           ...x.deps,
           analytics: {
             async summary() {
-              return [];
+              return { events: [], uniqueVisitors: 0, viewsByDay: [] };
             },
           },
         },

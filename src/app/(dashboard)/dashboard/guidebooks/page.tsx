@@ -215,10 +215,10 @@ export default async function GuidebookWorkspacePage({
       </form>
       {result.projection.onboarding === "entitled-empty" ? (
         <section className="rounded-3xl border border-dashed bg-white p-12 text-center">
-          <h2 className="text-xl font-semibold">No guidebooks yet</h2>
+          <h2 className="text-xl font-semibold">Create your first guidebook</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-stone-600">
-            Guidebooks help guests prepare for arrival and reduce repetitive
-            communication.
+            Give guests one trusted place to check in, connect to Wi-Fi, explore
+            the area, and prepare for departure.
           </p>
           <Link
             href="/dashboard/guidebooks/new"

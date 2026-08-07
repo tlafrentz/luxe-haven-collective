@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PlatformJourney } from "@/components/marketing/platform-journey";
 import {
   journeySteps,
@@ -14,6 +14,7 @@ export default async function Page({
 }) {
   const { journey, step } = await params;
   const query = await searchParams;
+  if (journey === "guidebook-studio") redirect("/guidebook-studio");
   if (!platformJourneys[journey] || !journeySteps.includes(step as JourneyStep))
     notFound();
   return (

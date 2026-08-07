@@ -23,7 +23,7 @@ describe("Guidebook QR route", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("image/svg+xml");
     expect(response.headers.get("x-guidebook-destination")).toBe(
-      `https://luxe.example/g/${"a".repeat(24)}?source=qr`,
+      `https://luxe.example/stay/${"a".repeat(24)}?source=qr`,
     );
     expect(editor).toHaveBeenCalledWith("guidebook-owner");
   });
