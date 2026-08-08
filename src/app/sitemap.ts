@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getPublishedProperties } from "@/lib/properties";
 import { plans } from "@/lib/plans";
 import { guidebookPackages } from "@/lib/guidebook-packages";
+import { furnishingPackages } from "@/lib/furnishing-packages";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl =
@@ -31,6 +32,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/get-started",
     "/performance",
     "/furnishing",
+    "/furnishing/packages",
+    ...furnishingPackages.map((pkg) => `/furnishing/packages/${pkg.slug}`),
+    "/furnishing/rooms",
+    "/furnishing/examples",
+    "/furnishing/faq",
+    "/furnishing/find-my-fit",
     "/performance/overview",
     "/performance/plans",
     ...plans.map((plan) => `/performance/plans/${plan.slug}`),
@@ -41,7 +48,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/guidebook-studio/templates",
     "/guidebook-studio/faq",
     "/guidebook-studio/find-my-fit",
-    "/platform/furnishing-studio/journey",
     "/platform/investment-intelligence/journey",
   ];
   return [

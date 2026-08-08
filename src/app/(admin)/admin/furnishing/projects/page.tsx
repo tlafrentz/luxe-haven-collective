@@ -1,5 +1,5 @@
-import { FurnishingWorkspace } from "@/components/furnishing/furnishing-workspace";
+import { CustomerProjectList } from "@/components/furnishing/project-workspace-v1";
 export const dynamic = "force-dynamic";
 export default function Page() {
-  return <FurnishingWorkspace view="projects" />;
+  return <CustomerProjectList customer={false} />;
 }

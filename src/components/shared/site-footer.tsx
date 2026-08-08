@@ -16,7 +16,7 @@ const groups = [
       ["Platform Overview", "/performance/overview"],
       ["Compare Plans", "/performance/plans"],
       ["Guidebook Studio", "/guidebook-studio"],
-      ["Furnishing Studio", "/platform/furnishing-studio/journey"],
+      ["Furnishing Studio", "/furnishing"],
       ["Investment Intelligence", "/platform/investment-intelligence/journey"],
     ],
   ],

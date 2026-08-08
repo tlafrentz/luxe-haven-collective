@@ -1,5 +1,5 @@
-import { FurnishingWorkspace } from "@/components/furnishing/furnishing-workspace";
-export const dynamic = "force-dynamic";
-export default function Page() {
-  return <FurnishingWorkspace view="procurement" />;
+import { redirect } from "next/navigation";
+
+export default function AdminFurnishingProcurementIndexPage() {
+  redirect("/admin/furnishing/projects");
 }

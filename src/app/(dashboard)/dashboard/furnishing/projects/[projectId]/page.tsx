@@ -1,32 +1,14 @@
-import { notFound } from "next/navigation";
-import { getCustomerFurnishingStudio } from "@/app/actions/furnishing-studio";
-import { FurnishingProjectWorkspace } from "@/features/furnishing-studio/presentation/furnishing-project-workspace";
-
+import { ProjectWorkspace } from "@/components/furnishing/project-workspace-v1";
 export const dynamic = "force-dynamic";
-export default async function FurnishingProjectPage({
+export default async function Page({
   params,
   searchParams,
 }: {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ stage?: string }>;
+  searchParams: Promise<{ room?: string }>;
 }) {
-  const [{ projectId }, query, data] = await Promise.all([
-    params,
-    searchParams,
-    getCustomerFurnishingStudio(),
-  ]);
-  const project = data.projects.find((item) => String(item.id) === projectId);
-  if (!project) notFound();
+  const [{ projectId }, query] = await Promise.all([params, searchParams]);
   return (
-    <FurnishingProjectWorkspace
-      project={project}
-      orders={data.orders.filter((item) => item.project_id === project.id)}
-      installations={data.installations.filter(
-        (item) => item.project_id === project.id,
-      )}
-      punch={data.punch.filter((item) => item.project_id === project.id)}
-      activity={data.activity.filter((item) => item.project_id === project.id)}
-      stage={query.stage}
-    />
+    <ProjectWorkspace projectId={projectId} roomId={query.room} customer />
   );
 }

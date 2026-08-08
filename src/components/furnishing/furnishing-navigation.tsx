@@ -2,7 +2,9 @@ import Link from "next/link";
 const items = [
   ["Overview", "/admin/furnishing"],
   ["Projects", "/admin/furnishing/projects"],
+  ["Product Catalog", "/admin/furnishing/products"],
   ["Packages", "/admin/furnishing/packages"],
+  ["Design / Style", "/admin/furnishing/styles"],
   ["Procurement", "/admin/furnishing/procurement"],
   ["Installation", "/admin/furnishing/installation"],
 ] as const;

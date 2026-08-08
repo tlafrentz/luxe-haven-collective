@@ -1,12 +1,5 @@
-import { getCustomerFurnishingStudio } from "@/app/actions/furnishing-studio";
-import { CustomerFurnishingWorkspace } from "@/features/furnishing-studio/presentation/customer-furnishing-workspace";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-export default async function FurnishingStudioPage() {
-  return (
-    <CustomerFurnishingWorkspace
-      section="overview"
-      data={await getCustomerFurnishingStudio()}
-    />
-  );
+export default function DashboardFurnishingIndexPage() {
+  redirect("/dashboard/furnishing/projects");
 }

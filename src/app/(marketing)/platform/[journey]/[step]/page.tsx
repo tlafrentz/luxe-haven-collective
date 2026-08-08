@@ -15,6 +15,7 @@ export default async function Page({
   const { journey, step } = await params;
   const query = await searchParams;
   if (journey === "guidebook-studio") redirect("/guidebook-studio");
+  if (journey === "furnishing-studio") redirect("/furnishing");
   if (!platformJourneys[journey] || !journeySteps.includes(step as JourneyStep))
     notFound();
   return (

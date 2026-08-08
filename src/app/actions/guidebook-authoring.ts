@@ -330,9 +330,16 @@ export async function createGuidebookResultAction(formData: FormData) {
         actorId: user.id,
       });
       if (draft) {
+        const persistedAt = new Date().toISOString();
         await drafts.save(
           { ...context, guidebookId: result.value.guidebookId, expectedRevision: draft.revision },
-          { ...draft, brand },
+          {
+            ...draft,
+            brand,
+            revision: draft.revision + 1,
+            persistedAt,
+            persistedBy: user.id,
+          },
         );
       }
     }

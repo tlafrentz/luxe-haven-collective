@@ -35,6 +35,7 @@ export const faqCategoriesByAudience: Record<
     { slug: "property-management", label: "Property Management" },
     { slug: "revenue-pricing", label: "Revenue & Pricing" },
     { slug: "guidebooks", label: "Guidebooks" },
+    { slug: "furnishing", label: "Furnishing" },
     { slug: "platform-reporting", label: "Platform & Reporting" },
     { slug: "consulting", label: "Consulting" },
     { slug: "general", label: "General" },
@@ -156,6 +157,86 @@ export const faqs: Faq[] = [
     question: "What if I need help?",
     answer:
       "Every package includes support — email support on DIY, priority support on Done For You, and dedicated concierge support on Premium.",
+  },
+  {
+    id: "furnishing-included",
+    audience: "owners",
+    category: "furnishing",
+    question: "What is included?",
+    answer:
+      "Every package includes design direction, curated product selections, a room-by-room budget estimate, procurement coordination, and a launch-readiness handoff. Delivery, installation, and styling scope vary by package — see Compare Packages for the exact breakdown.",
+  },
+  {
+    id: "furnishing-timeline",
+    audience: "owners",
+    category: "furnishing",
+    question: "How long does the process take?",
+    answer:
+      "Most projects take 3–8 weeks from purchase to launch-ready, depending on the package, property size, and product availability.",
+  },
+  {
+    id: "furnishing-who-purchases",
+    audience: "owners",
+    category: "furnishing",
+    question: "Who purchases the furnishings?",
+    answer:
+      "You approve every product selection and its price before it is ordered. Depending on your package and market, Luxe Haven may place the order on your behalf or record an order you placed directly with a retailer — your project always shows which is happening.",
+  },
+  {
+    id: "furnishing-delivery-install",
+    audience: "owners",
+    category: "furnishing",
+    question: "Are delivery and installation included?",
+    answer:
+      "Delivery is included on every package. Installation and styling are included on Elevated and Luxury; Essential includes delivery coordination only. Compare Packages shows the exact inclusions for each tier.",
+  },
+  {
+    id: "furnishing-customize",
+    audience: "owners",
+    category: "furnishing",
+    question: "Can the design be customized?",
+    answer:
+      "Yes. Every package includes design revisions, and you can request product substitutions and style adjustments throughout the design phase before anything is ordered.",
+  },
+  {
+    id: "furnishing-item-unavailable",
+    audience: "owners",
+    category: "furnishing",
+    question: "What happens when an item is unavailable?",
+    answer:
+      "We flag it and propose an in-style alternative for your approval before it's ordered. Nothing is substituted without your review.",
+  },
+  {
+    id: "furnishing-service-area",
+    audience: "owners",
+    category: "furnishing",
+    question: "Does Luxe Haven ship outside the current service area?",
+    answer:
+      "Service availability depends on your market. If a package isn't available for your property's location, we'll explain why and offer valid alternatives during configuration.",
+  },
+  {
+    id: "furnishing-payments-refunds",
+    audience: "owners",
+    category: "furnishing",
+    question: "How do payments and refunds work?",
+    answer:
+      "You pay a deposit at checkout and the remaining balance is billed per your order's payment schedule. Refunds follow the cancellation policy shown on your specific package and order — a full refund is available before design direction is approved, with a pro-rated refund afterward.",
+  },
+  {
+    id: "furnishing-responsibility",
+    audience: "owners",
+    category: "furnishing",
+    question: "What is the customer responsible for?",
+    answer:
+      "You're responsible for approving design direction, product selections, and budget at each step, and for providing property access for delivery, receiving, and installation.",
+  },
+  {
+    id: "furnishing-price-includes-furniture",
+    audience: "owners",
+    category: "furnishing",
+    question: "Does the package price include furniture?",
+    answer:
+      "No. The package price covers the design and project-management service — the furnishing budget for the actual furniture, décor, and products is separate and is estimated with you during Launch Setup based on your rooms, style, and target budget.",
   },
   {
     id: "hpm-definition",

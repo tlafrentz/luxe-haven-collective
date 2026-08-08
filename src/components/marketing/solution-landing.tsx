@@ -11,6 +11,7 @@ import { SafeImage } from "@/components/shared/safe-image";
 import { mesaAirbnbImages } from "@/lib/mesa-airbnb";
 import { platformJourneys } from "@/lib/platform-journeys";
 import { guidebookPackages } from "@/lib/guidebook-packages";
+import { furnishingPackages } from "@/lib/furnishing-packages";
 import { solutionJourneys, type SolutionSlug } from "@/lib/solution-journeys";
 import { SolutionsNavigation } from "./solutions-navigation";
 
@@ -19,16 +20,21 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
   const journey = platformJourneys[solution.journey];
   const isHpm = solution.journey === "hpm";
   const isGuidebookStudio = solution.journey === "guidebook-studio";
+  const isFurnishingStudio = solution.journey === "furnishing-studio";
   const start = isHpm
     ? "/performance/plans"
     : isGuidebookStudio
       ? "/guidebook-studio/packages"
-      : `/platform/${solution.journey}/select-package`;
+      : isFurnishingStudio
+        ? "/furnishing/packages"
+        : `/platform/${solution.journey}/select-package`;
   const howItWorksHref = isHpm
     ? "/performance/overview"
     : isGuidebookStudio
       ? "/guidebook-studio"
-      : `/platform/${solution.journey}/journey`;
+      : isFurnishingStudio
+        ? "/furnishing"
+        : `/platform/${solution.journey}/journey`;
   return (
     <main className="bg-[#fffdf9]">
       <section className="border-b">
@@ -149,7 +155,39 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
                     </div>
                   </article>
                 ))
-              : journey.packages.map((p) => (
+              : isFurnishingStudio
+                ? furnishingPackages.map((p, i) => (
+                    <article
+                      key={p.slug}
+                      className="overflow-hidden rounded-xl border bg-white"
+                    >
+                      <div className="relative aspect-[1.65/1]">
+                        <SafeImage
+                          src={mesaAirbnbImages[i % mesaAirbnbImages.length]}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          sizes="33vw"
+                        />
+                      </div>
+                      <div className="p-5">
+                        <h3 className="font-serif text-2xl">{p.name}</h3>
+                        <p className="mt-2 text-xl font-bold">
+                          {p.priceLabel}
+                        </p>
+                        <p className="mt-3 text-sm text-stone-600">
+                          {p.tagline}
+                        </p>
+                        <Link
+                          href={`/furnishing/packages/${p.slug}`}
+                          className="mt-6 inline-flex text-sm font-semibold text-emerald-800"
+                        >
+                          Learn more →
+                        </Link>
+                      </div>
+                    </article>
+                  ))
+                : journey.packages.map((p) => (
                   <article
                     key={p.name}
                     className="overflow-hidden rounded-xl border bg-white"
@@ -246,16 +284,27 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
                     ["Begin setup", "/dashboard/guidebooks/new"],
                     ["Your guidebook", "/dashboard/guidebooks"],
                   ]
-                : [
-                    ["Select package", `/platform/${solution.journey}/select-package`],
-                    ["Package details", `/platform/${solution.journey}/package-details`],
-                    ["Customize", `/platform/${solution.journey}/customize`],
-                    ["Review order", `/platform/${solution.journey}/review`],
-                    ["Secure checkout", `/platform/${solution.journey}/checkout`],
-                    ["Confirmation", `/platform/${solution.journey}/confirmation`],
-                    ["Activation", `/platform/${solution.journey}/confirmation`],
-                    ["Your workspace", `/platform/${solution.journey}/confirmation`],
-                  ]
+                : isFurnishingStudio
+                  ? [
+                      ["Compare packages", "/furnishing/packages"],
+                      ["Package details", "/furnishing/packages/elevated"],
+                      ["Find my best fit", "/furnishing/find-my-fit"],
+                      ["Room examples", "/furnishing/rooms"],
+                      ["Design examples", "/furnishing/examples"],
+                      ["FAQ", "/furnishing/faq"],
+                      ["Purchase & begin setup", "/furnishing/packages/elevated"],
+                      ["Your projects", "/dashboard/furnishing/projects"],
+                    ]
+                  : [
+                      ["Select package", `/platform/${solution.journey}/select-package`],
+                      ["Package details", `/platform/${solution.journey}/package-details`],
+                      ["Customize", `/platform/${solution.journey}/customize`],
+                      ["Review order", `/platform/${solution.journey}/review`],
+                      ["Secure checkout", `/platform/${solution.journey}/checkout`],
+                      ["Confirmation", `/platform/${solution.journey}/confirmation`],
+                      ["Activation", `/platform/${solution.journey}/confirmation`],
+                      ["Your workspace", `/platform/${solution.journey}/confirmation`],
+                    ]
             ).map(([x, href], i) => (
               <Link
                 key={x}
