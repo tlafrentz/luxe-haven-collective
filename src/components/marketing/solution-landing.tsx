@@ -12,29 +12,36 @@ import { mesaAirbnbImages } from "@/lib/mesa-airbnb";
 import { platformJourneys } from "@/lib/platform-journeys";
 import { guidebookPackages } from "@/lib/guidebook-packages";
 import { furnishingPackages } from "@/lib/furnishing-packages";
+import { investmentPackages } from "@/lib/investment-packages";
 import { solutionJourneys, type SolutionSlug } from "@/lib/solution-journeys";
 import { SolutionsNavigation } from "./solutions-navigation";
 
 export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
   const solution = solutionJourneys[slug];
+  const journeySlug: string = solution.journey;
   const journey = platformJourneys[solution.journey];
   const isHpm = solution.journey === "hpm";
   const isGuidebookStudio = solution.journey === "guidebook-studio";
   const isFurnishingStudio = solution.journey === "furnishing-studio";
+  const isInvestmentIntelligence = solution.journey === "investment-intelligence";
   const start = isHpm
     ? "/performance/plans"
     : isGuidebookStudio
       ? "/guidebook-studio/packages"
       : isFurnishingStudio
         ? "/furnishing/packages"
-        : `/platform/${solution.journey}/select-package`;
+        : isInvestmentIntelligence
+          ? "/investment-intelligence/packages"
+          : `/platform/${journeySlug}/select-package`;
   const howItWorksHref = isHpm
     ? "/performance/overview"
     : isGuidebookStudio
       ? "/guidebook-studio"
       : isFurnishingStudio
         ? "/furnishing"
-        : `/platform/${solution.journey}/journey`;
+        : isInvestmentIntelligence
+          ? "/investment-intelligence"
+          : `/platform/${journeySlug}/journey`;
   return (
     <main className="bg-[#fffdf9]">
       <section className="border-b">
@@ -187,7 +194,35 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
                       </div>
                     </article>
                   ))
-                : journey.packages.map((p) => (
+                : isInvestmentIntelligence
+                  ? investmentPackages.map((p, i) => (
+                      <article
+                        key={p.slug}
+                        className="overflow-hidden rounded-xl border bg-white"
+                      >
+                        <div className="relative aspect-[1.65/1]">
+                          <SafeImage
+                            src={mesaAirbnbImages[i % mesaAirbnbImages.length]}
+                            alt=""
+                            fill
+                            className="object-cover"
+                            sizes="33vw"
+                          />
+                        </div>
+                        <div className="p-5">
+                          <h3 className="font-serif text-2xl">{p.name}</h3>
+                          <p className="mt-2 text-xl font-bold">{p.priceLabel}</p>
+                          <p className="mt-3 text-sm text-stone-600">{p.tagline}</p>
+                          <Link
+                            href={`/investment-intelligence/packages/${p.slug}`}
+                            className="mt-6 inline-flex text-sm font-semibold text-emerald-800"
+                          >
+                            Learn more →
+                          </Link>
+                        </div>
+                      </article>
+                    ))
+                  : journey.packages.map((p) => (
                   <article
                     key={p.name}
                     className="overflow-hidden rounded-xl border bg-white"
@@ -213,7 +248,7 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
                         href={
                           isHpm
                             ? `/performance/plans/${p.name.toLowerCase()}`
-                            : `/platform/${solution.journey}/package-details?package=${encodeURIComponent(p.name)}`
+                            : `/platform/${journeySlug}/package-details?package=${encodeURIComponent(p.name)}`
                         }
                         className="mt-6 inline-flex text-sm font-semibold text-emerald-800"
                       >
@@ -295,15 +330,26 @@ export function SolutionLanding({ slug }: { slug: SolutionSlug }) {
                       ["Purchase & begin setup", "/furnishing/packages/elevated"],
                       ["Your projects", "/dashboard/furnishing/projects"],
                     ]
-                  : [
-                      ["Select package", `/platform/${solution.journey}/select-package`],
-                      ["Package details", `/platform/${solution.journey}/package-details`],
-                      ["Customize", `/platform/${solution.journey}/customize`],
-                      ["Review order", `/platform/${solution.journey}/review`],
-                      ["Secure checkout", `/platform/${solution.journey}/checkout`],
-                      ["Confirmation", `/platform/${solution.journey}/confirmation`],
-                      ["Activation", `/platform/${solution.journey}/confirmation`],
-                      ["Your workspace", `/platform/${solution.journey}/confirmation`],
+                  : isInvestmentIntelligence
+                    ? [
+                        ["Compare packages", "/investment-intelligence/packages"],
+                        ["Package details", "/investment-intelligence/packages/pro"],
+                        ["Sample reports", "/investment-intelligence/sample-reports"],
+                        ["Methodology", "/investment-intelligence/methodology"],
+                        ["FAQ", "/investment-intelligence/faq"],
+                        ["Find my best fit", "/investment-intelligence/find-my-fit"],
+                        ["Purchase & begin analysis", "/investment-intelligence/packages/pro"],
+                        ["Your analyses", "/dashboard/investments"],
+                      ]
+                    : [
+                      ["Select package", `/platform/${journeySlug}/select-package`],
+                      ["Package details", `/platform/${journeySlug}/package-details`],
+                      ["Customize", `/platform/${journeySlug}/customize`],
+                      ["Review order", `/platform/${journeySlug}/review`],
+                      ["Secure checkout", `/platform/${journeySlug}/checkout`],
+                      ["Confirmation", `/platform/${journeySlug}/confirmation`],
+                      ["Activation", `/platform/${journeySlug}/confirmation`],
+                      ["Your workspace", `/platform/${journeySlug}/confirmation`],
                     ]
             ).map(([x, href], i) => (
               <Link

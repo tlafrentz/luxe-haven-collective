@@ -9,7 +9,7 @@ export default async function Page({
   const { journey } = await params;
   if (journey === "guidebook-studio") redirect("/guidebook-studio");
   if (journey === "furnishing-studio") redirect("/furnishing");
-  if (journey === "investment-intelligence") redirect("/dashboard/investments");
+  if (journey === "investment-intelligence") redirect("/investment-intelligence");
   if (!platformJourneys[journey]) notFound();
   redirect(`/platform/${journey}/journey`);
 }

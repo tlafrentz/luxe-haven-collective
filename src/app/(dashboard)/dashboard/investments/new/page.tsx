@@ -6,9 +6,13 @@ import { hydrateReanalysis, readImmutableAnalysis } from "@/features/investment-
 import { getInvestmentOpportunityRequestContext } from "@/app/actions/investment-opportunity-runtime";
 import Link from "next/link";
 import { AcquisitionType } from "@/features/investment-intelligence";
+import { InvestmentWelcome } from "@/components/investment/investment-welcome";
 
 export default async function NewInvestmentAnalysisPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams, opportunityId = single(params.opportunity), sourceVersionId=single(params.analysis);
+  if (single(params.welcome) === "1") {
+    return <InvestmentWelcome packageName={single(params.package)} />;
+  }
   const context = await getInvestmentOpportunityRequestContext();
   const authorized=single(params.mode) === "reanalyze"&&context?.ok&&opportunityId?await context.authorizeOpportunity(opportunityId,"analysis.reanalyze",sourceVersionId):false;
   const projection=authorized&&context?.ok&&opportunityId?await readImmutableAnalysis(context.repository,{ownerId:context.ownerId,opportunityId,...(sourceVersionId?{analysisVersionId:sourceVersionId}:{})}):null;

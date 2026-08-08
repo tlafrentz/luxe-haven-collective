@@ -3,6 +3,7 @@ import { getPublishedProperties } from "@/lib/properties";
 import { plans } from "@/lib/plans";
 import { guidebookPackages } from "@/lib/guidebook-packages";
 import { furnishingPackages } from "@/lib/furnishing-packages";
+import { investmentPackages } from "@/lib/investment-packages";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl =
@@ -48,6 +49,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/guidebook-studio/templates",
     "/guidebook-studio/faq",
     "/guidebook-studio/find-my-fit",
+    "/investment-intelligence",
+    "/investment-intelligence/packages",
+    ...investmentPackages.map((pkg) => `/investment-intelligence/packages/${pkg.slug}`),
+    "/investment-intelligence/sample-reports",
+    "/investment-intelligence/methodology",
+    "/investment-intelligence/faq",
+    "/investment-intelligence/find-my-fit",
   ];
   return [
     ...staticRoutes.map((path) => ({

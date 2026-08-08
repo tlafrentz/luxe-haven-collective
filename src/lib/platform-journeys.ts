@@ -5,7 +5,7 @@ export const platformLinks = [
   ["Compare Plans", "/performance/plans"],
   ["Guidebook Studio", "/guidebook-studio"],
   ["Furnishing Studio", "/furnishing"],
-  ["Investment Intelligence", "/dashboard/investments"],
+  ["Investment Intelligence", "/investment-intelligence"],
 ] as const;
 
 export const journeySteps = [

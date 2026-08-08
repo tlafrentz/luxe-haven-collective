@@ -412,4 +412,52 @@ export const faqs: Faq[] = [
     answer:
       "Choose Find My Best Fit or explore Investment Intelligence packages directly. We'll help identify the right level of analysis for your situation.",
   },
+  {
+    id: "investor-what-is-included",
+    audience: "investors",
+    category: "investment",
+    question: "What exactly is included in an analysis?",
+    answer:
+      "Every package includes market intelligence, a financial projection, and an overall recommendation with a confidence level. Pro and Premier add full scenario comparison, comparable-property benchmarking, and risk assessment. Premier adds a licensed analyst's expert review. See Compare Packages for the exact breakdown by tier.",
+  },
+  {
+    id: "investor-how-long",
+    audience: "investors",
+    category: "investment",
+    question: "How long does an analysis take?",
+    answer:
+      "Essentials and Pro are typically delivered within 24–48 hours. Premier is prioritized and typically delivered within 12–24 hours, including expert review.",
+  },
+  {
+    id: "investor-data-sources",
+    audience: "investors",
+    category: "due-diligence",
+    question: "Where does the market data come from?",
+    answer:
+      "Market rates, occupancy, and comparable-property data are pulled from licensed short-term-rental market data providers on a defined refresh cadence — never scraped or estimated ad hoc. See our Methodology page for the full framework.",
+  },
+  {
+    id: "investor-refunds",
+    audience: "investors",
+    category: "general",
+    question: "What is your refund policy?",
+    answer:
+      "A full refund is available if requested before your analysis is generated (or, for Premier, before expert review begins). Once your report has been generated, the analysis credit has been fulfilled and is non-refundable.",
+  },
+  {
+    id: "investor-is-guarantee",
+    audience: "investors",
+    category: "due-diligence",
+    question: "Is this a guarantee of investment performance?",
+    answer:
+      "No. An analysis is a decision-support tool built from historical and current market data, not a guarantee of future performance, and not legal, tax, or financing advice. Every report states its assumptions, sources, and confidence level so you can weigh them yourself.",
+  },
+  {
+    id: "investor-multiple-properties",
+    audience: "investors",
+    category: "investment",
+    question: "Can I analyze more than one property?",
+    answer:
+      "Yes — purchase a separate analysis for each property you're evaluating. If you're regularly evaluating multiple properties or building a portfolio, contact us about a custom Portfolio Advisory engagement.",
+  },
 ];
