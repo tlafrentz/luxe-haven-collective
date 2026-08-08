@@ -6,6 +6,7 @@ import {
 } from "@/components/guidebooks/guidebook-ui";
 import { getGuidebookStudioRequest } from "@/app/actions/guidebook-studio";
 import { filterGuidebookLibrary } from "@/features/guidebook-studio";
+import { GuidebookEmptyState } from "@/components/guidebooks/guidebook-empty-state";
 export default async function GuidebookWorkspacePage({
   searchParams,
 }: {
@@ -211,19 +212,11 @@ export default async function GuidebookWorkspacePage({
         </button>
       </form>
       {result.projection.onboarding === "entitled-empty" ? (
-        <section className="rounded-3xl border border-dashed bg-white p-12 text-center">
-          <h2 className="text-xl font-semibold">Create your first guidebook</h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-stone-600">
-            Give guests one trusted place to check in, connect to Wi-Fi, explore
-            the area, and prepare for departure.
-          </p>
-          <Link
-            href="/dashboard/guidebooks/new"
-            className="mt-5 inline-block rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white"
-          >
-            Create in Guidebook Studio
-          </Link>
-        </section>
+        <GuidebookEmptyState
+          hasProperties={result.projection.portfolio.totalProperties > 0}
+          addPropertyHref="/dashboard/workspace/connected-systems"
+          createHref="/dashboard/guidebooks/new"
+        />
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,.8fr)]">
           <section
