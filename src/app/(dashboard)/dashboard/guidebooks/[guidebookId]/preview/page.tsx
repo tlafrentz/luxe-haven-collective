@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
 import { getHistoricalGuidebookPreviewRequest } from "@/app/actions/guidebook-delivery";
-import { listGuidebookDraftMediaAction } from "@/app/actions/guidebook-authoring";
+import { buildDraftArtifactPayload } from "@/app/actions/guidebook-draft-artifact";
 import { PublicGuidebookExperience } from "@/components/guidebooks/public-guidebook-experience";
 import {
   ArtifactRenderingEngine,
@@ -13,7 +13,6 @@ import {
   type GuidebookArtifactPayload,
   type PublicGuidebookView,
 } from "@/features/guidebook-studio";
-import { propertyProjectionSnapshot } from "@/features/property-projection";
 
 export const dynamic = "force-dynamic";
 
@@ -31,37 +30,7 @@ async function buildDraftGuidebookView(
   guidebookId: string,
   result: EditorResult,
 ): Promise<PublicGuidebookView> {
-  const media = await listGuidebookDraftMediaAction({
-    workspaceId: String(result.guidebook.workspace_id),
-    guidebookId,
-  });
-  const mediaMap = Object.fromEntries(
-    media.map((item) => [item.id, { url: item.url, mimeType: item.mimeType }]),
-  );
-  const featuredImage =
-    result.propertyProjection.guest.featuredImage.state === "available"
-      ? result.propertyProjection.guest.featuredImage.value
-      : undefined;
-  const artifact: PublishedArtifactEnvelope<GuidebookArtifactPayload> = {
-    artifactType: "guidebook",
-    artifactVersion: "guidebook-draft-preview.v1",
-    rendererVersion: "guidebook-web-renderer.v1",
-    publishedAt: result.draft?.persistedAt ?? new Date().toISOString(),
-    version: result.draft?.revision ?? result.guidebook.revision,
-    payload: {
-      title: result.draft?.title ?? result.guidebook.title,
-      description: result.draft?.description ?? result.guidebook.description,
-      brand: { ...(result.draft?.brand ?? {}) },
-      property: {
-        name: result.propertyProjection.identity.name,
-        ...(featuredImage ? { featuredImage } : {}),
-      },
-      propertyProjection: propertyProjectionSnapshot(result.propertyProjection),
-      sections: result.draftSections,
-      recommendations: result.recommendations,
-      media: mediaMap,
-    },
-  };
+  const artifact = await buildDraftArtifactPayload(guidebookId, result);
   return guidebookPublicRenderer.render(artifact);
 }
 

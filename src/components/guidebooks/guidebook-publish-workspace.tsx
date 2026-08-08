@@ -8,9 +8,18 @@ import {
 } from "lucide-react";
 import {
   evaluateGuidebookPublicationReadiness,
+  type ApprovalRequestInput,
+  type compareGuidebookVersions,
   type GuidebookDraft,
 } from "@/features/guidebook-studio";
 import { GuidebookPublicationControl } from "./guidebook-publication-control";
+
+const approvalCopy: Record<ApprovalRequestInput["status"], string> = {
+  pending: "Waiting on the customer to review and approve this draft.",
+  approved: "The customer approved this draft.",
+  changes_requested: "The customer requested changes on this draft.",
+  superseded: "A newer approval request has replaced this one.",
+};
 
 export function GuidebookPublishWorkspace({
   draft,
@@ -20,6 +29,10 @@ export function GuidebookPublishWorkspace({
   status,
   canPublish,
   basePath,
+  currentPublishedVersion = null,
+  changesSincePublished = null,
+  approvalRequest = null,
+  authoringMode = "self",
 }: Readonly<{
   draft: GuidebookDraft;
   propertyName: string;
@@ -28,6 +41,10 @@ export function GuidebookPublishWorkspace({
   status: string;
   canPublish: boolean;
   basePath: string;
+  currentPublishedVersion?: number | null;
+  changesSincePublished?: ReturnType<typeof compareGuidebookVersions> | null;
+  approvalRequest?: ApprovalRequestInput | null;
+  authoringMode?: string;
 }>) {
   const readiness = evaluateGuidebookPublicationReadiness(draft),
     errors = readiness.issues.filter((item) => item.severity === "error"),
@@ -95,14 +112,84 @@ export function GuidebookPublishWorkspace({
             <dd>{templateName}</dd>
             <dt>Draft version</dt>
             <dd>Revision {draft.revision}</dd>
+            <dt>Current published version</dt>
+            <dd>
+              {currentPublishedVersion
+                ? `Version ${currentPublishedVersion}`
+                : "Not published yet"}
+            </dd>
             <dt>Status</dt>
             <dd className="capitalize">{status}</dd>
+            <dt>Guest URL</dt>
+            <dd>
+              {status === "published" ? (
+                <a
+                  href={`/stay/${publicSlug}`}
+                  className="text-blue-700 underline"
+                >
+                  /stay/{publicSlug}
+                </a>
+              ) : (
+                <span className="text-stone-400">Available after publishing</span>
+              )}
+            </dd>
             <dt>Sections</dt>
             <dd>
               {complete} complete · {draft.sections.length - complete} in
               progress
             </dd>
           </dl>
+          {authoringMode === "managed" ? (
+            <div
+              className={`mt-5 rounded-lg border p-3 text-sm ${
+                approvalRequest?.status === "approved"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : approvalRequest?.status === "changes_requested"
+                    ? "border-rose-200 bg-rose-50 text-rose-900"
+                    : "border-amber-200 bg-amber-50 text-amber-900"
+              }`}
+            >
+              <strong>Customer approval: </strong>
+              {approvalRequest
+                ? approvalCopy[approvalRequest.status]
+                : "No approval has been requested yet."}
+            </div>
+          ) : null}
+          {changesSincePublished ? (
+            <div className="mt-5">
+              <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
+                Changes since published version
+                {currentPublishedVersion ? ` ${currentPublishedVersion}` : ""}
+              </p>
+              {changesSincePublished.changes.length ? (
+                <ul className="mt-2 space-y-1.5 text-sm">
+                  {changesSincePublished.changes.slice(0, 12).map((change) => (
+                    <li key={`${change.category}:${change.key}`}>
+                      <span
+                        className={
+                          change.state === "added"
+                            ? "text-emerald-700"
+                            : change.state === "removed"
+                              ? "text-rose-700"
+                              : "text-amber-700"
+                        }
+                      >
+                        {change.state}
+                      </span>{" "}
+                      <span className="capitalize text-stone-500">
+                        {change.category}
+                      </span>{" "}
+                      · {change.label}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-stone-500">
+                  No changes since the last published version.
+                </p>
+              )}
+            </div>
+          ) : null}
           <ul className="mt-5 grid gap-2 sm:grid-cols-2">
             {draft.sections.map((section) => (
               <li

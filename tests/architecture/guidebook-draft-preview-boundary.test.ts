@@ -7,6 +7,10 @@ describe("Guidebook durable draft preview boundary", () => {
     "src/app/(dashboard)/dashboard/guidebooks/[guidebookId]/preview/page.tsx",
     "utf8",
   );
+  const draftArtifact = readFileSync(
+    "src/app/actions/guidebook-draft-artifact.ts",
+    "utf8",
+  );
   const authoring = readFileSync(
     "src/components/guidebooks/guidebook-authoring-workspace.tsx",
     "utf8",
@@ -15,8 +19,8 @@ describe("Guidebook durable draft preview boundary", () => {
   it("projects preview sections from the canonical durable draft", () => {
     expect(action).toContain("new SupabaseGuidebookDraftRepository(admin).load");
     expect(action).toContain("draftSections: durableDraft");
-    expect(preview).toContain("sections: result.draftSections,");
-    expect(preview).not.toContain("sections: result.sections,");
+    expect(draftArtifact).toContain("sections: result.draftSections,");
+    expect(draftArtifact).not.toContain("sections: result.sections,");
   });
 
   it("renders draft preview through the real guest experience component, not a bespoke approximation", () => {
