@@ -3,7 +3,12 @@ import { AdminGuidebookNavigation } from "@/components/guidebooks/admin-guideboo
 import { notFound } from "next/navigation";
 import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
 import { loadGuidebookAuthoringAction } from "@/app/actions/guidebook-authoring";
+import {
+  listGuidebookChangeRequestsAction,
+  listGuidebookProducersAction,
+} from "@/app/actions/guidebook-change-requests";
 import { GuidebookAuthoringWorkspace } from "@/components/guidebooks/guidebook-authoring-workspace";
+import { AdminGuidebookProductionPanel } from "@/components/guidebooks/admin-guidebook-production-panel";
 import { GuidebookPublicationControl } from "@/components/guidebooks/guidebook-publication-control";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +41,10 @@ export default async function AdminGuidebookEditorPage({
     workspaceId: String(result.guidebook.workspace_id),
     guidebookId,
   });
+  const [changeRequests, producers] = await Promise.all([
+    listGuidebookChangeRequestsAction(guidebookId),
+    listGuidebookProducersAction(),
+  ]);
   return (
     <main className="mx-auto max-w-[1480px] space-y-6 px-5 py-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -92,6 +101,22 @@ export default async function AdminGuidebookEditorPage({
         draft. Guests continue seeing the immutable published version until
         publication succeeds.
       </section>
+      <AdminGuidebookProductionPanel
+        guidebookId={guidebookId}
+        authoringMode={String(result.guidebook.authoring_mode ?? "self")}
+        producerId={
+          result.guidebook.producer_id
+            ? String(result.guidebook.producer_id)
+            : null
+        }
+        targetPublishDate={
+          result.guidebook.target_publish_date
+            ? String(result.guidebook.target_publish_date)
+            : null
+        }
+        producers={producers}
+        requests={changeRequests}
+      />
       {authoring.ok ? (
         <>
           <GuidebookAuthoringWorkspace

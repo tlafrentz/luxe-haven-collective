@@ -1,5 +1,6 @@
 export * from "./guidebook";
 export * from "./guidebook-workspace";
+export * from "./change-requests";
 export * from "./guidebook-composition";
 export * from "./public-guidebook";
 export * from "./guest-delivery";

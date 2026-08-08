@@ -1,8 +1,23 @@
 import Link from "next/link";
 import { getGuidebookStudioRequest } from "@/app/actions/guidebook-studio";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminGuidebookNavigation } from "./admin-guidebook-navigation";
 import { LibraryOverviewSection } from "./canonical-library-workspace";
 import { GuidebookPageHeader } from "./guidebook-ui";
+
+async function loadOpenChangeRequestCounts(): Promise<Record<string, number>> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("guidebook_change_requests")
+    .select("guidebook_id")
+    .in("status", ["open", "in_progress"]);
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    const key = String(row.guidebook_id);
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
+}
 
 export type AdminGuidebookView =
   | "overview"
@@ -74,6 +89,7 @@ export async function AdminGuidebookWorkspace({
     );
 
   const { projection } = result;
+  const openChangeRequestCounts = await loadOpenChangeRequestCounts();
   return (
     <main className="mx-auto max-w-[1480px] space-y-6 px-5 py-8">
       <GuidebookPageHeader
@@ -101,7 +117,12 @@ export async function AdminGuidebookWorkspace({
       />
       <AdminGuidebookNavigation current={view} />
       {view === "overview" ? <Overview projection={projection} /> : null}
-      {view === "guidebooks" ? <GuidebookList projection={projection} /> : null}
+      {view === "guidebooks" ? (
+        <GuidebookList
+          projection={projection}
+          openChangeRequestCounts={openChangeRequestCounts}
+        />
+      ) : null}
       {view === "analytics" ? <Analytics projection={projection} /> : null}
       {view === "settings" ? <Settings /> : null}
     </main>
@@ -373,7 +394,13 @@ function relativeTime(value: string) {
   if (Math.abs(hours) < 24) return formatter.format(hours, "hour");
   return formatter.format(Math.round(hours / 24), "day");
 }
-function GuidebookList({ projection }: Readonly<{ projection: Projection }>) {
+function GuidebookList({
+  projection,
+  openChangeRequestCounts,
+}: Readonly<{
+  projection: Projection;
+  openChangeRequestCounts: Record<string, number>;
+}>) {
   return (
     <section className="overflow-hidden rounded-2xl border bg-white">
       <div className="flex flex-wrap gap-3 border-b p-4">
@@ -403,6 +430,7 @@ function GuidebookList({ projection }: Readonly<{ projection: Projection }>) {
               <th className="p-4">Property</th>
               <th className="p-4">Status</th>
               <th className="p-4">Coverage</th>
+              <th className="p-4">Requests</th>
               <th className="p-4">Last updated</th>
               <th className="p-4">
                 <span className="sr-only">Actions</span>
@@ -422,6 +450,16 @@ function GuidebookList({ projection }: Readonly<{ projection: Projection }>) {
                 <td className="p-4">
                   {item.requiredSections.complete}/{item.requiredSections.total}{" "}
                   sections
+                </td>
+                <td className="p-4">
+                  {item.guidebook &&
+                  openChangeRequestCounts[item.guidebook.id] ? (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900">
+                      {openChangeRequestCounts[item.guidebook.id]} open
+                    </span>
+                  ) : (
+                    <span className="text-stone-400">—</span>
+                  )}
                 </td>
                 <td className="p-4 text-stone-600">
                   {new Date(item.lastUpdatedAt).toLocaleDateString()}
