@@ -10,6 +10,7 @@ import {
 import { getApprovalReviewAction } from "@/app/actions/guidebook-approval-review";
 import { GuidebookAuthoringWorkspace } from "@/components/guidebooks/guidebook-authoring-workspace";
 import { AdminGuidebookProductionPanel } from "@/components/guidebooks/admin-guidebook-production-panel";
+import { AdminGuidebookThemePanel } from "@/components/guidebooks/admin-guidebook-theme-panel";
 import { GuidebookPublicationControl } from "@/components/guidebooks/guidebook-publication-control";
 
 export const dynamic = "force-dynamic";
@@ -121,6 +122,13 @@ export default async function AdminGuidebookEditorPage({
         approvalRequest={approvalReview.request}
         approvalComments={approvalReview.comments}
       />
+      {authoring.ok ? (
+        <AdminGuidebookThemePanel
+          guidebookId={guidebookId}
+          workspaceId={String(result.guidebook.workspace_id)}
+          brand={authoring.draft.brand}
+        />
+      ) : null}
       {authoring.ok ? (
         <>
           <GuidebookAuthoringWorkspace
