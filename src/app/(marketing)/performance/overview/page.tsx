@@ -4,7 +4,7 @@ import { PlatformFlywheel } from "@/components/marketing/platform-flywheel";
 import { lifecycleStages, type LifecycleStage } from "@/lib/plans";
 
 export const metadata: Metadata = {
-  title: "Platform Overview",
+  title: "HPM Platform",
   description:
     "See how the Hospitality Performance Platform connects Observe, Understand, Decide, Execute, and Learn into one system.",
 };

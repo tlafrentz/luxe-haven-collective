@@ -13,8 +13,7 @@ const groups = [
   [
     "Platform",
     [
-      ["Platform Overview", "/performance/overview"],
-      ["Compare Plans", "/performance/plans"],
+      ["HPM Platform", "/performance/overview"],
       ["Guidebook Studio", "/guidebook-studio"],
       ["Furnishing Studio", "/furnishing"],
       ["Investment Intelligence", "/investment-intelligence"],
