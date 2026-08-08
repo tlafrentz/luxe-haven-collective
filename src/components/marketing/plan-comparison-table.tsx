@@ -14,17 +14,17 @@ function Cell({ value }: { value: ComparisonValue }) {
 export function PlanComparisonTable() {
   return (
     <div className="overflow-x-auto rounded-xl border border-[#dce2dd] bg-white">
-      <table className="w-full min-w-[720px] border-collapse text-sm">
-        <thead>
-          <tr className="sticky top-[76px] z-10 bg-white shadow-sm">
-            <th className="border-b p-4 text-left font-semibold text-stone-500">
+      <table className="w-full min-w-[720px] text-left text-sm">
+        <thead className="bg-stone-50">
+          <tr>
+            <th className="p-4 font-semibold text-stone-500">
               Compare features
             </th>
             {plans.map((plan) => (
               <th
                 key={plan.slug}
                 scope="col"
-                className="border-b p-4 text-center font-serif text-lg font-normal"
+                className="p-4 text-center font-serif text-lg font-normal"
               >
                 {plan.name}
               </th>
@@ -33,7 +33,7 @@ export function PlanComparisonTable() {
         </thead>
         <tbody>
           {comparisonRowLabels.map((row) => (
-            <tr key={row.key} className="border-b last:border-0">
+            <tr key={row.key} className="border-t">
               <th scope="row" className="p-4 text-left font-medium text-stone-700">
                 {row.label}
               </th>

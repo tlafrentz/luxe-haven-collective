@@ -11,7 +11,6 @@ const nav = [
   { href: "/resources", label: "Resources" },
   { href: "/stays", label: "Properties" },
   { href: "/about", label: "About" },
-  { href: "/pricing", label: "Pricing" },
 ];
 
 export async function SiteHeader() {

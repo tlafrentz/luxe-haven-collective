@@ -27,7 +27,7 @@ export default async function PlatformOverviewPage({
       <section className="border-b border-[#dce2dd] bg-[#f6f3eb] py-16">
         <div className="container-shell">
           <nav className="text-xs text-stone-500">
-            <Link href="/performance">Platform</Link>
+            <Link href="/performance">HPM Platform</Link>
             <span className="mx-2">›</span>
             <span>Overview</span>
           </nav>
