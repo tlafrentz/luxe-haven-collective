@@ -2,13 +2,25 @@ import {
   assignGuidebookProducerAction,
   resolveChangeRequestAction,
 } from "@/app/actions/guidebook-change-requests";
-import type { ChangeRequestInput } from "@/features/guidebook-studio";
+import { requestCustomerApprovalAction } from "@/app/actions/guidebook-approval-review";
+import type {
+  ApprovalRequestInput,
+  ChangeRequestInput,
+  ReviewCommentInput,
+} from "@/features/guidebook-studio";
 
 const statusTone: Record<ChangeRequestInput["status"], string> = {
   open: "bg-amber-50 text-amber-900",
   in_progress: "bg-blue-50 text-blue-900",
   resolved: "bg-emerald-50 text-emerald-800",
   declined: "bg-stone-100 text-stone-600",
+};
+
+const approvalTone: Record<ApprovalRequestInput["status"], string> = {
+  pending: "bg-amber-50 text-amber-900",
+  approved: "bg-emerald-50 text-emerald-800",
+  changes_requested: "bg-rose-50 text-rose-800",
+  superseded: "bg-stone-100 text-stone-600",
 };
 
 export function AdminGuidebookProductionPanel({
@@ -18,6 +30,8 @@ export function AdminGuidebookProductionPanel({
   targetPublishDate,
   producers,
   requests,
+  approvalRequest,
+  approvalComments,
 }: {
   guidebookId: string;
   authoringMode: string;
@@ -25,6 +39,8 @@ export function AdminGuidebookProductionPanel({
   targetPublishDate: string | null;
   producers: readonly { id: string; name: string }[];
   requests: readonly ChangeRequestInput[];
+  approvalRequest: ApprovalRequestInput | null;
+  approvalComments: readonly ReviewCommentInput[];
 }) {
   return (
     <section className="grid gap-6 rounded-2xl border bg-white p-6 lg:grid-cols-2">
@@ -151,6 +167,65 @@ export function AdminGuidebookProductionPanel({
             No change requests from the customer yet.
           </p>
         )}
+      </div>
+      <div className="lg:col-span-2 border-t border-stone-100 pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-stone-500">
+            Customer approval
+          </p>
+          {approvalRequest ? (
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${approvalTone[approvalRequest.status]}`}
+            >
+              {approvalRequest.status.replaceAll("_", " ")}
+            </span>
+          ) : null}
+        </div>
+        {approvalRequest?.status === "pending" ? (
+          <p className="mt-2 text-sm text-stone-600">
+            Waiting on the customer to review draft revision{" "}
+            {approvalRequest.draftRevision}, requested{" "}
+            {new Date(approvalRequest.createdAt).toLocaleDateString()}.
+          </p>
+        ) : approvalRequest?.status === "approved" ? (
+          <p className="mt-2 text-sm text-emerald-800">
+            Approved {new Date(approvalRequest.decidedAt ?? approvalRequest.createdAt).toLocaleDateString()}.
+            {approvalRequest.decisionNote ? ` "${approvalRequest.decisionNote}"` : ""}
+          </p>
+        ) : approvalRequest?.status === "changes_requested" ? (
+          <p className="mt-2 text-sm text-rose-800">
+            Changes requested{" "}
+            {new Date(approvalRequest.decidedAt ?? approvalRequest.createdAt).toLocaleDateString()}.
+            {approvalRequest.decisionNote ? ` "${approvalRequest.decisionNote}"` : ""}
+          </p>
+        ) : (
+          <p className="mt-2 text-sm text-stone-500">
+            No approval requested yet.
+          </p>
+        )}
+        {approvalComments.length ? (
+          <ol className="mt-3 space-y-2">
+            {approvalComments.map((comment) => (
+              <li
+                key={comment.id}
+                className="rounded-lg bg-stone-50 p-3 text-xs text-stone-700"
+              >
+                <span className="font-semibold">
+                  {comment.sectionKey || "General"}:
+                </span>{" "}
+                {comment.comment}
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        {!approvalRequest || approvalRequest.status !== "pending" ? (
+          <form action={requestCustomerApprovalAction} className="mt-4">
+            <input type="hidden" name="guidebookId" value={guidebookId} />
+            <button className="rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white">
+              Request customer approval
+            </button>
+          </form>
+        ) : null}
       </div>
     </section>
   );

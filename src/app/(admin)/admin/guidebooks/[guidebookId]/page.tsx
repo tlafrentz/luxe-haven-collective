@@ -7,6 +7,7 @@ import {
   listGuidebookChangeRequestsAction,
   listGuidebookProducersAction,
 } from "@/app/actions/guidebook-change-requests";
+import { getApprovalReviewAction } from "@/app/actions/guidebook-approval-review";
 import { GuidebookAuthoringWorkspace } from "@/components/guidebooks/guidebook-authoring-workspace";
 import { AdminGuidebookProductionPanel } from "@/components/guidebooks/admin-guidebook-production-panel";
 import { GuidebookPublicationControl } from "@/components/guidebooks/guidebook-publication-control";
@@ -41,9 +42,10 @@ export default async function AdminGuidebookEditorPage({
     workspaceId: String(result.guidebook.workspace_id),
     guidebookId,
   });
-  const [changeRequests, producers] = await Promise.all([
+  const [changeRequests, producers, approvalReview] = await Promise.all([
     listGuidebookChangeRequestsAction(guidebookId),
     listGuidebookProducersAction(),
+    getApprovalReviewAction(guidebookId),
   ]);
   return (
     <main className="mx-auto max-w-[1480px] space-y-6 px-5 py-8">
@@ -116,6 +118,8 @@ export default async function AdminGuidebookEditorPage({
         }
         producers={producers}
         requests={changeRequests}
+        approvalRequest={approvalReview.request}
+        approvalComments={approvalReview.comments}
       />
       {authoring.ok ? (
         <>
