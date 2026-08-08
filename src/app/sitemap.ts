@@ -48,7 +48,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/guidebook-studio/templates",
     "/guidebook-studio/faq",
     "/guidebook-studio/find-my-fit",
-    "/platform/investment-intelligence/journey",
   ];
   return [
     ...staticRoutes.map((path) => ({
