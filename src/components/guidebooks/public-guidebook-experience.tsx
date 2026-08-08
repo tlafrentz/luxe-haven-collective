@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { SafeImage } from "@/components/shared/safe-image";
+import { GuestQuickActionsBar } from "./guest-quick-actions-bar";
 import type {
   PublicGuidebookBlock,
   PublicGuidebookView,
@@ -194,7 +195,7 @@ export function PublicGuidebookExperience({
             <Recommendations items={guidebook.recommendations} track={track} />
           ) : null}
         </div>
-        <footer className="border-t border-stone-200 bg-white px-6 py-10 text-center">
+        <footer className="border-t border-stone-200 bg-white px-6 py-10 pb-24 text-center">
           <p className="font-serif text-xl text-stone-900">Enjoy your stay.</p>
           <p className="mt-2 text-xs text-stone-500">
             Published{" "}
@@ -209,6 +210,7 @@ export function PublicGuidebookExperience({
           </p>
         </footer>
       </article>
+      <GuestQuickActionsBar guidebook={guidebook} track={track} />
     </main>
   );
 }

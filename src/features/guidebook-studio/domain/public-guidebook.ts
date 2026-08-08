@@ -31,6 +31,9 @@ export type PublicGuidebookView = Readonly<{
   hostContact?: string;
   checkInTime?: string;
   checkoutTime?: string;
+  wifi?: string;
+  address?: string;
+  emergencyContact?: string;
   theme: Readonly<{
     primaryColor: string;
     accentColor: string;
@@ -112,6 +115,15 @@ export const guidebookPublicRenderer: ArtifactRenderer<
               50,
             ),
           }
+        : {}),
+      ...(sanitizePublicText(values.wifi, 500)
+        ? { wifi: sanitizePublicText(values.wifi, 500) }
+        : {}),
+      ...(sanitizePublicText(values.address, 300)
+        ? { address: sanitizePublicText(values.address, 300) }
+        : {}),
+      ...(sanitizePublicText(values.emergencyContact, 300)
+        ? { emergencyContact: sanitizePublicText(values.emergencyContact, 300) }
         : {}),
       theme: {
         primaryColor: color(String(brand.primaryColor ?? "#1d1a17"), "#1d1a17"),
