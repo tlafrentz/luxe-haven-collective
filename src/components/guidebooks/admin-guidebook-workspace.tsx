@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getGuidebookStudioRequest } from "@/app/actions/guidebook-studio";
 import { AdminGuidebookNavigation } from "./admin-guidebook-navigation";
 import { LibraryOverviewSection } from "./canonical-library-workspace";
+import { GuidebookPageHeader } from "./guidebook-ui";
 
 export type AdminGuidebookView =
   | "overview"
@@ -51,6 +52,7 @@ export async function AdminGuidebookWorkspace({
   const result = await getGuidebookStudioRequest(undefined, {
     pageSize: 50,
     sort: "updated",
+    basePath: "/admin/guidebooks",
   });
   const [title, description] = titleByView[view];
   if (!result.ok)
@@ -74,33 +76,29 @@ export async function AdminGuidebookWorkspace({
   const { projection } = result;
   return (
     <main className="mx-auto max-w-[1480px] space-y-6 px-5 py-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-700">
-            Guest experience CMS
-          </p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-            {title}
-          </h1>
-          <p className="mt-2 text-stone-600">{description}</p>
-        </div>
-        <div className="flex gap-2">
+      <GuidebookPageHeader
+        eyebrow="Guest experience CMS"
+        title={title}
+        description={description}
+        actions={
+          <>
           <Link
             href="/dashboard/guidebooks"
             className="rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold"
           >
-            View customer workspace
+            View Guidebook Operations
           </Link>
           {projection.permissions.manage && projection.entitlements.create ? (
             <Link
-              href="/dashboard/guidebooks/new"
-              className="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white"
+              href="/admin/guidebooks/new"
+              className="rounded-xl bg-stone-950 px-4 py-2.5 text-sm font-semibold text-white"
             >
-              + New guidebook
+              Create guidebook
             </Link>
           ) : null}
-        </div>
-      </header>
+          </>
+        }
+      />
       <AdminGuidebookNavigation current={view} />
       {view === "overview" ? <Overview projection={projection} /> : null}
       {view === "guidebooks" ? <GuidebookList projection={projection} /> : null}
@@ -130,7 +128,9 @@ function Card({
   );
 }
 function Overview({ projection }: Readonly<{ projection: Projection }>) {
-  const published = projection.library.filter((x) => x.status === "published");
+  const published = projection.library.filter(
+    (x) => x.publicUrl.status === "active",
+  );
   const archived = projection.library.filter(
     (x) => x.status === "archived",
   ).length;
@@ -145,7 +145,7 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
       "View guidebooks",
     ],
     [
-      "Draft",
+      "Drafts",
       projection.portfolio.draftGuidebooks,
       projection.portfolio.draftGuidebooks
         ? "In progress"
@@ -154,7 +154,7 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
       "Continue editing",
     ],
     [
-      "Needs review",
+      "Needs attention",
       projection.portfolio.requiringAttention,
       projection.portfolio.requiringAttention
         ? "Requires attention"
@@ -290,8 +290,8 @@ function Overview({ projection }: Readonly<{ projection: Projection }>) {
                     href={
                       item.suggestedActions[0]?.href ??
                       (item.guidebook
-                        ? `/dashboard/guidebooks/${item.guidebook.id}`
-                        : `/dashboard/guidebooks/new?property=${item.property.id}`)
+                        ? `/admin/guidebooks/${item.guidebook.id}/edit`
+                        : `/admin/guidebooks/new?property=${item.property.id}`)
                     }
                     className="rounded-lg border border-emerald-700 bg-white px-3 py-2 text-xs font-semibold text-emerald-800"
                   >
@@ -437,7 +437,7 @@ function GuidebookList({ projection }: Readonly<{ projection: Projection }>) {
                   ) : (
                     <Link
                       className="font-semibold text-emerald-800"
-                      href={`/dashboard/guidebooks/new?property=${item.property.id}`}
+                      href={`/admin/guidebooks/new?property=${item.property.id}`}
                     >
                       Create
                     </Link>

@@ -125,10 +125,12 @@ export function GuidebookBuilderWorkspace({
             href={basePath}
             className="text-xs font-semibold text-emerald-800"
           >
-            ← Guidebooks
+            Guidebook Studio / Guidebooks
           </Link>
           <h1 className="font-semibold">{draft.title}</h1>
-          <p className="text-xs text-stone-500">Draft · Mesa Modern</p>
+          <p className="text-xs text-stone-500">
+            Draft revision {draft.revision} · Mesa Modern
+          </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <SaveStatus value={save} />
@@ -144,14 +146,14 @@ export function GuidebookBuilderWorkspace({
             href={`/guidebooks/${draft.guidebookId}/preview?viewport=desktop`}
             className="rounded-lg border px-3 py-2"
           >
-            Preview
+            Draft preview
           </Link>
           <Link
             aria-disabled={
               !canPublish || publicationReadiness.status === "not-ready"
             }
             href={`${basePath}/${draft.guidebookId}/publish`}
-            className={`rounded-lg bg-violet-700 px-4 py-2 font-semibold text-white ${!canPublish || publicationReadiness.status === "not-ready" ? "pointer-events-none opacity-40" : ""}`}
+            className={`rounded-lg bg-stone-950 px-4 py-2 font-semibold text-white ${!canPublish || publicationReadiness.status === "not-ready" ? "pointer-events-none opacity-40" : ""}`}
           >
             Publish
           </Link>
@@ -180,7 +182,7 @@ export function GuidebookBuilderWorkspace({
             {draft.sections.map((item) => (
               <article
                 key={item.id}
-                className={`rounded-xl border p-2 transition-colors ${section?.id === item.id ? "border-violet-500 bg-violet-50 shadow-sm" : "border-stone-200 hover:bg-stone-50"}`}
+                className={`rounded-xl border p-2 transition-colors ${section?.id === item.id ? "border-emerald-600 bg-emerald-50 shadow-sm" : "border-stone-200 hover:bg-stone-50"}`}
               >
                 <button
                   onClick={() => {
@@ -275,7 +277,7 @@ export function GuidebookBuilderWorkspace({
           <button
             disabled={!section || !canEdit}
             onClick={() => setPicker(true)}
-            className="mt-4 w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
+            className="mt-4 w-full rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
           >
             + Add Component
           </button>
@@ -490,9 +492,9 @@ function Canvas({
                 key={item.id}
                 hidden={!item.visible}
                 onClick={() => onSelect(item.id)}
-                className={`group relative cursor-pointer rounded-xl border bg-white p-5 transition-all hover:border-violet-300 hover:shadow-sm ${selected === item.id ? "ring-2 ring-violet-500" : ""}`}
+                className={`group relative cursor-pointer rounded-xl border bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-sm ${selected === item.id ? "ring-2 ring-emerald-600" : ""}`}
               >
-                <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
                   {item.type === "component"
                     ? item.content.componentKey.replaceAll("_", " ")
                     : item.type}
@@ -624,7 +626,7 @@ function PropertyPanel({
     if (panel === "content")
       return (
         <div className="mt-5 space-y-4">
-          <span className="rounded-full bg-violet-50 px-2 py-1 text-xs font-semibold capitalize text-violet-800">
+          <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold capitalize text-emerald-800">
             {block.content.source === "content_record" ? "Library" : "Inline"}
           </span>
           <label className="block text-sm font-semibold">
@@ -916,7 +918,7 @@ function MediaPanel({
       )}
       {canEdit ? (
         <label className="block">
-          <span className="block w-full cursor-pointer rounded-lg bg-violet-600 px-3 py-2 text-center text-sm font-semibold text-white">
+          <span className="block w-full cursor-pointer rounded-lg bg-emerald-800 px-3 py-2 text-center text-sm font-semibold text-white">
             {uploading ? "Uploading…" : "Upload Media"}
           </span>
           <input
@@ -946,7 +948,7 @@ function MediaPanel({
                     ],
                   })
                 }
-                className={`overflow-hidden rounded-lg border-2 ${item.id === selected?.assetId ? "border-violet-600" : "border-transparent"}`}
+                className={`overflow-hidden rounded-lg border-2 ${item.id === selected?.assetId ? "border-emerald-700" : "border-transparent"}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={item.url} alt="" className="h-16 w-full object-cover" />
@@ -1029,9 +1031,9 @@ function Picker({
               <button
                 key={item.key}
                 onClick={() => insert(item.key)}
-                className="rounded-xl border p-5 text-left hover:border-violet-500"
+                className="rounded-xl border p-5 text-left hover:border-emerald-600"
               >
-                <span className="text-xs font-semibold capitalize text-violet-700">
+                <span className="text-xs font-semibold capitalize text-emerald-700">
                   {item.category}
                 </span>
                 <strong className="mt-2 block">{item.name}</strong>

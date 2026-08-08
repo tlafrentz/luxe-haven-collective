@@ -70,6 +70,21 @@ describe("Guidebook workspace projection",()=>{
     expect(result.suggestedActions.map(action=>action.key)).toContain("republish");
   });
 
+  it("counts a live guidebook with newer draft in both published and draft metrics",()=>{
+    const publishedWithDraft={...guidebook,status:"published",updatedAt:"2026-07-26T12:00:00Z"};
+    const projection=buildGuidebookWorkspaceProjection({
+      workspaceId:"workspace-1",properties:[property],guidebooks:[publishedWithDraft],
+      sections:{[guidebook.id]:completeSections},
+      versions:{[guidebook.id]:[{version:1,status:"published",publishedAt:"2026-07-24T12:00:00Z",createdAt:"2026-07-24T12:00:00Z"}]},
+      activity:[],entitlements,permissions:{view:true,manage:true},
+    });
+    expect(projection.portfolio.publishedGuidebooks).toBe(1);
+    expect(projection.portfolio.draftGuidebooks).toBe(1);
+    expect(projection.portfolio.unpublishedProperties).toBe(0);
+    expect(filterGuidebookLibrary(projection.library,{status:"draft"})).toHaveLength(1);
+    expect(filterGuidebookLibrary(projection.library,{status:"published"})).toHaveLength(1);
+  });
+
   it("identifies a broken public publication without treating it as healthy",()=>{
     const result=buildGuidebookPropertyProjection({
       property,guidebook:{...guidebook,status:"published"},sections:completeSections,versions:[],entitlements,

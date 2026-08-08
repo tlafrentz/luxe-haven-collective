@@ -147,6 +147,7 @@ export async function getGuidebookStudioRequest(
     status?: string;
     sort?: string;
     propertyId?: string;
+    basePath?: string;
   } = {},
 ) {
   const correlationId = crypto.randomUUID();
@@ -322,6 +323,7 @@ export async function getGuidebookStudioRequest(
       ),
       projection = buildGuidebookWorkspaceProjection({
         workspaceId: access.workspaceId,
+        basePath: options.basePath,
         properties: [...propertyProjections.values()].map((property) => ({
           id: property.identity.propertyId,
           name: property.identity.name,

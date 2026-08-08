@@ -1,4 +1,9 @@
 import Link from "next/link";
+import {
+  GuidebookPageHeader,
+  GuidebookMetricCard,
+  GuidebookStatusBadge,
+} from "@/components/guidebooks/guidebook-ui";
 import { getGuidebookStudioRequest } from "@/app/actions/guidebook-studio";
 import { filterGuidebookLibrary } from "@/features/guidebook-studio";
 export default async function GuidebookWorkspacePage({
@@ -89,18 +94,11 @@ export default async function GuidebookWorkspacePage({
       result.projection.entitlements.create;
   return (
     <main className="mx-auto max-w-7xl space-y-7 py-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[.18em] text-amber-700">
-            Guest experience operations
-          </p>
-          <h1 className="mt-2 text-4xl font-semibold">Guidebook Studio</h1>
-          <p className="mt-2 max-w-3xl text-stone-600">
-            See exactly what guest experience is published for every property,
-            what has changed, and what requires attention.
-          </p>
-        </div>
-        {canCreate ? (
+      <GuidebookPageHeader
+        eyebrow="Guest experience operations"
+        title="Guidebook Operations"
+        description="See exactly what guest experience is published for every property, what has changed, and what requires attention."
+        actions={canCreate ? (
           <Link
             href="/dashboard/guidebooks/new"
             className="rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white"
@@ -108,7 +106,7 @@ export default async function GuidebookWorkspacePage({
             Create Guidebook
           </Link>
         ) : null}
-      </header>
+      />
       {result.projection.onboarding === "not-entitled" ? (
         <section className="rounded-3xl border border-amber-200 bg-amber-50 p-7">
           <h2 className="text-xl font-semibold">
@@ -139,27 +137,27 @@ export default async function GuidebookWorkspacePage({
         aria-label="Portfolio summary"
         className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6"
       >
-        <Metric
+        <GuidebookMetricCard
           label="Properties"
           value={result.projection.portfolio.totalProperties}
         />
-        <Metric
+        <GuidebookMetricCard
           label="Published"
           value={result.projection.portfolio.publishedGuidebooks}
         />
-        <Metric
+        <GuidebookMetricCard
           label="Drafts"
           value={result.projection.portfolio.draftGuidebooks}
         />
-        <Metric
+        <GuidebookMetricCard
           label="Needs attention"
           value={result.projection.portfolio.requiringAttention}
         />
-        <Metric
+        <GuidebookMetricCard
           label="Unpublished"
           value={result.projection.portfolio.unpublishedProperties}
         />
-        <Metric
+        <GuidebookMetricCard
           label="Last published"
           value={
             result.projection.portfolio.lastPublishedAt
@@ -190,9 +188,8 @@ export default async function GuidebookWorkspacePage({
             <option value="">All guidebooks</option>
             <option value="published">Published</option>
             <option value="draft">Draft</option>
-            <option value="ready">Ready</option>
-            <option value="needs-update">Needs update</option>
-            <option value="missing">Missing guidebook</option>
+            <option value="needs-attention">Needs attention</option>
+            <option value="unpublished">Unpublished</option>
             <option value="archived">Archived</option>
           </select>
         </label>
@@ -210,7 +207,7 @@ export default async function GuidebookWorkspacePage({
           </select>
         </label>
         <button className="self-end rounded-xl bg-stone-950 px-4 py-2 text-sm font-semibold text-white">
-          Update library
+          Apply filters
         </button>
       </form>
       {result.projection.onboarding === "entitled-empty" ? (
@@ -224,7 +221,7 @@ export default async function GuidebookWorkspacePage({
             href="/dashboard/guidebooks/new"
             className="mt-5 inline-block rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white"
           >
-            Create Guidebook
+            Create in Guidebook Studio
           </Link>
         </section>
       ) : (
@@ -257,12 +254,12 @@ export default async function GuidebookWorkspacePage({
                   {library.map((item) => (
                     <tr
                       key={item.property.id}
-                      className={`border-t ${selected?.property.id === item.property.id ? "bg-amber-50" : "hover:bg-stone-50"}`}
+                      className={`border-t ${selected?.property.id === item.property.id ? "bg-emerald-50" : "hover:bg-stone-50"}`}
                     >
                       <td className="px-5 py-4">
                         <Link
                           href={selectionHref(params, item.property.id)}
-                          className="font-semibold text-stone-950 outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+                          className="font-semibold text-stone-950 outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
                         >
                           {item.property.name}
                         </Link>
@@ -270,8 +267,8 @@ export default async function GuidebookWorkspacePage({
                           {item.health.label}
                         </p>
                       </td>
-                      <td className="px-4 py-4 capitalize">
-                        {item.status.replaceAll("-", " ")}
+                      <td className="px-4 py-4">
+                        <GuidebookStatusBadge value={item.status} />
                       </td>
                       <td className="px-4 py-4">
                         {item.currentVersion || "—"}
@@ -420,7 +417,7 @@ function PropertyPanel({
   return (
     <aside className="space-y-5">
       <section className="rounded-3xl border bg-white p-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
           {item.status.replaceAll("-", " ")}
         </p>
         <h2 className="mt-2 text-2xl font-semibold">{item.property.name}</h2>
@@ -456,13 +453,13 @@ function PropertyPanel({
           {item.guidebook ? (
             <>
               <Link
-                href={`/dashboard/guidebooks/${item.guidebook.id}`}
+                href={`/dashboard/guidebooks/${item.guidebook.id}/edit`}
                 className="rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white"
               >
-                {canManage ? "Manage" : "Open"}
+                {canManage ? "Manage in Guidebook Studio" : "View details"}
               </Link>
               <Link
-                href={`/dashboard/guidebooks/${item.guidebook.id}/preview`}
+                href={`/guidebooks/${item.guidebook.id}/preview?viewport=desktop`}
                 className="rounded-full border px-4 py-2 text-sm font-semibold"
               >
                 Preview
@@ -481,7 +478,7 @@ function PropertyPanel({
               href={`/dashboard/guidebooks/new?property=${item.property.id}`}
               className="rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white"
             >
-              Create Guidebook
+              Create in Guidebook Studio
             </Link>
           ) : null}
         </div>
@@ -509,16 +506,6 @@ function PropertyPanel({
         <p className="mt-3 text-sm text-stone-600">{item.health.recovery}</p>
       </section>
     </aside>
-  );
-}
-function Metric({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-2xl border bg-white p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
-    </div>
   );
 }
 function Fact({ label, value }: { label: string; value: string }) {
