@@ -15,8 +15,15 @@ describe("Guidebook durable draft preview boundary", () => {
   it("projects preview sections from the canonical durable draft", () => {
     expect(action).toContain("new SupabaseGuidebookDraftRepository(admin).load");
     expect(action).toContain("draftSections: durableDraft");
-    expect(preview).toContain("sections={result.draftSections}");
-    expect(preview).not.toContain("sections={result.sections}");
+    expect(preview).toContain("sections: result.draftSections,");
+    expect(preview).not.toContain("sections: result.sections,");
+  });
+
+  it("renders draft preview through the real guest experience component, not a bespoke approximation", () => {
+    expect(preview).toContain("PublicGuidebookExperience");
+    expect(preview).toContain("guidebookPublicRenderer");
+    expect(preview).not.toContain("function GuidebookBody");
+    expect(preview).not.toContain("function PreviewBlock");
   });
 
   it("refreshes publication readiness after a successful authoring command", () => {
