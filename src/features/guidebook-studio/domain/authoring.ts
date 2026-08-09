@@ -115,6 +115,33 @@ export type ReadinessResult = Readonly<{
   status: "ready" | "ready-with-warnings" | "not-ready";
   issues: readonly ReadinessIssue[];
 }>;
+export const LOW_RESOLUTION_THRESHOLD_PX = 800;
+export type MediaDimensionMap = Readonly<
+  Record<string, Readonly<{ width: number; height: number }>>
+>;
+export function buildMediaDimensionMap(
+  media: readonly Readonly<{ id: string; width?: number; height?: number }>[],
+): MediaDimensionMap {
+  return Object.freeze(
+    Object.fromEntries(
+      media
+        .filter(
+          (item): item is { id: string; width: number; height: number } =>
+            !!item.width && !!item.height,
+        )
+        .map((item) => [
+          item.id,
+          Object.freeze({ width: item.width, height: item.height }),
+        ]),
+    ),
+  );
+}
+function isLowResolution(dimensions?: Readonly<{ width: number; height: number }>) {
+  return (
+    !!dimensions &&
+    Math.min(dimensions.width, dimensions.height) < LOW_RESOLUTION_THRESHOLD_PX
+  );
+}
 
 export class GuidebookAuthoringError extends Error {
   constructor(
@@ -425,7 +452,10 @@ export function validateDraft(
     ),
   });
 }
-export function evaluateReadiness(draft: GuidebookDraft): ReadinessResult {
+export function evaluateReadiness(
+  draft: GuidebookDraft,
+  mediaDimensions: MediaDimensionMap = {},
+): ReadinessResult {
   const issues: ReadinessIssue[] = [];
   const visible = draft.sections.filter((section) => section.visible);
   if (!visible.length)
@@ -444,7 +474,7 @@ export function evaluateReadiness(draft: GuidebookDraft): ReadinessResult {
         sectionId: section.id,
         target: `section:${section.id}`,
       });
-    for (const block of section.blocks.filter((block) => block.visible))
+    for (const block of section.blocks.filter((block) => block.visible)) {
       try {
         validateBlock(block, "publish");
       } catch (error) {
@@ -463,6 +493,20 @@ export function evaluateReadiness(draft: GuidebookDraft): ReadinessResult {
           target: `block:${block.id}`,
         });
       }
+      if (
+        block.type === "image" &&
+        isLowResolution(mediaDimensions[block.content.mediaRef])
+      )
+        issues.push({
+          code: "IMAGE_LOW_RESOLUTION",
+          severity: "warning",
+          message:
+            "This image is lower resolution than recommended; consider replacing it.",
+          sectionId: section.id,
+          blockId: block.id,
+          target: `block:${block.id}`,
+        });
+    }
   }
   const components=visible.flatMap(section=>section.blocks.filter((block):block is ComponentBlock=>block.visible&&block.type==="component"));
   if(components.length){
@@ -474,6 +518,7 @@ export function evaluateReadiness(draft: GuidebookDraft): ReadinessResult {
       for(const key of requiredVariables[block.content.componentKey]??[]){const inline=Object.values(block.content.fields).some(value=>value.includes(`{{${key}}}`));if(!inline&&!block.content.variableBindings[key])issues.push({code:"VARIABLE_BINDING_MISSING",severity:"error",message:`Bind ${key} before publishing.`,blockId:block.id,target:`block:${block.id}`})}
       if(block.content.componentKey==="hero"&&!block.content.mediaRefs.length)issues.push({code:"HERO_MEDIA_MISSING",severity:"error",message:"Choose a hero image before publishing.",blockId:block.id,target:`block:${block.id}`});
       for(const media of block.content.mediaRefs)if(!media.decorative&&!media.alt.trim())issues.push({code:"MEDIA_ALT_MISSING",severity:"warning",message:"Add alt text to this image.",blockId:block.id,target:`block:${block.id}`});
+      for(const media of block.content.mediaRefs)if(isLowResolution(mediaDimensions[media.assetId]))issues.push({code:"IMAGE_LOW_RESOLUTION",severity:"warning",message:"This image is lower resolution than recommended; consider replacing it.",blockId:block.id,target:`block:${block.id}`});
     }
     if(!keys.has("review_cta"))issues.push({code:"REVIEW_CTA_MISSING",severity:"warning",message:"Consider adding a Review CTA.",target:"components"});
   }

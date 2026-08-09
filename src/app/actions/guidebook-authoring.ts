@@ -132,7 +132,9 @@ export async function uploadGuidebookMediaAction(formData: FormData) {
 export async function listGuidebookDraftMediaAction(input: {
   workspaceId: string;
   guidebookId: string;
-}): Promise<{ id: string; mimeType: string; url: string }[]> {
+}): Promise<
+  { id: string; mimeType: string; url: string; width?: number; height?: number }[]
+> {
   const { access } = await authorized(input.workspaceId, "guidebooks.manage");
   const media = await new SupabaseGuidebookMediaRepository().listReady({
     workspaceId: access.workspaceId,

@@ -1,3 +1,4 @@
+import { imageSize } from "image-size";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   GuidebookMediaRepository,
@@ -14,7 +15,7 @@ export class SupabaseGuidebookMediaRepository
   ) {
     const { data, error } = await this.client
       .from("guidebook_media_assets")
-      .select("id,mime_type,authoring_path")
+      .select("id,mime_type,authoring_path,width,height")
       .eq("workspace_id", input.workspaceId)
       .eq("guidebook_id", input.guidebookId)
       .eq("upload_state", "ready")
@@ -26,12 +27,27 @@ export class SupabaseGuidebookMediaRepository
           .from("guidebook-authoring-media")
           .createSignedUrl(String(row.authoring_path), 3600);
         return signed?.signedUrl
-          ? { id: String(row.id), mimeType: String(row.mime_type), url: signed.signedUrl }
+          ? {
+              id: String(row.id),
+              mimeType: String(row.mime_type),
+              url: signed.signedUrl,
+              ...(row.width && row.height
+                ? { width: Number(row.width), height: Number(row.height) }
+                : {}),
+            }
           : null;
       }),
     );
     return results.filter(
-      (item): item is { id: string; mimeType: string; url: string } => item !== null,
+      (
+        item,
+      ): item is {
+        id: string;
+        mimeType: string;
+        url: string;
+        width?: number;
+        height?: number;
+      } => item !== null,
     );
   }
   async createUpload(
@@ -58,6 +74,14 @@ export class SupabaseGuidebookMediaRepository
         upsert: false,
       });
     if (uploadError) throw uploadError;
+    let dimensions: { width: number; height: number } | null = null;
+    try {
+      const size = imageSize(new Uint8Array(input.bytes));
+      if (size.width > 0 && size.height > 0)
+        dimensions = { width: size.width, height: size.height };
+    } catch {
+      dimensions = null;
+    }
     const createdAt = new Date().toISOString(),
       { error } = await this.client.from("guidebook_media_assets").insert({
         id: input.assetId,
@@ -69,6 +93,9 @@ export class SupabaseGuidebookMediaRepository
         upload_state: "ready",
         created_by_profile_id: input.context.actorId,
         created_at: createdAt,
+        ...(dimensions
+          ? { width: dimensions.width, height: dimensions.height }
+          : {}),
       });
     if (error) {
       await this.client.storage
@@ -100,6 +127,9 @@ export class SupabaseGuidebookMediaRepository
       byteSize: input.byteSize,
       authoringPath: path,
       createdAt,
+      ...(dimensions
+        ? { width: dimensions.width, height: dimensions.height }
+        : {}),
     });
   }
   async promote(input: Parameters<GuidebookMediaRepository["promote"]>[0]) {

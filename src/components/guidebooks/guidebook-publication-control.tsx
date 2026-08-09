@@ -6,6 +6,7 @@ import { publishCanonicalGuidebookAction } from "@/app/actions/guidebook-authori
 import {
   evaluateGuidebookPublicationReadiness,
   type GuidebookDraft,
+  type MediaDimensionMap,
 } from "@/features/guidebook-studio";
 export function GuidebookPublicationControl({
   draft,
@@ -13,18 +14,20 @@ export function GuidebookPublicationControl({
   publicSlug,
   basePath,
   label = "Publish Guidebook",
+  mediaDimensions = {},
 }: {
   draft: GuidebookDraft;
   canPublish: boolean;
   publicSlug?: string;
   basePath?: string;
   label?: string;
+  mediaDimensions?: MediaDimensionMap;
 }) {
   const [state, setState] = useState<
       "idle" | "publishing" | "published" | "failed"
     >("idle"),
     [message, setMessage] = useState(""),
-    readiness = evaluateGuidebookPublicationReadiness(draft);
+    readiness = evaluateGuidebookPublicationReadiness(draft, mediaDimensions);
   async function publish() {
     const commandId = crypto.randomUUID();
     setState("publishing");

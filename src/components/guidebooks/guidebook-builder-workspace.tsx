@@ -33,9 +33,11 @@ import {
 } from "@/features/guidebook-builder";
 import { MESA_MODERN_TOKENS } from "@/features/template-library";
 import {
+  buildMediaDimensionMap,
   evaluateGuidebookPublicationReadiness,
   type AuthoringBlock,
   type GuidebookDraft,
+  type MediaDimensionMap,
 } from "@/features/guidebook-studio";
 
 type Command = Parameters<typeof guidebookAuthoringCommandAction>[0]["command"];
@@ -77,6 +79,9 @@ export function GuidebookBuilderWorkspace({
   const [save, setSave] = useState<BuilderSaveState>("saved");
   const [history, setHistory] = useState<GuidebookDraft["sections"][]>([]);
   const [future, setFuture] = useState<GuidebookDraft["sections"][]>([]);
+  const [mediaDimensions, setMediaDimensions] = useState<MediaDimensionMap>(
+    {},
+  );
   const [, startTransition] = useTransition();
   const section =
     draft.sections.find((item) => item.id === sectionId) ?? draft.sections[0];
@@ -84,9 +89,19 @@ export function GuidebookBuilderWorkspace({
   const health = useMemo(() => guidebookHealth(draft), [draft]);
   const usedKeys = useMemo(() => usedComponentKeys(draft), [draft]);
   const publicationReadiness = useMemo(
-    () => evaluateGuidebookPublicationReadiness(draft),
-    [draft],
+    () => evaluateGuidebookPublicationReadiness(draft, mediaDimensions),
+    [draft, mediaDimensions],
   );
+  function refreshMediaDimensions() {
+    listGuidebookDraftMediaAction({
+      workspaceId: draft.workspaceId,
+      guidebookId: draft.guidebookId,
+    }).then((media) => setMediaDimensions(buildMediaDimensionMap(media)));
+  }
+  useEffect(() => {
+    refreshMediaDimensions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.workspaceId, draft.guidebookId]);
   const components = useMemo(
     () =>
       compatibleComponents(section?.name ?? "").filter((item) =>
@@ -484,6 +499,7 @@ export function GuidebookBuilderWorkspace({
                   workspaceId={draft.workspaceId}
                   guidebookId={draft.guidebookId}
                   canEdit={canEdit}
+                  onMediaUploaded={refreshMediaDimensions}
                   onUpdate={(value) =>
                     section &&
                     command({
@@ -752,6 +768,7 @@ function PropertyPanel({
   guidebookId,
   canEdit,
   onUpdate,
+  onMediaUploaded,
 }: {
   block?: AuthoringBlock;
   panel: BuilderPanel;
@@ -760,6 +777,7 @@ function PropertyPanel({
   guidebookId: string;
   canEdit: boolean;
   onUpdate: (block: AuthoringBlock) => void;
+  onMediaUploaded: () => void;
 }) {
   if (!block)
     return (
@@ -857,6 +875,7 @@ function PropertyPanel({
           guidebookId={guidebookId}
           canEdit={canEdit}
           onUpdate={update}
+          onMediaUploaded={onMediaUploaded}
         />
       );
     if (panel === "visibility")
@@ -977,12 +996,14 @@ function MediaPanel({
   guidebookId,
   canEdit,
   onUpdate,
+  onMediaUploaded,
 }: {
   block: Extract<AuthoringBlock, { type: "component" }>;
   workspaceId: string;
   guidebookId: string;
   canEdit: boolean;
   onUpdate: (content: typeof block.content) => void;
+  onMediaUploaded: () => void;
 }) {
   const [media, setMedia] = useState<{ id: string; mimeType: string; url: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1021,6 +1042,7 @@ function MediaPanel({
       return;
     }
     refresh();
+    onMediaUploaded();
     onUpdate({
       ...block.content,
       mediaRefs: [{ assetId: result.value.id, versionId: "v1", alt: "", decorative: false }],

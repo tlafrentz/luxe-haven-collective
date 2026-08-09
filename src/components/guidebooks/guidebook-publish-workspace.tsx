@@ -11,6 +11,7 @@ import {
   type ApprovalRequestInput,
   type compareGuidebookVersions,
   type GuidebookDraft,
+  type MediaDimensionMap,
 } from "@/features/guidebook-studio";
 import { GuidebookPublicationControl } from "./guidebook-publication-control";
 
@@ -33,6 +34,7 @@ export function GuidebookPublishWorkspace({
   changesSincePublished = null,
   approvalRequest = null,
   authoringMode = "self",
+  mediaDimensions = {},
 }: Readonly<{
   draft: GuidebookDraft;
   propertyName: string;
@@ -45,8 +47,12 @@ export function GuidebookPublishWorkspace({
   changesSincePublished?: ReturnType<typeof compareGuidebookVersions> | null;
   approvalRequest?: ApprovalRequestInput | null;
   authoringMode?: string;
+  mediaDimensions?: MediaDimensionMap;
 }>) {
-  const readiness = evaluateGuidebookPublicationReadiness(draft),
+  const readiness = evaluateGuidebookPublicationReadiness(
+      draft,
+      mediaDimensions,
+    ),
     errors = readiness.issues.filter((item) => item.severity === "error"),
     warnings = readiness.issues.filter((item) => item.severity === "warning"),
     complete = draft.sections.filter(
@@ -266,6 +272,7 @@ export function GuidebookPublishWorkspace({
         canPublish={canPublish}
         publicSlug={publicSlug}
         basePath={basePath}
+        mediaDimensions={mediaDimensions}
       />
       {status === "published" ? (
         <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6">

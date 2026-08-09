@@ -2,10 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Lightbulb } from "lucide-react";
 import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
-import { loadGuidebookAuthoringAction } from "@/app/actions/guidebook-authoring";
+import {
+  listGuidebookDraftMediaAction,
+  loadGuidebookAuthoringAction,
+} from "@/app/actions/guidebook-authoring";
 import { GuidebookNavigation } from "@/components/guidebooks/guidebook-navigation";
 import { GuidebookPublicationControl } from "@/components/guidebooks/guidebook-publication-control";
 import { GuidebookInsufficientPermissions } from "@/components/guidebooks/guidebook-ui";
+import { buildMediaDimensionMap } from "@/features/guidebook-studio";
 
 export default async function GuidebookImprovePage({
   params,
@@ -31,6 +35,11 @@ export default async function GuidebookImprovePage({
     );
 
   const draft = authoring.draft;
+  const media = await listGuidebookDraftMediaAction({
+    workspaceId: String(result.guidebook.workspace_id),
+    guidebookId,
+  });
+  const mediaDimensions = buildMediaDimensionMap(media);
   const components = draft.sections
     .flatMap((section) => section.blocks)
     .filter((block) => block.type === "component");
@@ -110,6 +119,7 @@ export default async function GuidebookImprovePage({
         publicSlug={result.guidebook.public_slug}
         basePath="/dashboard/guidebooks"
         label="Publish Version 2"
+        mediaDimensions={mediaDimensions}
       />
     </main>
   );

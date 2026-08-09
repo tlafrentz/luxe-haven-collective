@@ -2,7 +2,10 @@ import Link from "next/link";
 import { AdminGuidebookNavigation } from "@/components/guidebooks/admin-guidebook-navigation";
 import { notFound } from "next/navigation";
 import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
-import { loadGuidebookAuthoringAction } from "@/app/actions/guidebook-authoring";
+import {
+  listGuidebookDraftMediaAction,
+  loadGuidebookAuthoringAction,
+} from "@/app/actions/guidebook-authoring";
 import {
   listGuidebookChangeRequestsAction,
   listGuidebookProducersAction,
@@ -12,6 +15,7 @@ import { GuidebookAuthoringWorkspace } from "@/components/guidebooks/guidebook-a
 import { AdminGuidebookProductionPanel } from "@/components/guidebooks/admin-guidebook-production-panel";
 import { AdminGuidebookThemePanel } from "@/components/guidebooks/admin-guidebook-theme-panel";
 import { GuidebookPublicationControl } from "@/components/guidebooks/guidebook-publication-control";
+import { buildMediaDimensionMap } from "@/features/guidebook-studio";
 
 export const dynamic = "force-dynamic";
 
@@ -43,11 +47,16 @@ export default async function AdminGuidebookEditorPage({
     workspaceId: String(result.guidebook.workspace_id),
     guidebookId,
   });
-  const [changeRequests, producers, approvalReview] = await Promise.all([
+  const [changeRequests, producers, approvalReview, media] = await Promise.all([
     listGuidebookChangeRequestsAction(guidebookId),
     listGuidebookProducersAction(),
     getApprovalReviewAction(guidebookId),
+    listGuidebookDraftMediaAction({
+      workspaceId: String(result.guidebook.workspace_id),
+      guidebookId,
+    }),
   ]);
+  const mediaDimensions = buildMediaDimensionMap(media);
   return (
     <main className="mx-auto max-w-[1480px] space-y-6 px-5 py-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -143,6 +152,7 @@ export default async function AdminGuidebookEditorPage({
               result.entitlements.publish &&
               result.entitlements.host
             }
+            mediaDimensions={mediaDimensions}
           />
         </>
       ) : (

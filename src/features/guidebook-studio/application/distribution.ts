@@ -15,6 +15,8 @@ export type MediaAsset = Readonly<{
   authoringPath: string;
   publicDeliveryPath?: string;
   createdAt: string;
+  width?: number;
+  height?: number;
 }>;
 export type PublicMediaManifest = Readonly<
   Record<string, Readonly<{ url: string; mimeType: string }>>
@@ -26,7 +28,15 @@ export type MediaPromotion = Readonly<{
 export interface GuidebookMediaRepository {
   listReady(
     input: Readonly<{ workspaceId: string; guidebookId: string }>,
-  ): Promise<readonly Readonly<{ id: string; mimeType: string; url: string }>[]>;
+  ): Promise<
+    readonly Readonly<{
+      id: string;
+      mimeType: string;
+      url: string;
+      width?: number;
+      height?: number;
+    }>[]
+  >;
   createUpload(
     input: Readonly<{
       context: CommandContext;

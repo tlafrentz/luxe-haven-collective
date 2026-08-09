@@ -26,6 +26,7 @@
     "clsx": "latest",
     "exceljs": "^4.4.0",
     "framer-motion": "latest",
+    "image-size": "^2.0.2",
     "lucide-react": "latest",
     "next": "latest",
     "pdf-lib": "^1.17.1",

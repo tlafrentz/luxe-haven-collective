@@ -10,6 +10,7 @@ import {
   type AuthoringBlockType,
   type GuidebookBrandIdentity,
   type GuidebookDraft,
+  type MediaDimensionMap,
   type ReadinessResult,
 } from "../domain/authoring";
 
@@ -546,7 +547,9 @@ export const buildGuidebookDraftPreview = (draft: GuidebookDraft) =>
   validateDraft(draft, "draft");
 export const evaluateGuidebookPublicationReadiness = (
   draft: GuidebookDraft,
-): ReadinessResult => evaluateReadiness(validateDraft(draft, "draft"));
+  mediaDimensions: MediaDimensionMap = {},
+): ReadinessResult =>
+  evaluateReadiness(validateDraft(draft, "draft"), mediaDimensions);
 export const buildPublishedGuidebookSnapshot = (
   draft: GuidebookDraft,
   property: Readonly<Record<string, unknown>>,

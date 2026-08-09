@@ -26,7 +26,9 @@ import {
 import {
   GUIDEBOOK_BLOCK_SCHEMA,
   GUIDEBOOK_DRAFT_SCHEMA,
+  buildMediaDimensionMap,
   buildSnapshot,
+  evaluateReadiness,
   initialBlock,
   validateBlock,
   type AuthoringBlock,
@@ -597,5 +599,90 @@ describe("GB-001B authoring application", () => {
     );
     expect(result).toMatchObject({ ok: false, code: "PUBLICATION_FAILED" });
     expect(cleanup).toEqual([[mediaRef]]);
+  });
+});
+
+describe("low-resolution image readiness", () => {
+  const lowResRef = `gbm_${"a".repeat(26)}`,
+    highResRef = `gbm_${"b".repeat(26)}`,
+    unknownRef = `gbm_${"c".repeat(26)}`,
+    mediaDimensions = buildMediaDimensionMap([
+      { id: lowResRef, width: 1600, height: 400 },
+      { id: highResRef, width: 1600, height: 1200 },
+    ]);
+  it("flags an image block whose shorter side is under the threshold", () => {
+    const image = {
+        ...initialBlock("image", "image", 0),
+        content: { mediaRef: lowResRef, alt: "Pool" },
+      } as AuthoringBlock,
+      result = evaluateReadiness(
+        {
+          ...draft(),
+          sections: [{ ...draft().sections[0], blocks: [image] }],
+        },
+        mediaDimensions,
+      );
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        code: "IMAGE_LOW_RESOLUTION",
+        severity: "warning",
+        blockId: "image",
+      }),
+    );
+  });
+  it("does not flag an image at or above the threshold, or one with unknown dimensions", () => {
+    const highRes = {
+        ...initialBlock("image", "high", 0),
+        content: { mediaRef: highResRef, alt: "Pool" },
+      } as AuthoringBlock,
+      unknown = {
+        ...initialBlock("image", "unknown", 1),
+        content: { mediaRef: unknownRef, alt: "Pool" },
+      } as AuthoringBlock,
+      result = evaluateReadiness(
+        {
+          ...draft(),
+          sections: [
+            { ...draft().sections[0], blocks: [highRes, unknown] },
+          ],
+        },
+        mediaDimensions,
+      );
+    expect(result.issues).not.toContainEqual(
+      expect.objectContaining({ code: "IMAGE_LOW_RESOLUTION" }),
+    );
+  });
+  it("flags a low-resolution image used in a component's media refs", () => {
+    const hero = {
+      ...initialBlock("component", "hero-block", 0, "hero"),
+      content: {
+        ...(initialBlock("component", "hero-block", 0, "hero") as Extract<
+          AuthoringBlock,
+          { type: "component" }
+        >).content,
+        mediaRefs: [
+          {
+            assetId: lowResRef,
+            versionId: "v1",
+            alt: "Villa exterior",
+            decorative: false,
+          },
+        ],
+      },
+    } as AuthoringBlock;
+    const result = evaluateReadiness(
+      {
+        ...draft(),
+        sections: [{ ...draft().sections[0], blocks: [hero] }],
+      },
+      mediaDimensions,
+    );
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        code: "IMAGE_LOW_RESOLUTION",
+        severity: "warning",
+        blockId: "hero-block",
+      }),
+    );
   });
 });
