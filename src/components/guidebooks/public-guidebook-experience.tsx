@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SafeImage } from "@/components/shared/safe-image";
 import { GuestQuickActionsBar } from "./guest-quick-actions-bar";
+import { GuestSearchBar } from "./guest-search-bar";
 import type {
   PublicGuidebookBlock,
   PublicGuidebookView,
@@ -148,6 +149,7 @@ export function PublicGuidebookExperience({
           aria-label="Guidebook sections"
           className="sticky top-0 z-40 border-y border-stone-200/80 bg-[#fbf8f1]/95 px-3 py-3 backdrop-blur"
         >
+          <GuestSearchBar guidebook={guidebook} track={track} />
           <ul className="mx-auto flex max-w-5xl gap-2 overflow-x-auto pb-1">
             {guidebook.sections.map((section) => (
               <li key={section.key}>

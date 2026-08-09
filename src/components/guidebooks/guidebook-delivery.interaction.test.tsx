@@ -135,7 +135,7 @@ describe("Guidebook delivery interaction and accessibility", () => {
     );
     const user = userEvent.setup();
     await user.tab();
-    expect(document.activeElement?.tagName).toMatch(/A|BUTTON/);
+    expect(document.activeElement?.tagName).toMatch(/A|BUTTON|INPUT/);
     for (let index = 0; index < 8; index++) await user.tab();
     expect(document.activeElement).not.toBe(document.body);
   });
