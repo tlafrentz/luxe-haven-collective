@@ -33,10 +33,15 @@ jobs:
         with:
           ref: ${{ github.event.deployment.sha }}
 
+      # VERCEL_ORG_ID/VERCEL_PROJECT_ID must be the real Vercel API IDs
+      # (team_xxx / prj_xxx), not the team slug shown in the dashboard URL
+      # or `vercel teams ls` — the CLI silently fails to resolve the
+      # project if given the slug instead of the team_xxx id.
       - name: Force a clean production redeploy
+        id: redeploy
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: luxe-haven-collective
+          VERCEL_ORG_ID: team_OwWqvrx6sYM4XxywF6nRqxru
           VERCEL_PROJECT_ID: prj_YTGVIQ11lGz57hEz4UJFX4hCnXPX
         run: npx vercel@latest deploy --prod --force --yes --token="$VERCEL_TOKEN"
 
@@ -45,4 +50,8 @@ jobs:
         run: |
           echo "### Vercel production deploy guard" >> "$GITHUB_STEP_SUMMARY"
           echo "Original deployment for commit \`${{ github.event.deployment.sha }}\` failed (\`${{ github.event.deployment_status.target_url }}\`)." >> "$GITHUB_STEP_SUMMARY"
-          echo "Forced a clean redeploy — see the step above for the result." >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.redeploy.outcome }}" = "success" ]; then
+            echo "✅ Forced clean redeploy succeeded." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "❌ Forced clean redeploy FAILED — production may still be down. Check the step log above and redeploy manually." >> "$GITHUB_STEP_SUMMARY"
+          fi
