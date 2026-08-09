@@ -47,6 +47,7 @@ export default async function AdminGuidebookComposePage({
       canEdit={canEdit}
       canPublish={false}
       basePath="/admin/guidebooks"
+      propertyName={variables.propertyName}
       previewVariables={{
         "property.name": variables.propertyName,
         "property.address": variables.address,

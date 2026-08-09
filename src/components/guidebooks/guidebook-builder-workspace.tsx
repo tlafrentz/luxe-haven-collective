@@ -3,19 +3,29 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
+  AlertCircle,
   ArrowDown,
   ArrowUp,
   Check,
-  Circle,
+  CheckCircle2,
+  ChevronRight,
   Copy,
+  Ellipsis,
+  Eye,
   EyeOff,
+  GripVertical,
   History,
+  Menu,
+  Monitor,
   Pencil,
   Plus,
   Redo2,
   Search,
+  Smartphone,
+  Tablet,
   Trash2,
   Undo2,
+  X,
 } from "lucide-react";
 import {
   guidebookAuthoringCommandAction,
@@ -52,6 +62,25 @@ function usedComponentKeys(draft: GuidebookDraft) {
   );
 }
 
+const ESSENTIAL_SECTION_NAMES: Record<string, string> = {
+  arrival: "Arrival",
+  wifi: "Wi-Fi",
+  parking: "Parking",
+  rules: "House Rules",
+  emergency: "Contact",
+  amenities: "Amenities",
+};
+function essentialSectionName(key: string) {
+  return ESSENTIAL_SECTION_NAMES[key];
+}
+function essentialTargetSectionId(draft: GuidebookDraft, key: string) {
+  const name = essentialSectionName(key);
+  return (
+    draft.sections.find((section) => section.name === name)?.id ??
+    draft.sections[0]?.id
+  );
+}
+
 export function GuidebookBuilderWorkspace({
   initialDraft,
   versionId,
@@ -59,6 +88,7 @@ export function GuidebookBuilderWorkspace({
   canPublish,
   basePath = "/dashboard/guidebooks",
   previewVariables = {},
+  propertyName = "Property",
 }: {
   initialDraft: GuidebookDraft;
   versionId: string;
@@ -66,6 +96,7 @@ export function GuidebookBuilderWorkspace({
   canPublish: boolean;
   basePath?: string;
   previewVariables?: Readonly<Record<string, string | null | undefined>>;
+  propertyName?: string;
 }) {
   const [draft, setDraft] = useState(initialDraft);
   const [sectionId, setSectionId] = useState(
@@ -73,6 +104,10 @@ export function GuidebookBuilderWorkspace({
   );
   const [blockId, setBlockId] = useState("");
   const [panel, setPanel] = useState<BuilderPanel>("content");
+  const [railMode, setRailMode] = useState<"outline" | "readiness">(
+    "outline",
+  );
+  const [mobileRailOpen, setMobileRailOpen] = useState(false);
   const [preview, setPreview] = useState<BuilderPreviewMode>("desktop");
   const [picker, setPicker] = useState(false);
   const [query, setQuery] = useState("");
@@ -88,6 +123,13 @@ export function GuidebookBuilderWorkspace({
   const block = section?.blocks.find((item) => item.id === blockId);
   const health = useMemo(() => guidebookHealth(draft), [draft]);
   const usedKeys = useMemo(() => usedComponentKeys(draft), [draft]);
+  const essentialIncompleteCount = useMemo(
+    () =>
+      ESSENTIAL_CONTENT_ITEMS.filter(
+        (item) => !item.componentKeys.every((key) => usedKeys.has(key)),
+      ).length,
+    [usedKeys],
+  );
   const publicationReadiness = useMemo(
     () => evaluateGuidebookPublicationReadiness(draft, mediaDimensions),
     [draft, mediaDimensions],
@@ -177,46 +219,27 @@ export function GuidebookBuilderWorkspace({
             href={basePath}
             className="text-xs font-semibold text-emerald-800"
           >
-            Guidebook Studio / Guidebooks
+            ← Back to guidebooks
           </Link>
           <h1 className="font-semibold">{draft.title}</h1>
-          <p className="text-xs text-stone-500">
-            Draft revision {draft.revision} · Mesa Modern
+          <p className="flex items-center gap-2 text-xs text-stone-500">
+            {propertyName} · Draft revision {draft.revision} ·{" "}
+            <SaveStatus value={save} />
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <SaveStatus value={save} />
-          <span>Revision {draft.revision}</span>
           <button
-            onClick={undo}
-            disabled={!canEdit || !history.length}
-            aria-label="Undo"
-            title="Undo (Ctrl/Cmd+Z)"
-            className="rounded-lg border p-2 disabled:opacity-30"
+            onClick={() => setMobileRailOpen(true)}
+            aria-label="Open guidebook outline"
+            className="rounded-lg border p-2 lg:hidden"
           >
-            <Undo2 className="size-4" />
+            <Menu className="size-4" />
           </button>
-          <button
-            onClick={redo}
-            disabled={!canEdit || !future.length}
-            aria-label="Redo"
-            title="Redo (Ctrl/Cmd+Shift+Z)"
-            className="rounded-lg border p-2 disabled:opacity-30"
-          >
-            <Redo2 className="size-4" />
-          </button>
-          <Link
-            href={`/dashboard/guidebooks/${draft.guidebookId}/versions`}
-            className="rounded-lg border p-2"
-            aria-label="History"
-          >
-            <History className="size-4" />
-          </Link>
           <Link
             href={`/guidebooks/${draft.guidebookId}/preview?viewport=desktop`}
             className="rounded-lg border px-3 py-2"
           >
-            Draft preview
+            Preview
           </Link>
           <Link
             aria-disabled={
@@ -225,212 +248,308 @@ export function GuidebookBuilderWorkspace({
             href={`${basePath}/${draft.guidebookId}/publish`}
             className={`rounded-lg bg-stone-950 px-4 py-2 font-semibold text-white ${!canPublish || publicationReadiness.status === "not-ready" ? "pointer-events-none opacity-40" : ""}`}
           >
-            Publish
+            Review & Publish
           </Link>
+          <details className="relative">
+            <summary
+              aria-label="More guidebook actions"
+              className="flex cursor-pointer list-none rounded-lg border p-2"
+            >
+              <Ellipsis className="size-4" />
+            </summary>
+            <div className="absolute right-0 z-40 mt-2 w-44 space-y-1 rounded-xl border bg-white p-2 shadow-2xl">
+              <button
+                onClick={undo}
+                disabled={!canEdit || !history.length}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left disabled:opacity-30"
+              >
+                <Undo2 className="size-4" /> Undo
+              </button>
+              <button
+                onClick={redo}
+                disabled={!canEdit || !future.length}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left disabled:opacity-30"
+              >
+                <Redo2 className="size-4" /> Redo
+              </button>
+              <Link
+                href={`/dashboard/guidebooks/${draft.guidebookId}/versions`}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2"
+              >
+                <History className="size-4" /> Version history
+              </Link>
+            </div>
+          </details>
         </div>
       </header>
       <div className="grid min-h-[calc(100vh-65px)] grid-cols-1 lg:grid-cols-[240px_minmax(420px,1fr)_320px]">
-        <aside className="border-r bg-white p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Sections</h2>
+        <aside
+          className={`z-40 border-r bg-white p-4 lg:static lg:block ${mobileRailOpen ? "fixed inset-0 overflow-y-auto" : "hidden lg:block"}`}
+        >
+          <div className="mb-3 flex items-center justify-between lg:hidden">
+            <strong className="text-sm">Outline</strong>
             <button
-              onClick={() => {
-                const name = prompt("Section name");
-                if (name)
-                  command({
-                    type: "create-section",
-                    name,
-                    afterSectionId: section?.id,
-                  });
-              }}
-              aria-label="Add section"
+              onClick={() => setMobileRailOpen(false)}
+              aria-label="Close outline"
+              className="rounded-lg border p-2"
             >
-              <Plus className="size-4" />
+              <X className="size-4" />
             </button>
           </div>
-          <nav className="mt-4 space-y-2">
-            {draft.sections.map((item) => (
-              <article
-                key={item.id}
-                className={`rounded-xl border p-2 transition-colors ${section?.id === item.id ? "border-emerald-600 bg-emerald-50 shadow-sm" : "border-stone-200 hover:bg-stone-50"}`}
-              >
+          <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+            <button
+              aria-pressed={railMode === "outline"}
+              onClick={() => setRailMode("outline")}
+              className={`rounded-lg border px-3 py-2 ${railMode === "outline" ? "bg-stone-950 text-white" : "bg-white"}`}
+            >
+              Outline
+            </button>
+            <button
+              aria-pressed={railMode === "readiness"}
+              onClick={() => setRailMode("readiness")}
+              className={`rounded-lg border px-3 py-2 ${railMode === "readiness" ? "bg-stone-950 text-white" : "bg-white"}`}
+            >
+              Readiness
+            </button>
+          </div>
+          {railMode === "outline" ? (
+            <>
+              <div className="mt-4 flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Guidebook outline</h2>
                 <button
                   onClick={() => {
-                    setSectionId(item.id);
-                    setBlockId("");
+                    const name = prompt("Section name");
+                    if (name)
+                      command({
+                        type: "create-section",
+                        name,
+                        afterSectionId: section?.id,
+                      });
                   }}
-                  className="w-full text-left text-sm font-semibold"
+                  aria-label="Add section"
                 >
-                  {item.name}
-                  {!item.visible ? " · Hidden" : ""}
+                  <Plus className="size-4" />
                 </button>
-                {section?.id === item.id && canEdit ? (
-                  <div className="mt-2 flex gap-1">
-                    <Mini
-                      label="Rename"
-                      onClick={() => {
-                        const name = prompt("Section title", item.name);
-                        if (name)
-                          command({
-                            type: "rename-section",
-                            sectionId: item.id,
-                            name,
-                          });
-                      }}
+              </div>
+              <nav className="mt-3 space-y-1">
+                {draft.sections.map((item) => {
+                  const essential = ESSENTIAL_CONTENT_ITEMS.find(
+                    (essentialItem) =>
+                      essentialSectionName(essentialItem.key) === item.name,
+                  );
+                  const needsAttention =
+                    essential &&
+                    !essential.componentKeys.every((key) => usedKeys.has(key));
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-2 rounded-lg px-2 py-2 text-sm ${section?.id === item.id ? "bg-emerald-50 font-semibold text-emerald-900" : "hover:bg-stone-50"}`}
                     >
-                      <Pencil />
-                    </Mini>
-                    <Mini
-                      label="Move up"
-                      onClick={() =>
-                        command({
-                          type: "reorder-section",
-                          sectionId: item.id,
-                          direction: "up",
-                        })
-                      }
-                    >
-                      <ArrowUp />
-                    </Mini>
-                    <Mini
-                      label="Move down"
-                      onClick={() =>
-                        command({
-                          type: "reorder-section",
-                          sectionId: item.id,
-                          direction: "down",
-                        })
-                      }
-                    >
-                      <ArrowDown />
-                    </Mini>
-                    <Mini
-                      label="Duplicate"
-                      onClick={() =>
-                        command({
-                          type: "duplicate-section",
-                          sectionId: item.id,
-                        })
-                      }
-                    >
-                      <Copy />
-                    </Mini>
-                    <Mini
-                      label={item.visible ? "Hide" : "Show"}
-                      onClick={() =>
-                        command({
-                          type: "section-visibility",
-                          sectionId: item.id,
-                          visible: !item.visible,
-                        })
-                      }
-                    >
-                      <EyeOff />
-                    </Mini>
-                    <Mini
-                      label="Remove"
-                      onClick={() => {
-                        if (confirm(`Remove ${item.name}?`))
-                          command({
-                            type: "delete-section",
-                            sectionId: item.id,
-                          });
-                      }}
-                    >
-                      <Trash2 />
-                    </Mini>
-                  </div>
-                ) : null}
-              </article>
-            ))}
-          </nav>
-          <button
-            disabled={!section || !canEdit}
-            onClick={() => setPicker(true)}
-            className="mt-4 w-full rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
-          >
-            + Add Component
-          </button>
-          <section className="mt-6 rounded-xl border bg-stone-50 p-4">
-            <div className="flex justify-between text-xs">
-              <strong>Guidebook Health</strong>
-              <span className="font-semibold">{health.score}%</span>
-            </div>
-            <div className="mt-2 h-2 overflow-hidden rounded bg-stone-200">
-              <div
-                className="h-full bg-emerald-800 transition-[width] duration-300"
-                style={{ width: `${health.score}%` }}
-              />
-            </div>
-            <button
-              onClick={() => setPanel("validation")}
-              className="mt-3 text-left text-xs font-semibold text-emerald-800"
-            >
-              {health.publishable
-                ? health.issues.length
-                  ? `${health.issues.length} improvements recommended`
-                  : "Ready to publish"
-                : `${health.issues.filter((item) => item.blocking).length} items need attention`}
-            </button>
-          </section>
-          <section className="mt-4 rounded-xl border bg-stone-50 p-4">
-            <strong className="text-xs">Add Essential Content</strong>
-            <div className="mt-3 space-y-2">
-              {ESSENTIAL_CONTENT_ITEMS.map((item) => {
-                const complete = item.componentKeys.every((key) => usedKeys.has(key));
-                return (
-                  <div
-                    key={item.key}
-                    className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-xs"
-                  >
-                    <span className="flex items-center gap-2">
-                      {complete ? (
-                        <Check className="size-4 text-emerald-700" />
-                      ) : (
-                        <Circle className="size-4 text-stone-300" />
-                      )}
-                      {item.label}
-                    </span>
-                    {complete ? null : (
+                      <GripVertical className="size-4 shrink-0 text-stone-300" />
                       <button
-                        disabled={!canEdit || !draft.sections[0]}
                         onClick={() => {
-                          const targetSectionId = draft.sections[0]?.id;
-                          if (!targetSectionId) return;
-                          for (const componentKey of item.componentKeys) {
-                            command({
-                              type: "create-block",
-                              sectionId: targetSectionId,
-                              blockType: "component",
-                              componentKey,
-                            });
-                          }
+                          setSectionId(item.id);
+                          setBlockId("");
+                          setMobileRailOpen(false);
                         }}
-                        className="font-semibold text-emerald-800 disabled:opacity-40"
+                        className="min-w-0 flex-1 truncate text-left"
                       >
-                        Add details
+                        {item.name}
                       </button>
-                    )}
-                  </div>
+                      {needsAttention ? (
+                        <span
+                          aria-label="Needs attention"
+                          className="size-2 shrink-0 rounded-full bg-amber-500"
+                        />
+                      ) : item.visible ? (
+                        <Eye className="size-4 shrink-0 text-stone-400" />
+                      ) : (
+                        <EyeOff className="size-4 shrink-0 text-stone-400" />
+                      )}
+                      {section?.id === item.id && canEdit ? (
+                        <details className="relative shrink-0">
+                          <summary
+                            aria-label={`${item.name} section menu`}
+                            className="flex cursor-pointer list-none rounded p-1"
+                          >
+                            <Ellipsis className="size-4" />
+                          </summary>
+                          <div className="absolute right-0 z-40 mt-1 w-40 space-y-1 rounded-xl border bg-white p-2 text-left text-xs font-normal shadow-2xl">
+                            <button
+                              onClick={() => {
+                                const name = prompt("Section title", item.name);
+                                if (name)
+                                  command({
+                                    type: "rename-section",
+                                    sectionId: item.id,
+                                    name,
+                                  });
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5"
+                            >
+                              <Pencil className="size-3.5" /> Rename
+                            </button>
+                            <button
+                              onClick={() =>
+                                command({
+                                  type: "reorder-section",
+                                  sectionId: item.id,
+                                  direction: "up",
+                                })
+                              }
+                              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5"
+                            >
+                              <ArrowUp className="size-3.5" /> Move up
+                            </button>
+                            <button
+                              onClick={() =>
+                                command({
+                                  type: "reorder-section",
+                                  sectionId: item.id,
+                                  direction: "down",
+                                })
+                              }
+                              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5"
+                            >
+                              <ArrowDown className="size-3.5" /> Move down
+                            </button>
+                            <button
+                              onClick={() =>
+                                command({
+                                  type: "duplicate-section",
+                                  sectionId: item.id,
+                                })
+                              }
+                              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5"
+                            >
+                              <Copy className="size-3.5" /> Duplicate
+                            </button>
+                            <button
+                              onClick={() =>
+                                command({
+                                  type: "section-visibility",
+                                  sectionId: item.id,
+                                  visible: !item.visible,
+                                })
+                              }
+                              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5"
+                            >
+                              <EyeOff className="size-3.5" />{" "}
+                              {item.visible ? "Hide" : "Show"}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Remove ${item.name}?`))
+                                  command({
+                                    type: "delete-section",
+                                    sectionId: item.id,
+                                  });
+                              }}
+                              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-rose-700"
+                            >
+                              <Trash2 className="size-3.5" /> Delete
+                            </button>
+                          </div>
+                        </details>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </nav>
+              <button
+                onClick={() => {
+                  const name = prompt("Section name");
+                  if (name)
+                    command({
+                      type: "create-section",
+                      name,
+                      afterSectionId: section?.id,
+                    });
+                }}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold"
+              >
+                <Plus className="size-4" /> Add section
+              </button>
+              <section className="mt-6 rounded-xl border bg-stone-50 p-4">
+                <div className="flex justify-between text-xs">
+                  <strong>Guidebook readiness</strong>
+                  <span className="font-semibold">{health.score}%</span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded bg-stone-200">
+                  <div
+                    className="h-full bg-emerald-800 transition-[width] duration-300"
+                    style={{ width: `${health.score}%` }}
+                  />
+                </div>
+                {essentialIncompleteCount ? (
+                  <button
+                    onClick={() => setRailMode("readiness")}
+                    className="mt-3 text-left text-xs font-semibold text-emerald-800"
+                  >
+                    {essentialIncompleteCount} items need attention →
+                  </button>
+                ) : (
+                  <p className="mt-3 text-xs font-semibold text-emerald-800">
+                    Essential content complete
+                  </p>
+                )}
+              </section>
+            </>
+          ) : (
+            <ReadinessRail
+              items={ESSENTIAL_CONTENT_ITEMS}
+              usedKeys={usedKeys}
+              score={health.score}
+              incompleteCount={essentialIncompleteCount}
+              canEdit={canEdit}
+              onSelect={(item) => {
+                const targetSectionId = essentialTargetSectionId(
+                  draft,
+                  item.key,
                 );
-              })}
-            </div>
-          </section>
+                if (!targetSectionId) return;
+                const complete = item.componentKeys.every((key) =>
+                  usedKeys.has(key),
+                );
+                if (!complete)
+                  for (const componentKey of item.componentKeys)
+                    command({
+                      type: "create-block",
+                      sectionId: targetSectionId,
+                      blockType: "component",
+                      componentKey,
+                    });
+                setSectionId(targetSectionId);
+                setBlockId("");
+                setPanel("content");
+                setRailMode("outline");
+                setMobileRailOpen(false);
+              }}
+            />
+          )}
         </aside>
         <section className="min-w-0 p-4">
-          <div className="mb-3 flex flex-wrap justify-between gap-2">
-            <div className="flex gap-1">
-              {(["desktop", "tablet", "mobile"] as BuilderPreviewMode[]).map(
-                (mode) => (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-stone-500">Preview as:</span>
+              <div className="flex gap-1">
+                {(
+                  [
+                    ["desktop", Monitor],
+                    ["tablet", Tablet],
+                    ["mobile", Smartphone],
+                  ] as [BuilderPreviewMode, typeof Monitor][]
+                ).map(([mode, Icon]) => (
                   <button
                     key={mode}
                     onClick={() => setPreview(mode)}
-                    className={`rounded-lg border px-3 py-2 text-xs capitalize ${preview === mode ? "bg-stone-950 text-white" : "bg-white"}`}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs capitalize ${preview === mode ? "bg-stone-950 text-white" : "bg-white"}`}
                   >
+                    <Icon className="size-3.5" />
                     {mode.replaceAll("_", " ")}
                   </button>
-                ),
-              )}
+                ))}
+              </div>
             </div>
             <span className="rounded-lg border bg-white px-3 py-2 text-xs">
               Mesa Modern · {versionId}
@@ -442,11 +561,13 @@ export function GuidebookBuilderWorkspace({
             selected={blockId}
             mode={preview}
             previewVariables={previewVariables}
+            canEdit={canEdit}
             onSelect={(id) => {
               setBlockId(id);
               setPanel("content");
             }}
             onCommand={command}
+            onAddBlock={() => setPicker(true)}
           />
         </section>
         <aside className="border-l bg-white p-4">
@@ -542,16 +663,20 @@ function Canvas({
   selected,
   mode,
   previewVariables,
+  canEdit,
   onSelect,
   onCommand,
+  onAddBlock,
 }: {
   draft: GuidebookDraft;
   sectionId?: string;
   selected: string;
   mode: BuilderPreviewMode;
   previewVariables: Readonly<Record<string, string | null | undefined>>;
+  canEdit: boolean;
   onSelect: (id: string) => void;
   onCommand: (value: Command) => void;
+  onAddBlock: () => void;
 }) {
   const section = draft.sections.find((item) => item.id === sectionId),
     narrow = mode === "mobile" || mode === "guest_portal",
@@ -661,6 +786,14 @@ function Canvas({
                 ) : null}
               </article>
             ))}
+            {section && canEdit ? (
+              <button
+                onClick={onAddBlock}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-sm font-semibold text-stone-600"
+              >
+                <Plus className="size-4" /> Add block
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="grid min-h-[560px] place-items-center text-center">
@@ -671,9 +804,87 @@ function Canvas({
               <p className="mt-2 text-sm text-stone-500">
                 Add a compatible Mesa Modern component to begin authoring.
               </p>
+              {section && canEdit ? (
+                <button
+                  onClick={onAddBlock}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white"
+                >
+                  <Plus className="size-4" /> Add block
+                </button>
+              ) : null}
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ReadinessRail({
+  items,
+  usedKeys,
+  score,
+  incompleteCount,
+  canEdit,
+  onSelect,
+}: {
+  items: typeof ESSENTIAL_CONTENT_ITEMS;
+  usedKeys: Set<string>;
+  score: number;
+  incompleteCount: number;
+  canEdit: boolean;
+  onSelect: (item: (typeof ESSENTIAL_CONTENT_ITEMS)[number]) => void;
+}) {
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <strong className="text-sm">Publishing readiness</strong>
+          <p className="text-xs text-stone-500">
+            {incompleteCount
+              ? `${incompleteCount} required item${incompleteCount === 1 ? "" : "s"} need attention.`
+              : "All essential content is complete."}
+          </p>
+        </div>
+        <span className="rounded-full bg-stone-100 px-2 py-1 text-xs font-semibold">
+          {score}%
+        </span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded bg-stone-200">
+        <div
+          className="h-full bg-emerald-800 transition-[width] duration-300"
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      <div className="mt-4 space-y-1">
+        {items.map((item) => {
+          const complete = item.componentKeys.every((key) =>
+            usedKeys.has(key),
+          );
+          return (
+            <button
+              key={item.key}
+              disabled={!canEdit}
+              onClick={() => onSelect(item)}
+              className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm hover:bg-stone-50 disabled:opacity-40"
+            >
+              {complete ? (
+                <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
+              ) : (
+                <AlertCircle className="size-4 shrink-0 text-amber-600" />
+              )}
+              <span className="min-w-0 flex-1">
+                <strong className="block truncate font-semibold">
+                  {item.label}
+                </strong>
+                <small className="block text-stone-500">
+                  {complete ? "Complete" : "Needs details"}
+                </small>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-stone-400" />
+            </button>
+          );
+        })}
       </div>
     </div>
   );

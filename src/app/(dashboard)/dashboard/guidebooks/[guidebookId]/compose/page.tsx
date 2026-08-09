@@ -47,6 +47,7 @@ export default async function GuidebookComposePage({
       versionId={String(result.guidebook.active_draft_version_id ?? "Draft")}
       canEdit={authoring.canEdit && result.guidebook.status !== "archived"}
       canPublish={false}
+      propertyName={variables.propertyName}
       previewVariables={{
         "property.name": variables.propertyName,
         "property.address": variables.address,
