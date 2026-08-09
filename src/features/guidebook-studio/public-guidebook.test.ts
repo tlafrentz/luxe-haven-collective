@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PublishedArtifactEnvelope } from "@/platform/artifact-rendering";
+import { MESA_MODERN_TOKENS } from "@/features/template-library";
 import {
   guidebookPublicRenderer,
   type GuidebookArtifactPayload,
@@ -203,5 +204,18 @@ describe("public guidebook renderer", () => {
       },
     });
     expect(untrusted.sections[0]?.blocks[0]).not.toHaveProperty("url");
+  });
+  it("defaults theme colors to the Mesa Modern tokens when no brand colors are set", () => {
+    const view = guidebookPublicRenderer.render({
+      ...artifact,
+      payload: { ...artifact.payload, brand: {} },
+    });
+    expect(view.theme.primaryColor).toBe(MESA_MODERN_TOKENS.colors.primary);
+    expect(view.theme.accentColor).toBe(MESA_MODERN_TOKENS.colors.accent);
+  });
+  it("still honors custom brand colors when set", () => {
+    const view = guidebookPublicRenderer.render(artifact);
+    expect(view.theme.primaryColor).toBe("#123456");
+    expect(view.theme.accentColor).toBe("#abcdef");
   });
 });

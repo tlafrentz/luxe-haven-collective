@@ -1,4 +1,5 @@
 import type { ArtifactRenderer } from "@/platform/artifact-rendering";
+import { MESA_MODERN_TOKENS } from "@/features/template-library";
 import { sanitizePublicText, sanitizePublicUrl } from "./guest-delivery";
 export type PublicGuidebookBlock = Readonly<{
   id: string;
@@ -126,8 +127,14 @@ export const guidebookPublicRenderer: ArtifactRenderer<
         ? { emergencyContact: sanitizePublicText(values.emergencyContact, 300) }
         : {}),
       theme: {
-        primaryColor: color(String(brand.primaryColor ?? "#1d1a17"), "#1d1a17"),
-        accentColor: color(String(brand.accentColor ?? "#d7b77d"), "#d7b77d"),
+        primaryColor: color(
+          String(brand.primaryColor ?? MESA_MODERN_TOKENS.colors.primary),
+          MESA_MODERN_TOKENS.colors.primary,
+        ),
+        accentColor: color(
+          String(brand.accentColor ?? MESA_MODERN_TOKENS.colors.accent),
+          MESA_MODERN_TOKENS.colors.accent,
+        ),
         ...(logo ? { logoUrl: logo } : {}),
       },
       sections: Object.freeze(

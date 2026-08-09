@@ -690,10 +690,10 @@ function ThemePanel({
 }) {
   const [logoUrl, setLogoUrl] = useState(brand?.logoUrl ?? "");
   const [primaryColor, setPrimaryColor] = useState(
-    brand?.primaryColor ?? "#1d1a17",
+    brand?.primaryColor ?? MESA_MODERN_TOKENS.colors.primary,
   );
   const [accentColor, setAccentColor] = useState(
-    brand?.accentColor ?? "#d7b77d",
+    brand?.accentColor ?? MESA_MODERN_TOKENS.colors.accent,
   );
   return (
     <div className="mt-5 space-y-4">

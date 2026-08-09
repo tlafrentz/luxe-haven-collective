@@ -12,7 +12,7 @@ export type TemplateValidationIssue={severity:"info"|"warning"|"error";code:stri
 
 export const TEMPLATE_PERMISSIONS=["templates.view","templates.create","templates.edit","templates.approve","templates.publish","templates.archive","templates.duplicate"] as const;
 export const MESA_MODERN_TOKENS:ThemeTokens={
- typography:{headingFamily:"var(--font-editorial-serif)",bodyFamily:"var(--font-modern-sans)",displaySize:"3rem",headingWeight:"600",bodySize:"1rem",lineHeight:"1.6"},
+ typography:{headingFamily:"var(--font-serif)",bodyFamily:"var(--font-modern-sans)",displaySize:"3rem",headingWeight:"600",bodySize:"1rem",lineHeight:"1.6"},
  colors:{primary:"#0B2B24",accent:"#C78A38",highlight:"#F3D3A1",background:"#FAFAF8",surface:"#FFFFFF",border:"#E7E0D2",text:"#111111",muted:"#6D6B68",success:"#167D6A",warning:"#CA8A04",error:"#CF3928",info:"#2A6FB0"},
  spacing:{xs:"0.25rem",sm:"0.5rem",md:"1rem",lg:"1.5rem",xl:"2rem","2xl":"3rem"},radii:{sm:"0.375rem",md:"0.75rem",lg:"1.25rem",pill:"999px"},borders:{default:"1px solid var(--template-border)",strong:"2px solid var(--template-primary)"},icons:{style:"outline",strokeWidth:"1.75"},buttons:{primary:{background:"#0B2B24",color:"#FFFFFF",radius:"0.5rem"},secondary:{background:"#FFFFFF",color:"#0B2B24",radius:"0.5rem"},ghost:{background:"transparent",color:"#0B2B24"}},cards:{radius:"0.75rem",padding:"1rem",border:"1px solid #E7E0D2"},elevation:{sm:"0 1px 2px rgb(0 0 0 / 0.06)",md:"0 10px 30px rgb(11 43 36 / 0.12)"},motion:{fast:"120ms",standard:"220ms",reduced:"0ms"},images:{hero:"3:2",card:"16:9",square:"1:1",portrait:"4:5",objectFit:"cover"}
 };

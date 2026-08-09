@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { updateGuidebookBrandAction } from "@/app/actions/guidebook-brand";
 import type { GuidebookBrandIdentity } from "@/features/guidebook-studio";
+import { MESA_MODERN_TOKENS } from "@/features/template-library";
 
-const DEFAULT_PRIMARY = "#1d1a17";
-const DEFAULT_ACCENT = "#d7b77d";
+const DEFAULT_PRIMARY = MESA_MODERN_TOKENS.colors.primary;
+const DEFAULT_ACCENT = MESA_MODERN_TOKENS.colors.accent;
 
 export function AdminGuidebookThemePanel({
   guidebookId,
