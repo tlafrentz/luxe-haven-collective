@@ -11,3 +11,5 @@ export * from "./default-platform-action-provider";
 export * from "./platform-action-provider-dependencies";
 export * from "./platform-action-provider-errors";
 export * from "./execute-application";
+export * from "./execute-controls";
+export * from "./execute-action-detail";
