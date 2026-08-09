@@ -42,22 +42,7 @@ export function ActionCenterHeader({ summary }: ActionCenterHeaderProps) {
       </div>
 
       <nav aria-label="Execute workspace" className="flex gap-2 overflow-x-auto pb-1 text-sm">
-        <Link
-          className="shrink-0 rounded-full bg-stone-950 px-4 py-2 font-semibold text-white"
-          href="/dashboard/execute"
-          aria-current="page"
-        >
-          Actions
-        </Link>
-        {["Projects", "Automations", "Services"].map((item) => (
-          <span
-            key={item}
-            aria-disabled="true"
-            className="shrink-0 rounded-full border bg-white px-4 py-2 text-stone-500"
-          >
-            {item}
-          </span>
-        ))}
+        {[["Overview", "/dashboard/execute"], ["My Work", "/dashboard/execute?view=my-work"], ["All Actions", "/dashboard/execute?view=all"], ["Action Plans", "/dashboard/execute?view=plans"], ["Recurring", "/dashboard/execute?view=recurring"], ["Completed", "/dashboard/execute?view=completed"]].map(([label, href], index) => <Link key={label} className={`shrink-0 rounded-full px-4 py-2 font-semibold ${index === 0 ? "bg-stone-950 text-white" : "border bg-white text-stone-600"}`} href={href} aria-current={index === 0 ? "page" : undefined}>{label}</Link>)}
       </nav>
     </header>
   );

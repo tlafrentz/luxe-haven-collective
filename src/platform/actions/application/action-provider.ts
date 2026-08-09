@@ -1,5 +1,5 @@
 import type { PlatformAction, PlatformActionCollection } from "../domain";
-import type { ArchiveActionCommand, AssignActionCommand, BlockActionCommand, CancelActionCommand, ChangeActionOwnerCommand, ChangeActionPriorityCommand, ClaimActionCommand, CommitActionCommand, CompleteActionCommand, CreateCommittedActionCommand, CreateDraftActionCommand, LinkActionOutcomeCommand, MarkActionReadyCommand, ReleaseActionAssignmentCommand, ScheduleActionCommand, StartActionCommand, UnblockActionCommand } from "./action-commands";
+import type { ArchiveActionCommand, AssignActionCommand, BlockActionCommand, CancelActionCommand, ChangeActionOwnerCommand, ChangeActionPriorityCommand, ClaimActionCommand, CommitActionCommand, CompleteActionCommand, CreateCommittedActionCommand, CreateDraftActionCommand, FailActionCommand, LinkActionOutcomeCommand, MarkActionReadyCommand, ReleaseActionAssignmentCommand, ReopenActionCommand, RetryActionCommand, ReturnActionForCorrectionCommand, ScheduleActionCommand, StartActionCommand, SubmitActionForReviewCommand, UnblockActionCommand } from "./action-commands";
 import type { FindActionByIdQuery, PlatformActionQuery } from "./action-queries";
 export interface PlatformActionProvider {
   createDraft(command: CreateDraftActionCommand): Promise<PlatformAction>;
@@ -13,7 +13,12 @@ export interface PlatformActionProvider {
   start(command: StartActionCommand): Promise<PlatformAction>;
   block(command: BlockActionCommand): Promise<PlatformAction>;
   unblock(command: UnblockActionCommand): Promise<PlatformAction>;
+  submitForReview(command: SubmitActionForReviewCommand): Promise<PlatformAction>;
+  returnForCorrection(command: ReturnActionForCorrectionCommand): Promise<PlatformAction>;
   complete(command: CompleteActionCommand): Promise<PlatformAction>;
+  fail(command: FailActionCommand): Promise<PlatformAction>;
+  retry(command: RetryActionCommand): Promise<PlatformAction>;
+  reopen(command: ReopenActionCommand): Promise<PlatformAction>;
   cancel(command: CancelActionCommand): Promise<PlatformAction>;
   archive(command: ArchiveActionCommand): Promise<PlatformAction>;
   linkOutcome(command: LinkActionOutcomeCommand): Promise<PlatformAction>;

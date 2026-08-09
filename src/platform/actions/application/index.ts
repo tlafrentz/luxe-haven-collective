@@ -10,3 +10,4 @@ export * from "./action-repository";
 export * from "./default-platform-action-provider";
 export * from "./platform-action-provider-dependencies";
 export * from "./platform-action-provider-errors";
+export * from "./execute-application";

@@ -49,6 +49,21 @@ describe("PlatformAction lifecycle and immutability", () => {
     expect([d.status, c.status, r.status, s.status, done.status, archived.status]).toEqual(["draft", "committed", "ready", "in-progress", "completed", "archived"]);
     expect(done.scheduleValue.completed?.toISOString()).toBe("2026-07-20T10:04:00.000Z"); expect(done.outcomeReferences).toHaveLength(0);
   });
+  it("supports review, correction, failure, retry, and formal reopening without erasing completion history", () => {
+    const running = started();
+    const review = running.submitForReview(command(running, 4));
+    const corrected = review.returnForCorrection({ ...command(review, 5), reason: "Photo evidence is incomplete." });
+    const failed = corrected.fail({ ...command(corrected, 6), reason: "Vendor could not access the property." });
+    const retried = failed.retry({ ...command(failed, 7), reason: "Access was restored." });
+    const completed = retried.complete(command(retried, 8));
+    const reopened = completed.reopen({ ...command(completed, 9), reason: "The repair did not hold." });
+    expect([review.status, corrected.status, failed.status, retried.status, completed.status, reopened.status]).toEqual(["awaiting-review", "in-progress", "failed", "in-progress", "completed", "in-progress"]);
+    expect(reopened.scheduleValue.completed).toBeUndefined();
+    expect(reopened.history.map((event) => event.operation)).toEqual(expect.arrayContaining(["submitted-for-review", "returned-for-correction", "failed", "retried", "completed", "reopened"]));
+    expect(() => review.returnForCorrection(command(review, 5))).toThrow(/requires a reason/);
+    expect(() => failed.retry(command(failed, 7))).toThrow(/requires a reason/);
+    expect(() => completed.reopen(command(completed, 9))).toThrow(/requires a reason/);
+  });
   it("supports every approved blocked and cancellation path", () => {
     const c = committed(), cb = c.block(command(c, 2)), cr = cb.unblock({ ...command(cb, 3), resumeTo: "ready" });
     const s = started(), sb = s.block(command(s, 4)), resumed = sb.unblock({ ...command(sb, 5), resumeTo: "in-progress" });

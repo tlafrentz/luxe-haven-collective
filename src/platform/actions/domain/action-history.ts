@@ -5,7 +5,7 @@ import type { ActionStatus } from "./action-status";
 import { ActionVersion } from "./action-version";
 export type ActionHistoryId = Identifier;
 export function createActionHistoryId(value?: string): ActionHistoryId { return Identifier.create(value ?? `action-history-${crypto.randomUUID()}`); }
-export const ACTION_HISTORY_OPERATIONS = ["created", "committed", "owner-changed", "priority-changed", "assigned", "assignment-released", "claimed", "scheduled", "marked-ready", "started", "blocked", "unblocked", "completed", "cancelled", "archived", "outcome-linked"] as const;
+export const ACTION_HISTORY_OPERATIONS = ["created", "committed", "owner-changed", "priority-changed", "assigned", "assignment-released", "claimed", "scheduled", "marked-ready", "started", "blocked", "unblocked", "submitted-for-review", "returned-for-correction", "completed", "failed", "retried", "reopened", "cancelled", "archived", "outcome-linked"] as const;
 export type ActionHistoryOperation = (typeof ACTION_HISTORY_OPERATIONS)[number];
 export type PlatformActionHistory = Readonly<{ id: ActionHistoryId; actionId: ActionId; version: ActionVersion; operation: ActionHistoryOperation; previousStatus?: ActionStatus; resultingStatus?: ActionStatus; occurredAt: Date; actor: ActionActor; reason?: string; commandId?: string; externalEventId?: string }>;
 export function createActionHistory(input: PlatformActionHistory): PlatformActionHistory {

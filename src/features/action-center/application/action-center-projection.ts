@@ -8,13 +8,13 @@ export function getAvailableActionCenterCommands(input: Readonly<{ action: Platf
   const { action } = input;
   const lifecycle: Partial<Record<PlatformAction["status"], readonly ActionCenterCommand[]>> = {
     draft: ["commit", "cancel", "archive"], committed: ["mark-ready", "assign", "schedule", "cancel"],
-    ready: ["assign", "schedule", "start", "cancel"], "in-progress": ["block", "complete", "cancel"],
-    blocked: ["unblock", "cancel"], completed: ["link-outcome", "archive"], cancelled: ["archive"], archived: [],
+    ready: ["assign", "schedule", "start", "cancel"], "in-progress": ["block", "submit-for-review", "complete", "fail", "cancel"],
+    blocked: ["unblock", "fail", "cancel"], "awaiting-review": ["complete", "return-for-correction", "fail"], completed: ["link-outcome", "archive"], failed: ["retry", "archive"], cancelled: ["archive"], archived: [],
   };
   const assignment: ActionCenterCommand[] = action.activeAssignment
     ? action.activeAssignment.status === "claimed" ? ["release"] : ["claim", "release"]
     : [];
-  const commands: ActionCenterCommand[] = [...(lifecycle[action.status] ?? []), ...assignment, "change-priority", "change-owner"];
+  const commands: ActionCenterCommand[] = [...(lifecycle[action.status] ?? []), ...(action.status === "completed" ? ["reopen" as const] : []), ...assignment, "change-priority", "change-owner"];
   return Object.freeze([...new Set(commands)]);
 }
 
@@ -35,7 +35,7 @@ export function projectActionCenterQueue(actions: readonly PlatformAction[], vie
   const projected = actions.map((action) => projectActionCenterAction(action, viewer, now));
   const activeActions = projected.filter((action) => !["cancelled", "archived", "completed"].includes(action.status)).sort(compareActions);
   const completedActions = projected.filter((action) => action.status === "completed").sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-  return Object.freeze({ summary: Object.freeze({ total: projected.filter((a) => a.status !== "archived").length, ready: projected.filter((a) => a.status === "ready").length, inProgress: projected.filter((a) => a.status === "in-progress").length, blocked: projected.filter((a) => a.status === "blocked").length, completed: completedActions.length }), activeActions: Object.freeze(activeActions), completedActions: Object.freeze(completedActions), isEmpty: projected.length === 0 });
+  return Object.freeze({ summary: Object.freeze({ total: projected.filter((a) => a.status !== "archived").length, ready: projected.filter((a) => a.status === "ready").length, inProgress: projected.filter((a) => a.status === "in-progress").length, blocked: projected.filter((a) => a.status === "blocked").length, awaitingReview: projected.filter((a) => a.status === "awaiting-review").length, failed: projected.filter((a) => a.status === "failed").length, overdue: projected.filter((a) => a.isOverdue).length, unassigned: projected.filter((a) => !a.assignee && !["draft", "completed", "cancelled", "archived"].includes(a.status)).length, completed: completedActions.length }), activeActions: Object.freeze(activeActions), completedActions: Object.freeze(completedActions), isEmpty: projected.length === 0 });
 }
 
 function actorView(actor: ActionActor): ActionCenterActorView { return Object.freeze({ ...actor, label: actor.id ?? "Unknown" }); }

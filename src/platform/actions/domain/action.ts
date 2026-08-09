@@ -111,9 +111,18 @@ export class PlatformAction extends EntityWithProps<StoredActionProps, ActionId>
 
   public commit(command: ActionMutationContext): PlatformAction { return this.transition("committed", "committed", command); }
   public markReady(command: ActionMutationContext): PlatformAction { return this.transition("ready", "marked-ready", command); }
-  public start(command: ActionMutationContext): PlatformAction { return this.transition("in-progress", "started", command); }
+  public start(command: ActionMutationContext): PlatformAction { if (this.status !== "ready") throw new InvalidActionTransition(this.status, "in-progress"); return this.transition("in-progress", "started", command); }
   public block(command: ActionMutationContext): PlatformAction { return this.transition("blocked", "blocked", command); }
   public unblock(command: UnblockActionInput): PlatformAction { return this.transition(command.resumeTo, "unblocked", command); }
+  public submitForReview(command: ActionMutationContext): PlatformAction { return this.transition("awaiting-review", "submitted-for-review", command); }
+  public returnForCorrection(command: ActionMutationContext): PlatformAction { return this.transition("in-progress", "returned-for-correction", requireReason(command, "Returning an Action for correction")); }
+  public fail(command: ActionMutationContext): PlatformAction { return this.transition("failed", "failed", requireReason(command, "Failing an Action")); }
+  public retry(command: ActionMutationContext): PlatformAction { if (this.status !== "failed") throw new InvalidActionTransition(this.status, "in-progress"); return this.transition("in-progress", "retried", requireReason(command, "Retrying a failed Action")); }
+  public reopen(command: ActionMutationContext): PlatformAction {
+    if (this.status !== "completed") throw new InvalidActionTransition(this.status, "in-progress");
+    const reopened = this.transition("in-progress", "reopened", requireReason(command, "Reopening a completed Action"));
+    return new PlatformAction({ ...reopened.snapshot(), id: reopened.id, schedule: createActionSchedule({ ...reopened.scheduleValue, completed: undefined }) });
+  }
   public cancel(command: ActionMutationContext): PlatformAction { return this.transition("cancelled", "cancelled", command); }
   public archive(command: ActionMutationContext): PlatformAction {
     if (this.status === "archived") throw new ActionAlreadyArchived();
@@ -203,3 +212,4 @@ function validateReconstituted(input: PlatformActionProps): PlatformActionProps 
 function text(value: string, field: string): string { const result = value.trim(); if (!result) throw new TypeError(`${field} cannot be empty.`); return result; }
 function optionalText(value?: string): string | undefined { const result = value?.trim(); return result || undefined; }
 function validDate(value: Date, field: string): Date { const result = new Date(value); if (Number.isNaN(result.getTime())) throw new TypeError(`${field} must be valid.`); return result; }
+function requireReason<T extends ActionMutationContext>(command: T, operation: string): T { if (!command.reason?.trim()) throw new TypeError(`${operation} requires a reason.`); return command; }

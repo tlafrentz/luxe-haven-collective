@@ -16,6 +16,8 @@ export function mapPlatformActionStatusToLegacyStatus(status: ActionStatus): Leg
     case "committed": return "accepted";
     case "ready": return "scheduled";
     case "cancelled": return "archived";
+    case "awaiting-review": return "in-progress";
+    case "failed": return "archived";
     default: return status;
   }
 }

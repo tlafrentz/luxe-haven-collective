@@ -10,7 +10,7 @@ export interface ActionCenterReader { loadQueue(input: LoadActionCenterQueueInpu
 export class ProviderActionCenterReader implements ActionCenterReader {
   public constructor(private readonly provider: PlatformActionProvider, private readonly now: () => Date = () => new Date()) {}
   public async loadQueue(input: LoadActionCenterQueueInput): Promise<ActionCenterQueue> {
-    const statuses = input.activeOnly ? ["draft", "committed", "ready", "in-progress", "blocked"] as const : input.statuses;
+    const statuses = input.activeOnly ? ["draft", "committed", "ready", "in-progress", "blocked", "awaiting-review", "failed"] as const : input.statuses;
     const collection = await this.provider.find({ workspaceId: input.workspaceId, ...(statuses ? { statuses } : {}), ...(input.owner ? { owner: input.owner } : {}), ...(input.assignee ? { assignee: input.assignee } : {}), ...(input.sourceType ? { sourceType: input.sourceType } : {}), ...(input.sourceId ? { sourceId: input.sourceId } : {}), ...(input.dueBefore ? { dueBefore: input.dueBefore } : {}) });
     const values = collection.all().filter((action) => !input.priority || action.priority === input.priority);
     return projectActionCenterQueue(values, input.viewer, this.now());

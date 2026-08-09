@@ -15,7 +15,12 @@ const actionable = new Set([
   "start",
   "block",
   "unblock",
+  "submit-for-review",
+  "return-for-correction",
   "complete",
+  "fail",
+  "retry",
+  "reopen",
   "cancel",
   "archive",
 ]);
@@ -26,17 +31,22 @@ export function ExecutionWorkspacePage({
 }) {
   const [action, setAction] = useState(initial);
   const [message, setMessage] = useState("");
+  const [reasonOperation, setReasonOperation] = useState<ActionCenterMutationInput["operation"] | null>(null);
+  const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();
-  function run(operation: ActionCenterMutationInput["operation"]) {
+  function run(operation: ActionCenterMutationInput["operation"], operationReason?: string) {
     startTransition(async () => {
       const result = await mutateActionCenterAction({
         actionId: action.id,
         expectedVersion: action.version,
         operation,
+        ...(operationReason ? { reason: operationReason } : {}),
       });
       if (result.ok) {
         setAction(result.action);
         setMessage("");
+        setReasonOperation(null);
+        setReason("");
       } else setMessage(result.message);
     });
   }
@@ -101,7 +111,7 @@ export function ExecutionWorkspacePage({
                 <button
                   key={command}
                   disabled={pending}
-                  onClick={() => run(command)}
+                  onClick={() => ["return-for-correction", "fail", "retry", "reopen"].includes(command) ? setReasonOperation(command) : run(command)}
                   className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-stone-950 disabled:opacity-50"
                 >
                   {command.replace("-", " ")}
@@ -118,6 +128,7 @@ export function ExecutionWorkspacePage({
               {message}
             </p>
           ) : null}
+          {reasonOperation ? <form className="mt-5 rounded-2xl border border-stone-700 bg-stone-900 p-4" onSubmit={(event) => { event.preventDefault(); run(reasonOperation, reason); }}><label className="block text-sm font-semibold" htmlFor="action-reason">Reason for {reasonOperation.replaceAll("-", " ")}</label><textarea id="action-reason" required value={reason} onChange={(event) => setReason(event.target.value)} className="mt-3 min-h-24 w-full rounded-xl border border-stone-600 bg-stone-950 p-3 text-sm text-white"/><div className="mt-3 flex gap-3"><button disabled={pending || !reason.trim()} className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-stone-950 disabled:opacity-50">Confirm</button><button type="button" onClick={() => { setReasonOperation(null); setReason(""); }} className="rounded-xl border border-stone-600 px-4 py-2 text-sm">Cancel</button></div></form> : null}
         </section>
       </div>
     </main>

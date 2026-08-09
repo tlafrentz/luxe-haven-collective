@@ -1,12 +1,12 @@
 import type { ActionAssignmentId, ActionMutationContext, PlatformAction, PlatformActionCollection } from "../domain";
 import { PlatformAction as PlatformActionAggregate } from "../domain";
-import type { ArchiveActionCommand, AssignActionCommand, BlockActionCommand, CancelActionCommand, ChangeActionOwnerCommand, ChangeActionPriorityCommand, ClaimActionCommand, CommitActionCommand, CompleteActionCommand, CreateCommittedActionCommand, CreateDraftActionCommand, LinkActionOutcomeCommand, MarkActionReadyCommand, ReleaseActionAssignmentCommand, ScheduleActionCommand, StartActionCommand, UnblockActionCommand } from "./action-commands";
+import type { ArchiveActionCommand, AssignActionCommand, BlockActionCommand, CancelActionCommand, ChangeActionOwnerCommand, ChangeActionPriorityCommand, ClaimActionCommand, CommitActionCommand, CompleteActionCommand, CreateCommittedActionCommand, CreateDraftActionCommand, FailActionCommand, LinkActionOutcomeCommand, MarkActionReadyCommand, ReleaseActionAssignmentCommand, ReopenActionCommand, RetryActionCommand, ReturnActionForCorrectionCommand, ScheduleActionCommand, StartActionCommand, SubmitActionForReviewCommand, UnblockActionCommand } from "./action-commands";
 import type { PlatformActionProvider } from "./action-provider";
 import type { FindActionByIdQuery, PlatformActionQuery } from "./action-queries";
 import type { PlatformActionProviderDependencies } from "./platform-action-provider-dependencies";
 import { PlatformActionNotFound, PlatformActionWorkspaceMismatch, StalePlatformActionVersion } from "./platform-action-provider-errors";
 
-type ExistingActionCommand = CommitActionCommand | AssignActionCommand | ReleaseActionAssignmentCommand | ClaimActionCommand | ScheduleActionCommand | MarkActionReadyCommand | StartActionCommand | BlockActionCommand | UnblockActionCommand | CompleteActionCommand | CancelActionCommand | ArchiveActionCommand | LinkActionOutcomeCommand | ChangeActionPriorityCommand | ChangeActionOwnerCommand;
+type ExistingActionCommand = CommitActionCommand | AssignActionCommand | ReleaseActionAssignmentCommand | ClaimActionCommand | ScheduleActionCommand | MarkActionReadyCommand | StartActionCommand | BlockActionCommand | UnblockActionCommand | SubmitActionForReviewCommand | ReturnActionForCorrectionCommand | CompleteActionCommand | FailActionCommand | RetryActionCommand | ReopenActionCommand | CancelActionCommand | ArchiveActionCommand | LinkActionOutcomeCommand | ChangeActionPriorityCommand | ChangeActionOwnerCommand;
 
 export class DefaultPlatformActionProvider implements PlatformActionProvider {
   public constructor(private readonly dependencies: PlatformActionProviderDependencies) {}
@@ -24,7 +24,12 @@ export class DefaultPlatformActionProvider implements PlatformActionProvider {
   public start(command: StartActionCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.start(context)); }
   public block(command: BlockActionCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.block(context)); }
   public unblock(command: UnblockActionCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.unblock({ ...context, resumeTo: command.resumeTo })); }
+  public submitForReview(command: SubmitActionForReviewCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.submitForReview(context)); }
+  public returnForCorrection(command: ReturnActionForCorrectionCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.returnForCorrection(context)); }
   public complete(command: CompleteActionCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.complete(context)); }
+  public fail(command: FailActionCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.fail(context)); }
+  public retry(command: RetryActionCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.retry(context)); }
+  public reopen(command: ReopenActionCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.reopen(context)); }
   public cancel(command: CancelActionCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.cancel(context)); }
   public archive(command: ArchiveActionCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.archive(context)); }
   public linkOutcome(command: LinkActionOutcomeCommand): Promise<PlatformAction> { return this.mutate(command, (action, context) => action.linkOutcome({ ...context, outcomeId: command.outcomeId, linkType: command.linkType })); }
