@@ -28,7 +28,7 @@
     "framer-motion": "latest",
     "image-size": "^2.0.2",
     "lucide-react": "latest",
-    "next": "latest",
+    "next": "^16.3.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.2.108",
     "qrcode": "^1.5.4",
