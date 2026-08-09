@@ -343,7 +343,7 @@ export async function createGuidebookResultAction(formData: FormData) {
         );
       }
     }
-    redirect(`/dashboard/guidebooks/${result.value.guidebookId}/edit`);
+    redirect(`/dashboard/guidebooks/${result.value.guidebookId}/setup`);
   }
   return result;
 }

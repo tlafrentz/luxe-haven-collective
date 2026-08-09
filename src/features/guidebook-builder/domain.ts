@@ -194,6 +194,36 @@ export const BUILDER_COMPONENTS: ReadonlyArray<{
   description: description as string,
   sectionHints: sectionHints as string[],
 }));
+export const ESSENTIAL_CONTENT_ITEMS: ReadonlyArray<{
+  key: string;
+  label: string;
+  componentKeys: readonly string[];
+}> = [
+  {
+    key: "arrival",
+    label: "Check-in & Check-out",
+    componentKeys: ["arrival_instructions", "departure_checklist"],
+  },
+  { key: "wifi", label: "Wi-Fi & Internet", componentKeys: ["wifi_card"] },
+  {
+    key: "parking",
+    label: "Parking Instructions",
+    componentKeys: ["parking_card"],
+  },
+  { key: "rules", label: "House Rules", componentKeys: ["rule_grid"] },
+  {
+    key: "emergency",
+    label: "Emergency Contact",
+    componentKeys: ["emergency_contact_card"],
+  },
+  { key: "amenities", label: "Amenities", componentKeys: ["appliance_card"] },
+];
+export function essentialContentGuidance(componentKey: string) {
+  return (
+    BUILDER_COMPONENTS.find((item) => item.key === componentKey)
+      ?.description ?? ""
+  );
+}
 export function compatibleComponents(sectionName: string) {
   const key = sectionName.toLowerCase();
   return BUILDER_COMPONENTS.filter(

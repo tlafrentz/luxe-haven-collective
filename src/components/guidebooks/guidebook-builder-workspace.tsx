@@ -23,6 +23,7 @@ import {
 import {
   blockSummary,
   compatibleComponents,
+  ESSENTIAL_CONTENT_ITEMS,
   guidebookHealth,
   type BuilderPanel,
   type BuilderPreviewMode,
@@ -36,15 +37,6 @@ import {
 } from "@/features/guidebook-studio";
 
 type Command = Parameters<typeof guidebookAuthoringCommandAction>[0]["command"];
-
-const essentialContentItems = [
-  { label: "Check-in & Check-out", componentKeys: ["arrival_instructions", "departure_checklist"] },
-  { label: "WiFi & Internet", componentKeys: ["wifi_card"] },
-  { label: "Parking Instructions", componentKeys: ["parking_card"] },
-  { label: "House Rules", componentKeys: ["rule_card"] },
-  { label: "Emergency Contact", componentKeys: ["emergency_contact_card"] },
-  { label: "Amenities", componentKeys: ["appliance_card"] },
-] as const;
 
 function usedComponentKeys(draft: GuidebookDraft) {
   return new Set(
@@ -306,11 +298,11 @@ export function GuidebookBuilderWorkspace({
           <section className="mt-4 rounded-xl border bg-stone-50 p-4">
             <strong className="text-xs">Add Essential Content</strong>
             <div className="mt-3 space-y-2">
-              {essentialContentItems.map((item) => {
+              {ESSENTIAL_CONTENT_ITEMS.map((item) => {
                 const complete = item.componentKeys.every((key) => usedKeys.has(key));
                 return (
                   <div
-                    key={item.label}
+                    key={item.key}
                     className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-xs"
                   >
                     <span className="flex items-center gap-2">
