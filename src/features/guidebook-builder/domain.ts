@@ -22,6 +22,7 @@ export type BuilderPanel =
   | "actions"
   | "visibility"
   | "layout"
+  | "theme"
   | "validation";
 export type BuilderIssue = {
   code: string;

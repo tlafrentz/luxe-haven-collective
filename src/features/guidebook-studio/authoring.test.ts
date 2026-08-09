@@ -11,9 +11,11 @@ import {
   reorderGuidebookBlocks,
   reorderGuidebookSections,
   renameGuidebookSection,
+  restoreGuidebookSections,
   setGuidebookBlockVisibility,
   setGuidebookSectionVisibility,
   updateGuidebookBlock,
+  updateGuidebookBrand,
   type AuthoringDependencies,
   type AuthoringResult,
   type CommandContext,
@@ -167,6 +169,37 @@ describe("GB-001B authoring application", () => {
     ).toEqual([
       ["Welcome (copy)", 0],
       ["Welcome", 1],
+    ]);
+  });
+  it("restores a prior sections snapshot as a new revision (undo/redo)", async () => {
+    const x = setup(),
+      before = draft().sections;
+    let c = context({ commandId: "add" }),
+      result = await createGuidebookSection(x.deps, c, { name: "Arrival" });
+    expect(result.ok && result.value.sections.map((s) => s.name)).toEqual([
+      "Welcome",
+      "Arrival",
+    ]);
+    c = context({ commandId: "undo", expectedRevision: 2 });
+    result = await restoreGuidebookSections(x.deps, c, { sections: before });
+    expect(result.ok && result.value.sections.map((s) => s.name)).toEqual([
+      "Welcome",
+    ]);
+    expect(result.ok && result.value.revision).toBe(3);
+  });
+  it("updates brand identity without touching sections", async () => {
+    const x = setup(),
+      c = context({ commandId: "brand" });
+    const result = await updateGuidebookBrand(x.deps, c, {
+      brand: { logoUrl: "https://cdn.example/logo.png", primaryColor: "#111111", accentColor: "#c78a38" },
+    });
+    expect(result.ok && result.value.brand).toEqual({
+      logoUrl: "https://cdn.example/logo.png",
+      primaryColor: "#111111",
+      accentColor: "#c78a38",
+    });
+    expect(result.ok && result.value.sections.map((s) => s.name)).toEqual([
+      "Welcome",
     ]);
   });
   it("executes block create, update, visibility, reorder, duplicate, and delete", async () => {

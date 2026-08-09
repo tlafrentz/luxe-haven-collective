@@ -23,9 +23,11 @@ import {
   renameGuidebookSection,
   reorderGuidebookBlocks,
   reorderGuidebookSections,
+  restoreGuidebookSections,
   setGuidebookBlockVisibility,
   setGuidebookSectionVisibility,
   updateGuidebookBlock,
+  updateGuidebookBrand,
   withGuidebookOperationDeadline,
   SupabaseGuidebookAnalyticsRepository,
   SupabaseGuidebookAuthoringObserver,
@@ -41,7 +43,9 @@ import {
   SupabasePublishedGuidebookVersionRepository,
   type AuthoringBlock,
   type AuthoringBlockType,
+  type AuthoringSection,
   type CommandContext,
+  type GuidebookBrandIdentity,
 } from "@/features/guidebook-studio";
 import { getSessionProfile } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
@@ -74,7 +78,9 @@ type Command =
       visible: boolean;
     }
   | { type: "duplicate-block"; sectionId: string; blockId: string }
-  | { type: "delete-block"; sectionId: string; blockId: string };
+  | { type: "delete-block"; sectionId: string; blockId: string }
+  | { type: "restore-sections"; sections: readonly AuthoringSection[] }
+  | { type: "update-brand"; brand: GuidebookBrandIdentity };
 
 export async function uploadGuidebookMediaAction(formData: FormData) {
   try {
@@ -666,6 +672,10 @@ export async function guidebookAuthoringCommandAction(
         return duplicateGuidebookBlock(deps, context, input.command);
       case "delete-block":
         return deleteGuidebookBlock(deps, context, input.command);
+      case "restore-sections":
+        return restoreGuidebookSections(deps, context, input.command);
+      case "update-brand":
+        return updateGuidebookBrand(deps, context, input.command);
     }
   } catch (error) {
     if (errorCode(error) === "GUIDEBOOK_UNAUTHORIZED") return denied();

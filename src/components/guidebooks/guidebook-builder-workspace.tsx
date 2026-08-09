@@ -12,8 +12,10 @@ import {
   History,
   Pencil,
   Plus,
+  Redo2,
   Search,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import {
   guidebookAuthoringCommandAction,
@@ -37,6 +39,7 @@ import {
 } from "@/features/guidebook-studio";
 
 type Command = Parameters<typeof guidebookAuthoringCommandAction>[0]["command"];
+const HISTORY_LIMIT = 20;
 
 function usedComponentKeys(draft: GuidebookDraft) {
   return new Set(
@@ -72,6 +75,8 @@ export function GuidebookBuilderWorkspace({
   const [picker, setPicker] = useState(false);
   const [query, setQuery] = useState("");
   const [save, setSave] = useState<BuilderSaveState>("saved");
+  const [history, setHistory] = useState<GuidebookDraft["sections"][]>([]);
+  const [future, setFuture] = useState<GuidebookDraft["sections"][]>([]);
   const [, startTransition] = useTransition();
   const section =
     draft.sections.find((item) => item.id === sectionId) ?? draft.sections[0];
@@ -92,8 +97,9 @@ export function GuidebookBuilderWorkspace({
     [section?.name, query],
   );
 
-  function command(value: Command) {
+  function runCommand(value: Command, record: boolean) {
     if (!canEdit) return;
+    const before = draft.sections;
     setSave("saving");
     startTransition(async () => {
       const result = await guidebookAuthoringCommandAction({
@@ -106,9 +112,48 @@ export function GuidebookBuilderWorkspace({
       if (result.ok) {
         setDraft(result.value);
         setSave("saved");
+        if (record) {
+          setHistory((stack) => [...stack.slice(-(HISTORY_LIMIT - 1)), before]);
+          setFuture([]);
+        }
       } else setSave(result.code === "DRAFT_CONFLICT" ? "conflict" : "failed");
     });
   }
+  function command(value: Command) {
+    runCommand(value, true);
+  }
+  function undo() {
+    const previous = history[history.length - 1];
+    if (!previous || !canEdit) return;
+    setHistory((stack) => stack.slice(0, -1));
+    setFuture((stack) => [...stack, draft.sections]);
+    runCommand({ type: "restore-sections", sections: previous }, false);
+  }
+  function redo() {
+    const next = future[future.length - 1];
+    if (!next || !canEdit) return;
+    setFuture((stack) => stack.slice(0, -1));
+    setHistory((stack) => [...stack, draft.sections]);
+    runCommand({ type: "restore-sections", sections: next }, false);
+  }
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const tag = (event.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if ((event.target as HTMLElement | null)?.isContentEditable) return;
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        undo();
+      } else if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        redo();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
   return (
     <main className="min-h-screen bg-stone-100 text-stone-950">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-white px-4 py-3">
@@ -127,6 +172,24 @@ export function GuidebookBuilderWorkspace({
         <div className="flex items-center gap-2 text-xs">
           <SaveStatus value={save} />
           <span>Revision {draft.revision}</span>
+          <button
+            onClick={undo}
+            disabled={!canEdit || !history.length}
+            aria-label="Undo"
+            title="Undo (Ctrl/Cmd+Z)"
+            className="rounded-lg border p-2 disabled:opacity-30"
+          >
+            <Undo2 className="size-4" />
+          </button>
+          <button
+            onClick={redo}
+            disabled={!canEdit || !future.length}
+            aria-label="Redo"
+            title="Redo (Ctrl/Cmd+Shift+Z)"
+            className="rounded-lg border p-2 disabled:opacity-30"
+          >
+            <Redo2 className="size-4" />
+          </button>
           <Link
             href={`/dashboard/guidebooks/${draft.guidebookId}/versions`}
             className="rounded-lg border p-2"
@@ -393,6 +456,7 @@ export function GuidebookBuilderWorkspace({
                     "actions",
                     "visibility",
                     "layout",
+                    "theme",
                   ] as BuilderPanel[]
                 ).map((item) => (
                   <button
@@ -404,22 +468,32 @@ export function GuidebookBuilderWorkspace({
                   </button>
                 ))}
               </div>
-              <PropertyPanel
-                block={block}
-                panel={panel}
-                sectionName={section?.name}
-                workspaceId={draft.workspaceId}
-                guidebookId={draft.guidebookId}
-                canEdit={canEdit}
-                onUpdate={(value) =>
-                  section &&
-                  command({
-                    type: "update-block",
-                    sectionId: section.id,
-                    block: value,
-                  })
-                }
-              />
+              {panel === "theme" ? (
+                <ThemePanel
+                  brand={draft.brand}
+                  canEdit={canEdit}
+                  onSave={(brand) =>
+                    runCommand({ type: "update-brand", brand }, false)
+                  }
+                />
+              ) : (
+                <PropertyPanel
+                  block={block}
+                  panel={panel}
+                  sectionName={section?.name}
+                  workspaceId={draft.workspaceId}
+                  guidebookId={draft.guidebookId}
+                  canEdit={canEdit}
+                  onUpdate={(value) =>
+                    section &&
+                    command({
+                      type: "update-block",
+                      sectionId: section.id,
+                      block: value,
+                    })
+                  }
+                />
+              )}
             </>
           )}
         </aside>
@@ -585,6 +659,87 @@ function Canvas({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ThemePanel({
+  brand,
+  canEdit,
+  onSave,
+}: {
+  brand?: GuidebookDraft["brand"];
+  canEdit: boolean;
+  onSave: (brand: NonNullable<GuidebookDraft["brand"]>) => void;
+}) {
+  const [logoUrl, setLogoUrl] = useState(brand?.logoUrl ?? "");
+  const [primaryColor, setPrimaryColor] = useState(
+    brand?.primaryColor ?? "#1d1a17",
+  );
+  const [accentColor, setAccentColor] = useState(
+    brand?.accentColor ?? "#d7b77d",
+  );
+  return (
+    <div className="mt-5 space-y-4">
+      <label className="block text-sm font-semibold">
+        Logo URL
+        <input
+          value={logoUrl}
+          disabled={!canEdit}
+          onChange={(event) => setLogoUrl(event.target.value)}
+          onBlur={() => onSave({ logoUrl, primaryColor, accentColor })}
+          placeholder="https://…"
+          className="mt-2 block min-h-10 w-full rounded-lg border px-3 disabled:opacity-50"
+        />
+      </label>
+      <label className="block text-sm font-semibold">
+        Primary color
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="color"
+            disabled={!canEdit}
+            value={primaryColor}
+            onChange={(event) => {
+              setPrimaryColor(event.target.value);
+              onSave({
+                logoUrl,
+                primaryColor: event.target.value,
+                accentColor,
+              });
+            }}
+            className="size-10 rounded-lg border"
+          />
+          <span className="font-mono text-xs text-stone-500">
+            {primaryColor}
+          </span>
+        </div>
+      </label>
+      <label className="block text-sm font-semibold">
+        Accent color
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="color"
+            disabled={!canEdit}
+            value={accentColor}
+            onChange={(event) => {
+              setAccentColor(event.target.value);
+              onSave({
+                logoUrl,
+                primaryColor,
+                accentColor: event.target.value,
+              });
+            }}
+            className="size-10 rounded-lg border"
+          />
+          <span className="font-mono text-xs text-stone-500">
+            {accentColor}
+          </span>
+        </div>
+      </label>
+      <p className="text-xs text-stone-500">
+        Applies to the guest-facing guide. Colors save immediately; the logo
+        URL saves when you leave the field.
+      </p>
     </div>
   );
 }

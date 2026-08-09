@@ -8,6 +8,7 @@ import {
   type AuthoringBlock,
   type AuthoringSection,
   type AuthoringBlockType,
+  type GuidebookBrandIdentity,
   type GuidebookDraft,
   type ReadinessResult,
 } from "../domain/authoring";
@@ -345,6 +346,30 @@ export const setGuidebookSectionVisibility = (
         ),
         requireSection(draft, input.sectionId),
       ),
+  );
+export const restoreGuidebookSections = (
+  deps: AuthoringDependencies,
+  context: CommandContext,
+  input: Readonly<{ sections: readonly AuthoringSection[] }>,
+) =>
+  executeMutation(
+    deps,
+    context,
+    "restore-sections",
+    fingerprint(input),
+    (draft) => next(draft, input.sections),
+  );
+export const updateGuidebookBrand = (
+  deps: AuthoringDependencies,
+  context: CommandContext,
+  input: Readonly<{ brand: GuidebookBrandIdentity }>,
+) =>
+  executeMutation(
+    deps,
+    context,
+    "update-brand",
+    fingerprint(input),
+    (draft) => ({ ...draft, brand: input.brand }),
   );
 export const duplicateGuidebookSection = (
   deps: AuthoringDependencies,
