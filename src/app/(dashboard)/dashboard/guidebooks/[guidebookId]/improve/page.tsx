@@ -5,6 +5,7 @@ import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
 import { loadGuidebookAuthoringAction } from "@/app/actions/guidebook-authoring";
 import { GuidebookNavigation } from "@/components/guidebooks/guidebook-navigation";
 import { GuidebookPublicationControl } from "@/components/guidebooks/guidebook-publication-control";
+import { GuidebookInsufficientPermissions } from "@/components/guidebooks/guidebook-ui";
 
 export default async function GuidebookImprovePage({
   params,
@@ -13,7 +14,10 @@ export default async function GuidebookImprovePage({
 }) {
   const { guidebookId } = await params;
   const result = await getGuidebookEditorRequest(guidebookId);
-  if (!result.ok) notFound();
+  if (!result.ok) {
+    if (result.code === "guidebook_not_found") notFound();
+    return <GuidebookInsufficientPermissions />;
+  }
 
   const authoring = await loadGuidebookAuthoringAction({
     workspaceId: String(result.guidebook.workspace_id),

@@ -6,13 +6,17 @@ import {
   rotateGuidebookPublicSlugAction,
 } from "@/app/actions/guidebook-authoring";
 import { GuidebookNavigation } from "@/components/guidebooks/guidebook-navigation";
+import { GuidebookInsufficientPermissions } from "@/components/guidebooks/guidebook-ui";
 
 export default async function GuidebookSettingsPage({
   params,
 }: Readonly<{ params: Promise<{ guidebookId: string }> }>) {
   const { guidebookId } = await params,
     result = await getGuidebookEditorRequest(guidebookId);
-  if (!result.ok) notFound();
+  if (!result.ok) {
+    if (result.code === "guidebook_not_found") notFound();
+    return <GuidebookInsufficientPermissions />;
+  }
   const archived = result.guidebook.status === "archived",
     revision = Number(result.guidebook.revision),
     workspaceId = String(result.guidebook.workspace_id);

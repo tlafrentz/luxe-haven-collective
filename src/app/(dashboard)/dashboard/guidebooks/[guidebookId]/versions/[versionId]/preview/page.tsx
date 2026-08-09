@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getHistoricalGuidebookPreviewRequest } from "@/app/actions/guidebook-delivery";
 import { PublicGuidebookExperience } from "@/components/guidebooks/public-guidebook-experience";
+import { GuidebookInsufficientPermissions } from "@/components/guidebooks/guidebook-ui";
 import {
   ArtifactRenderingEngine,
   type PublishedArtifactEnvelope,
@@ -23,7 +24,11 @@ export default async function HistoricalGuidebookPreviewPage({
     guidebookId,
     versionId,
   );
-  if (!result.ok) notFound();
+  if (!result.ok) {
+    if (result.code === "GUIDEBOOK_UNAUTHORIZED")
+      return <GuidebookInsufficientPermissions />;
+    notFound();
+  }
   let guidebook: PublicGuidebookView;
   try {
     guidebook = new ArtifactRenderingEngine()

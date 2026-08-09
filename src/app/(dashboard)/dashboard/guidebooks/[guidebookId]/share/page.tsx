@@ -5,13 +5,17 @@ import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
 import { GuidebookNavigation } from "@/components/guidebooks/guidebook-navigation";
 import { CopyGuidebookLink } from "@/components/guidebooks/copy-guidebook-link";
 import { ShareGuidebookLink } from "@/components/guidebooks/share-guidebook-link";
+import { GuidebookInsufficientPermissions } from "@/components/guidebooks/guidebook-ui";
 
 export default async function GuidebookSharePage({
   params,
 }: Readonly<{ params: Promise<{ guidebookId: string }> }>) {
   const { guidebookId } = await params;
   const result = await getGuidebookEditorRequest(guidebookId);
-  if (!result.ok) notFound();
+  if (!result.ok) {
+    if (result.code === "guidebook_not_found") notFound();
+    return <GuidebookInsufficientPermissions />;
+  }
   const path = `/stay/${result.guidebook.public_slug}`;
   const absoluteUrl = `${(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "")}${path}`;
   const available =

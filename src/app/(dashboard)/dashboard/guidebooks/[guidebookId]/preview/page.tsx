@@ -4,6 +4,7 @@ import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
 import { getHistoricalGuidebookPreviewRequest } from "@/app/actions/guidebook-delivery";
 import { buildDraftArtifactPayload } from "@/app/actions/guidebook-draft-artifact";
 import { PublicGuidebookExperience } from "@/components/guidebooks/public-guidebook-experience";
+import { GuidebookInsufficientPermissions } from "@/components/guidebooks/guidebook-ui";
 import {
   ArtifactRenderingEngine,
   type PublishedArtifactEnvelope,
@@ -78,7 +79,10 @@ export default async function GuidebookPreview({
   const embed = query.embed === "1";
 
   const result = await getGuidebookEditorRequest(guidebookId);
-  if (!result.ok) notFound();
+  if (!result.ok) {
+    if (result.code === "guidebook_not_found") notFound();
+    return <GuidebookInsufficientPermissions />;
+  }
 
   const publishedAvailable = Boolean(result.guidebook.published_version);
   const mode =

@@ -1,4 +1,31 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
+
+export function GuidebookInsufficientPermissions({
+  returnHref = "/dashboard/guidebooks",
+}: Readonly<{ returnHref?: string }>) {
+  return (
+    <main className="mx-auto max-w-3xl py-10">
+      <section
+        role="alert"
+        className="rounded-3xl border border-amber-200 bg-amber-50 p-7"
+      >
+        <h1 className="text-xl font-semibold">Insufficient permissions</h1>
+        <p className="mt-2 text-sm text-amber-950">
+          Your account or active workspace role does not include access to
+          this guidebook. Ask a workspace admin to grant access, or switch to
+          an account with permission.
+        </p>
+        <Link
+          href={returnHref}
+          className="mt-4 inline-block rounded-full border bg-white px-4 py-2 text-sm font-semibold"
+        >
+          Return to Guidebook Studio
+        </Link>
+      </section>
+    </main>
+  );
+}
 
 export function GuidebookPageHeader({
   eyebrow,
@@ -42,13 +69,20 @@ export function GuidebookMetricCard({
 }
 
 export function GuidebookStatusBadge({ value }: Readonly<{ value: string }>) {
-  const tone = value === "published" || value === "ready"
-    ? "bg-emerald-50 text-emerald-800"
-    : value === "archived"
-      ? "bg-stone-100 text-stone-600"
-      : value.includes("fail") || value.includes("error")
-        ? "bg-rose-50 text-rose-800"
-        : "bg-amber-50 text-amber-900";
+  const tone =
+    value === "published" || value === "ready" || value === "approved"
+      ? "bg-emerald-50 text-emerald-800"
+      : value === "archived"
+        ? "bg-stone-100 text-stone-600"
+        : value === "scheduled"
+          ? "bg-blue-50 text-blue-800"
+          : value === "awaiting-customer-approval"
+            ? "bg-violet-50 text-violet-800"
+            : value === "changes-requested" ||
+                value.includes("fail") ||
+                value.includes("error")
+              ? "bg-rose-50 text-rose-800"
+              : "bg-amber-50 text-amber-900";
   return (
     <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${tone}`}>
       {value.replaceAll("-", " ")}

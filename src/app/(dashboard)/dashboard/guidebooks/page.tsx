@@ -261,7 +261,7 @@ export default async function GuidebookWorkspacePage({
                         </p>
                       </td>
                       <td className="px-4 py-4">
-                        <GuidebookStatusBadge value={item.status} />
+                        <GuidebookStatusBadge value={item.badgeState} />
                       </td>
                       <td className="px-4 py-4">
                         {item.currentVersion || "—"}

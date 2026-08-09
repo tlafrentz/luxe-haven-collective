@@ -94,6 +94,31 @@ describe("Guidebook workspace projection",()=>{
     expect(result.suggestedActions.map(action=>action.key)).toContain("retry");
   });
 
+  it("derives a scheduled badge state from a future target publish date",()=>{
+    const result=buildGuidebookPropertyProjection({
+      property,guidebook:{...guidebook,targetPublishDate:"2099-01-01"},sections:completeSections,versions:[],entitlements,
+    });
+    expect(result.status).toBe("ready");
+    expect(result.badgeState).toBe("scheduled");
+  });
+  it("ignores a past target publish date for the scheduled badge state",()=>{
+    const result=buildGuidebookPropertyProjection({
+      property,guidebook:{...guidebook,targetPublishDate:"2020-01-01"},sections:completeSections,versions:[],entitlements,
+    });
+    expect(result.badgeState).toBe("ready");
+  });
+  it("derives approval-review badge states, taking priority over a scheduled date",()=>{
+    const withDate={...guidebook,targetPublishDate:"2099-01-01"};
+    expect(buildGuidebookPropertyProjection({property,guidebook:withDate,sections:completeSections,versions:[],entitlements,approvalStatus:"pending"}).badgeState).toBe("awaiting-customer-approval");
+    expect(buildGuidebookPropertyProjection({property,guidebook:withDate,sections:completeSections,versions:[],entitlements,approvalStatus:"changes_requested"}).badgeState).toBe("changes-requested");
+    expect(buildGuidebookPropertyProjection({property,guidebook:withDate,sections:completeSections,versions:[],entitlements,approvalStatus:"approved"}).badgeState).toBe("approved");
+  });
+  it("leaves published and archived badge states untouched by approval or scheduling data",()=>{
+    const published=buildGuidebookPropertyProjection({
+      property,guidebook:{...guidebook,status:"published",targetPublishDate:"2099-01-01"},sections:completeSections,versions:[{version:1,status:"published",publishedAt:"2026-07-24T12:00:00Z",createdAt:"2026-07-24T12:00:00Z"}],entitlements,approvalStatus:"approved",
+    });
+    expect(published.badgeState).toBe("published");
+  });
   it("filters and sorts the portfolio library without mutating it",()=>{
     const missing=buildGuidebookPropertyProjection({
       property:{...property,id:"property-2",name:"Alpine Cabin"},sections:[],versions:[],entitlements,

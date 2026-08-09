@@ -24,6 +24,7 @@ import {
   resolveGuidebookVariables,
   SupabaseGuidebookDraftRepository,
   validateGuidebookComposition,
+  type GuidebookApprovalStatus,
   type GuidebookDraft,
   type GuidebookVariableContext,
 } from "@/features/guidebook-studio";
@@ -234,6 +235,7 @@ export async function getGuidebookStudioRequest(
       { data: versionRows },
       { data: activityRows },
       { data: activePublishJobs },
+      { data: approvalRows },
     ] = await Promise.all([
       ids.length
         ? admin
@@ -265,7 +267,21 @@ export async function getGuidebookStudioRequest(
             .in("guidebook_id", ids)
             .in("status", ["queued", "processing"])
         : Promise.resolve({ data: [] }),
+      ids.length
+        ? admin
+            .from("guidebook_approval_requests")
+            .select("guidebook_id,status,created_at")
+            .eq("workspace_id", access.workspaceId)
+            .in("guidebook_id", ids)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] }),
     ]);
+    const approvalStatuses: Record<string, GuidebookApprovalStatus> = {};
+    for (const row of approvalRows ?? []) {
+      const key = String(row.guidebook_id);
+      if (!(key in approvalStatuses))
+        approvalStatuses[key] = row.status as GuidebookApprovalStatus;
+    }
     const sections: Record<
         string,
         {
@@ -370,9 +386,13 @@ export async function getGuidebookStudioRequest(
           revision: Number(guidebook.revision),
           createdAt: String(guidebook.created_at),
           updatedAt: String(guidebook.updated_at),
+          targetPublishDate: guidebook.target_publish_date
+            ? String(guidebook.target_publish_date)
+            : null,
         })),
         sections,
         versions,
+        approvalStatuses,
         activity: (activityRows ?? []).map((activity) => ({
           id: String(activity.id),
           guidebookId: String(activity.guidebook_id),
