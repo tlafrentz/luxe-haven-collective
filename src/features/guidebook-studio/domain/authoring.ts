@@ -285,6 +285,11 @@ export function validateBlock(
         content: { text: text(c.text, 20000, required) },
       };
     case "image": {
+      if (required && !optional(c.mediaRef, 30))
+        throw new GuidebookAuthoringError(
+          "IMAGE_MEDIA_MISSING",
+          "Add an image before publishing, or remove this block.",
+        );
       const mediaRef = text(c.mediaRef, 30, required);
       if (mediaRef && !GUIDEBOOK_MEDIA_REFERENCE.test(mediaRef))
         throw new GuidebookAuthoringError(
@@ -346,7 +351,12 @@ export function validateBlock(
           ...(optional(c.mapUrl, 2048) ? { mapUrl: url(c.mapUrl) } : {}),
         },
       };
-    case "link":
+    case "link": {
+      if (required && !optional(c.url, 2048))
+        throw new GuidebookAuthoringError(
+          "LINK_DESTINATION_MISSING",
+          "Add a destination link before publishing, or remove this block.",
+        );
       return {
         ...base,
         type,
@@ -355,6 +365,7 @@ export function validateBlock(
           url: url(c.url, required),
         },
       };
+    }
     case "callout": {
       if (!["information", "reminder", "warning"].includes(String(c.kind)))
         throw new GuidebookAuthoringError(

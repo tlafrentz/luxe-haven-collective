@@ -274,6 +274,24 @@ describe("GB-001B authoring application", () => {
       }),
     ).toThrow(/scheme/);
   });
+  it("gives specific, actionable errors for a missing image or link destination on visible blocks at publish time", () => {
+    const image = {
+      ...initialBlock("image", "img", 0),
+      content: { mediaRef: "", alt: "Pool" },
+    };
+    expect(() => validateBlock(image, "publish")).toThrow(/Add an image/);
+    expect(() => validateBlock(image, "draft")).not.toThrow();
+    const link = {
+      ...initialBlock("link", "lnk", 0),
+      content: { label: "Book now", url: "" },
+    };
+    expect(() => validateBlock(link, "publish")).toThrow(
+      /Add a destination link/,
+    );
+    expect(() => validateBlock(link, "draft")).not.toThrow();
+    const hiddenImage = { ...image, visible: false };
+    expect(() => validateBlock(hiddenImage, "publish")).not.toThrow();
+  });
   it("returns a conflict without overwriting or discarding the local command", async () => {
     const x = setup();
     x.drafts.value = { ...draft(), revision: 2 };
