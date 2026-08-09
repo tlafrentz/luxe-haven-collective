@@ -7,6 +7,9 @@ export type GuidebookPurchaseParams = Partial<{
   promo: string;
   propertyName: string;
   address: string;
+  city: string;
+  state: string;
+  country: string;
   timezone: string;
   currency: string;
   addOns: string;

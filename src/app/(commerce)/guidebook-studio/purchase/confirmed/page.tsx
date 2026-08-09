@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { getCheckoutResult } from "@/app/actions/commerce-payments";
+import { purchaseQuery, type GuidebookPurchaseParams } from "@/lib/guidebook-purchase-params";
 
 export const metadata: Metadata = {
   title: "Purchase Confirmed",
@@ -11,11 +12,13 @@ export const metadata: Metadata = {
 export default async function GuidebookPurchaseConfirmedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ session_id?: string }>;
+  searchParams: Promise<GuidebookPurchaseParams & { session_id?: string }>;
 }) {
-  const { session_id } = await searchParams;
+  const params = await searchParams;
+  const { session_id, ...purchaseParams } = params;
   const result = session_id ? await getCheckoutResult(session_id) : null;
   const paid = result?.orderStatus === "paid";
+  const setupQuery = purchaseQuery(purchaseParams);
 
   return (
     <main>
@@ -42,7 +45,7 @@ export default async function GuidebookPurchaseConfirmedPage({
             We&apos;ve sent a confirmation email with your order details.
           </p>
           <Link
-            href="/dashboard/guidebooks/new"
+            href={`/dashboard/guidebooks/new${setupQuery ? `?${setupQuery}` : ""}`}
             className="mt-8 flex w-full items-center justify-center rounded-2xl bg-emerald-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
           >
             Begin Setup →

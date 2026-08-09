@@ -1,12 +1,23 @@
 import Link from "next/link";
-import { createGuidebookAction, createGuidebookPropertyAction } from "@/app/actions/guidebook-authoring";
+import { createGuidebookAction, createGuidebookPropertyAction, listGuidebookPropertyOptionsAction } from "@/app/actions/guidebook-authoring";
 import { getGuidebookStudioRequest } from "@/app/actions/guidebook-studio";
 import { GuidebookPublishingWizard } from "@/features/guidebook-onboarding/guidebook-publishing-wizard";
 
 export default async function NewGuidebookPage({
   searchParams,
 }: {
-  searchParams: Promise<{ property?: string }>;
+  searchParams: Promise<{
+    property?: string;
+    propertyName?: string;
+    propertyType?: string;
+    bedrooms?: string;
+    guestCapacity?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    timezone?: string;
+  }>;
 }) {
   const params = await searchParams;
   const result = await getGuidebookStudioRequest(undefined, {
@@ -76,21 +87,7 @@ export default async function NewGuidebookPage({
     );
   }
 
-  const eligible = result.properties
-    .map(
-      (property: {
-        id: string;
-        name: string;
-        city?: string | null;
-        state?: string | null;
-        featured_image?: string | null;
-      }) => ({
-        id: property.id,
-        name: property.name,
-        location: [property.city, property.state].filter(Boolean).join(", "),
-        image: property.featured_image ?? null,
-      }),
-    );
+  const eligible = await listGuidebookPropertyOptionsAction(result.workspaceId);
 
   return (
     <GuidebookPublishingWizard
@@ -103,6 +100,17 @@ export default async function NewGuidebookPage({
           ? params.property
           : undefined
       }
+      initialPropertyFields={{
+        name: params.propertyName ?? "",
+        propertyType: params.propertyType ?? "single_family_home",
+        bedrooms: params.bedrooms ?? "",
+        guestCapacity: params.guestCapacity ?? "2",
+        address: params.address ?? "",
+        city: params.city ?? "",
+        state: params.state ?? "",
+        country: params.country ?? "US",
+        timezone: params.timezone ?? "America/Chicago",
+      }}
     />
   );
 }

@@ -31,6 +31,8 @@ const properties = [
     name: "Desert Retreat",
     location: "Scottsdale, AZ",
     image: null,
+    capabilities: ["hpm"],
+    hasActiveGuidebook: false,
   },
 ];
 
@@ -94,8 +96,8 @@ describe("GuidebookPublishingWizard", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Let's Get Started" }));
-    fireEvent.click(screen.getByRole("button", { name: /Add New Property/ }));
-    expect(screen.getByLabelText("Address *")).toBeTruthy();
+    expect(screen.getByText("Add your first guidebook property.")).toBeTruthy();
+    expect(screen.getByLabelText("Street address (optional)")).toBeTruthy();
     expect(screen.getByLabelText("State / region *").tagName).toBe("SELECT");
     expect(screen.getByLabelText("Time zone *").tagName).toBe("SELECT");
     expect(screen.getByRole("option", { name: "Arizona" })).toBeTruthy();
@@ -104,6 +106,19 @@ describe("GuidebookPublishingWizard", () => {
         name: "Arizona Time (America/Phoenix)",
       }),
     ).toBeTruthy();
-    expect(screen.queryByText(/HPM subscription/i)).toBeNull();
+    expect(screen.getByText(/HPM enrollment is not required/i)).toBeTruthy();
+  });
+
+  it("prevents a second active guidebook for the same property", () => {
+    render(
+      <GuidebookPublishingWizard
+        workspaceId="workspace-1"
+        properties={[{ ...properties[0], hasActiveGuidebook: true, capabilities: ["guidebook", "hpm"] }]}
+        createAction={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Let's Get Started" }));
+    fireEvent.click(screen.getByRole("button", { name: /Select Existing Property/ }));
+    expect(screen.getByRole("button", { name: /already has an active guidebook/ }).hasAttribute("disabled")).toBe(true);
   });
 });

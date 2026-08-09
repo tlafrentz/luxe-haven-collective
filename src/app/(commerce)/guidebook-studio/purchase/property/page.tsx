@@ -57,11 +57,41 @@ export default async function GuidebookPropertyPage({
             </label>
 
             <label className="block text-sm font-medium text-stone-700">
-              Address
+              Street address <span className="text-stone-400">(optional)</span>
               <input
                 name="address"
-                required
                 placeholder="123 Cactus Way, Scottsdale, AZ USA"
+                className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4"
+              />
+            </label>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <label className="block text-sm font-medium text-stone-700">
+                City
+                <input
+                  name="city"
+                  required
+                  placeholder="Scottsdale"
+                  className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4"
+                />
+              </label>
+              <label className="block text-sm font-medium text-stone-700">
+                State / region
+                <input
+                  name="state"
+                  required
+                  placeholder="Arizona"
+                  className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4"
+                />
+              </label>
+            </div>
+
+            <label className="block text-sm font-medium text-stone-700">
+              Country
+              <input
+                name="country"
+                required
+                defaultValue="US"
                 className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4"
               />
             </label>

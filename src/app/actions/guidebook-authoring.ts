@@ -1,6 +1,8 @@
 "use server";
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { validateGuidebookPropertyInput } from "@/features/property-capabilities";
 import {
   evaluatePropertyAccess,
   evaluateWorkspacePermission,
@@ -196,10 +198,10 @@ export async function createGuidebookPropertyAction(
   input: Readonly<{
     workspaceId: string;
     name: string;
-    address: string;
+    address?: string;
     city: string;
     state: string;
-    postalCode: string;
+    postalCode?: string;
     country: string;
     propertyType: string;
     timezone: string;
@@ -213,21 +215,26 @@ export async function createGuidebookPropertyAction(
 ) {
   try {
     const { access } = await authorized(input.workspaceId, "guidebooks.manage");
-    const required = [
-      input.name,
-      input.address,
-      input.city,
-      input.state,
-      input.postalCode,
-      input.country,
-      input.propertyType,
-      input.timezone,
-    ];
-    if (required.some((value) => !value.trim()))
+    const validation = validateGuidebookPropertyInput({
+      workspaceId: access.workspaceId,
+      name: input.name,
+      propertyType: input.propertyType,
+      city: input.city,
+      state: input.state,
+      country: input.country,
+      timezone: input.timezone,
+      maxGuests: input.guestCapacity ?? 0,
+      address: input.address,
+      postalCode: input.postalCode,
+      bedrooms: input.bedrooms,
+      bathrooms: input.bathrooms,
+    });
+    if (!validation.valid)
       return {
         ok: false as const,
         code: "PROPERTY_INVALID",
-        message: "Complete every required property field.",
+        fields: validation.fields,
+        message: "Complete the required Guidebook property details.",
       };
     // This RPC intentionally derives the actor from auth.uid(). Use the
     // request-scoped client so the customer's JWT reaches the security-definer
@@ -236,16 +243,16 @@ export async function createGuidebookPropertyAction(
     const { data, error } = await client.rpc("create_guidebook_flow_property", {
       p_workspace_id: access.workspaceId,
       p_name: input.name.trim(),
-      p_address: input.address.trim(),
+      p_address: input.address?.trim() ?? "",
       p_city: input.city.trim(),
       p_state: input.state.trim(),
-      p_postal_code: input.postalCode.trim(),
+      p_postal_code: input.postalCode?.trim() ?? "",
       p_country: input.country.trim(),
       p_property_type: input.propertyType,
       p_timezone: input.timezone,
-      p_bedrooms: input.bedrooms ?? 1,
-      p_bathrooms: input.bathrooms ?? 1,
-      p_max_guests: input.guestCapacity ?? 2,
+      p_bedrooms: input.bedrooms ?? 0,
+      p_bathrooms: input.bathrooms ?? 0,
+      p_max_guests: input.guestCapacity,
       p_short_description: input.shortDescription ?? "",
       p_command_id: input.commandId,
       p_create_anyway: input.createAnyway ?? false,
@@ -267,6 +274,8 @@ export async function createGuidebookPropertyAction(
         name: input.name.trim(),
         location: [input.city, input.state].join(", "),
         image: null,
+        capabilities: ["guidebook"] as const,
+        hasActiveGuidebook: false,
       },
     };
   } catch {
@@ -276,6 +285,53 @@ export async function createGuidebookPropertyAction(
       message: "We couldn't save the property. Please try again.",
     };
   }
+}
+
+export async function listGuidebookPropertyOptionsAction(workspaceId: string) {
+  const { access } = await authorized(workspaceId, "guidebooks.manage");
+  const admin = createAdminClient();
+  const { data: capabilityRows, error: capabilityError } = await admin
+    .from("property_capability_enrollments")
+    .select("property_id,capability,status")
+    .eq("workspace_id", access.workspaceId)
+    .in("capability", ["guidebook", "hpm"])
+    .eq("status", "enabled");
+  if (capabilityError) throw capabilityError;
+  const capabilityMap = new Map<string, Set<string>>();
+  for (const row of capabilityRows ?? []) {
+    const id = String(row.property_id);
+    const values = capabilityMap.get(id) ?? new Set<string>();
+    values.add(String(row.capability));
+    capabilityMap.set(id, values);
+  }
+  const accessibleIds = [...capabilityMap.keys()].filter((id) =>
+    evaluatePropertyAccess(access, id),
+  );
+  if (!accessibleIds.length) return [];
+  const [{ data: properties, error: propertyError }, { data: guidebooks, error: guidebookError }] =
+    await Promise.all([
+      admin
+        .from("properties")
+        .select("id,name,city,state,featured_image")
+        .eq("owner_id", access.ownerId)
+        .in("id", accessibleIds),
+      admin
+        .from("guidebooks")
+        .select("property_id,status")
+        .eq("workspace_id", access.workspaceId)
+        .neq("status", "archived")
+        .in("property_id", accessibleIds),
+    ]);
+  if (propertyError || guidebookError) throw propertyError ?? guidebookError;
+  const active = new Set((guidebooks ?? []).map((row) => String(row.property_id)));
+  return (properties ?? []).map((property) => ({
+    id: String(property.id),
+    name: String(property.name),
+    location: [property.city, property.state].filter(Boolean).join(", "),
+    image: property.featured_image ? String(property.featured_image) : null,
+    capabilities: [...(capabilityMap.get(String(property.id)) ?? [])],
+    hasActiveGuidebook: active.has(String(property.id)),
+  }));
 }
 export async function createGuidebookResultAction(formData: FormData) {
   const workspaceId = String(formData.get("workspaceId") ?? ""),
@@ -326,6 +382,25 @@ export async function createGuidebookResultAction(formData: FormData) {
     { propertyId, title },
   );
   if (result.ok) {
+    // Selecting an existing HPM property adds Guidebook capability to the same
+    // canonical identity. The upsert is safe when a retry resumes creation.
+    const { error: capabilityError } = await createAdminClient()
+      .from("property_capability_enrollments")
+      .upsert(
+        {
+          workspace_id: access.workspaceId,
+          property_id: propertyId,
+          capability: "guidebook",
+          status: "enabled",
+          source: "studio",
+          created_by: user.id,
+          enabled_at: new Date().toISOString(),
+          disabled_at: null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "property_id,capability" },
+      );
+    if (capabilityError) throw capabilityError;
     const brand = {
       logoUrl: String(formData.get("brandLogoUrl") ?? ""),
       primaryColor: String(formData.get("brandPrimaryColor") ?? ""),

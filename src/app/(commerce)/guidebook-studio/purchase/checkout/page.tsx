@@ -44,7 +44,7 @@ export default async function GuidebookCheckoutPage({
   const total = pkg.price + selectedAddOns.reduce((sum, addOn) => sum + addOn.amountMinor / 100, 0);
 
   const checkoutAction = beginCommerceCheckout.bind(null, pkg.offerId, selectedAddOns, {
-    successPath: `/guidebook-studio/purchase/confirmed`,
+    successPath: `/guidebook-studio/purchase/confirmed${query ? `?${query}` : ""}`,
     cancelPath: `/guidebook-studio/purchase/checkout${query ? `?${query}` : ""}`,
   });
 

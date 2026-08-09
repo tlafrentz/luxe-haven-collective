@@ -220,6 +220,7 @@ describe("GB-001B.3 direct authoring transport authorization", () => {
         country: "US",
         propertyType: "apartment",
         timezone: "America/Phoenix",
+        guestCapacity: 4,
         commandId: "property-command",
       }),
     ).resolves.toMatchObject({

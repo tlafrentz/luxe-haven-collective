@@ -11,6 +11,8 @@ type PropertyOption = Readonly<{
   name: string;
   location: string;
   image: string | null;
+  capabilities: readonly string[];
+  hasActiveGuidebook: boolean;
 }>;
 const steps = ["Welcome", "Property", "Style", "Template", "Brand", "Details", "Create"] as const;
 const styleOptions = ["Luxury", "Beach", "Cabin", "Family", "Minimal", "Boutique"] as const;
@@ -104,6 +106,7 @@ export function GuidebookPublishingWizard({
   workspaceId,
   properties: initialProperties,
   initialPropertyId,
+  initialPropertyFields,
   createAction,
   createPropertyAction,
   basePath = "/dashboard/guidebooks",
@@ -111,15 +114,18 @@ export function GuidebookPublishingWizard({
   workspaceId: string;
   properties: readonly PropertyOption[];
   initialPropertyId?: string;
+  initialPropertyFields?: Partial<typeof emptyProperty>;
   createAction: (formData: FormData) => Promise<void>;
   createPropertyAction?: typeof import("@/app/actions/guidebook-authoring").createGuidebookPropertyAction;
   basePath?: string;
 }>) {
   const [properties, setProperties] = useState([...initialProperties]);
   const [step, setStep] = useState(0),
-    [mode, setMode] = useState<"choice" | "existing" | "new">("choice"),
+    [mode, setMode] = useState<"choice" | "existing" | "new">(
+      initialProperties.length ? "choice" : "new",
+    ),
     [propertyId, setPropertyId] = useState(initialPropertyId ?? "");
-  const [fields, setFields] = useState(emptyProperty),
+  const [fields, setFields] = useState({ ...emptyProperty, ...initialPropertyFields }),
     [title, setTitle] = useState(""),
     [slug, setSlug] = useState(""),
     [locale, setLocale] = useState("en-US"),
@@ -186,8 +192,8 @@ export function GuidebookPublishingWizard({
       const result = await createPropertyAction({
         workspaceId,
         ...fields,
-        bedrooms: Number(fields.bedrooms),
-        bathrooms: Number(fields.bathrooms),
+        bedrooms: fields.bedrooms ? Number(fields.bedrooms) : undefined,
+        bathrooms: fields.bathrooms ? Number(fields.bathrooms) : undefined,
         guestCapacity: Number(fields.guestCapacity),
         createAnyway,
         commandId: crypto.randomUUID(),
@@ -292,7 +298,9 @@ export function GuidebookPublishingWizard({
                     {properties.map((item) => (
                       <button
                         key={item.id}
-                        onClick={() => chooseProperty(item.id)}
+                        onClick={() => item.hasActiveGuidebook ? undefined : chooseProperty(item.id)}
+                        disabled={item.hasActiveGuidebook}
+                        aria-label={`${item.name}${item.hasActiveGuidebook ? ", already has an active guidebook" : ""}`}
                         className={`overflow-hidden rounded-xl border text-left ${item.id === propertyId ? "ring-2 ring-blue-600" : ""}`}
                       >
                         {item.image ? (
@@ -313,13 +321,26 @@ export function GuidebookPublishingWizard({
                           <small className="mt-1 block text-stone-500">
                             {item.location}
                           </small>
+                          <span className="mt-3 flex flex-wrap gap-1.5">
+                            {item.capabilities.map((capability) => (
+                              <small key={capability} className="rounded-full bg-stone-100 px-2 py-1 font-medium capitalize text-stone-600">
+                                {capability === "hpm" ? "HPM" : capability}
+                              </small>
+                            ))}
+                            {item.hasActiveGuidebook ? (
+                              <small className="rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-800">
+                                Active guidebook exists
+                              </small>
+                            ) : null}
+                          </span>
                         </span>
                       </button>
                     ))}
                   </div>
                 ) : (
                   <div className="mt-10 rounded-xl border border-dashed p-8 text-center">
-                    <p>No properties yet.</p>
+                    <p className="font-semibold">Add your first guidebook property</p>
+                    <p className="mt-2 text-sm text-stone-500">You can publish a complete guidebook without enrolling in HPM.</p>
                     <button
                       onClick={() => setMode("new")}
                       className="mt-3 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
@@ -330,6 +351,12 @@ export function GuidebookPublishingWizard({
                 )}
               </div>
             ) : (
+              <>
+              {!properties.length ? (
+                <div className="mt-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">
+                  <strong>Add your first guidebook property.</strong> Only the details guests need are required. HPM enrollment is not required.
+                </div>
+              ) : null}
               <PropertyForm
                 fields={fields}
                 setFields={setFields}
@@ -343,8 +370,9 @@ export function GuidebookPublishingWizard({
                   setDuplicateId("");
                 }}
                 onAnyway={() => saveProperty(true)}
-                onBack={() => setMode("choice")}
+                onBack={() => setMode(properties.length ? "choice" : "new")}
               />
+              </>
             )}
           </>
         ) : null}
@@ -714,7 +742,7 @@ function PropertyForm({
         {(
           [
             ["name", "Property name *"],
-            ["address", "Address *"],
+            ["address", "Street address (optional)"],
             ["city", "City *"],
           ] as const
         ).map(([key, label]) => (
@@ -744,7 +772,7 @@ function PropertyForm({
         </label>
         {(
           [
-            ["postalCode", "Postal code *"],
+            ["postalCode", "Postal code (optional)"],
             ["country", "Country *"],
           ] as const
         ).map(([key, label]) => (
@@ -793,7 +821,7 @@ function PropertyForm({
           onChange={(value) => update("bathrooms", value)}
         />
         <Field
-          label="Guest capacity"
+          label="Maximum guest capacity *"
           value={fields.guestCapacity}
           onChange={(value) => update("guestCapacity", value)}
         />
