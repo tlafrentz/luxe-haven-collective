@@ -38,6 +38,10 @@ export type PublicGuidebookView = Readonly<{
   theme: Readonly<{
     primaryColor: string;
     accentColor: string;
+    backgroundColor: string;
+    textColor: string;
+    headingFontFamily: string;
+    bodyFontFamily: string;
     logoUrl?: string;
   }>;
   sections: readonly Readonly<{
@@ -127,14 +131,7 @@ export const guidebookPublicRenderer: ArtifactRenderer<
         ? { emergencyContact: sanitizePublicText(values.emergencyContact, 300) }
         : {}),
       theme: {
-        primaryColor: color(
-          String(brand.primaryColor ?? MESA_MODERN_TOKENS.colors.primary),
-          MESA_MODERN_TOKENS.colors.primary,
-        ),
-        accentColor: color(
-          String(brand.accentColor ?? MESA_MODERN_TOKENS.colors.accent),
-          MESA_MODERN_TOKENS.colors.accent,
-        ),
+        ...resolveGuidebookTheme(brand),
         ...(logo ? { logoUrl: logo } : {}),
       },
       sections: Object.freeze(
@@ -266,6 +263,70 @@ function mapBlock(block: Record<string, unknown>,media:Record<string,{url?:unkno
 }
 function color(value: string, fallback: string) {
   return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+}
+export type ResolvedGuidebookTheme = Readonly<{
+  primaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  textColor: string;
+  headingFontFamily: string;
+  bodyFontFamily: string;
+}>;
+// Maps a stored font *name* (as saved on a template's payload.design.typography,
+// e.g. "Cormorant Garamond") to the CSS variable next/font/google actually
+// generated for it in src/app/layout.tsx. Satoshi has no Google Fonts entry,
+// so it's mapped to Inter (product decision, not a technical substitute).
+const FONT_FAMILY_VARS: Readonly<Record<string, string>> = {
+  "Playfair Display": "var(--font-serif)",
+  "Cormorant Garamond": "var(--font-cormorant-garamond)",
+  Merriweather: "var(--font-merriweather)",
+  "Source Sans 3": "var(--font-source-sans-3)",
+  Montserrat: "var(--font-montserrat)",
+  Lato: "var(--font-lato)",
+  Inter: "var(--font-inter)",
+  Satoshi: "var(--font-inter)",
+};
+function fontFamilyVar(value: unknown, fallback: string) {
+  if (typeof value === "string" && FONT_FAMILY_VARS[value.trim()])
+    return FONT_FAMILY_VARS[value.trim()];
+  return fallback;
+}
+export function resolveGuidebookTheme(
+  brand: Readonly<{
+    primaryColor?: unknown;
+    accentColor?: unknown;
+    backgroundColor?: unknown;
+    textColor?: unknown;
+    headingFontFamily?: unknown;
+    bodyFontFamily?: unknown;
+  }> = {},
+): ResolvedGuidebookTheme {
+  return {
+    primaryColor: color(
+      String(brand.primaryColor ?? MESA_MODERN_TOKENS.colors.primary),
+      MESA_MODERN_TOKENS.colors.primary,
+    ),
+    accentColor: color(
+      String(brand.accentColor ?? MESA_MODERN_TOKENS.colors.accent),
+      MESA_MODERN_TOKENS.colors.accent,
+    ),
+    backgroundColor: color(
+      String(brand.backgroundColor ?? MESA_MODERN_TOKENS.colors.background),
+      MESA_MODERN_TOKENS.colors.background,
+    ),
+    textColor: color(
+      String(brand.textColor ?? MESA_MODERN_TOKENS.colors.text),
+      MESA_MODERN_TOKENS.colors.text,
+    ),
+    headingFontFamily: fontFamilyVar(
+      brand.headingFontFamily,
+      MESA_MODERN_TOKENS.typography.headingFamily,
+    ),
+    bodyFontFamily: fontFamilyVar(
+      brand.bodyFontFamily,
+      MESA_MODERN_TOKENS.typography.bodyFamily,
+    ),
+  };
 }
 function slug(value: string) {
   return (

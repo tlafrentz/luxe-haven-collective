@@ -121,11 +121,15 @@ export function PublicGuidebookExperience({
   };
   return (
     <main
-      className="min-h-screen bg-[#f2ede4]"
+      className="min-h-screen bg-[var(--guide-background)] text-[var(--guide-text)]"
       style={
         {
           "--guide-primary": guidebook.theme.primaryColor,
           "--guide-accent": guidebook.theme.accentColor,
+          "--guide-background": guidebook.theme.backgroundColor,
+          "--guide-text": guidebook.theme.textColor,
+          "--guide-heading-font": guidebook.theme.headingFontFamily,
+          "--guide-body-font": guidebook.theme.bodyFontFamily,
         } as React.CSSProperties
       }
     >
@@ -143,11 +147,11 @@ export function PublicGuidebookExperience({
           style={{ width: `${progress}%` }}
         />
       </div>
-      <article className="mx-auto min-h-screen max-w-6xl bg-[#fbf8f1] shadow-[0_24px_80px_rgba(50,40,25,.12)]">
+      <article className="mx-auto min-h-screen max-w-6xl bg-[var(--guide-background)] shadow-[0_24px_80px_rgba(50,40,25,.12)]">
         <Hero guidebook={guidebook} />
         <nav
           aria-label="Guidebook sections"
-          className="sticky top-0 z-40 border-y border-stone-200/80 bg-[#fbf8f1]/95 px-3 py-3 backdrop-blur"
+          className="sticky top-0 z-40 border-y border-stone-200/80 bg-[var(--guide-background)]/95 px-3 py-3 backdrop-blur"
         >
           <GuestSearchBar guidebook={guidebook} track={track} />
           <ul className="mx-auto flex max-w-5xl gap-2 overflow-x-auto pb-1">
@@ -177,7 +181,8 @@ export function PublicGuidebookExperience({
               </p>
               <h2
                 id={`heading-${section.key}`}
-                className="mt-2 font-serif text-3xl leading-tight text-stone-950 sm:text-4xl"
+                className="mt-2 text-3xl leading-tight text-[var(--guide-text)] sm:text-4xl"
+                style={{ fontFamily: "var(--guide-heading-font)" }}
               >
                 {section.title}
               </h2>
@@ -198,7 +203,12 @@ export function PublicGuidebookExperience({
           ) : null}
         </div>
         <footer className="border-t border-stone-200 bg-white px-6 py-10 pb-24 text-center">
-          <p className="font-serif text-xl text-stone-900">Enjoy your stay.</p>
+          <p
+            className="text-xl text-[var(--guide-text)]"
+            style={{ fontFamily: "var(--guide-heading-font)" }}
+          >
+            Enjoy your stay.
+          </p>
           <p className="mt-2 text-xs text-stone-500">
             Published{" "}
             {new Date(guidebook.meta.publishedAt).toLocaleDateString()} ·
@@ -248,7 +258,10 @@ function Hero({ guidebook }: { guidebook: PublicGuidebookView }) {
           <p className="mt-8 text-sm font-semibold uppercase tracking-[.16em] text-white/80">
             {guidebook.propertyName}
           </p>
-          <h1 className="mt-4 font-serif text-5xl leading-[.95] sm:text-7xl">
+          <h1
+            className="mt-4 text-5xl leading-[.95] sm:text-7xl"
+            style={{ fontFamily: "var(--guide-heading-font)" }}
+          >
             Welcome home.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-7 text-white/85 sm:text-lg">
@@ -268,7 +281,7 @@ function Hero({ guidebook }: { guidebook: PublicGuidebookView }) {
             {guidebook.hostContact ? (
               <a
                 href={`tel:${guidebook.hostContact}`}
-                className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-stone-950"
+                className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[var(--guide-text)]"
               >
                 Contact host
               </a>
@@ -289,7 +302,14 @@ function PublicBlock({
   track: (event: string, section: string, target: string) => void;
 }) {
   if (block.type === "heading")
-    return <h3 className="font-serif text-2xl text-stone-950">{block.text}</h3>;
+    return (
+      <h3
+        className="text-2xl text-[var(--guide-text)]"
+        style={{ fontFamily: "var(--guide-heading-font)" }}
+      >
+        {block.text}
+      </h3>
+    );
   if (block.type === "callout")
     return (
       <div
@@ -466,7 +486,12 @@ function Recommendations({
       <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--guide-accent)]">
         Local knowledge
       </p>
-      <h2 className="mt-2 font-serif text-4xl">Places we love</h2>
+      <h2
+        className="mt-2 text-4xl text-[var(--guide-text)]"
+        style={{ fontFamily: "var(--guide-heading-font)" }}
+      >
+        Places we love
+      </h2>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {items.map((item) => (
           <article

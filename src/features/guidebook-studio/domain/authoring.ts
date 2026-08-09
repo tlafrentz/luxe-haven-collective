@@ -88,6 +88,10 @@ export type GuidebookBrandIdentity = Readonly<{
   logoUrl?: string;
   primaryColor?: string;
   accentColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  headingFontFamily?: string;
+  bodyFontFamily?: string;
 }>;
 export type GuidebookDraft = Readonly<{
   guidebookId: string;

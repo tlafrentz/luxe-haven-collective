@@ -15,6 +15,10 @@ import {
   type LibraryStatus,
   validateMediaBytes,
 } from "@/features/guidebook-libraries";
+import {
+  SupabaseGuidebookDraftRepository,
+  type GuidebookBrandIdentity,
+} from "@/features/guidebook-studio";
 
 type Row = Record<string, unknown>;
 const routes: Record<LibraryArtifactType, string> = {
@@ -673,6 +677,59 @@ export async function createGuidebookFromTemplateAction(formData: FormData) {
   if (error) throw new Error(error.message);
   const row = Array.isArray(created) ? created[0] : created;
   const guidebookId = String(row.guidebook_id);
+  const design = (payload.design as Row | undefined) ?? {};
+  const designColors = (design.colors as Row | undefined) ?? {};
+  const designTypography = (design.typography as Row | undefined) ?? {};
+  const headingFamily = String(designTypography.headingFamily ?? "").trim();
+  const brand: GuidebookBrandIdentity = {
+    ...(typeof designColors.primary === "string"
+      ? { primaryColor: designColors.primary }
+      : {}),
+    ...(typeof designColors.accent === "string"
+      ? { accentColor: designColors.accent }
+      : {}),
+    ...(typeof designColors.background === "string"
+      ? { backgroundColor: designColors.background }
+      : {}),
+    ...(typeof designColors.text === "string"
+      ? { textColor: designColors.text }
+      : {}),
+    ...(headingFamily
+      ? { headingFontFamily: headingFamily === "Satoshi" ? "Inter" : headingFamily }
+      : {}),
+    ...(typeof designTypography.bodyFamily === "string"
+      ? { bodyFontFamily: designTypography.bodyFamily }
+      : {}),
+  };
+  if (Object.keys(brand).length) {
+    const drafts = new SupabaseGuidebookDraftRepository(db);
+    const draft = await drafts.load({
+      workspaceId: property.owner_id,
+      guidebookId,
+      actorId: user.id,
+    });
+    if (draft) {
+      const persistedAt = new Date().toISOString();
+      await drafts.save(
+        {
+          commandId: `template-brand:${guidebookId}`,
+          correlationId,
+          actorId: user.id,
+          workspaceId: property.owner_id,
+          guidebookId,
+          expectedRevision: draft.revision,
+          enteredAt: persistedAt,
+        },
+        {
+          ...draft,
+          brand: { ...draft.brand, ...brand },
+          revision: draft.revision + 1,
+          persistedAt,
+          persistedBy: user.id,
+        },
+      );
+    }
+  }
   await db.from("guidebook_library_usage").upsert(
     {
       source_version_id: templateVersion.id,

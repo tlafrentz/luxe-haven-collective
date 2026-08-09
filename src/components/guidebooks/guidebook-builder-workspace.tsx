@@ -45,6 +45,7 @@ import { MESA_MODERN_TOKENS } from "@/features/template-library";
 import {
   buildMediaDimensionMap,
   evaluateGuidebookPublicationReadiness,
+  resolveGuidebookTheme,
   type AuthoringBlock,
   type GuidebookDraft,
   type MediaDimensionMap,
@@ -680,16 +681,21 @@ function Canvas({
 }) {
   const section = draft.sections.find((item) => item.id === sectionId),
     narrow = mode === "mobile" || mode === "guest_portal",
-    pdf = mode === "pdf";
+    pdf = mode === "pdf",
+    theme = resolveGuidebookTheme(draft.brand ?? {});
   return (
     <div
-      className={`mx-auto min-h-[720px] overflow-hidden bg-[#FAFAF8] shadow-xl ${narrow ? "max-w-sm rounded-[2rem] border-[8px] border-stone-950" : pdf ? "aspect-[8.5/11] max-w-2xl" : "max-w-5xl rounded-xl"}`}
+      className={`mx-auto min-h-[720px] overflow-hidden shadow-xl ${narrow ? "max-w-sm rounded-[2rem] border-[8px] border-stone-950" : pdf ? "aspect-[8.5/11] max-w-2xl" : "max-w-5xl rounded-xl"}`}
+      style={{ backgroundColor: theme.backgroundColor }}
     >
-      <header className="bg-[#0B2B24] p-5 text-white">
-        <strong className="font-serif">{draft.title}</strong>
+      <header className="p-5 text-white" style={{ backgroundColor: theme.primaryColor }}>
+        <strong style={{ fontFamily: theme.headingFontFamily }}>{draft.title}</strong>
       </header>
       <div className="p-8">
-        <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-800">
+        <p
+          className="text-xs font-bold uppercase tracking-[.2em]"
+          style={{ color: theme.accentColor }}
+        >
           {section?.name ?? "Section"}
         </p>
         {section?.blocks.length ? (
@@ -701,7 +707,10 @@ function Canvas({
                 onClick={() => onSelect(item.id)}
                 className={`group relative cursor-pointer rounded-xl border bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-sm ${selected === item.id ? "ring-2 ring-emerald-600" : ""}`}
               >
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: theme.accentColor }}
+                >
                   {item.type === "component"
                     ? item.content.componentKey.replaceAll("_", " ")
                     : item.type}
@@ -802,7 +811,7 @@ function Canvas({
                 This section doesn&apos;t have any components yet.
               </h2>
               <p className="mt-2 text-sm text-stone-500">
-                Add a compatible Mesa Modern component to begin authoring.
+                Add a component to begin authoring.
               </p>
               {section && canEdit ? (
                 <button

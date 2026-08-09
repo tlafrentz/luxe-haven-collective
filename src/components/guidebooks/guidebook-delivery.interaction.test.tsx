@@ -53,7 +53,14 @@ const blocks: PublicGuidebookBlock[] = [
     title: "Guide",
     description: "Welcome",
     propertyName: "Retreat",
-    theme: { primaryColor: "#1d1a17", accentColor: "#8a5a00" },
+    theme: {
+      primaryColor: "#1d1a17",
+      accentColor: "#8a5a00",
+      backgroundColor: "#FAFAF8",
+      textColor: "#111111",
+      headingFontFamily: "var(--font-serif)",
+      bodyFontFamily: "var(--font-geist-sans)",
+    },
     sections: [{ id: "all", key: "all", title: "Guest information", blocks }],
     recommendations: [],
     meta: {
