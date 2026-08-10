@@ -54,6 +54,12 @@ export type HpmProjectedRecord = Readonly<{
   confidence?: "high" | "medium" | "low" | "unknown";
   dataQuality?: string;
   blocker?: string;
+  correlationId?: string;
+  causationId?: string;
+  canonicalThreadId?: string;
+  expectedNextStage?: HpmLifecycleStage;
+  relationships?: readonly HpmProjectedRelationship[];
+  healthSignals?: readonly HpmHealthSignal[];
   validNextCommands: readonly HpmValidNextCommand[];
   createdAt: string;
   updatedAt: string;
@@ -63,11 +69,45 @@ export type HpmProjectedRecord = Readonly<{
   visibility: "tenant" | "property" | "portfolio" | "restricted";
 }>;
 
+export type HpmProjectedRelationship = Readonly<{
+  type: string;
+  target: HpmSourceReference;
+  authority: HpmRelationshipAuthority;
+  explanationCode: string;
+  createdAt?: string;
+  correlationId?: string;
+  causationId?: string;
+}>;
+
+export type HpmHealthSignalCode =
+  | "high-severity-finding"
+  | "decision-review-overdue"
+  | "execution-linkage-missing"
+  | "critical-execution-blocked"
+  | "completion-evidence-missing"
+  | "measurement-awaiting"
+  | "measurement-overdue"
+  | "outcome-guardrail-breached"
+  | "lesson-reevaluation-required"
+  | "recommendation-learning-changed"
+  | "lineage-broken"
+  | "context-missing"
+  | "authorization-awaiting"
+  | "external-dependency-awaiting";
+
+export type HpmHealthSignal = Readonly<{
+  code: HpmHealthSignalCode;
+  source: HpmSourceReference;
+  explanation: string;
+}>;
+
 export type HpmLineageRelationship = Readonly<{
   type: string;
   source: HpmSourceReference;
   target: HpmSourceReference;
   authority: HpmRelationshipAuthority;
+  associationPolicyVersion?: string;
+  explanationCode?: string;
   createdAt: string;
   correlationId?: string;
   causationId?: string;
@@ -88,15 +128,32 @@ export type HpmLifecycleThread = Readonly<{
   missingStages: readonly HpmLifecycleStage[];
   timeline: readonly Readonly<{ at: string; source: HpmSourceReference; event: string }>[];
   primaryNextCommand?: HpmValidNextCommand;
+  partial: boolean;
+  freshness: HpmFreshness;
+  firstObservedAt: string;
+  lastChangedAt: string;
+  asOf: string;
 }>;
 
 export type HpmStageSummary = Readonly<{
   stage: HpmLifecycleStage;
+  vocabularyVersion?: string;
+  availability?: "available" | "partial" | "unavailable" | "not-configured" | "not-applicable";
   visibleCount: number;
+  activeCount?: number;
+  completedCount?: number;
+  blockedCount?: number;
+  requiringReviewCount?: number;
   attentionCount: number;
   health: HpmLifecycleHealth;
+  healthReasonCodes?: readonly string[];
   freshness: HpmFreshness;
   asOf: string;
+  lastSuccessfulAsOf?: string;
+  oldestUnresolvedAt?: string;
+  sourceVersions?: readonly Readonly<{ capability: HpmSourceCapability; contractVersion?: string; sourceVersion?: string; policyVersion: string }>[];
+  dataGaps?: readonly string[];
+  limitations?: readonly string[];
 }>;
 
 export type HpmAttentionItem = Readonly<{
@@ -117,14 +174,22 @@ export type HpmAttentionItem = Readonly<{
 
 export type HpmSourceState = Readonly<{
   capability: HpmSourceCapability;
+  contractVersion?: string;
   freshness: HpmFreshness;
   asOf?: string;
   sourceVersion?: string;
   policyVersion: string;
   failureClassification?: string;
+  observedAt?: string;
+  lastSuccessfulAsOf?: string;
+  reasonCode?: string;
+  contributesToCounts?: boolean;
+  contributesToHealth?: boolean;
+  contributesToLineage?: boolean;
 }>;
 
 export type HpmLifecycleProjection = Readonly<{
+  projectionId?: string;
   projectionPolicyVersion: string;
   scope: HpmProjectionScope;
   projectedAt: string;
@@ -138,6 +203,10 @@ export type HpmLifecycleProjection = Readonly<{
   lineage: readonly HpmLineageRelationship[];
   sourceStates: readonly HpmSourceState[];
   partial: boolean;
+  completeness?: "complete" | "partial" | "unavailable";
+  policyVersions?: Readonly<{ lifecycle: string; health: string; lineage: string; freshness: string }>;
+  coverage?: Readonly<{ applicableSources: number; availableSources: number; limitations: readonly string[] }>;
+  failures?: readonly Readonly<{ capability: HpmSourceCapability; classification: HpmFailureCode; message: string }>[];
   validNextCommands: readonly HpmValidNextCommand[];
   reports: readonly Readonly<{ definitionId: string; policyVersion: string; href: string }>[];
 }>;

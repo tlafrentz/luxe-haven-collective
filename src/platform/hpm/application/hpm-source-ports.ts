@@ -28,6 +28,27 @@ export interface HpmSourcePort {
   project(query: HpmSourceQuery): Promise<HpmSourceProjection>;
 }
 
+export function createHpmProjectionSourcePort(input: Readonly<{
+  capability: HpmSourceCapability;
+  contractVersion: string;
+  project: (query: HpmSourceQuery) => Promise<HpmSourceProjection>;
+}>): HpmSourcePort {
+  return Object.freeze({ capability: input.capability, contractVersion: input.contractVersion, project: input.project });
+}
+
+export function createUnavailableHpmSourcePort(capability: HpmSourceCapability, state: "unavailable" | "not-configured" = "not-configured"): HpmSourcePort {
+  return Object.freeze({
+    capability,
+    contractVersion: "unavailable-v1",
+    async project() {
+      return Object.freeze({
+        state: Object.freeze({ capability, contractVersion: "unavailable-v1", freshness: state, policyVersion: "unavailable-v1", failureClassification: state === "unavailable" ? "HPM_SOURCE_UNAVAILABLE" : undefined, reasonCode: `source-${state}`, contributesToCounts: false, contributesToHealth: true, contributesToLineage: false }),
+        records: Object.freeze([]),
+      });
+    },
+  });
+}
+
 export type HpmSourcePortRegistry = Readonly<Record<HpmSourceCapability, HpmSourcePort>>;
 
 export type HpmSourceCompatibilityIssue = Readonly<{

@@ -33,3 +33,17 @@ The source-port contract intentionally exposes only `project`. Adding a write me
 Projection and presentation policies are independently versioned. Each source reports its contract version, policy version, source version, freshness, and last successful as-of time. Unsupported, unavailable, or stale sources produce compatibility or freshness state; they do not cause HPM to fabricate records or complete counts.
 
 HPM-001A introduces no persistence or migration. Later slices should prefer on-demand projections. Any derived persistence must be rebuildable, authorization-partitioned, forward-only, and protected by RLS.
+
+## HPM-001B projection behavior
+
+`createHpmLifecycleProjectionService` is the single read-only composition boundary. It resolves trusted property or portfolio scope before invoking source ports, isolates source failures, filters records defensively before counts and lineage, and returns either a complete, partial, or unavailable projection.
+
+The lifecycle, lineage, health, freshness, stage-vocabulary, projection, and source policies carry independent versions. Projection and thread identifiers hash tenant-safe scope, source identity, checkpoints, and policy versions; they never contain addresses, guest data, or free text.
+
+Lineage association uses explicit source relationships first. A shared visible correlation identifier may create a versioned inferred edge only when no explicit edge connects the record. Free-text or AI similarity is not used. Self-links, broken endpoints, cross-tenant links, and unauthorized cross-property links are omitted and reported only as safe visible-source gaps.
+
+Health uses documented precedence: Blocked, At Risk, Awaiting Authority, Awaiting External Dependency, Awaiting Measurement, Incomplete Context, Stale, Attention Needed, Healthy, Not Applicable. It consumes normalized canonical signals without replacing source status, severity, confidence, scores, or outcome classification.
+
+Freshness thresholds are capability-specific. Safe records remain available during delayed or stale states, but summaries and coverage no longer imply completeness. An unavailable or not-configured adapter returns no records. This is the honest production boundary for canonical LR-001 or LR-002 sources that are not yet deployable.
+
+HPM-001B adds no persistence, migration, UI, attention ranking, valid-command routing, reports, activity, or notifications.
