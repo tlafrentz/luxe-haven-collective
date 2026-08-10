@@ -6,3 +6,5 @@ export { AutomationSession, type AutomationSessionInput } from "./automation-ses
 export * from "./automation-foundation";
 export * from "./automation-trigger-processing";
 export * from "./automation-trigger-projections";
+export * from "./automation-governed-execution";
+export * from "./automation-governed-projections";

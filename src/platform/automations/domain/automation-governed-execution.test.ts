@@ -1,0 +1,24 @@
+import { describe, expect, it } from "vitest";
+import { AutomationGovernedExecutionError, deterministicAutomationIdentity, materializeAutomationRun, retryDelay, transitionAutomationRun, validateExecutionPlan, type AutomationExecutionPlan } from "./automation-governed-execution";
+import type { AutomationRunRequest } from "./automation-triggering";
+
+const plan = (steps: AutomationExecutionPlan["steps"]): AutomationExecutionPlan => ({ version: "plan-1", schemaVersion: "au001-execution-plan.v1", definitionVersionId: "version-1", maximumSteps: 10, steps });
+const step = (key: string, dependencies: readonly string[] = []) => ({ key, owningCapability: "execute", commandType: "createDraftPlan", commandContractVersion: "v1", dependencies, continuationRule: "all_succeeded" as const, payload: {}, approvalPolicyId: "approval-1", actorPolicyId: "actor-1", retryPolicyId: "retry-1", timeoutPolicyId: "timeout-1" });
+const request: AutomationRunRequest = { id: "request-1", idempotencyKey: "req-key", tenantId: "tenant-1", scope: { type: "property", propertyIds: ["property-1"] }, automationId: "automation-1", automationDefinitionVersion: 1, triggerId: "trigger-1", triggerKind: "MANUAL", occurrenceId: "occurrence-1", requestedAt: "2026-08-10T12:00:00.000Z", occurredAt: "2026-08-10T12:00:00.000Z", eligibilityPolicyVersion: "v1", approvalClassification: "none", correlationId: "correlation-1", safeTriggerContext: {}, status: "REQUESTED", version: 1 };
+
+describe("AU-001C governed execution domain", () => {
+  it("validates a deterministic acyclic execution plan", () => { expect(validateExecutionPlan(plan([step("a"), step("b", ["a"])]))).toBeDefined(); });
+  it("rejects dependency cycles", () => { expect(() => validateExecutionPlan(plan([step("a", ["b"]), step("b", ["a"])]))).toThrowError(AutomationGovernedExecutionError); });
+  it("rejects duplicate and unbounded steps", () => { expect(() => validateExecutionPlan({ ...plan([step("a"), step("a")]), maximumSteps: 1 })).toThrowError(); });
+  it("materializes stable run and command identity", () => {
+    const first = materializeAutomationRun({ id: "run-1", request, definitionVersionId: "version-1", executionPlan: plan([step("a")]), initiatingActor: { actorId: "owner-1", tenantId: "tenant-1", role: "owner", active: true, propertyIds: [] }, serviceActorPolicyId: "service-policy-1", now: "2026-08-10T12:01:00.000Z" });
+    const second = materializeAutomationRun({ id: "run-1", request, definitionVersionId: "version-1", executionPlan: plan([step("a")]), initiatingActor: { actorId: "owner-1", tenantId: "tenant-1", role: "owner", active: true, propertyIds: [] }, serviceActorPolicyId: "service-policy-1", now: "2026-08-10T12:01:00.000Z" });
+    expect(first.steps[0].idempotencyKey).toBe(second.steps[0].idempotencyKey); expect(first.run.runRequestId).toBe("request-1");
+  });
+  it("enforces optimistic run transitions", () => {
+    const { run } = materializeAutomationRun({ id: "run-1", request, definitionVersionId: "version-1", executionPlan: plan([step("a")]), initiatingActor: { actorId: "owner-1", tenantId: "tenant-1", role: "owner", active: true, propertyIds: [] }, serviceActorPolicyId: "service-policy-1", now: "2026-08-10T12:01:00.000Z" });
+    expect(transitionAutomationRun(run, "approved", 1, "2026-08-10T12:02:00.000Z").version).toBe(2); expect(() => transitionAutomationRun(run, "approved", 2, "2026-08-10T12:02:00.000Z")).toThrowError();
+  });
+  it("creates escaped deterministic identities", () => { expect(deterministicAutomationIdentity(["run one", "step/a"])).toBe("run%20one:step%2Fa"); });
+  it("retries only classified failures within bounded budgets", () => { const policy = { version: "retry-v1", maximumAttempts: 3, maximumElapsedMs: 60_000, initialDelayMs: 1000, maximumDelayMs: 10_000, jitterRatio: 0.2, retryableClassifications: ["retryable_failure" as const] }; expect(retryDelay({ policy, attempt: 1, elapsedMs: 0, classification: "retryable_failure", deterministicJitter: 1 })).toBe(1200); expect(retryDelay({ policy, attempt: 3, elapsedMs: 0, classification: "retryable_failure", deterministicJitter: 0 })).toBeNull(); expect(retryDelay({ policy, attempt: 1, elapsedMs: 0, classification: "authorization_rejected", deterministicJitter: 0 })).toBeNull(); });
+});
