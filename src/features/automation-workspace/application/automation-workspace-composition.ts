@@ -20,7 +20,8 @@ export type AutomationWorkspaceView =
   | "definitions"
   | "approvals"
   | "runs"
-  | "templates";
+  | "templates"
+  | "operations";
 export type AutomationWorkspaceQuery = Readonly<{
   view: AutomationWorkspaceView;
   propertyId?: string;

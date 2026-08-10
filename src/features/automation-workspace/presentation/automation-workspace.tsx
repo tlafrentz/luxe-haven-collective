@@ -53,6 +53,11 @@ const NAV: readonly Readonly<{
     label: "Templates",
     href: "/dashboard/automations/templates",
   },
+  {
+    view: "operations",
+    label: "Operations",
+    href: "/dashboard/automations/operations",
+  },
 ];
 export function AutomationWorkspaceFrame({
   activeView,

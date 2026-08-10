@@ -817,7 +817,7 @@ export function pageDetails(
     };
   }
   if (pathname.startsWith("/dashboard/automations")) {
-    const title = pathname.includes("/approvals/") ? "Approval Review" : pathname.endsWith("/approvals") ? "Approvals" : pathname.includes("/runs/") ? "Run Detail" : pathname.endsWith("/runs") ? "Runs" : pathname.includes("/versions/") ? "Version Review" : pathname.endsWith("/new") ? "New Automation" : pathname.includes("/definitions/") ? "Automation Detail" : pathname.endsWith("/definitions") ? "Automations" : pathname.includes("/templates/") ? "Template Detail" : pathname.endsWith("/templates") ? "Templates" : "Overview";
+    const title = pathname.includes("/operations/reports/") ? "Automation Report" : pathname.endsWith("/operations") ? "Operations" : pathname.includes("/approvals/") ? "Approval Review" : pathname.endsWith("/approvals") ? "Approvals" : pathname.includes("/runs/") ? "Run Detail" : pathname.endsWith("/runs") ? "Runs" : pathname.includes("/versions/") ? "Version Review" : pathname.endsWith("/new") ? "New Automation" : pathname.includes("/definitions/") ? "Automation Detail" : pathname.endsWith("/definitions") ? "Automations" : pathname.includes("/templates/") ? "Template Detail" : pathname.endsWith("/templates") ? "Templates" : "Overview";
     return {
       eyebrow: "Governed operations",
       title,
