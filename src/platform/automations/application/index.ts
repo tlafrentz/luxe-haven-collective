@@ -3,3 +3,4 @@ export { AutomationExecutor, type AutomationExecutorInput, type AutomationInvoke
 export { type AutomationPolicy, type AutomationPolicyContext, type AutomationPolicyResult } from "./automation-policy";
 export { AutomationPolicyRegistry } from "./automation-policy-registry";
 export { AutomationSession, type AutomationSessionInput } from "./automation-session";
+export * from "./automation-foundation";

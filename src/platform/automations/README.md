@@ -1,5 +1,11 @@
 # Automation Platform (PF-011)
 
+AU-001A extends this canonical capability with governed, tenant-scoped,
+immutable definition versions. See
+`docs/Architecture/au-001a-automation-foundation.md`. The AU-001A production
+composition is intentionally not connected to routes, schedulers, workers, or
+command invokers until the separately approved rollout gate.
+
 Automation is the canonical platform capability for determining whether
 Decision-backed Actions and Workflows may begin without human intervention.
 Its dependency direction is:

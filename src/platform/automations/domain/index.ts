@@ -1,4 +1,5 @@
 export { AutomationCollection } from "./automation-collection";
+export * from "./automation-definition";
 export { AutomationCondition, type AutomationConditionContext, type AutomationConditionInput, type AutomationConditionOperator, type AutomationConditionSource } from "./automation-condition";
 export { AutomationExecution, AUTOMATION_EXECUTION_STATUSES, type AutomationExecutionInput, type AutomationExecutionStatus, type AutomationOutcome } from "./automation-execution";
 export { AutomationHistory } from "./automation-history";
