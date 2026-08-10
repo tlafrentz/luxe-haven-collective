@@ -66,6 +66,15 @@ describe("workspace-driven platform experience", () => {
     expect(resolveNavigation(flagged, resolveUserCapabilities({ authenticated: true, role: "owner" }), new Set(["beta-product"]))).toHaveLength(1);
   });
 
+  it("shows the unified HPM workspace only when its server-provided flag is enabled", () => {
+    const capabilities = resolveUserCapabilities({ authenticated: true, role: "owner" });
+    expect(resolveNavigation(clientWorkspaceNavigation, capabilities).some(item => item.id === "hpm-workspace")).toBe(false);
+    const enabled = resolveNavigation(clientWorkspaceNavigation, capabilities, new Set(["hpm-unified-workspace"]));
+    expect(enabled.find(item => item.id === "hpm-workspace")).toMatchObject({ label: "HPM", href: "/dashboard/hpm", description: "Hospitality Performance Management" });
+    const item = enabled.find(entry => entry.id === "hpm-workspace");
+    expect(item?.activeMatch && matchesNavigationRoute("/dashboard/hpm/lifecycle/thread-1", item.activeMatch)).toBe(true);
+  });
+
   it("owns canonical and legacy investment routes from Decide", () => {
     const investmentRoutes = platformRouteDefinitions.filter(route => route.pathPattern.startsWith("/dashboard/investments"));
     expect(investmentRoutes.length).toBeGreaterThan(5);

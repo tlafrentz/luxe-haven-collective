@@ -1,0 +1,86 @@
+import { randomUUID } from "node:crypto";
+import { getCurrentHpmCanonicalInputs } from "@/features/hpm";
+import { SupabaseTeamAccessRepository, type WorkspaceAccessContext } from "@/features/workspace";
+import { requireUser } from "@/lib/auth/session";
+import {
+  createHpmAttentionProjectionService,
+  createHpmLifecycleProjectionService,
+  createHpmProjectionSourcePort,
+  createHpmSourcePortRegistry,
+  createUnavailableHpmSourcePort,
+  HPM_ATTENTION_POLICY_VERSION,
+  HPM_COMMAND_VOCABULARY_VERSION,
+  HPM_FRESHNESS_POLICY_VERSION,
+  HPM_HEALTH_POLICY_VERSION,
+  HPM_LIFECYCLE_POLICY_VERSION,
+  HPM_LINEAGE_POLICY_VERSION,
+  type HpmActorContext,
+  type HpmAttentionProjection,
+  type HpmLifecycleProjection,
+  type HpmProjectedRecord,
+  type HpmProjectionScope,
+} from "@/platform/hpm";
+import type { HpmWorkspaceQuery } from "./hpm-workspace-context";
+
+export type HpmWorkspaceProjection = Readonly<{
+  lifecycle: HpmLifecycleProjection;
+  attention: HpmAttentionProjection;
+  properties: readonly Readonly<{ id: string; name: string }>[];
+  correlationId: string;
+}>;
+
+export type HpmWorkspaceFailure = Readonly<{ ok: false; code: string; message: string; correlationId: string }>;
+export type HpmWorkspaceResult = Readonly<{ ok: true; value: HpmWorkspaceProjection } | HpmWorkspaceFailure>;
+
+export function isHpmWorkspaceEnabled() {
+  return process.env.HPM_UNIFIED_WORKSPACE_ENABLED !== "false";
+}
+
+/** Server-only production composition. RLS-filtered sources are adapted into HPM; absent sources stay explicitly unavailable. */
+export async function getHpmWorkspaceProjection(query: HpmWorkspaceQuery): Promise<HpmWorkspaceResult> {
+  const correlationId = randomUUID();
+  if (!isHpmWorkspaceEnabled()) return { ok: false, code: "HPM_FEATURE_DISABLED", message: "The HPM workspace is not enabled for this environment.", correlationId };
+  try {
+    const { user } = await requireUser();
+    const repository = new SupabaseTeamAccessRepository();
+    const access = await repository.resolve(user.id);
+    if (!access || access.status !== "active") return { ok: false, code: "HPM_SCOPE_ACCESS_DENIED", message: "This HPM workspace is not available to your account.", correlationId };
+    const listed = await repository.properties(access);
+    const allowed = access.propertyAccess.type === "selected" ? new Set(access.propertyAccess.propertyIds) : null;
+    const properties = Object.freeze(listed.filter((property) => !allowed || allowed.has(property.id)).map((property) => Object.freeze(property)));
+    const actor: HpmActorContext = Object.freeze({ actorId: user.id, tenantId: access.workspaceId, roleIds: [access.role], propertyIds: properties.map(({ id }) => id), active: true });
+    const scopeId = query.scopeType === "property" ? query.scopeId : access.workspaceId;
+    if (!scopeId) return { ok: false, code: "HPM_SCOPE_NOT_FOUND", message: "Choose an authorized property to view its lifecycle.", correlationId };
+    const scope = resolveScope(access, properties, query, scopeId);
+    if (!scope) return { ok: false, code: "HPM_SCOPE_ACCESS_DENIED", message: "The requested HPM scope is unavailable.", correlationId };
+    const observe = createHpmProjectionSourcePort({ capability: "observations", contractVersion: "v1", project: async () => {
+      const assembly = await getCurrentHpmCanonicalInputs({ startDate: query.from, endDate: query.to, propertyId: query.scopeType === "property" ? scopeId : undefined, generatedAt: query.asOf });
+      const records = assembly.context.analytics.metricProjections.map((metric, index): HpmProjectedRecord => Object.freeze({
+        tenantId: access.workspaceId,
+        source: Object.freeze({ capability: "observations", recordType: "analytics-metric", recordId: `${metric.metric}:${metric.scope.id}`, recordVersion: metric.calculationVersion }),
+        stage: "see", canonicalStatus: "observed", presentationState: "completed",
+        summary: `${metric.label} is available for the selected reporting period.`,
+        propertyIds: metric.scope.type === "property" ? [metric.scope.id] : scope.propertyIds,
+        portfolioId: query.scopeType === "portfolio" ? access.workspaceId : undefined,
+        attentionState: "none", validNextCommands: [], createdAt: metric.measuredAt, updatedAt: metric.measuredAt,
+        canonicalThreadId: `analytics:${metric.metric}:${metric.scope.id}:${index}`, visibility: "tenant",
+      }));
+      return Object.freeze({ state: Object.freeze({ capability: "observations" as const, contractVersion: "v1", freshness: "current" as const, asOf: query.asOf, observedAt: query.asOf, lastSuccessfulAsOf: query.asOf, sourceVersion: assembly.context.analytics.generatedAt, policyVersion: "analytics-hpm-adapter-v1", contributesToCounts: true, contributesToHealth: true, contributesToLineage: true }), records: Object.freeze(records) });
+    }});
+    const sources = createHpmSourcePortRegistry([observe, ...(["intelligence", "decisions", "execute", "outcomes", "learning", "recommendations"] as const).map((capability) => createUnavailableHpmSourcePort(capability, "not-configured"))]);
+    const lifecycleService = createHpmLifecycleProjectionService({ sources, scopeAuthorizer: { resolve: async () => ({ ok: true as const, scope }) } });
+    const lifecycle = await lifecycleService.buildHpmLifecycleProjection({ actor, scopeType: query.scopeType, scopeId, asOf: query.asOf, correlationId, policyVersions: { lifecycle: HPM_LIFECYCLE_POLICY_VERSION, health: HPM_HEALTH_POLICY_VERSION, lineage: HPM_LINEAGE_POLICY_VERSION, freshness: HPM_FRESHNESS_POLICY_VERSION } });
+    if (!lifecycle.ok) return { ok: false, code: lifecycle.code, message: lifecycle.message, correlationId };
+    const attentionService = createHpmAttentionProjectionService();
+    const attention = await attentionService.buildHpmAttentionProjection({ actor, lifecycleProjection: lifecycle.projection, attentionPolicyVersion: HPM_ATTENTION_POLICY_VERSION, commandVocabularyVersion: HPM_COMMAND_VOCABULARY_VERSION, correlationId, cursor: query.cursor, filter: { stages: query.stages, classifications: query.classifications } });
+    if (!attention.ok) return { ok: false, code: attention.code, message: attention.message, correlationId };
+    return { ok: true, value: Object.freeze({ lifecycle: lifecycle.projection, attention: attention.projection, properties, correlationId }) };
+  } catch {
+    return { ok: false, code: "HPM_PROJECTION_UNAVAILABLE", message: "The HPM workspace could not be loaded. No source records were changed.", correlationId };
+  }
+}
+
+function resolveScope(access: WorkspaceAccessContext, properties: readonly { id: string }[], query: HpmWorkspaceQuery, scopeId: string): HpmProjectionScope | null {
+  if (query.scopeType === "property" && !properties.some(({ id }) => id === scopeId)) return null;
+  return Object.freeze({ tenantId: access.workspaceId, type: query.scopeType, ...(query.scopeType === "portfolio" ? { portfolioId: access.workspaceId } : {}), propertyIds: query.scopeType === "property" ? [scopeId] : properties.map(({ id }) => id), timeZone: "America/Chicago", from: `${query.from}T00:00:00.000Z`, to: `${query.to}T23:59:59.999Z` });
+}

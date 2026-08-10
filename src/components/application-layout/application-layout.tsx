@@ -30,8 +30,8 @@ const cardLevelClasses: Record<WorkspaceCardLevel, string> = {
 };
 
 /** Canonical authenticated customer shell. Route layouts should use this instead of assembling navigation. */
-export function AppShell({ children, role }: Readonly<{ children: ReactNode; role?: string | null }>) {
-  return <ClientWorkspaceShell role={role}>{children}</ClientWorkspaceShell>;
+export function AppShell({ children, role, enabledFeatureFlags }: Readonly<{ children: ReactNode; role?: string | null; enabledFeatureFlags?: readonly string[] }>) {
+  return <ClientWorkspaceShell role={role} enabledFeatureFlags={enabledFeatureFlags}>{children}</ClientWorkspaceShell>;
 }
 
 /** Canonical content container. The platform shell already owns the document's main landmark. */

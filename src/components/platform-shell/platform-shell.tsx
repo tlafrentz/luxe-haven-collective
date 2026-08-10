@@ -61,6 +61,7 @@ type ShellProps = Readonly<{
   children: ReactNode;
   experience: PlatformExperience;
   role?: string | null;
+  enabledFeatureFlags?: readonly string[];
 }>;
 const groupLabels: Record<string, string> = {
   home: "Home",
@@ -92,6 +93,7 @@ const operationsIcons: Record<string, ComponentType<LucideProps>> = {
 const clientIcons: Record<string, ComponentType<LucideProps>> = {
   home: House,
   "workspace-overview": BriefcaseBusiness,
+  "hpm-workspace": CircleGauge,
   observe: Eye,
   understand: LineChart,
   decide: Crosshair,
@@ -107,9 +109,10 @@ const clientIcons: Record<string, ComponentType<LucideProps>> = {
 export function ClientWorkspaceShell({
   children,
   role,
+  enabledFeatureFlags,
 }: Omit<ShellProps, "experience">) {
   return (
-    <PlatformShell experience="client-workspace" role={role}>
+    <PlatformShell experience="client-workspace" role={role} enabledFeatureFlags={enabledFeatureFlags}>
       {children}
     </PlatformShell>
   );
@@ -125,17 +128,17 @@ export function OperationsConsoleShell({
   );
 }
 
-export function PlatformShell({ children, experience, role }: ShellProps) {
+export function PlatformShell({ children, experience, role, enabledFeatureFlags }: ShellProps) {
   return (
     <WorkspaceContextProvider>
-      <PlatformShellFrame experience={experience} role={role}>
+      <PlatformShellFrame experience={experience} role={role} enabledFeatureFlags={enabledFeatureFlags}>
         {children}
       </PlatformShellFrame>
     </WorkspaceContextProvider>
   );
 }
 
-function PlatformShellFrame({ children, experience, role }: ShellProps) {
+function PlatformShellFrame({ children, experience, role, enabledFeatureFlags }: ShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -148,6 +151,7 @@ function PlatformShellFrame({ children, experience, role }: ShellProps) {
   const navigation = resolveNavigation(
     source,
     resolveUserCapabilities({ authenticated: true, role }),
+    new Set(enabledFeatureFlags),
   );
   const details = pageDetails(pathname, experience);
   const contextKind = workspaceContextKind(pathname);
@@ -797,6 +801,18 @@ export function pageDetails(
         ...(destination === "Overview"
           ? []
           : [{ id: "current", label: destination, current: true }]),
+      ],
+    };
+  }
+  if (pathname.startsWith("/dashboard/hpm")) {
+    const title = pathname.startsWith("/dashboard/hpm/attention") ? "Attention" : pathname.startsWith("/dashboard/hpm/lifecycle/") ? "Lifecycle Thread" : pathname.startsWith("/dashboard/hpm/lifecycle") ? "Lifecycle" : "Overview";
+    return {
+      eyebrow: "Hospitality Performance Management",
+      title,
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "hpm", label: "HPM", ...(title === "Overview" ? { current: true } : { href: "/dashboard/hpm" }) },
+        ...(title === "Overview" ? [] : [{ id: "current", label: title, current: true }]),
       ],
     };
   }
