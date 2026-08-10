@@ -1,4 +1,7 @@
 export * from "./hpm-contracts";
+export * from "./hpm-attention-policy";
+export * from "./hpm-attention-projection";
+export * from "./hpm-command-routing";
 export * from "./hpm-freshness-policy";
 export * from "./hpm-health-policy";
 export * from "./hpm-lifecycle-projection";

@@ -35,6 +35,17 @@ export type HpmValidNextCommand = Readonly<{
   unavailableReason?: string;
   destination?: string;
   correlationId: string;
+  vocabularyVersion?: string;
+  intentKey?: string;
+  requiredInputs?: readonly Readonly<{ name: string; type: "string" | "number" | "boolean" | "timestamp"; required: boolean }>[];
+  requiresConfirmation?: boolean;
+  requiresReason?: boolean;
+  requiresRationale?: boolean;
+  requiresAcknowledgement?: boolean;
+  requiresReviewAuthority?: boolean;
+  idempotencyRequired?: boolean;
+  dispatchKey?: string;
+  resultBehavior?: "refresh-projection" | "destination" | "none";
 }>;
 
 export type HpmProjectedRecord = Readonly<{
@@ -60,6 +71,7 @@ export type HpmProjectedRecord = Readonly<{
   expectedNextStage?: HpmLifecycleStage;
   relationships?: readonly HpmProjectedRelationship[];
   healthSignals?: readonly HpmHealthSignal[];
+  attentionSignals?: readonly HpmAttentionSignal[];
   validNextCommands: readonly HpmValidNextCommand[];
   createdAt: string;
   updatedAt: string;
@@ -67,6 +79,56 @@ export type HpmProjectedRecord = Readonly<{
   measuredAt?: string;
   resolvedAt?: string;
   visibility: "tenant" | "property" | "portfolio" | "restricted";
+}>;
+
+export type HpmAttentionClassification =
+  | "critical-risk"
+  | "blocked"
+  | "awaiting-authority"
+  | "overdue"
+  | "required-review"
+  | "required-context"
+  | "dependency-required"
+  | "handoff-required"
+  | "measurement-required"
+  | "reevaluation-required"
+  | "conflict-resolution-required"
+  | "expiring"
+  | "stale-source"
+  | "incomplete-coverage"
+  | "follow-up-required";
+
+export type HpmAttentionReasonCode =
+  | "active-source-invalidated"
+  | "critical-guardrail-breach"
+  | "material-risk-review"
+  | "lifecycle-blocking-conflict"
+  | "required-handoff-broken"
+  | "authority-overdue"
+  | "review-overdue"
+  | "accepted-handoff-required"
+  | "critical-execution-blocked"
+  | "measurement-overdue"
+  | "learning-reevaluation-required"
+  | "context-required"
+  | "deferred-review-due"
+  | "expiration-approaching"
+  | "material-source-stale"
+  | "follow-up-required";
+
+export type HpmAttentionSignal = Readonly<{
+  reasonCode: HpmAttentionReasonCode;
+  classification: HpmAttentionClassification;
+  severity: "critical" | "high" | "medium" | "low";
+  urgency: "breached" | "due" | "approaching" | "none";
+  lifecycleImpact: "invalidates-active" | "blocks-lifecycle" | "delays-lifecycle" | "follow-up";
+  scopeImpact: "portfolio" | "multi-property" | "property" | "record";
+  requiresHumanAuthority: boolean;
+  dependencyImpact: "blocking" | "material" | "none";
+  admittedByRule: string;
+  safeFactCodes: readonly string[];
+  dueAt?: string;
+  ageBasisAt?: string;
 }>;
 
 export type HpmProjectedRelationship = Readonly<{
@@ -170,6 +232,22 @@ export type HpmAttentionItem = Readonly<{
   dueAt?: string;
   blocker?: string;
   primaryNextCommand?: HpmValidNextCommand;
+  itemKey?: string;
+  rankBucket?: number;
+  rankTuple?: readonly (number | string)[];
+  currentLifecyclePosition?: HpmLifecycleStage;
+  classification?: HpmAttentionClassification;
+  urgency?: HpmAttentionSignal["urgency"];
+  lifecycleImpact?: HpmAttentionSignal["lifecycleImpact"];
+  reasonCodes?: readonly HpmAttentionReasonCode[];
+  explanation?: Readonly<{ admissionRule: string; policyVersion: string; tuple: readonly (number | string)[]; safeFactCodes: readonly string[]; caveats: readonly string[]; owningCapability: HpmSourceCapability }>;
+  ageBasisAt?: string;
+  ageMs?: number;
+  freshness?: HpmFreshness;
+  partial?: boolean;
+  validNextCommands?: readonly HpmValidNextCommand[];
+  detailDestination?: string;
+  evaluatedAt?: string;
 }>;
 
 export type HpmSourceState = Readonly<{
@@ -183,6 +261,7 @@ export type HpmSourceState = Readonly<{
   observedAt?: string;
   lastSuccessfulAsOf?: string;
   reasonCode?: string;
+  operationalReviewRequired?: boolean;
   contributesToCounts?: boolean;
   contributesToHealth?: boolean;
   contributesToLineage?: boolean;

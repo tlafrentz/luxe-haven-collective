@@ -47,3 +47,15 @@ Health uses documented precedence: Blocked, At Risk, Awaiting Authority, Awaitin
 Freshness thresholds are capability-specific. Safe records remain available during delayed or stale states, but summaries and coverage no longer imply completeness. An unavailable or not-configured adapter returns no records. This is the honest production boundary for canonical LR-001 or LR-002 sources that are not yet deployable.
 
 HPM-001B adds no persistence, migration, UI, attention ranking, valid-command routing, reports, activity, or notifications.
+
+## HPM-001C attention and routing
+
+The attention policy is `hpm-attention-v1`. Candidates require explicit normalized signals from an authorized source record; HPM never treats a status or visibility alone as a mutation opportunity. The authoritative rank is a lexicographic tuple: shared reason tier, lifecycle impact, canonical severity, deadline state, human authority, scope impact, dependency impact, condition age, freshness caveat, lifecycle stage, canonical type/ID, reason, and stable item key. Ranking occurs before filtering pagination, and groups never change global order.
+
+Top-level reason precedence is: invalidated active state; guardrail/material risk; blocking conflict or handoff; overdue authority/review; accepted handoff; critical blocked execution; overdue measurement; learning reevaluation; required context; due deferral/expiry; stale coverage; other follow-up.
+
+Valid commands must be capability-provided, current-version descriptors using `hpm-command-v1`, have an explicitly registered owning route, and survive actor/source-safety filtering. Missing or stale Learn/Recommend routes yield no executable command.
+
+`createHpmCommandRoutingService` resolves a trusted scope, resolves the server-owned route, reauthorizes immediately, and forwards expected version, idempotency, correlation, causation, and validated input to the owning capability. The owning result remains authoritative. HPM neither writes source activity nor notification intents. Success and conflict request projection refresh; refresh failure never changes a successful source result into a rollback.
+
+HPM-001C adds no persistence, migration, UI, report, activity, notification, automatic approval, or rank-triggered mutation.
