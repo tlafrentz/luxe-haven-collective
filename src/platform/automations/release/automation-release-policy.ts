@@ -251,6 +251,7 @@ export function transitionAutomationRelease(
     idempotencyKey: string;
     now: string;
     hpmFinalApproval: boolean;
+    readinessGatesPassed: boolean;
     haltSignals?: readonly string[];
   }>,
 ): AutomationReleaseResult<AutomationReleaseRecord> {
@@ -301,6 +302,13 @@ export function transitionAutomationRelease(
       code: "AU_RELEASE_PREREQUISITE_FAILED",
       message:
         "HPM-001F final approval is required before AU production rollout.",
+    };
+  if (productionStates.includes(input.to) && !input.readinessGatesPassed)
+    return {
+      ok: false,
+      code: "AU_RELEASE_PREREQUISITE_FAILED",
+      message:
+        "All AU readiness gates must pass before production promotion.",
     };
   const requiredAuthorities =
     input.to === "released"

@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:automation:postgres": "bash scripts/verification/verify-au001-postgres.sh",
     "test:watch": "vitest",
     "migration:graph": "tsx scripts/platform-migration/cli.ts graph",
     "migration:duplicates": "tsx scripts/platform-migration/cli.ts duplicates",

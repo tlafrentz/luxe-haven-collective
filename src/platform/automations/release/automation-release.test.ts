@@ -123,6 +123,26 @@ describe("AU-001F release controls", () => {
       idempotencyKey: "promotion",
       now,
       hpmFinalApproval: false,
+      readinessGatesPassed: false,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      code: "AU_RELEASE_PREREQUISITE_FAILED",
+    });
+  });
+  it("does not allow HPM approval alone to unlock production promotion", () => {
+    const result = transitionAutomationRelease({
+      record: record(),
+      expectedVersion: 1,
+      to: "ready-for-disabled-deployment",
+      actor: { actorId: "release", active: true, roleIds: ["release-owner"] },
+      approvals: [approval("release")],
+      environment: "production",
+      correlationId: "correlation",
+      idempotencyKey: "readiness-gates",
+      now,
+      hpmFinalApproval: true,
+      readinessGatesPassed: false,
     });
     expect(result).toMatchObject({
       ok: false,
@@ -141,6 +161,7 @@ describe("AU-001F release controls", () => {
       idempotencyKey: "release",
       now,
       hpmFinalApproval: true,
+      readinessGatesPassed: true,
     });
     expect(result).toMatchObject({
       ok: false,
@@ -159,6 +180,7 @@ describe("AU-001F release controls", () => {
       idempotencyKey: "promotion",
       now,
       hpmFinalApproval: true,
+      readinessGatesPassed: true,
       haltSignals: [AUTOMATION_CATEGORICAL_HALT_SIGNALS[0]],
     });
     expect(result).toMatchObject({
