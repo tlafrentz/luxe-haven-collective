@@ -140,11 +140,28 @@ export async function getGuidebookLibraries(
       0,
     ),
   }));
+  const imagePaths = (mediaFiles ?? [])
+    .filter((file) => String(file.mime_type ?? "").startsWith("image/"))
+    .map((file) => String(file.storage_path));
+  const { data: signedUrls } = imagePaths.length
+    ? await db.storage
+        .from("guidebook-library-media")
+        .createSignedUrls(imagePaths, 3600)
+    : { data: [] };
+  const signedUrlByPath = new Map(
+    (signedUrls ?? [])
+      .filter((entry) => entry.signedUrl)
+      .map((entry) => [entry.path, entry.signedUrl]),
+  );
+  const mediaFilesWithUrls = (mediaFiles ?? []).map((file) => ({
+    ...file,
+    signed_url: signedUrlByPath.get(String(file.storage_path)) ?? null,
+  }));
   return {
     ok: true as const,
     artifacts,
     collections: collections ?? [],
-    mediaFiles: mediaFiles ?? [],
+    mediaFiles: mediaFilesWithUrls,
     recentActivity: recentActivity ?? [],
     furnishingPackages: furnishingPackages ?? 0,
   };
@@ -183,10 +200,17 @@ export async function getGuidebookLibraryArtifact(id: string) {
           .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
+  let signedMediaFile = mediaFile;
+  if (mediaFile && String(mediaFile.mime_type ?? "").startsWith("image/")) {
+    const { data: signed } = await db.storage
+      .from("guidebook-library-media")
+      .createSignedUrl(String(mediaFile.storage_path), 3600);
+    signedMediaFile = { ...mediaFile, signed_url: signed?.signedUrl ?? null };
+  }
   return {
     artifact: { ...artifact, guidebook_library_versions: versions },
     usages: usages ?? [],
-    mediaFile,
+    mediaFile: signedMediaFile,
   };
 }
 
