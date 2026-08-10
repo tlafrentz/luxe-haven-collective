@@ -58,6 +58,7 @@ export type AutomationRun = Readonly<{
   causationId: string;
   status: AutomationRunStatus;
   policyDecisionId?: string;
+  approvalId?: string;
   createdAt: string;
   updatedAt: string;
   deadlineAt?: string;
@@ -73,6 +74,7 @@ export type AutomationRunStep = Readonly<{
   commandType: string;
   commandContractVersion: string;
   dependencies: readonly string[];
+  concurrencyGroup?: string;
   status: AutomationStepStatus;
   deterministicCommandId: string;
   idempotencyKey: string;
@@ -80,7 +82,9 @@ export type AutomationRunStep = Readonly<{
   attemptCount: number;
   nextAttemptAt?: string;
   leaseOwner?: string;
+  leaseAcquiredAt?: string;
   leaseExpiresAt?: string;
+  leaseGeneration: number;
   version: number;
 }>;
 
@@ -163,8 +167,8 @@ export class AutomationGovernedExecutionError extends Error {
 }
 
 const runTransitions: Readonly<Record<AutomationRunStatus, readonly AutomationRunStatus[]>> = Object.freeze({
-  pending_policy_evaluation: ["awaiting_approval", "approved", "blocked", "expired"], awaiting_approval: ["approved", "blocked", "expired", "cancelled"],
-  approved: ["queued", "cancelled", "expired"], queued: ["running", "cancellation_requested", "blocked", "expired"],
+  pending_policy_evaluation: ["awaiting_approval", "approved", "blocked", "expired", "cancelled"], awaiting_approval: ["approved", "blocked", "expired", "cancelled"],
+  approved: ["queued", "running", "cancelled", "cancellation_requested", "expired"], queued: ["running", "cancellation_requested", "blocked", "expired"],
   running: ["succeeded", "partially_succeeded", "failed", "timed_out", "cancellation_requested", "reconciliation_required", "blocked"],
   cancellation_requested: ["cancelled", "partially_succeeded", "reconciliation_required"], reconciliation_required: ["reconciling", "blocked"],
   reconciling: ["running", "succeeded", "partially_succeeded", "failed", "blocked", "reconciliation_required"],
@@ -219,7 +223,7 @@ export function materializeAutomationRun(input: Readonly<{ id: string; request: 
   const plan = validateExecutionPlan(input.executionPlan); if (plan.definitionVersionId !== input.definitionVersionId) fail("EXECUTION_PLAN_INCOMPATIBLE", "The execution plan is not bound to the requested definition version.");
   instant(input.now, "Run creation timestamp"); if (input.deadlineAt) instant(input.deadlineAt, "Run deadline");
   const run: AutomationRun = Object.freeze({ id: input.id, tenantId: input.request.tenantId, propertyIds: Object.freeze([...input.request.scope.propertyIds]), automationDefinitionId: input.request.automationId, automationDefinitionVersionId: input.definitionVersionId, automationDefinitionVersion: input.request.automationDefinitionVersion, runRequestId: input.request.id, triggerOccurrenceId: input.request.occurrenceId, executionPlanVersion: plan.version, initiatingActorId: input.initiatingActor.actorId, serviceActorPolicyId: input.serviceActorPolicyId, correlationId: input.request.correlationId, causationId: input.request.causationId ?? input.request.id, status: "pending_policy_evaluation", createdAt: input.now, updatedAt: input.now, ...(input.deadlineAt ? { deadlineAt: input.deadlineAt } : {}), version: 1 });
-  const steps = plan.steps.map((definition, index): AutomationRunStep => Object.freeze({ id: deterministicAutomationIdentity([input.id, definition.key]), tenantId: run.tenantId, runId: run.id, stepKey: definition.key, owningCapability: definition.owningCapability, commandType: definition.commandType, commandContractVersion: definition.commandContractVersion, dependencies: Object.freeze([...definition.dependencies]), status: "pending", deterministicCommandId: deterministicAutomationIdentity(["aucmd-v1", input.id, definition.key, definition.commandContractVersion]), idempotencyKey: deterministicAutomationIdentity(["aucmd-idem-v1", input.id, definition.key, definition.commandContractVersion]), ...(definition.expectedVersion !== undefined ? { expectedTargetVersion: definition.expectedVersion } : {}), attemptCount: 0, version: 1 + index * 0 }));
+  const steps = plan.steps.map((definition, index): AutomationRunStep => Object.freeze({ id: deterministicAutomationIdentity([input.id, definition.key]), tenantId: run.tenantId, runId: run.id, stepKey: definition.key, owningCapability: definition.owningCapability, commandType: definition.commandType, commandContractVersion: definition.commandContractVersion, dependencies: Object.freeze([...definition.dependencies]), ...(definition.concurrencyGroup ? { concurrencyGroup: definition.concurrencyGroup } : {}), status: "pending", deterministicCommandId: deterministicAutomationIdentity(["aucmd-v1", input.id, definition.key, definition.commandContractVersion]), idempotencyKey: deterministicAutomationIdentity(["aucmd-idem-v1", input.id, definition.key, definition.commandContractVersion]), ...(definition.expectedVersion !== undefined ? { expectedTargetVersion: definition.expectedVersion } : {}), attemptCount: 0, leaseGeneration: 0, version: 1 + index * 0 }));
   return Object.freeze({ run, steps: Object.freeze(steps) });
 }
 
@@ -227,6 +231,12 @@ export function approvalIsValid(approval: AutomationApproval | undefined, input:
   if (!approval || approval.status !== "approved" || Date.parse(approval.expiresAt) <= Date.parse(input.now)) return false;
   return approval.definitionVersionId === input.definitionVersionId && approval.commandFingerprint === input.commandFingerprint && approval.targetContextVersion === input.targetContextVersion && approval.policyVersion === input.policyVersion;
 }
+
+export function executionPlanFingerprint(plan: AutomationExecutionPlan): string {
+  validateExecutionPlan(plan);
+  return deterministicAutomationIdentity(["auapproval-v1", plan.definitionVersionId, plan.version, ...plan.steps.map((step) => canonicalAutomationJson({ key: step.key, capability: step.owningCapability, command: step.commandType, contract: step.commandContractVersion, payload: step.payload }))]);
+}
+export function canonicalAutomationJson(value: unknown): string { if (Array.isArray(value)) return `[${value.map(canonicalAutomationJson).join(",")}]`; if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, entry]) => `${JSON.stringify(key)}:${canonicalAutomationJson(entry)}`).join(",")}}`; return JSON.stringify(value); }
 
 export function serviceActorCanDispatch(actor: AutomationServiceActor, envelope: Pick<AutomationCommandEnvelope, "tenantId" | "propertyIds" | "owningCapability" | "commandType">): boolean {
   return actor.active && actor.tenantId === envelope.tenantId && actor.grants.some((grant) => grant.capability === envelope.owningCapability && grant.commandType === envelope.commandType && envelope.propertyIds.every((id) => grant.propertyIds.includes(id)));

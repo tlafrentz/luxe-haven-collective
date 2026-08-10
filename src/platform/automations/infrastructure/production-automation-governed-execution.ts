@@ -1,5 +1,5 @@
 import { createGovernedExecutionService, type AutomationApprovalAuthority, type AutomationCommandPort, type AutomationDefinitionExecutionReader, type AutomationPolicyEvaluator, type GovernedExecutionRepository, type GovernedExecutionTelemetry } from "../application/automation-governed-execution";
-import type { AutomationServiceActor } from "../domain/automation-governed-execution";
+import type { AutomationRetryPolicy, AutomationServiceActor } from "../domain/automation-governed-execution";
 
 export type GovernedExecutionFeatureFlags = Readonly<{ automationFoundationEnabled: boolean; governedExecutionEnabled: boolean; dispatchEnabled: boolean; globalKillSwitch: boolean }>;
 
@@ -15,6 +15,7 @@ export function createProductionGovernedExecution(input: Readonly<{
   approvalAuthority: AutomationApprovalAuthority;
   ports: readonly AutomationCommandPort[];
   serviceActor: AutomationServiceActor;
+  retryPolicy: AutomationRetryPolicy;
   flags: GovernedExecutionFeatureFlags;
   clock?: () => string;
   id?: () => string;
@@ -22,5 +23,5 @@ export function createProductionGovernedExecution(input: Readonly<{
 }>) {
   if (!input.serviceActor.active || input.serviceActor.tenantId.trim() === "" || input.serviceActor.grants.length === 0) throw new Error("A least-privilege active automation service actor is required.");
   if (input.ports.some((port, index) => input.ports.findIndex(({ capability }) => capability === port.capability) !== index)) throw new Error("Owning-capability adapters must be unique.");
-  return createGovernedExecutionService({ repository: input.repository, definitions: input.definitions, policy: input.policy, approvalAuthority: input.approvalAuthority, ports: input.ports, serviceActor: input.serviceActor, clock: input.clock ?? (() => new Date().toISOString()), id: input.id ?? (() => crypto.randomUUID()), ...(input.telemetry ? { telemetry: input.telemetry } : {}), enabled: () => input.flags.automationFoundationEnabled && input.flags.governedExecutionEnabled && input.flags.dispatchEnabled, killSwitched: () => input.flags.globalKillSwitch, leaseDurationMs: 60_000 });
+  return createGovernedExecutionService({ repository: input.repository, definitions: input.definitions, policy: input.policy, approvalAuthority: input.approvalAuthority, ports: input.ports, serviceActor: input.serviceActor, retryPolicy: input.retryPolicy, clock: input.clock ?? (() => new Date().toISOString()), id: input.id ?? (() => crypto.randomUUID()), ...(input.telemetry ? { telemetry: input.telemetry } : {}), enabled: () => input.flags.automationFoundationEnabled && input.flags.governedExecutionEnabled && input.flags.dispatchEnabled, killSwitched: () => input.flags.globalKillSwitch, leaseDurationMs: 60_000 });
 }

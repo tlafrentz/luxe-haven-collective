@@ -1,6 +1,7 @@
 \set ON_ERROR_STOP on
 \ir au001b_triggers_scheduling_rls.sql
 \ir ../migrations/20260810030000_au001c_governed_execution.sql
+\ir ../migrations/20260810040000_au001c_execution_hardening.sql
 
 set role service_role;
 select public.materialize_automation_run(
@@ -16,13 +17,20 @@ select public.materialize_automation_run(
 );
 do $$ begin if (select count(*) from public.automation_runs)<>1 or (select count(*) from public.automation_run_steps)<>1 or (select count(*) from public.automation_execution_activity)<>1 then raise exception 'logical run replay duplicated effects'; end if; end $$;
 
--- Exactly one worker owns an unexpired step lease.
+-- Concurrency groups serialize claims and lease recovery requires an owning-outcome check.
+update public.automation_run_steps set concurrency_group='property-command' where id='governed-run-1:step-1';
+insert into public.automation_run_steps(id,workspace_id,run_id,step_key,owning_capability,command_type,command_contract_version,dependencies,concurrency_group,status,deterministic_command_id,idempotency_key,attempt_count,lease_generation,version)
+values('governed-run-1:step-2','20000000-0000-0000-0000-000000000001','governed-run-1','step-2','execute','createDraftPlan','v1','{}','property-command','ready','command-2','command-key-2',0,0,1);
 select public.claim_automation_run_step('20000000-0000-0000-0000-000000000001','governed-run-1:step-1',1,'worker-1','2026-08-10T12:03:00Z',60000);
 do $$ declare unavailable public.automation_run_steps; begin select * into unavailable from public.claim_automation_run_step('20000000-0000-0000-0000-000000000001','governed-run-1:step-1',1,'worker-2','2026-08-10T12:03:01Z',60000); if unavailable.id is not null then raise exception 'duplicate step lease granted'; end if; end $$;
+do $$ declare unavailable public.automation_run_steps; begin select * into unavailable from public.claim_automation_run_step('20000000-0000-0000-0000-000000000001','governed-run-1:step-2',1,'worker-2','2026-08-10T12:03:01Z',60000); if unavailable.id is not null then raise exception 'concurrency group overlap granted'; end if; end $$;
+select public.heartbeat_automation_run_step('20000000-0000-0000-0000-000000000001','governed-run-1:step-1','worker-1',1,2,'2026-08-10T12:03:30Z',60000);
+do $$ begin begin perform public.reclaim_expired_automation_run_step('20000000-0000-0000-0000-000000000001','governed-run-1:step-1',3,'2026-08-10T12:05:00Z',false); raise exception 'reclaim skipped owning outcome check'; exception when check_violation then null; end; end $$;
+select public.reclaim_expired_automation_run_step('20000000-0000-0000-0000-000000000001','governed-run-1:step-1',3,'2026-08-10T12:05:00Z',true);
 
 reset role; set role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
-do $$ begin if (select count(*) from public.automation_runs)<>1 or (select count(*) from public.automation_run_steps)<>1 then raise exception 'owner cannot inspect run'; end if; end $$;
+do $$ begin if (select count(*) from public.automation_runs)<>1 or (select count(*) from public.automation_run_steps)<>2 then raise exception 'owner cannot inspect run'; end if; end $$;
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',false);
 do $$ begin if (select count(*) from public.automation_runs)<>0 or (select count(*) from public.automation_run_steps)<>0 then raise exception 'restricted property leaked run'; end if; end $$;
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000004',false);
