@@ -6,6 +6,7 @@ import {
   type TeamAccessRepository,
 } from "../application";
 import {
+  permissionsForRole,
   type PropertyAccessScope,
   type WorkspaceAccessContext,
   type WorkspaceInvitation,
@@ -112,12 +113,50 @@ export class SupabaseTeamAccessRepository implements TeamAccessRepository {
     if (workspaceId) query = query.eq("workspace_id", workspaceId);
     const { data, error } = await query.order("created_at", { ascending: true }).limit(1).maybeSingle();
     if (error) throw new Error(`Unable to resolve workspace access: ${error.message}`);
-    if (!data) return null;
-    const row = data as unknown as MembershipRow;
-    const membership = mapMembership(row);
-    const owner = one(row.owner);
-    if (!owner?.profile_id) throw new Error("Workspace owner identity is missing.");
-    return contextFromMembership(membership, owner.profile_id);
+    if (data) {
+      const row = data as unknown as MembershipRow;
+      const membership = mapMembership(row);
+      const owner = one(row.owner);
+      if (!owner?.profile_id) throw new Error("Workspace owner identity is missing.");
+      return contextFromMembership(membership, owner.profile_id);
+    }
+    // Platform admins operate on customer workspaces (e.g. creating a
+    // guidebook "on behalf of" a customer via /admin/*) without ever holding
+    // a workspace_memberships row there — that table models real team
+    // membership for the customer-facing /dashboard/* experience, which is a
+    // different concern from platform-admin access. Without this, every
+    // admin-created record became unreachable through any route built on
+    // resolveWorkspaceAccessContext the moment it needed a *specific*
+    // workspaceId, since no membership row would ever exist to find.
+    if (workspaceId) return this.resolveAsAdmin(profileId, workspaceId);
+    return null;
+  }
+
+  private async resolveAsAdmin(profileId: string, workspaceId: string) {
+    const supabase = await createClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", profileId)
+      .maybeSingle();
+    if (profile?.role !== "admin") return null;
+    const { data: owner } = await supabase
+      .from("owners")
+      .select("profile_id")
+      .eq("id", workspaceId)
+      .maybeSingle();
+    if (!owner?.profile_id) return null;
+    return Object.freeze({
+      profileId,
+      workspaceId,
+      ownerId: workspaceId,
+      ownerProfileId: owner.profile_id,
+      membershipId: `platform-admin:${profileId}`,
+      role: "owner" as const,
+      status: "active" as const,
+      propertyAccess: { type: "all" as const },
+      permissions: permissionsForRole("owner"),
+    });
   }
 
   async members(context: WorkspaceAccessContext) {
