@@ -8,6 +8,8 @@ export { PolicyImprovement, type PolicyImprovementInput } from "./policy-improve
 export { ScoringImprovement, type ScoringFactorChange, type ScoringImprovementInput } from "./scoring-improvement";
 export * from "./learning-lineage";
 export * from "./outcome-measurement";
+export * from "./execute-outcome-measurement";
+export * from "./learn-workspace-v1";
 export * from "./lesson-knowledge";
 export * from "./learning-calibration";
 export * from "./canonical-learning";

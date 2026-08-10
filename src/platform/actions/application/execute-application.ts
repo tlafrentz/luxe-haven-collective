@@ -3,7 +3,7 @@ import type { PlatformActionRepository } from "./action-repository";
 
 export type ExecuteFailureCode = "PLAN_NOT_FOUND" | "PLAN_VERSION_CONFLICT" | "PLAN_ACTIVATION_INVALID" | "ACTION_ASSIGNMENT_UNAUTHORIZED" | "PROPERTY_ACCESS_DENIED" | "CONCURRENT_MODIFICATION" | "PERSISTENCE_FAILURE";
 export type ExecuteCommandResult<T> = Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; code: ExecuteFailureCode; message: string; retryable: boolean; currentVersion?: number; submittedInput?: unknown }>;
-export type ExecuteEntityType="plan"|"action"|"evidence"|"blocker"|"dependency"|"recurrence"|"escalation";
+export type ExecuteEntityType="plan"|"action"|"evidence"|"blocker"|"dependency"|"recurrence"|"escalation"|"measurement"|"learning-signal"|"pattern"|"lesson"|"recommendation-opportunity"|"recommendation";
 export type ExecuteActivityEvent = Readonly<{ id: string; workspaceId: string; entityType: ExecuteEntityType; entityId: string; actionId?: string; eventType: string; actor: ActionActor; occurredAt: Date; metadata: Readonly<Record<string, unknown>>; correlationId: string }>;
 export type ExecuteNotificationIntent = Readonly<{ id: string; workspaceId: string; recipientType: string; recipientId: string; eventType: string; entityType: ExecuteEntityType; entityId: string; templateVariables: Readonly<Record<string, string>>; channel: "in-app" | "email" | "sms" | "slack" | "teams"; status: "pending"; idempotencyKey: string; attemptCount: 0; createdAt: Date }>;
 

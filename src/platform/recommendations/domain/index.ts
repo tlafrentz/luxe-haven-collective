@@ -5,3 +5,4 @@ export {
   RecommendationPriority,
   RECOMMENDATION_PRIORITY_RANK,
 } from "./recommendation-priority";
+export * from "./learning-recommendation";
