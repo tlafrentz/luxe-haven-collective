@@ -14,6 +14,7 @@ import {
   HPM_HEALTH_POLICY_VERSION,
   HPM_LIFECYCLE_POLICY_VERSION,
   HPM_LINEAGE_POLICY_VERSION,
+  evaluateHpmFeatureFlags,
   type HpmActorContext,
   type HpmAttentionProjection,
   type HpmLifecycleProjection,
@@ -35,10 +36,12 @@ export type HpmWorkspaceFailure = Readonly<{ ok: false; code: string; message: s
 export type HpmWorkspaceResult = Readonly<{ ok: true; value: HpmWorkspaceProjection } | HpmWorkspaceFailure>;
 
 export function isHpmWorkspaceEnabled() {
-  return process.env.HPM_UNIFIED_WORKSPACE_ENABLED !== "false";
+  return getHpmRuntimeFlags().workspace;
 }
 
-export function getHpmReportingFlags() { return Object.freeze({ reports: process.env.HPM_STANDARD_REPORTS_ENABLED === "true", exports: process.env.HPM_REPORT_EXPORTS_ENABLED === "true", operationalHealth: process.env.HPM_OPERATIONAL_HEALTH_ENABLED === "true", operationalCommands: process.env.HPM_OPERATIONAL_COMMANDS_ENABLED === "true" }); }
+export function getHpmRuntimeFlags() { return evaluateHpmFeatureFlags({ requested: { workspace: process.env.HPM_UNIFIED_WORKSPACE_ENABLED === "true", lifecycle: process.env.HPM_LIFECYCLE_PROJECTION_ENABLED === "true", attention: process.env.HPM_ATTENTION_QUEUE_ENABLED === "true", "command-routing": process.env.HPM_COMMAND_ROUTING_ENABLED === "true", reporting: process.env.HPM_STANDARD_REPORTS_ENABLED === "true", operations: process.env.HPM_OPERATIONAL_HEALTH_ENABLED === "true", learn: process.env.HPM_LEARN_INTEGRATION_ENABLED === "true", recommend: process.env.HPM_RECOMMEND_INTEGRATION_ENABLED === "true" }, killSwitches: { workspace: process.env.HPM_WORKSPACE_KILL_SWITCH === "true", lifecycle: process.env.HPM_LIFECYCLE_KILL_SWITCH === "true", attention: process.env.HPM_ATTENTION_KILL_SWITCH === "true", "command-routing": process.env.HPM_COMMAND_ROUTING_KILL_SWITCH === "true", reporting: process.env.HPM_REPORTING_KILL_SWITCH === "true", operations: process.env.HPM_OPERATIONS_KILL_SWITCH === "true", learn: process.env.HPM_LEARN_KILL_SWITCH === "true", recommend: process.env.HPM_RECOMMEND_KILL_SWITCH === "true" } }); }
+
+export function getHpmReportingFlags() { const flags = getHpmRuntimeFlags(); return Object.freeze({ reports: flags.reporting, exports: flags.reporting && process.env.HPM_REPORT_EXPORTS_ENABLED === "true" && process.env.HPM_EXPORTS_KILL_SWITCH !== "true", operationalHealth: flags.operations, operationalCommands: flags.operations && process.env.HPM_OPERATIONAL_COMMANDS_ENABLED === "true" && process.env.HPM_OPERATIONAL_COMMANDS_KILL_SWITCH !== "true" }); }
 
 /** Server-only production composition. RLS-filtered sources are adapted into HPM; absent sources stay explicitly unavailable. */
 export async function getHpmWorkspaceProjection(query: HpmWorkspaceQuery): Promise<HpmWorkspaceResult> {
@@ -57,6 +60,8 @@ export async function getHpmWorkspaceProjection(query: HpmWorkspaceQuery): Promi
     if (!scopeId) return { ok: false, code: "HPM_SCOPE_NOT_FOUND", message: "Choose an authorized property to view its lifecycle.", correlationId };
     const scope = resolveScope(access, properties, query, scopeId);
     if (!scope) return { ok: false, code: "HPM_SCOPE_ACCESS_DENIED", message: "The requested HPM scope is unavailable.", correlationId };
+    const runtimeFlags = getHpmRuntimeFlags();
+    if (!runtimeFlags.lifecycle) return { ok: false, code: "HPM_FEATURE_DISABLED", message: "The HPM lifecycle projection is not enabled for this cohort.", correlationId };
     const observe = createHpmProjectionSourcePort({ capability: "observations", contractVersion: "v1", project: async () => {
       const assembly = await getCurrentHpmCanonicalInputs({ startDate: query.from, endDate: query.to, propertyId: query.scopeType === "property" ? scopeId : undefined, generatedAt: query.asOf });
       const records = assembly.context.analytics.metricProjections.map((metric, index): HpmProjectedRecord => Object.freeze({
