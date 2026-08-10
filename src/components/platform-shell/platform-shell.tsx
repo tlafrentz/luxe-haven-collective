@@ -805,7 +805,7 @@ export function pageDetails(
     };
   }
   if (pathname.startsWith("/dashboard/hpm")) {
-    const title = pathname.startsWith("/dashboard/hpm/attention") ? "Attention" : pathname.startsWith("/dashboard/hpm/lifecycle/") ? "Lifecycle Thread" : pathname.startsWith("/dashboard/hpm/lifecycle") ? "Lifecycle" : "Overview";
+    const title = pathname.startsWith("/dashboard/hpm/reports/") ? "HPM Report" : pathname.startsWith("/dashboard/hpm/reports") ? "Reports" : pathname.startsWith("/dashboard/hpm/operations") ? "Operations" : pathname.startsWith("/dashboard/hpm/attention") ? "Attention" : pathname.startsWith("/dashboard/hpm/lifecycle/") ? "Lifecycle Thread" : pathname.startsWith("/dashboard/hpm/lifecycle") ? "Lifecycle" : "Overview";
     return {
       eyebrow: "Hospitality Performance Management",
       title,

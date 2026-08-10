@@ -1,0 +1,29 @@
+import type { HpmMetricDefinition } from "./hpm-report-contracts";
+
+const EFFECTIVE_AT = "2026-08-09T00:00:00.000Z", POLICY = "hpm-metrics-v1";
+const base = (input: Pick<HpmMetricDefinition, "key" | "name" | "description" | "owner" | "numerator" | "denominator" | "unit" | "aggregation"> & Partial<HpmMetricDefinition>): HpmMetricDefinition => Object.freeze({
+  version: "v1", dimensions: ["stage", "property"], timeWindow: "Current state at report as-of unless the metric name specifies an event period.", timeZoneTreatment: "Report IANA time zone; period end is inclusive.", scopeRules: "Only records authorized before aggregation contribute.", includedStatuses: ["active"], exclusions: ["restricted", "hard-deleted"],
+  recordStateTreatment: { reopened: "current state; prior completion remains historical", archived: "excluded", superseded: "excluded from current", expired: "excluded unless explicitly named", inaccessible: "excluded before aggregation and never disclosed" },
+  missingDataTreatment: "Unavailable; never zero.", partialSourceTreatment: "Value unavailable unless all required contributing sources are available.", confidencePolicy: "Preserve source confidence and report coverage.", asOfBehavior: "Snapshot at report as-of.", minimumSample: 1,
+  sourceContractVersions: ["v1"], policyVersion: POLICY, effectiveAt: EFFECTIVE_AT, validationExamples: [{ input: "No eligible authorized records", expected: "empty-population, not unavailable" }], ...input,
+});
+
+export const HPM_METRIC_DEFINITIONS: readonly HpmMetricDefinition[] = Object.freeze([
+  base({ key: "active-attention-count", name: "Active attention items", description: "Authorized active attention items in canonical HPM order.", owner: "hpm", numerator: "Active authorized attention items", denominator: "Not applicable", unit: "count", aggregation: "count", includedStatuses: ["active-attention"] }),
+  base({ key: "critical-attention-count", name: "Critical attention items", description: "Authorized attention items classified critical.", owner: "hpm", numerator: "Critical authorized attention items", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+  base({ key: "lifecycle-thread-count", name: "Lifecycle threads", description: "Authorized projected lifecycle threads.", owner: "hpm", numerator: "Authorized threads", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+  base({ key: "healthy-thread-rate", name: "Healthy thread rate", description: "Share of authorized threads classified healthy.", owner: "hpm", numerator: "Healthy threads", denominator: "Authorized lifecycle threads", unit: "percentage", aggregation: "ratio" }),
+  base({ key: "blocked-thread-rate", name: "Blocked thread rate", description: "Share of authorized threads classified blocked.", owner: "hpm", numerator: "Blocked threads", denominator: "Authorized lifecycle threads", unit: "percentage", aggregation: "ratio" }),
+  base({ key: "stage-visible-count", name: "Visible records by stage", description: "Source records visible after authorization grouped by lifecycle stage.", owner: "hpm", numerator: "Visible records", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+  base({ key: "stage-attention-count", name: "Attention by stage", description: "Authorized attention items grouped by canonical lifecycle stage.", owner: "hpm", numerator: "Stage attention items", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+  base({ key: "source-coverage-rate", name: "Source coverage", description: "Available applicable lifecycle sources.", owner: "hpm", numerator: "Available applicable sources", denominator: "Applicable sources", unit: "percentage", aggregation: "ratio" }),
+  base({ key: "current-source-count", name: "Current sources", description: "Sources classified current at report as-of.", owner: "hpm", numerator: "Current sources", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+  base({ key: "limited-source-count", name: "Limited sources", description: "Sources stale, incomplete, unavailable, or not configured.", owner: "hpm", numerator: "Limited sources", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+  base({ key: "lineage-edge-count", name: "Visible lineage relationships", description: "Authorized explicit and server-inferred lineage edges.", owner: "hpm", numerator: "Visible lineage relationships", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+  base({ key: "missing-lineage-thread-count", name: "Threads missing lineage", description: "Authorized threads with lifecycle records but no visible relationship.", owner: "hpm", numerator: "Threads without lineage", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+  base({ key: "execution-blocker-count", name: "Execution blockers", description: "Projected Execute blockers for authorized lifecycle threads.", owner: "execute", numerator: "Visible unresolved execution blockers", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+  base({ key: "measurement-awaiting-count", name: "Awaiting measurement", description: "Projected records explicitly awaiting measurement.", owner: "outcomes", numerator: "Visible records awaiting measurement", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+  base({ key: "reevaluation-count", name: "Learning requiring reevaluation", description: "Projected learning or recommendation records requiring reevaluation.", owner: "learning", numerator: "Visible records requiring reevaluation", denominator: "Not applicable", unit: "count", aggregation: "count" }),
+]);
+
+export function getHpmMetricDefinition(key: string, version = "v1") { return HPM_METRIC_DEFINITIONS.find((definition) => definition.key === key && definition.version === version); }

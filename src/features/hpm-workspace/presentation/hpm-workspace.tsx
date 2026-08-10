@@ -20,7 +20,7 @@ export function HpmWorkspaceFrame({ activeHref, query, model, children }: { acti
         <button className="min-h-11 rounded-xl bg-stone-950 px-5 text-sm font-semibold text-white sm:col-start-3" type="submit">Apply context</button>
       </form>
     </WorkspacePage>
-    <WorkspaceNavigation label="HPM workspace" items={NAVIGATION.map((item) => ({ ...item, href: `${item.href}?${search}` }))} activeHref={`${activeHref}?${search}`} />
+    <WorkspaceNavigation label="HPM workspace" items={[...NAVIGATION, ...(model.features.reports ? [{ label: "Reports", href: "/dashboard/hpm/reports" }] : []), ...(model.features.operationalHealth ? [{ label: "Operations", href: "/dashboard/hpm/operations" }] : [])].map((item) => ({ ...item, href: `${item.href}?${search}` }))} activeHref={`${activeHref}?${search}`} />
     <WorkspacePage>{model.lifecycle.partial ? <PartialNotice projection={model.lifecycle} /> : null}{children}</WorkspacePage>
   </>;
 }

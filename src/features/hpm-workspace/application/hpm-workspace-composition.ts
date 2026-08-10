@@ -27,6 +27,8 @@ export type HpmWorkspaceProjection = Readonly<{
   attention: HpmAttentionProjection;
   properties: readonly Readonly<{ id: string; name: string }>[];
   correlationId: string;
+  actor: HpmActorContext;
+  features: Readonly<{ reports: boolean; exports: boolean; operationalHealth: boolean; operationalCommands: boolean }>;
 }>;
 
 export type HpmWorkspaceFailure = Readonly<{ ok: false; code: string; message: string; correlationId: string }>;
@@ -35,6 +37,8 @@ export type HpmWorkspaceResult = Readonly<{ ok: true; value: HpmWorkspaceProject
 export function isHpmWorkspaceEnabled() {
   return process.env.HPM_UNIFIED_WORKSPACE_ENABLED !== "false";
 }
+
+export function getHpmReportingFlags() { return Object.freeze({ reports: process.env.HPM_STANDARD_REPORTS_ENABLED === "true", exports: process.env.HPM_REPORT_EXPORTS_ENABLED === "true", operationalHealth: process.env.HPM_OPERATIONAL_HEALTH_ENABLED === "true", operationalCommands: process.env.HPM_OPERATIONAL_COMMANDS_ENABLED === "true" }); }
 
 /** Server-only production composition. RLS-filtered sources are adapted into HPM; absent sources stay explicitly unavailable. */
 export async function getHpmWorkspaceProjection(query: HpmWorkspaceQuery): Promise<HpmWorkspaceResult> {
@@ -74,7 +78,7 @@ export async function getHpmWorkspaceProjection(query: HpmWorkspaceQuery): Promi
     const attentionService = createHpmAttentionProjectionService();
     const attention = await attentionService.buildHpmAttentionProjection({ actor, lifecycleProjection: lifecycle.projection, attentionPolicyVersion: HPM_ATTENTION_POLICY_VERSION, commandVocabularyVersion: HPM_COMMAND_VOCABULARY_VERSION, correlationId, cursor: query.cursor, filter: { stages: query.stages, classifications: query.classifications } });
     if (!attention.ok) return { ok: false, code: attention.code, message: attention.message, correlationId };
-    return { ok: true, value: Object.freeze({ lifecycle: lifecycle.projection, attention: attention.projection, properties, correlationId }) };
+    return { ok: true, value: Object.freeze({ lifecycle: lifecycle.projection, attention: attention.projection, properties, correlationId, actor, features: getHpmReportingFlags() }) };
   } catch {
     return { ok: false, code: "HPM_PROJECTION_UNAVAILABLE", message: "The HPM workspace could not be loaded. No source records were changed.", correlationId };
   }
