@@ -2,9 +2,14 @@
 
 AU-001A extends this canonical capability with governed, tenant-scoped,
 immutable definition versions. See
-`docs/Architecture/au-001a-automation-foundation.md`. The AU-001A production
+`docs/architecture/au-001a-automation-foundation.md`. The AU-001A production
 composition is intentionally not connected to routes, schedulers, workers, or
 command invokers until the separately approved rollout gate.
+
+AU-001B adds deterministic schedules, canonical event/state/threshold/manual
+intake, stable occurrences, bounded leases and backfills, and durable run
+requests. It remains locally inert and never dispatches a business command.
+See `docs/architecture/au-001b-triggers-and-scheduling.md`.
 
 Automation is the canonical platform capability for determining whether
 Decision-backed Actions and Workflows may begin without human intervention.

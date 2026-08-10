@@ -14,7 +14,10 @@ grant usage on schema public, auth to anon, authenticated, service_role;
 create function auth.uid() returns uuid
 language sql stable
 as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-grant execute on function auth.uid() to anon, authenticated, service_role;
+create function auth.role() returns text
+language sql stable
+as $$ select coalesce(nullif(current_setting('request.jwt.claim.role', true), ''), current_user) $$;
+grant execute on function auth.uid(), auth.role() to anon, authenticated, service_role;
 
 create table public.profiles(id uuid primary key);
 create table public.test_workspace_memberships(

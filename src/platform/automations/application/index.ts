@@ -4,3 +4,5 @@ export { type AutomationPolicy, type AutomationPolicyContext, type AutomationPol
 export { AutomationPolicyRegistry } from "./automation-policy-registry";
 export { AutomationSession, type AutomationSessionInput } from "./automation-session";
 export * from "./automation-foundation";
+export * from "./automation-trigger-processing";
+export * from "./automation-trigger-projections";
