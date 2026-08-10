@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { Building2, Check, Palette, Plus, Sparkles, TriangleAlert } from "lucide-react";
 import { getPublishedGuidebookTemplates, type PublishedGuidebookTemplate } from "@/app/actions/guidebook-templates";
+import { usStates, usTimeZones } from "./property-options";
 
 type PropertyOption = Readonly<{
   id: string;
@@ -16,68 +17,6 @@ const steps = ["Welcome", "Property", "Style", "Template", "Brand", "Details", "
 const styleOptions = ["Luxury", "Beach", "Cabin", "Family", "Minimal", "Boutique"] as const;
 const photographyStyles = ["Bright & Airy", "Warm & Moody", "Natural Light", "Editorial"] as const;
 const brandVoices = ["Warm & Welcoming", "Polished & Professional", "Playful & Casual", "Minimal & Direct"] as const;
-const usStates = [
-  "Alabama",
-  "Alaska",
-  "Arizona",
-  "Arkansas",
-  "California",
-  "Colorado",
-  "Connecticut",
-  "Delaware",
-  "District of Columbia",
-  "Florida",
-  "Georgia",
-  "Hawaii",
-  "Idaho",
-  "Illinois",
-  "Indiana",
-  "Iowa",
-  "Kansas",
-  "Kentucky",
-  "Louisiana",
-  "Maine",
-  "Maryland",
-  "Massachusetts",
-  "Michigan",
-  "Minnesota",
-  "Mississippi",
-  "Missouri",
-  "Montana",
-  "Nebraska",
-  "Nevada",
-  "New Hampshire",
-  "New Jersey",
-  "New Mexico",
-  "New York",
-  "North Carolina",
-  "North Dakota",
-  "Ohio",
-  "Oklahoma",
-  "Oregon",
-  "Pennsylvania",
-  "Rhode Island",
-  "South Carolina",
-  "South Dakota",
-  "Tennessee",
-  "Texas",
-  "Utah",
-  "Vermont",
-  "Virginia",
-  "Washington",
-  "West Virginia",
-  "Wisconsin",
-  "Wyoming",
-] as const;
-const usTimeZones = [
-  ["America/New_York", "Eastern Time"],
-  ["America/Chicago", "Central Time"],
-  ["America/Denver", "Mountain Time"],
-  ["America/Phoenix", "Arizona Time"],
-  ["America/Los_Angeles", "Pacific Time"],
-  ["America/Anchorage", "Alaska Time"],
-  ["Pacific/Honolulu", "Hawaii Time"],
-] as const;
 const emptyProperty = {
   name: "",
   address: "",
