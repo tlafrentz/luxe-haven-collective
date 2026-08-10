@@ -34,6 +34,13 @@ export function evaluateHpmFeatureFlags(input: Readonly<{ requested: Partial<Rec
   return Object.freeze(resolved);
 }
 
+export function evaluateHpmCohortAccess(input: Readonly<{ cohort: HpmReleaseCohort; enabled: boolean; profileRole?: string | null; tenantId?: string; namedTenantIds?: readonly string[] }>): boolean {
+  if (!input.enabled) return false;
+  if (input.cohort === "verification" || input.cohort === "internal") return input.profileRole === "admin";
+  if (input.cohort === "named-test-tenants" || input.cohort === "limited") return Boolean(input.tenantId && input.namedTenantIds?.includes(input.tenantId));
+  return input.cohort === "broad" || input.cohort === "general-availability";
+}
+
 export function validateReleaseGates(gates: readonly HpmReleaseGate[]): HpmReleaseResult<readonly HpmReleaseGate[]> {
   const blocker = gates.find((gate) => gate.required && !["passed", "approved-deferral", "not-applicable"].includes(gate.status));
   if (blocker) return { ok: false, code: "HPM_RELEASE_PREREQUISITE_FAILED", message: `Required release gate ${blocker.id} has not passed.` };

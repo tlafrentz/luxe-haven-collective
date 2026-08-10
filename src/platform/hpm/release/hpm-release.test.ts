@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createHpmReleaseManifest, evaluateHpmFeatureFlags, evaluateReleaseThresholds, HPM_PLATFORM_V1_THRESHOLDS, HPM_RELEASE_FLAGS, transitionHpmRelease, validateCohort, validateHpmConfiguration, validateReleaseGates, verifyNoAutonomousAuthority, type HpmReleaseRecord } from ".";
+import { createHpmReleaseManifest, evaluateHpmCohortAccess, evaluateHpmFeatureFlags, evaluateReleaseThresholds, HPM_PLATFORM_V1_THRESHOLDS, HPM_RELEASE_FLAGS, transitionHpmRelease, validateCohort, validateHpmConfiguration, validateReleaseGates, verifyNoAutonomousAuthority, type HpmReleaseRecord } from ".";
 
 const actor = { actorId: "operator-1", roleIds: ["release-owner"], active: true } as const;
 const approval = { actorId: "operator-1", authority: "release-owner", approvedAt: "2026-08-09T18:00:00.000Z", rationale: "All required gates passed." } as const;
@@ -52,6 +52,14 @@ describe("HPM-001F release controls", () => {
     expect(validateCohort({ cohort: "internal", tenantCount: 3, propertyCount: 10, approval, predecessorCompleted: true })).toMatchObject({ ok: true });
     expect(validateCohort({ cohort: "internal", tenantCount: 6, propertyCount: 10, approval, predecessorCompleted: true })).toMatchObject({ ok: false, code: "HPM_RELEASE_COHORT_INELIGIBLE" });
     expect(validateCohort({ cohort: "limited", tenantCount: 1, propertyCount: 1, predecessorCompleted: true })).toMatchObject({ ok: false });
+  });
+
+  it("keeps internal cohorts limited to authenticated platform administrators", () => {
+    expect(evaluateHpmCohortAccess({ cohort: "internal", enabled: true, profileRole: "admin" })).toBe(true);
+    expect(evaluateHpmCohortAccess({ cohort: "internal", enabled: true, profileRole: "owner" })).toBe(false);
+    expect(evaluateHpmCohortAccess({ cohort: "internal", enabled: false, profileRole: "admin" })).toBe(false);
+    expect(evaluateHpmCohortAccess({ cohort: "named-test-tenants", enabled: true, tenantId: "tenant-a", namedTenantIds: ["tenant-a"] })).toBe(true);
+    expect(evaluateHpmCohortAccess({ cohort: "named-test-tenants", enabled: true, tenantId: "tenant-b", namedTenantIds: ["tenant-a"] })).toBe(false);
   });
 
   it("halts on safety signals and applies immutable rollout thresholds", () => {

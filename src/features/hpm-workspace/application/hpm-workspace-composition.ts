@@ -15,6 +15,7 @@ import {
   HPM_LIFECYCLE_POLICY_VERSION,
   HPM_LINEAGE_POLICY_VERSION,
   evaluateHpmFeatureFlags,
+  evaluateHpmCohortAccess,
   type HpmActorContext,
   type HpmAttentionProjection,
   type HpmLifecycleProjection,
@@ -48,7 +49,7 @@ export async function getHpmWorkspaceProjection(query: HpmWorkspaceQuery): Promi
   const correlationId = randomUUID();
   if (!isHpmWorkspaceEnabled()) return { ok: false, code: "HPM_FEATURE_DISABLED", message: "The HPM workspace is not enabled for this environment.", correlationId };
   try {
-    const { user } = await requireUser();
+    const { user, profile } = await requireUser();
     const repository = new SupabaseTeamAccessRepository();
     const access = await repository.resolve(user.id);
     if (!access || access.status !== "active") return { ok: false, code: "HPM_SCOPE_ACCESS_DENIED", message: "This HPM workspace is not available to your account.", correlationId };
@@ -56,6 +57,9 @@ export async function getHpmWorkspaceProjection(query: HpmWorkspaceQuery): Promi
     const allowed = access.propertyAccess.type === "selected" ? new Set(access.propertyAccess.propertyIds) : null;
     const properties = Object.freeze(listed.filter((property) => !allowed || allowed.has(property.id)).map((property) => Object.freeze(property)));
     const actor: HpmActorContext = Object.freeze({ actorId: user.id, tenantId: access.workspaceId, roleIds: [access.role], propertyIds: properties.map(({ id }) => id), active: true });
+    const cohort = process.env.HPM_ROLLOUT_COHORT ?? "verification";
+    const eligible = evaluateHpmCohortAccess({ cohort: isHpmCohort(cohort) ? cohort : "verification", enabled: process.env.HPM_COHORT_ENABLED === "true", profileRole: profile?.role, tenantId: access.workspaceId, namedTenantIds: parseTenantIds(process.env.HPM_COHORT_TENANT_IDS) });
+    if (!eligible) return { ok: false, code: "HPM_COHORT_INELIGIBLE", message: "The HPM workspace is not enabled for this account cohort.", correlationId };
     const scopeId = query.scopeType === "property" ? query.scopeId : access.workspaceId;
     if (!scopeId) return { ok: false, code: "HPM_SCOPE_NOT_FOUND", message: "Choose an authorized property to view its lifecycle.", correlationId };
     const scope = resolveScope(access, properties, query, scopeId);
@@ -88,6 +92,9 @@ export async function getHpmWorkspaceProjection(query: HpmWorkspaceQuery): Promi
     return { ok: false, code: "HPM_PROJECTION_UNAVAILABLE", message: "The HPM workspace could not be loaded. No source records were changed.", correlationId };
   }
 }
+
+function parseTenantIds(value?: string) { return Object.freeze((value ?? "").split(",").map((item) => item.trim()).filter(Boolean)); }
+function isHpmCohort(value: string): value is "verification" | "internal" | "named-test-tenants" | "limited" | "broad" | "general-availability" { return ["verification", "internal", "named-test-tenants", "limited", "broad", "general-availability"].includes(value); }
 
 function resolveScope(access: WorkspaceAccessContext, properties: readonly { id: string }[], query: HpmWorkspaceQuery, scopeId: string): HpmProjectionScope | null {
   if (query.scopeType === "property" && !properties.some(({ id }) => id === scopeId)) return null;
