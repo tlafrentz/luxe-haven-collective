@@ -77,6 +77,10 @@ export function CustomReportBuilder({
         Choose sections and canonical metrics, then arrange them with the
         keyboard-accessible controls.
       </p>
+      <p aria-live="polite" className="mt-2 text-sm font-medium">
+        Review: {visibility.replace("_", " ")} · {selected.length} selected
+        section{selected.length === 1 ? "" : "s"}
+      </p>
       {selected.map((key) => (
         <input key={key} name="sectionKeys" type="hidden" value={key} />
       ))}

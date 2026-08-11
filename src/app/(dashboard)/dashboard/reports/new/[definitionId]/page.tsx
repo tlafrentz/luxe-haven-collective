@@ -152,7 +152,7 @@ export default async function ConfigureReportPage({
               <input name="includeLineageAppendix" type="hidden" value="true" />
               <CustomReportBuilder
                 sections={CUSTOM_REPORT_SECTION_REGISTRY.filter((section) =>
-                  section.supportedScopeKinds.includes("portfolio"),
+                  section.supportedScopeKinds.includes("property"),
                 )
                   .slice(0, 12)
                   .map((section) => ({
@@ -192,11 +192,15 @@ export default async function ConfigureReportPage({
             </div>
             <div>
               <dt className="font-semibold">Visibility</dt>
-              <dd>{d.visibilityPolicy.default.replace("_", " ")}</dd>
+              <dd>
+                {isCustom
+                  ? "Selected above"
+                  : d.visibilityPolicy.default.replace("_", " ")}
+              </dd>
             </div>
             <div>
               <dt className="font-semibold">Sections</dt>
-              <dd>{d.sectionDefinitions.length}</dd>
+              <dd>{isCustom ? "Selected above" : d.sectionDefinitions.length}</dd>
             </div>
           </dl>
           <p className="mt-4 text-sm">

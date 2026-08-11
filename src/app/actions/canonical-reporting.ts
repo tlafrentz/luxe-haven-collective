@@ -210,10 +210,15 @@ function parseScope(
   tenantId: string,
 ): ReportScope {
   const propertyIds = form.getAll("propertyIds").map(String).filter(Boolean);
+  if (definitionId === "custom.report.v1")
+    return propertyIds.length === 1
+      ? { kind: "property", tenantId, propertyId: propertyIds[0]! }
+      : propertyIds.length > 1
+        ? { kind: "selected_properties", tenantId, propertyIds }
+        : { kind: "portfolio", tenantId };
   if (
     definitionId === "executive.performance-brief.v1" ||
-    definitionId === "operations.performance-report.v1" ||
-    definitionId === "custom.report.v1"
+    definitionId === "operations.performance-report.v1"
   )
     return propertyIds.length
       ? { kind: "selected_properties", tenantId, propertyIds }
