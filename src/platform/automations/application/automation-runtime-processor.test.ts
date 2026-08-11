@@ -17,6 +17,8 @@ function harness(enabled = true) {
     materialize: vi.fn(async () => ({ ok: true as const, value: { run, steps: [ready], created: true } })),
     evaluatePolicy: vi.fn(async () => ({ ok: true as const, value: { ...run, status: "approved" as const, version: 2 } })),
     dispatch: vi.fn(async () => ({ ok: true as const, value: { run: { ...run, status: "running" as const, version: 3 }, step: { ...ready, status: "succeeded" as const, version: 4 } } })),
+    reconcile: vi.fn(async () => ({ ok: true as const, value: { run: { ...run, status: "running" as const, version: 3 }, step: { ...ready, status: "succeeded" as const, version: 4 } } })),
+    retryStep: vi.fn(async () => ({ ok: true as const, value: { ...run, status: "running" as const, version: 3 } })),
     finalize: vi.fn(async () => ({ ok: true as const, value: { ...run, status: "succeeded" as const, version: 4 } })),
   };
   const processor = createAutomationRuntimeProcessor({
@@ -42,6 +44,44 @@ describe("production Automation runtime processor", () => {
   it("does not claim or dispatch when a kill switch is enabled", async () => {
     const { processor, governed } = harness(false);
     await expect(processor.process("invocation-1")).rejects.toThrow("AUTOMATION_KILL_SWITCHED");
+    expect(governed.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("reconciles an uncertain command before considering redispatch", async () => {
+    const { governed } = harness();
+    const uncertain = { ...ready, status: "reconciliation_required" as const, version: 4 };
+    const succeeded = { ...ready, status: "succeeded" as const, version: 6 };
+    const getSteps = vi.fn().mockResolvedValueOnce([uncertain]).mockResolvedValue([succeeded]);
+    const local = createAutomationRuntimeProcessor({
+      enabled: () => true,
+      scheduler: { scanDueSchedules: vi.fn(async () => ({ ok: true as const, value: { processed: 0, accepted: 0 } })) },
+      requests: { listRequested: vi.fn(async () => [request] as never) },
+      runs: { getRun: vi.fn(), getSteps, getApproval: vi.fn(async () => null) },
+      definitions: { getExecution: vi.fn(async () => ({ definitionVersionId: "definition-version-1", active: true, killSwitched: false, plan: { version: "plan-v1", schemaVersion: "au001-execution-plan.v1", definitionVersionId: "definition-version-1", maximumSteps: 1, steps: [{ key: "create", owningCapability: "execute", commandType: "createDraftPlan", commandContractVersion: "v1", dependencies: [], continuationRule: "all_succeeded", payload: { title: "Draft plan" }, approvalPolicyId: "a", actorPolicyId: "b", retryPolicyId: "c", timeoutPolicyId: "d" }] } } as never)) },
+      governed, actor: { actorId: "scheduler-1", tenantId: "workspace-1", role: "service", active: true, grants: ["scheduler"], propertyIds: ["property-1"] },
+      workerId: "worker-1", serviceActorPolicyId: "policy-v1", policyVersion: "policy-v1", maximumRequests: 10,
+    });
+    await local.process("invocation-1");
+    expect(governed.reconcile).toHaveBeenCalledOnce();
+    expect(governed.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("schedules bounded retries without dispatching before nextAttemptAt", async () => {
+    const { governed } = harness();
+    const retryable = { ...ready, status: "failed_retryable" as const, attemptCount: 1, version: 4 };
+    const delayed = { ...ready, status: "ready" as const, nextAttemptAt: "2026-08-10T12:01:00Z", version: 5 };
+    const local = createAutomationRuntimeProcessor({
+      enabled: () => true,
+      scheduler: { scanDueSchedules: vi.fn(async () => ({ ok: true as const, value: { processed: 0, accepted: 0 } })) },
+      requests: { listRequested: vi.fn(async () => [request] as never) },
+      runs: { getRun: vi.fn(), getSteps: vi.fn().mockResolvedValueOnce([retryable]).mockResolvedValue([delayed]), getApproval: vi.fn(async () => null) },
+      definitions: { getExecution: vi.fn(async () => ({ definitionVersionId: "definition-version-1", active: true, killSwitched: false, plan: { version: "plan-v1", schemaVersion: "au001-execution-plan.v1", definitionVersionId: "definition-version-1", maximumSteps: 1, steps: [{ key: "create", owningCapability: "execute", commandType: "createDraftPlan", commandContractVersion: "v1", dependencies: [], continuationRule: "all_succeeded", payload: { title: "Draft plan" }, approvalPolicyId: "a", actorPolicyId: "b", retryPolicyId: "c", timeoutPolicyId: "d" }] } } as never)) },
+      governed, actor: { actorId: "scheduler-1", tenantId: "workspace-1", role: "service", active: true, grants: ["scheduler"], propertyIds: ["property-1"] },
+      workerId: "worker-1", serviceActorPolicyId: "policy-v1", policyVersion: "policy-v1", maximumRequests: 10,
+      clock: () => "2026-08-10T12:00:00Z",
+    });
+    await local.process("invocation-1");
+    expect(governed.retryStep).toHaveBeenCalledOnce();
     expect(governed.dispatch).not.toHaveBeenCalled();
   });
 });
