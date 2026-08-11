@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   processProductionAutomation,
   readProductionAutomationRuntimeConfig,
+  requestProductionManualAutomation,
 } from "@/platform/automations";
 
 export const runtime = "nodejs";
@@ -22,6 +23,15 @@ export async function POST(request: NextRequest) {
         { ok: false, code: "AUTOMATION_KILL_SWITCHED", correlationId },
         { status: 503 },
       );
+    const body = request.method === "POST" ? await safeBody(request) : {};
+    if (body.mode === "manual") {
+      const requested = await requestProductionManualAutomation(
+        correlationId,
+        typeof body.idempotencyKey === "string" ? body.idempotencyKey : "",
+        config,
+      );
+      return NextResponse.json({ ok: true, correlationId, manual: requested });
+    }
     const summary = await processProductionAutomation(correlationId, config);
     return NextResponse.json({ ok: true, ...summary });
   } catch (error) {
@@ -35,6 +45,15 @@ export async function POST(request: NextRequest) {
       { status: classification === "AUTOMATION_KILL_SWITCHED" ? 503 : 500 },
     );
   }
+}
+
+async function safeBody(request: NextRequest): Promise<Record<string, unknown>> {
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (contentLength > 4096) throw new Error("AUTOMATION_MANUAL_REQUEST_INVALID");
+  const value = await request.json().catch(() => ({}));
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 export const GET = POST;

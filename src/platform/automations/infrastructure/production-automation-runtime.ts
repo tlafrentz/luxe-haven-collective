@@ -29,6 +29,7 @@ export type ProductionAutomationRuntimeConfig = Readonly<{
   tenantId: string;
   propertyIds: readonly string[];
   definitionIds: readonly string[];
+  manualTriggerId: string;
   schedulerActorId: string;
   workerId: string;
   policyVersion: string;
@@ -64,6 +65,7 @@ export function readProductionAutomationRuntimeConfig(
     tenantId: required("AUTOMATION_COHORT_TENANT_ID"),
     propertyIds: Object.freeze(list("AUTOMATION_COHORT_PROPERTY_IDS")),
     definitionIds: Object.freeze(list("AUTOMATION_COHORT_DEFINITION_IDS")),
+    manualTriggerId: required("AUTOMATION_COHORT_MANUAL_TRIGGER_ID"),
     schedulerActorId: required("AUTOMATION_ORCHESTRATOR_ACTOR_ID"),
     workerId: required("AUTOMATION_WORKER_ID"),
     policyVersion: required("AUTOMATION_RUNTIME_POLICY_VERSION"),
@@ -75,6 +77,56 @@ export function readProductionAutomationRuntimeConfig(
     dispatchEnabled: env.AUTOMATION_GOVERNED_DISPATCH_ENABLED === "true",
     globalKillSwitch: env.AUTOMATION_GLOBAL_KILL_SWITCH !== "false",
     workspaceKillSwitch: env.AUTOMATION_WORKSPACE_KILL_SWITCH !== "false",
+  });
+}
+
+export async function requestProductionManualAutomation(
+  correlationId: string,
+  idempotencyKey: string,
+  config = readProductionAutomationRuntimeConfig(),
+) {
+  if (typeof window !== "undefined")
+    throw new Error("Automation runtime composition is server-only.");
+  if (
+    !config.foundationEnabled ||
+    !config.schedulingEnabled ||
+    config.globalKillSwitch ||
+    config.workspaceKillSwitch
+  )
+    throw new Error("AUTOMATION_KILL_SWITCHED");
+  if (!idempotencyKey.trim() || idempotencyKey.length > 200)
+    throw new Error("AUTOMATION_MANUAL_REQUEST_INVALID");
+  const orchestrator = createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const actor = Object.freeze({
+    actorId: config.schedulerActorId,
+    tenantId: config.tenantId,
+    role: "operator" as const,
+    active: true,
+    propertyIds: config.propertyIds,
+  });
+  const triggers = createProductionAutomationTriggers({
+    client: orchestrator as unknown as TriggerSupabaseClient,
+    actor,
+    flags: {
+      automationFoundationEnabled: config.foundationEnabled,
+      triggerProcessingEnabled: config.schedulingEnabled,
+      schedulerKillSwitch: config.globalKillSwitch || config.workspaceKillSwitch,
+    },
+  });
+  const result = await triggers.requestManualTrigger({
+    actor,
+    tenantId: config.tenantId,
+    triggerId: config.manualTriggerId,
+    expectedAutomationVersion: 1,
+    idempotencyKey: idempotencyKey.trim(),
+    correlationId,
+  });
+  if (!result.ok) throw new Error(result.code);
+  return Object.freeze({
+    accepted: Boolean(result.value.runRequest),
+    occurrenceId: result.value.occurrence.id,
   });
 }
 

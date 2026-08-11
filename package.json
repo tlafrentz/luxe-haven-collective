@@ -13,6 +13,7 @@
     "test:automation:supabase": "tsx scripts/verification/verify-au001-hosted-clients.ts",
     "test:automation:runtime-identity": "tsx scripts/verification/verify-au001-runtime-identity-hosted.ts",
     "automation:provision-execute-identity": "tsx scripts/operations/provision-au-execute-identity.ts",
+    "automation:seed-internal-cohort": "tsx scripts/operations/seed-au-internal-cohort.ts",
     "test:watch": "vitest",
     "migration:graph": "tsx scripts/platform-migration/cli.ts graph",
     "migration:duplicates": "tsx scripts/platform-migration/cli.ts duplicates",
