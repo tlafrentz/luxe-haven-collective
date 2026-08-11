@@ -161,6 +161,18 @@ describe("RP-001E renderers", () => {
     expect(pdf.getPageCount()).toBeGreaterThan(0);
     expect(pdf.getTitle()).toBe("July Performance");
   });
+  it("does not add an orphan lineage page for duplicate limitations", async () => {
+    const duplicated = {
+        ...snapshot,
+        dataGaps: Array.from({ length: 20 }, (_, index) => ({
+          ...snapshot.dataGaps[0],
+          gapId: `gap_${index}`,
+        })),
+      } as GeneratedReportSnapshot,
+      rendered = await renderCanonicalReportPdf(duplicated, options),
+      pdf = await PDFDocument.load(rendered.bytes);
+    expect(pdf.getPageCount()).toBe(1);
+  });
   it("preserves zero, leaves missing empty, and neutralizes formulas", () => {
     const rendered = renderCsvExport(snapshot, options, false),
       text = new TextDecoder().decode(rendered.bytes);

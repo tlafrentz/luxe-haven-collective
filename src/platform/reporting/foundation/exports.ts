@@ -544,7 +544,17 @@ class PdfLayout {
     this.text("Data Quality and Limitations", 18, this.serif);
     if (!this.snapshot.dataGaps.length)
       this.text("No disclosed data gaps.", 9, this.regular);
-    for (const gap of this.snapshot.dataGaps)
+    const uniqueGaps = this.snapshot.dataGaps.filter(
+      (gap, index, gaps) =>
+        gaps.findIndex(
+          (candidate) =>
+            candidate.category === gap.category &&
+            candidate.severity === gap.severity &&
+            candidate.code === gap.code &&
+            candidate.message === gap.message,
+        ) === index,
+    );
+    for (const gap of uniqueGaps)
       this.text(
         `${gap.severity.toUpperCase()}: ${gap.message}`,
         9,
@@ -552,6 +562,7 @@ class PdfLayout {
       );
   }
   lineage() {
+    if (!this.snapshot.lineage.length) return;
     this.ensure(60);
     this.text("Source Lineage", 18, this.serif);
     for (const item of this.snapshot.lineage.slice(0, 100))
