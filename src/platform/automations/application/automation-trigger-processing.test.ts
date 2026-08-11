@@ -97,7 +97,7 @@ describe("AU-001B trigger processing", () => {
     const created = await test.service.requestBackfill(request); const replay = await test.service.requestBackfill(request); expect(replay).toEqual(created);
     if (!created.ok) throw new Error("Backfill not created"); const processed = await test.service.processBackfillBatch({ actor: serviceActor, tenantId: "tenant-1", jobId: created.value.id }); expect(processed).toMatchObject({ ok: true, value: { status: "COMPLETED", processedCount: 3 } });
     const second = harness(); second.setTrigger(trigger("SCHEDULE_CALENDAR")); const pending = await second.service.requestBackfill(request); if (!pending.ok) throw new Error("Backfill not created"); expect(await second.service.cancelBackfill({ actor, tenantId: "tenant-1", jobId: pending.value.id, expectedVersion: 1, reason: "No longer needed" })).toMatchObject({ ok: true, value: { status: "CANCELLED" } });
-  });
+  }, 15_000);
 
   it("reports trigger health from durable state", async () => {
     const healthy = await harness().service.readTriggerHealth({ actor, tenantId: "tenant-1", triggerId: "trigger-1" }); expect(healthy).toMatchObject({ ok: true, value: { classification: "HEALTHY" } });

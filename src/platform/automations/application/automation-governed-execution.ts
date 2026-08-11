@@ -41,7 +41,7 @@ export interface GovernedExecutionTelemetry { emit(event: Readonly<{ name: strin
 export function createGovernedExecutionService(dependencies: Readonly<{
   repository: GovernedExecutionRepository; definitions: AutomationDefinitionExecutionReader; policy: AutomationPolicyEvaluator; approvalAuthority: AutomationApprovalAuthority;
   ports: readonly AutomationCommandPort[]; serviceActor: AutomationServiceActor; clock: () => string; id: () => string; telemetry?: GovernedExecutionTelemetry;
-  enabled: () => boolean; killSwitched: () => boolean; leaseDurationMs: number; retryPolicy: AutomationRetryPolicy;
+  enabled: () => boolean; dispatchEnabled?: () => boolean; killSwitched: () => boolean; leaseDurationMs: number; retryPolicy: AutomationRetryPolicy;
 }>) {
   const ports = new Map(dependencies.ports.map((port) => [port.capability, port]));
   const signal = (name: string, input: { tenantId: string; correlationId: string; runId?: string; stepId?: string; classification?: string }) => dependencies.telemetry?.emit({ name, ...input, at: dependencies.clock() });
@@ -96,7 +96,7 @@ export function createGovernedExecutionService(dependencies: Readonly<{
     },
     async dispatch(input: Readonly<{ tenantId: string; runId: string; stepId: string; expectedRunVersion: number; expectedStepVersion: number; workerId: string; targetType: string; targetId: string; targetContextVersion: string; policyVersion: string; payload: Readonly<Record<string, unknown>>; approval?: AutomationApproval }>): Promise<GovernedExecutionResult<Readonly<{ run: AutomationRun; step: AutomationRunStep }>>> {
       try {
-        available(); const run = await requiredRun(input.tenantId, input.runId); version(run, input.expectedRunVersion);
+        available(); if (dependencies.dispatchEnabled && !dependencies.dispatchEnabled()) throw new AutomationGovernedExecutionError("AUTOMATION_KILL_SWITCHED", "Automation command dispatch is disabled."); const run = await requiredRun(input.tenantId, input.runId); version(run, input.expectedRunVersion);
         if (!["approved", "queued", "running"].includes(run.status)) throw new AutomationGovernedExecutionError("COMMAND_VALIDATION_FAILED", "The run is not dispatchable.");
         if (run.deadlineAt && Date.parse(run.deadlineAt) <= Date.parse(dependencies.clock())) throw new AutomationGovernedExecutionError("RUN_DEADLINE_EXCEEDED", "The run deadline has elapsed.");
         const definition = await dependencies.definitions.getExecution({ tenantId: run.tenantId, automationId: run.automationDefinitionId, version: run.automationDefinitionVersion });
@@ -132,6 +132,30 @@ export function createGovernedExecutionService(dependencies: Readonly<{
         const port = ports.get(step.owningCapability); if (!port) throw new AutomationGovernedExecutionError("COMMAND_CONTRACT_UNSUPPORTED", "The owning capability adapter is unavailable.");
         const result = await port.getCommandStatus(step.deterministicCommandId, step.idempotencyKey), classified = classifyReconciliation(result), nextStep = transitionAutomationStep(step.status === "reconciliation_required" ? transitionAutomationStep(step, "reconciling", step.version) : step, classified.stepStatus, step.status === "reconciliation_required" ? step.version + 1 : step.version);
         const saved = await dependencies.repository.recordDispatch({ run, step: nextStep, expectedRunVersion: input.expectedRunVersion, expectedStepVersion: input.expectedStepVersion, result, attemptId: dependencies.id(), now: dependencies.clock(), activity: [activity(dependencies.id(), run, nextStep, "automation_reconciliation_completed", dependencies.serviceActor.actorId, dependencies.clock())], notifications: [] }); return success(saved);
+      } catch (error) { return failure(error, input); }
+    },
+    async finalize(input: Readonly<{ tenantId: string; runId: string; expectedRunVersion: number }>): Promise<GovernedExecutionResult<AutomationRun>> {
+      try {
+        available();
+        const run = await requiredRun(input.tenantId, input.runId);
+        version(run, input.expectedRunVersion);
+        const steps = await dependencies.repository.getSteps(run.tenantId, run.id);
+        if (!steps.length) throw new AutomationGovernedExecutionError("DEPENDENCY_UNAVAILABLE", "The run has no execution steps.");
+        const statuses = new Set(steps.map(({ status }) => status));
+        let status: AutomationRun["status"];
+        if ([...statuses].some((value) => ["leased", "dispatching", "accepted", "reconciliation_required", "reconciling"].includes(value))) status = "reconciliation_required";
+        else if ([...statuses].some((value) => ["pending", "awaiting_approval", "ready", "failed_retryable"].includes(value))) return success(run);
+        else if ([...statuses].every((value) => ["succeeded", "skipped"].includes(value))) status = "succeeded";
+        else if ([...statuses].some((value) => ["failed_terminal", "timed_out", "compensation_failed"].includes(value))) status = "failed";
+        else if ([...statuses].every((value) => value === "cancelled")) status = "cancelled";
+        else status = "partially_succeeded";
+        if (run.status === status) return success(run);
+        const now = dependencies.clock();
+        let next: AutomationRun;
+        if (run.status === "reconciliation_required" && status !== "reconciliation_required")
+          next = transitionAutomationRun(run, "reconciling", run.version, now);
+        else next = transitionAutomationRun(run, status, run.version, now);
+        return success(await dependencies.repository.transition({ run: next, expectedVersion: run.version, activity: [activity(dependencies.id(), next, undefined, `automation_run_${next.status}`, dependencies.serviceActor.actorId, now)] }));
       } catch (error) { return failure(error, input); }
     },
     async heartbeatLease(input: Readonly<{ tenantId: string; stepId: string; workerId: string; leaseGeneration: number; expectedVersion: number }>): Promise<GovernedExecutionResult<AutomationRunStep>> {

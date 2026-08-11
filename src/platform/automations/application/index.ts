@@ -8,3 +8,4 @@ export * from "./automation-trigger-processing";
 export * from "./automation-trigger-projections";
 export * from "./automation-governed-execution";
 export * from "./automation-governed-projections";
+export * from "./automation-runtime-processor";
