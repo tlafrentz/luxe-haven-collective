@@ -35,16 +35,30 @@ export async function POST(request: NextRequest) {
     const summary = await processProductionAutomation(correlationId, config);
     return NextResponse.json({ ok: true, ...summary });
   } catch (error) {
+    const safeCause = safeFailureCause(error);
     const classification =
-      error instanceof Error && error.message === "AUTOMATION_KILL_SWITCHED"
+      safeCause === "AUTOMATION_KILL_SWITCHED"
         ? "AUTOMATION_KILL_SWITCHED"
         : "AUTOMATION_PROCESSOR_FAILED_SAFE";
-    console.error("automation.processor.failed", { correlationId, classification });
+    console.error("automation.processor.failed", {
+      correlationId,
+      classification,
+      cause: safeCause,
+    });
     return NextResponse.json(
       { ok: false, code: classification, correlationId },
       { status: classification === "AUTOMATION_KILL_SWITCHED" ? 503 : 500 },
     );
   }
+}
+
+function safeFailureCause(error: unknown) {
+  if (!(error instanceof Error)) return "AUTOMATION_RUNTIME_UNKNOWN";
+  if (error.message === "AUTOMATION_EXECUTE_IDENTITY_AUTH_FAILED")
+    return error.message;
+  if (error.message === "AUTOMATION_KILL_SWITCHED") return error.message;
+  if (/^[A-Z][A-Z0-9_]{2,100}$/.test(error.message)) return error.message;
+  return "AUTOMATION_RUNTIME_UNKNOWN";
 }
 
 async function safeBody(request: NextRequest): Promise<Record<string, unknown>> {

@@ -147,7 +147,7 @@ export async function processProductionAutomation(
     password: config.executePassword,
   });
   if (signIn.error || signIn.data.user?.id !== config.executeUserId)
-    throw new Error("Execute automation identity authentication failed.");
+    throw new Error("AUTOMATION_EXECUTE_IDENTITY_AUTH_FAILED");
 
   const cohort = Object.freeze({
     workspaceId: config.tenantId,
