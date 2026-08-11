@@ -4,6 +4,8 @@ Status: local prerequisite work in progress; production rollout remains blocked.
 
 This record distinguishes implementation from environment configuration and verification. It does not approve a migration, deployment, cohort, or production feature flag.
 
+Dormant deployment baseline: commit `c35919f5`, Vercel deployment `dpl_7B9vvS6Jc5uQEvji7Q3tcaZim8uP`. Application code is production-present with the global and workspace kill switches enabled. No AU database migration or capability enablement occurred.
+
 ## Verified locally
 
 - AU-001A through AU-001E are present at the commits recorded in `au-001-production-readiness.md`.

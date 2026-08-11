@@ -1,6 +1,19 @@
 # AU-001 production readiness
 
-Status: AU-001F.1 preparation implemented; rollout blocked. This document is not a production approval.
+Status: AU-001F.1 preparation implemented; dormant application artifact deployed; rollout blocked. This document is not a production approval.
+
+## Inert production baseline
+
+AU code-only deployment completed successfully at commit `c35919f5` through Vercel deployment `dpl_7B9vvS6Jc5uQEvji7Q3tcaZim8uP`. The artifact is production-present but inert. `AUTOMATION_GLOBAL_KILL_SWITCH` and `AUTOMATION_WORKSPACE_KILL_SWITCH` are enabled, all AU enablement flags are absent or false, and no AU schema, scheduling, processing, cohorts, templates, or command authority were activated.
+
+Production smoke evidence recorded at deployment:
+
+- public homepage, login, and health endpoint returned HTTP 200;
+- the authenticated Automation workspace remained behind the existing authentication boundary;
+- the Automation report export returned `AUTOMATION_EXPORT_FAILED` with “Automation exports are disabled”;
+- no AU migration command was executed.
+
+Preserve this deployment as the inert production baseline. The next production change must wait for acceptable hosted Supabase migration, RLS, compatibility, and recovery rehearsal evidence.
 
 ## Release candidate inventory
 
@@ -11,7 +24,7 @@ Status: AU-001F.1 preparation implemented; rollout blocked. This document is not
 | AU-001C Governed Execution      | `f6d90fa9`, hardened by `0ee433f5` | approval, pre-dispatch authority, idempotency, uncertain outcome, recovery tests    | owning adapters not production-configured      |
 | AU-001D Experience              | `6e8fbf92`                         | projections, flags, routes, responsive/accessibility component tests                | disabled by default                            |
 | AU-001E Operations              | `8ecd6d42`                         | health, compatibility, reconciliation, reports, exports, HPM contribution, runbooks | disabled by default                            |
-| AU-001F Rollout                 | preparation commit pending         | release policy, manifest, cohort, risk, autonomy, halt tests                        | production rollout blocked                     |
+| AU-001F Rollout                 | `3320632a`, prerequisite verification `c35919f5` | release policy, manifest, cohort, risk, autonomy, halt tests; inert production artifact | migration and enablement blocked                |
 
 ## Readiness matrix
 
@@ -78,4 +91,4 @@ Recommended minimum: seven consecutive days for internal/named pilot scope exerc
 
 ## Current conclusion
 
-AU-001F.1 release preparation may be committed. AU-001F.2–F.6 remain blocked. Do not apply AU migrations, deploy AU code as a release, enable flags/cohorts, create a production release tag, or claim AU-001 complete until every blocked gate has direct environment evidence and HPM-001F final approval.
+AU-001F.1 release preparation and the dormant code-only deployment are complete. AU-001F.2–F.6 remain blocked. Do not apply AU migrations, enable flags/cohorts, create a production release tag, or claim AU-001 complete until every blocked gate has direct environment evidence and HPM-001F final approval.
