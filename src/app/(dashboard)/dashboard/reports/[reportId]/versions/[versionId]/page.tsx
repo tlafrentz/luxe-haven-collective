@@ -223,14 +223,6 @@ export default async function ReportVersionPage({
                 type="hidden"
                 value={crypto.randomUUID()}
               />
-              {view.sections.map((section) => (
-                <input
-                  key={section.sectionId}
-                  name="sectionKeys"
-                  type="hidden"
-                  value={section.sectionId}
-                />
-              ))}
               <button className="rounded-full border px-4 py-2 font-semibold">
                 Create CSV export
               </button>
