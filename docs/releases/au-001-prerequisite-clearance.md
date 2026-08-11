@@ -16,16 +16,16 @@ Dormant deployment baseline: commit `c35919f5`, Vercel deployment `dpl_7B9vvS6Jc
 
 ## Owning-capability adapter inventory
 
-The governed-execution composition accepts provider-neutral `AutomationCommandPort` implementations, but no production command adapter implementation exists for the following six owning capabilities:
+The governed-execution composition accepts provider-neutral `AutomationCommandPort` implementations. One bounded adapter now exists locally; production identity/composition and dispatch remain disabled:
 
 | Adapter | Classification | Evidence / required next action |
 | --- | --- | --- |
-| Execute | Not implemented | Implement a least-privilege production adapter for explicitly approved Execute command versions and verify authorization, idempotency, and reconciliation. |
-| Decide | Not implemented | Implement only approved Decide command contracts; recommendation or automation state must never imply decision approval. |
-| Outcome Measurement (EX-002) | Not implemented | Implement approved measurement command contracts without duplicating EX-002 policy. |
-| Learning (LR-001) | Not implemented | Implement approved learning command contracts; draft or reevaluation-required learning must remain ineligible. |
-| Recommendations (LR-002) | Not implemented | Implement approved recommendation command contracts without autonomous acceptance or downstream activation. |
-| Furnishing | Not implemented | Implement approved furnishing command contracts while preserving FS ownership, financial authority, and immutable procurement history. |
+| Execute | Implemented locally; production-disabled | `createDraftPlan` v1 only. Configure a least-privilege Execute service identity and verify hosted authorization, idempotency, status reconciliation, and denial before enablement. |
+| Decide | Explicitly unsupported | Fail-closed rejecting adapter; no decision command can be dispatched. |
+| Outcome Measurement (EX-002) | Explicitly unsupported | Fail-closed rejecting adapter; no measurement command can be dispatched. |
+| Learning (LR-001) | Explicitly unsupported | Fail-closed rejecting adapter; no learning command can be dispatched. |
+| Recommendations (LR-002) | Explicitly unsupported | Fail-closed rejecting adapter; no recommendation command can be dispatched. |
+| Furnishing | Explicitly unsupported | Fail-closed rejecting adapter; no furnishing or financial command can be dispatched. |
 
 The HPM lifecycle read contribution, notification-outbox boundary, and service-actor contracts exist, but they do not substitute for these command adapters. Therefore “unconfigured adapters” is not currently a configuration-only issue.
 
@@ -36,8 +36,8 @@ The HPM lifecycle read contribution, notification-outbox boundary, and service-a
 | HPM-001F final approval | Blocked | Authenticated lifecycle/lineage, attention/routing, reporting/export, authorization, kill-switch, rollback/forward-recovery, telemetry, alerting, stabilization, and signed approval evidence. |
 | Production-equivalent Supabase environment | Passed for migration/RLS rehearsal | Isolated project `rvpkwepkkjglsyhekbvd`; full migration chain 26.43s; no-op replay 2.59s; documented legacy-baseline prerequisites. |
 | Hosted PostgreSQL RLS | Passed for foundation and trigger read boundary | Direct and authenticated owner/admin access, cross-tenant denial, cross-property denial, anonymous denial, and append-only service-role denial. Governed command matrices wait for adapters. |
-| Owning adapters | Blocked | Implemented adapters, explicit supported versions, least-privilege identities, denial tests, compatibility evidence, and reconciliation behavior. |
-| Observability | Blocked | Provider dashboards, approved numeric thresholds, alert routes, delivery tests, named primary/backup owners, and monitoring-blindness halt verification. |
+| Owning adapters | Partial | Execute draft-plan v1 adapter and explicit rejecting adapters pass locally. Execute service identity, hosted integration, idempotency/status reconciliation, and production composition remain blocked. |
+| Observability | Blocked; executable readiness validation added | Provider dashboards, approved numeric thresholds, alert routes, delivery tests, named primary/backup owners, and monitoring-blindness halt verification. Missing evidence now fails closed in `evaluateAutomationOperationalReadiness`. |
 | Rollback / forward recovery | Partial | Transactional migration failure and forward recovery passed; timed artifact rollback, drain/quarantine, and adapter isolation remain blocked. |
 | Accessibility | Partial | Manual keyboard, screen-reader, zoom, reflow, focus, and mobile verification on production surfaces. |
 
