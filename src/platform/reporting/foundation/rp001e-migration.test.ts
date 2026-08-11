@@ -1,0 +1,4 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+const sql=readFileSync("supabase/migrations/20260811030000_rp001e_report_exports.sql","utf8");
+describe("RP-001E migration",()=>{it("creates tenant-scoped immutable export metadata and keeps writes server-only",()=>{expect(sql).toContain("enable row level security");expect(sql).toContain("grant select on public.canonical_report_exports to authenticated");expect(sql).toContain("grant all on public.canonical_report_exports to service_role");expect(sql).not.toMatch(/grant\s+(insert|update|delete|all).*authenticated/i);expect(sql).toContain("report_version_id");expect(sql).toContain("request_fingerprint")});it("keeps artifacts private and adds only required MIME types",()=>{expect(sql).toContain("where id='report-artifacts'");expect(sql).toContain("text/csv");expect(sql).toContain("application/zip");expect(sql).not.toContain("public=true")})});

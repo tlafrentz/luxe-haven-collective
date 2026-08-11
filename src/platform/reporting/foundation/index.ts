@@ -5,3 +5,6 @@ export * from "./supabase-report-repository";
 export * from "./catalog";
 export * from "./generation";
 export * from "./data-providers";
+export * from "./custom-reports";
+export * from "./exports";
+export * from "./supabase-report-exports";
