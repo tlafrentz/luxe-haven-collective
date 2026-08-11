@@ -1,6 +1,6 @@
 # AU-001 migration inventory
 
-Status: checksum-locked inventory verified in isolated hosted Supabase; production application pending.
+Status: checksum-locked inventory verified in isolated hosted Supabase and applied unchanged to production on 2026-08-11 UTC.
 
 | Migration                                         | Slice and purpose                                                                         | SHA-256                                                            | Recovery posture                                                       |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
@@ -11,10 +11,12 @@ Status: checksum-locked inventory verified in isolated hosted Supabase; producti
 
 AU-001D–F introduce no migration.
 
-Hosted rehearsal evidence: all four checksums matched and the complete chain was applied to isolated non-production Supabase project `rvpkwepkkjglsyhekbvd` on 2026-08-10. The chain completed in 26.43 seconds after the documented legacy production-baseline objects were restored; an idempotent no-op replay completed in 2.59 seconds. See `docs/releases/au-001f2-hosted-rehearsal.md`. Production remains unchanged.
+Hosted rehearsal evidence: all four checksums matched and the complete chain was applied to isolated non-production Supabase project `rvpkwepkkjglsyhekbvd` on 2026-08-10. The chain completed in 26.43 seconds after the documented legacy production-baseline objects were restored; an idempotent no-op replay completed in 2.59 seconds. See `docs/releases/au-001f2-hosted-rehearsal.md`.
+
+Production evidence: the same four checksums were applied to linked project `jumdtoraygqaraditnie` in 5.241 seconds after a dry run confirmed no other migration. See `docs/releases/au-001f3-production-schema-deployment.md`.
 
 ## Rehearsal evidence required per migration
 
 Record starting/ending migration versions, database snapshot identifier, representative tenant/property/row volume, transaction boundaries, duration, longest lock, availability, before/after row counts, constraints, indexes and query plans, triggers, grants, RLS policy matrix, verification queries, rerun behavior, injected-failure recovery, old-code/new-schema and new-code/old-schema compatibility, and named approver.
 
-The repository documents additive intent but does not prove production lock time, remote applied state, RLS effectiveness, or rollback compatibility. Those remain blocked until measured in a production-equivalent non-production Supabase environment.
+Hosted rehearsal and production application prove the remote applied state and the recorded RLS matrix. Timed application-artifact rollback and broader authenticated compatibility remain activation gates; schema recovery remains additive and forward-only.
