@@ -8,14 +8,13 @@ import {
   requireReportingContext,
 } from "@/features/reporting-suite/application/reporting-workspace-composition";
 import {
-  REPORT_METRIC_SOURCE_MATRIX,
   ReportFoundationError,
   ReportGenerator,
   SupabaseCanonicalReportRepository,
   normalizeCustomReportConfiguration,
   type CanonicalReportScope as ReportScope,
-  type CanonicalReportSourceData as ReportSourceData,
 } from "@/platform/reporting";
+import { loadCanonicalReportingSource } from "@/features/reporting-suite/application/reporting-canonical-source";
 
 export async function generateCanonicalReportAction(form: FormData) {
   const options = await getGenerationOptions();
@@ -85,7 +84,13 @@ export async function generateCanonicalReportAction(form: FormData) {
       },
     },
     providers: {
-      get: () => ({ load: async (input) => sourceFor(input.scope) }),
+      get: () => ({
+        load: (input) =>
+          loadCanonicalReportingSource({
+            ...input,
+            access: options.access,
+          }),
+      }),
     },
   });
   const title = String(form.get("title") ?? "") || definition.title,
@@ -249,31 +254,6 @@ function parseScope(
         analysisVersionId: analysisVersionIds[0] ?? "",
       };
 }
-function sourceFor(scope: ReportScope): ReportSourceData {
-  const analysisIds =
-    scope.kind === "investment_opportunity"
-      ? [scope.analysisVersionId]
-      : scope.kind === "investment_comparison"
-        ? scope.analysisVersionIds
-        : [];
-  const lineage = analysisIds.map((sourceVersionId) => ({
-    sourceType: "investment_analysis" as const,
-    sourceVersionId,
-  }));
-  return {
-    metrics: Object.fromEntries(
-      REPORT_METRIC_SOURCE_MATRIX.map((metric) => [
-        metric.metricKey,
-        {
-          status: "missing",
-          freshness: { status: "unknown" },
-          lineage,
-          reasonCode: "CANONICAL_SOURCE_UNAVAILABLE",
-        },
-      ]),
-    ),
-  };
-}
 function createGenerator(
   options: NonNullable<Awaited<ReturnType<typeof getGenerationOptions>>>,
 ) {
@@ -318,7 +298,13 @@ function createGenerator(
       },
     },
     providers: {
-      get: () => ({ load: async (input) => sourceFor(input.scope) }),
+      get: () => ({
+        load: (input) =>
+          loadCanonicalReportingSource({
+            ...input,
+            access: options.access,
+          }),
+      }),
     },
   });
 }
