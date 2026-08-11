@@ -3,7 +3,20 @@ set -euo pipefail
 
 container_name="au001-rls-rehearsal"
 postgres_password="au001-local-only"
-supabase_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/supabase"
+repository_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+supabase_dir="${repository_dir}/supabase"
+
+if [[ -n "${AU_REHEARSAL_DATABASE_URL:-}" ]]; then
+  psql_bin="${PSQL_BIN:-/usr/local/opt/libpq/bin/psql}"
+  if [[ ! -x "${psql_bin}" ]]; then
+    echo "Hosted rehearsal requires psql at ${psql_bin}." >&2
+    exit 1
+  fi
+  "${psql_bin}" "${AU_REHEARSAL_DATABASE_URL}" \
+    -v ON_ERROR_STOP=1 \
+    -f "${supabase_dir}/tests/au001_hosted_rehearsal.sql"
+  exit 0
+fi
 
 cleanup() {
   docker stop "${container_name}" >/dev/null 2>&1 || true

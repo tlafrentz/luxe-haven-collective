@@ -1,6 +1,6 @@
 # AU-001 migration inventory
 
-Status: repository inventory only; production-equivalent rehearsal pending.
+Status: checksum-locked inventory verified in isolated hosted Supabase; production application pending.
 
 | Migration                                         | Slice and purpose                                                                         | SHA-256                                                            | Recovery posture                                                       |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
@@ -10,6 +10,8 @@ Status: repository inventory only; production-equivalent rehearsal pending.
 | `20260810040000_au001c_execution_hardening.sql`   | AU-001C lease/reconciliation hardening and safe transition constraints                    | `af0db992eda5436372acb9325b58d1cd9443458aa1deac0658aa3c0ad359b5f3` | forward recovery; reconcile in-flight work before application rollback |
 
 AU-001D–F introduce no migration.
+
+Hosted rehearsal evidence: all four checksums matched and the complete chain was applied to isolated non-production Supabase project `rvpkwepkkjglsyhekbvd` on 2026-08-10. The chain completed in 26.43 seconds after the documented legacy production-baseline objects were restored; an idempotent no-op replay completed in 2.59 seconds. See `docs/releases/au-001f2-hosted-rehearsal.md`. Production remains unchanged.
 
 ## Rehearsal evidence required per migration
 
