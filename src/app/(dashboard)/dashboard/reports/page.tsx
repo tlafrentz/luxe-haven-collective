@@ -1,31 +1,7 @@
 import Link from "next/link";
-import { Eye, FileText, Plus } from "lucide-react";
-import { getExecutiveReportWorkspace } from "@/app/actions/reporting";
+import { redirect } from "next/navigation";
+import { CatalogCard, ReportLibraryTable } from "@/features/reporting-suite";
+import { definitionAvailability } from "@/features/reporting-suite";
+import { getGenerationOptions, getReportLibrary } from "@/features/reporting-suite/application/reporting-workspace-composition";
 
-export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ workspace?: string }> }) {
-  const { workspace } = await searchParams;
-  const model = await getExecutiveReportWorkspace(workspace);
-  if (!model) return <main className="mx-auto max-w-3xl px-5 py-16"><p role="alert">Sign in to view reports.</p></main>;
-  const recentThreshold = new Date(model.evaluatedAt).getTime() - 30 * 24 * 60 * 60 * 1000;
-  const metrics = [
-    ["Scheduled", model.jobs.filter(job=>job.status !== "failed").length, "Upcoming"],
-    ["Recent", model.reports.filter(report=>new Date(report.generated_at).getTime() >= recentThreshold).length, "Last 30 days"],
-    ["Drafts", model.reports.filter(report=>report.status === "draft").length, "In progress"],
-    ["Shared", model.reports.filter(report=>report.report_shares?.some(share=>share.status === "active")).length, "Active shares"],
-  ] as const;
-  const templates = [
-    ["Monthly Executive Report","Performance summary for executives","violet","/dashboard/reports/executive/executive-performance-summary"],
-    ["Owner Statement","Traceable operational owner balance statement","orange","/dashboard/reports/owner/owner-statement"],
-    ["Investment Review","Acquisition underwriting and decision analysis","green","/dashboard/reports/investment/acquisition-underwriting"],
-    ["Weekly Operations Summary","Operational execution and exceptions","teal","/dashboard/reports/operations/weekly-operations-summary"],
-    ["Custom Report","Governed report builder availability","stone","/dashboard/reports/custom/custom-report-builder"],
-  ] as const;
-  return <main className="hpm-page">
-    <header className="hpm-title"><div><h1>Hospitality Performance Reports</h1><p>Create and share business reports for every audience.</p></div><Link className="hpm-button" href="/dashboard/reports/new?type=property-performance">Create report <Plus/></Link></header>
-    <nav className="hpm-tabs" aria-label="Report views"><Link className="active" href="/dashboard/reports/executive">Executive</Link><Link href="/dashboard/reports/owner">Owner</Link><Link href="/dashboard/reports/investment">Investment</Link><Link href="/dashboard/reports/operations">Operations</Link><Link href="/dashboard/reports/custom">Custom</Link></nav>
-    <div className="hpm-reports-layout"><div className="hpm-reports-main">
-      <section className="hpm-metrics four" aria-label="Report summary">{metrics.map(([label,value,detail])=><article key={label}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>)}</section>
-      <section className="hpm-panel"><div className="hpm-panel-head"><h2>Recent Reports</h2></div>{model.reports.length?<div className="overflow-x-auto"><table className="hpm-table hpm-reports-table"><thead><tr><th>Report</th><th>Type</th><th>Status</th><th>Generated</th><th>Open</th></tr></thead><tbody>{model.reports.slice(0,8).map(report=><tr key={report.id}><td>{report.title}</td><td><span className="hpm-report-tag operations">{report.report_type.replaceAll("-"," ")}</span></td><td><span className={`hpm-report-status ${report.status}`}>{report.status}</span></td><td>{new Date(report.generated_at).toLocaleString()}</td><td><Link aria-label={`View ${report.title}`} href={`/dashboard/reports/${report.id}`}><Eye className="h-3 w-3"/></Link></td></tr>)}</tbody></table></div>:<p className="rounded-xl bg-stone-50 p-5 text-sm text-stone-600">No generated reports exist in this workspace.</p>}<Link className="hpm-reports-link" href="/dashboard/reports/executive">View report workspace <Plus/></Link></section>
-    </div><section className="hpm-panel"><div className="hpm-panel-head"><h2>Report Templates</h2></div><div className="hpm-report-templates">{templates.map(([name,description,tone,href])=><Link href={href} key={name}><span className={`hpm-template-icon ${tone}`}><FileText/></span><span><strong>{name}</strong><small>{description}</small></span></Link>)}</div></section></div>
-  </main>;
-}
+export default async function ReportsPage() { const [library, options] = await Promise.all([getReportLibrary(), getGenerationOptions()]); if (!library || !options) redirect("/login?next=/dashboard/reports"); const counts = { ready: library.items.filter(item => item.latestVersion.status === "ready").length, generating: library.items.filter(item => item.latestVersion.status === "generating").length, failed: library.items.filter(item => item.latestVersion.status === "failed").length, partial: library.items.filter(item => item.latestVersion.dataQuality === "partial").length }; return <main className="mx-auto max-w-7xl space-y-8 px-5 py-8"><header className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-4xl font-semibold">Reports</h1><p className="mt-2 text-stone-600">Generate decision-ready reports from your portfolio, owner, investment, and operations data.</p></div><Link className="rounded-full bg-stone-950 px-5 py-3 font-semibold text-white" href="/dashboard/reports/new">Generate report</Link></header><nav aria-label="Report workspace" className="flex gap-5 border-b"><Link aria-current="page" className="border-b-2 border-emerald-800 py-3 font-semibold" href="/dashboard/reports">Overview</Link><Link className="py-3" href="/dashboard/reports/library">Report Library</Link><Link className="py-3" href="/dashboard/reports/new">Generate Report</Link></nav>{library.unavailable?<p role="status" className="rounded-xl bg-amber-50 p-4">{library.message}</p>:null}<section aria-label="Reporting summary" className="grid gap-3 sm:grid-cols-4">{Object.entries(counts).map(([label,value])=><article className="rounded-xl border bg-white p-4" key={label}><strong className="text-2xl">{value}</strong><p className="text-sm capitalize text-stone-600">{label} reports</p></article>)}</section><section><div className="mb-4 flex items-center justify-between"><h2 className="text-2xl font-semibold">Recent reports</h2><Link className="font-semibold underline" href="/dashboard/reports/library">View library</Link></div><ReportLibraryTable items={library.items.slice(0,5)}/></section><section><h2 className="text-2xl font-semibold">Available reports</h2><div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{options.definitions.map(({definition})=>{const availability=definitionAvailability(definition,options.properties.length,options.analyses.length);return <CatalogCard definition={definition} available={availability.state==="available"} reason={"reason" in availability?availability.reason:undefined} key={definition.definitionId}/>})}</div></section></main>; }

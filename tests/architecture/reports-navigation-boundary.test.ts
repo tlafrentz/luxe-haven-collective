@@ -5,21 +5,16 @@ describe("Reports canonical navigation boundary", () => {
   const landing = readFileSync("src/app/(dashboard)/dashboard/reports/page.tsx", "utf8");
   const actions = readFileSync("src/app/actions/reporting.ts", "utf8");
 
-  it("routes every landing tab to its stable category workspace", () => {
-    for (const category of ["executive", "owner", "investment", "operations", "custom"])
-      expect(landing).toContain(`href=\"/dashboard/reports/${category}\"`);
+  it("routes the canonical overview, library, and generation workspace", () => {
+    for (const route of ["/dashboard/reports", "/dashboard/reports/library", "/dashboard/reports/new"])
+      expect(landing).toContain(`href=\"${route}\"`);
     expect(landing).not.toContain("?audience=");
     expect(landing).not.toContain('href="/dashboard/investments/reports"');
   });
 
-  it("routes templates to governed definitions rather than the legacy composer", () => {
-    for (const id of [
-      "executive-performance-summary",
-      "owner-statement",
-      "acquisition-underwriting",
-      "weekly-operations-summary",
-      "custom-report-builder",
-    ]) expect(landing).toContain(id);
+  it("renders governed definitions from the server catalog rather than hard-coded templates", () => {
+    expect(landing).toContain("options.definitions.map");
+    expect(landing).toContain("CatalogCard");
     expect(landing).not.toContain("/dashboard/reports/new?type=${type}");
   });
 

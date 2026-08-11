@@ -23,7 +23,7 @@ describe("SA-001E downstream analysis lineage",()=>{
     const reporting=source("src/app/actions/reporting.ts");
     expect(reporting).toContain('if(!analysisVersionId)throw new Error("report_source_not_ready")');
     expect(reporting).not.toMatch(/if\(!analysisVersionId\).*current_analysis_id/);
-    expect(source("src/app/(dashboard)/dashboard/reports/[reportId]/page.tsx")).toContain("its source analysis");
+    expect(source("src/app/(dashboard)/dashboard/reports/[reportId]/versions/[versionId]/page.tsx")).toContain("version will not change");
     expect(source("src/features/investment-opportunity/components/investment-scenario-workspace.tsx")).toContain("Open source analysis");
   });
 });

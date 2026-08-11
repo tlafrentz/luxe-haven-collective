@@ -141,4 +141,5 @@ export class ReportQueries {
   list(actor: ReportActor) { return this.repository.listReports(actor); }
   versions(reportId: string, actor: ReportActor) { return this.repository.listVersions(reportId, actor); }
   archive(reportId: string, actor: ReportActor) { return this.repository.archiveReport(reportId, actor); }
+  restore(reportId: string, actor: ReportActor) { return this.repository.restoreReport(reportId, actor); }
 }

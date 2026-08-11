@@ -32,6 +32,7 @@ class MemoryRepository implements ReportGenerationRepository {
   async listReports(context: ReportActor) { return [...this.reports.values()].filter(item => item.tenantId === context.tenantId && !item.archivedAt); }
   async listVersions(reportId: string, context: ReportActor) { return [...this.versions.values()].filter(item => item.reportId === reportId && item.tenantId === context.tenantId).sort((a, b) => b.versionNumber - a.versionNumber); }
   async archiveReport(id: string, context: ReportActor) { const value = await this.getReport(id, context); if (value) this.reports.set(id, { ...value, archivedAt: "2026-08-11T12:00:00Z" }); }
+  async restoreReport(id: string, context: ReportActor) { const value = await this.getReport(id, context); if (value) { const { archivedAt: _, ...active } = value; void _; this.reports.set(id, active); } }
   private replace(id: string, patch: Partial<ReportVersion>) { const current = this.versions.get(id)!; if (["ready", "failed"].includes(current.status)) throw new Error("terminal"); this.versions.set(id, { ...current, ...patch }); }
 }
 

@@ -18,7 +18,7 @@ describe("production dashboard boundaries", () => {
     expect(home()).toContain("getOperationalSurfaceProjection");
     expect(home()).toContain("const projection = filterOperationalProjection");
     expect(route("actions")).toContain("ProviderActionCenterReader");
-    expect(route("reports")).toContain("getExecutiveReportWorkspace");
+    expect(route("reports")).toContain("getReportLibrary");
   });
 
   it("does not render the removed fixture dashboard", () => {
