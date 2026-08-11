@@ -22,7 +22,14 @@ export function CustomReportBuilder({
   );
   const eligible = sections.filter((section) =>
     section.visibilities.includes(visibility),
-  );
+  ),
+    orderedEligible = [
+      ...selected.flatMap((key) => {
+        const section = eligible.find((candidate) => candidate.key === key);
+        return section ? [section] : [];
+      }),
+      ...eligible.filter((section) => !selected.includes(section.key)),
+    ];
   const changeVisibility = (next: "internal" | "owner_safe") => {
     setVisibility(next);
     setSelected((current) =>
@@ -85,7 +92,7 @@ export function CustomReportBuilder({
         <input key={key} name="sectionKeys" type="hidden" value={key} />
       ))}
       <div className="mt-3 grid gap-3">
-        {eligible.map((section) => {
+        {orderedEligible.map((section) => {
           const active = selected.includes(section.key),
             order = selected.indexOf(section.key);
           return (
