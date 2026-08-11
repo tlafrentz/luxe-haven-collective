@@ -11,7 +11,7 @@ const definition: AutomationDefinition = { id: "automation-1", tenantId: "tenant
 const current = createAutomationDefinitionVersion({ id: "version-1", automationId: "automation-1", tenantId: "tenant-1", version: 1, name: "Test", description: "Test trigger", status: "active", configuration, compatibility: "compatible", createdBy: "owner-1", createdAt: "2026-01-01T00:00:00Z", reason: "Activated" });
 const trigger = (kind: AutomationTriggerDefinition["kind"] = "MANUAL", overrides: Partial<AutomationTriggerDefinition> = {}): AutomationTriggerDefinition => ({ id: "trigger-1", automationId: "automation-1", automationDefinitionVersion: 1, tenantId: "tenant-1", kind, schemaVersion: "au001-trigger.v1", scope: { type: "property", propertyIds: ["property-1"] }, enabled: true, effectiveFrom: "2026-01-01T00:00:00Z", configuration: kind === "SCHEDULE_CALENDAR" ? { cadence: "DAILY", localTime: "06:00", timeZone: "America/Chicago" } : kind === "DOMAIN_EVENT" ? { eventType: "reservation.changed" } : {}, misfirePolicy: "SKIP", backfillPolicy: { maximumCount: 10, maximumAgeMs: 604_800_000 }, deduplicationPolicyVersion: "au001-occurrence.v1", eligibilityPolicyVersion: "au001-eligibility.v1", createdBy: "owner-1", updatedBy: "owner-1", createdAt: now, updatedAt: now, version: 1, ...overrides });
 
-function harness(input: { enabled?: boolean; authorized?: boolean; checkpointAt?: string } = {}) {
+function harness(input: { enabled?: boolean; authorized?: boolean; checkpointAt?: string; clock?: () => string } = {}) {
   let selected = trigger(); const occurrences = new Map<string, { occurrence: TriggerOccurrence; runRequest?: AutomationRunRequest }>(); const activities: TriggerActivity[] = []; const jobs = new Map<string, BackfillJob>(); let checkpoint: { partitionKey: string; watermark: string; version: number } | null = input.checkpointAt ? { partitionKey: "tenant-1:calendar", watermark: input.checkpointAt, version: 1 } : null; let leaseGeneration = 0; let ids = 0;
   const definitions: TriggerDefinitionRepository = {
     getTrigger: vi.fn(async (_tenant, id) => id === selected.id ? selected : null),
@@ -28,7 +28,7 @@ function harness(input: { enabled?: boolean; authorized?: boolean; checkpointAt?
     getCheckpoint: vi.fn(async () => checkpoint), advanceCheckpoint: vi.fn(async ({ partitionKey, expectedVersion, watermark }) => { if ((checkpoint?.version ?? 0) !== expectedVersion) throw new Error("checkpoint conflict"); checkpoint = { partitionKey, watermark, version: expectedVersion + 1 }; return checkpoint; }),
   };
   const backfills: TriggerBackfillRepository = { getByIdempotencyKey: vi.fn(async (_tenant, key) => [...jobs.values()].find((job) => job.idempotencyKey === key) ?? null), save: vi.fn(async (job, expected) => { const existing = jobs.get(job.id); if (expected !== undefined && existing?.version !== expected) throw new Error("conflict"); jobs.set(job.id, job); return job; }), get: vi.fn(async (_tenant, id) => jobs.get(id) ?? null) };
-  const service = createAutomationTriggerService({ definitions, automations: { get: vi.fn(async () => ({ definition, current })) }, occurrences: occurrenceRepository, coordination, backfills, authorization: { authorize: vi.fn(async () => input.authorized ?? true) }, clock: () => now, id: () => `id-${++ids}`, telemetry: { emit: vi.fn() }, enabled: () => input.enabled ?? true, limits: { maximumEventPayloadBytes: 4096, maximumEventLatenessMs: 86_400_000, maximumFanOut: 20, maximumTenantRequestsPerHour: 100, maximumRecursionDepth: 4, maximumBackfillCount: 20, leaseDurationMs: 60_000 } });
+  const service = createAutomationTriggerService({ definitions, automations: { get: vi.fn(async () => ({ definition, current })) }, occurrences: occurrenceRepository, coordination, backfills, authorization: { authorize: vi.fn(async () => input.authorized ?? true) }, clock: input.clock ?? (() => now), id: () => `id-${++ids}`, telemetry: { emit: vi.fn() }, enabled: () => input.enabled ?? true, limits: { maximumEventPayloadBytes: 4096, maximumEventLatenessMs: 86_400_000, maximumFanOut: 20, maximumTenantRequestsPerHour: 100, maximumRecursionDepth: 4, maximumBackfillCount: 20, leaseDurationMs: 60_000 } });
   return { service, definitions, occurrenceRepository, coordination, backfills, occurrences, activities, jobs, setTrigger: (value: AutomationTriggerDefinition) => { selected = value; } };
 }
 
@@ -58,6 +58,27 @@ describe("AU-001B trigger processing", () => {
     const first = await test.service.scanDueSchedules(input); const second = await test.service.scanDueSchedules(input);
     expect(first).toMatchObject({ ok: true, value: { processed: 1, accepted: 1 } }); expect(second).toMatchObject({ ok: true, value: { processed: 1, accepted: 1 } });
     expect(test.occurrences).toHaveLength(1); expect(test.coordination.claimLease).toHaveBeenCalledTimes(2); expect(test.coordination.advanceCheckpoint).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not fail when the scheduler clock advances after the invocation boundary", async () => {
+    let reads = 0;
+    const test = harness({
+      clock: () =>
+        reads++ === 0
+          ? "2026-08-10T12:00:00.001Z"
+          : "2026-08-10T12:00:00.002Z",
+    });
+    test.setTrigger(trigger("SCHEDULE_CALENDAR"));
+    await expect(
+      test.service.scanDueSchedules({
+        actor: serviceActor,
+        tenantId: "tenant-1",
+        partitionKey: "tenant-1:calendar",
+        through: "2026-08-10T12:00:00.000Z",
+        correlationId: "clock-boundary",
+        maximumCount: 10,
+      }),
+    ).resolves.toMatchObject({ ok: true });
   });
 
   it.each([

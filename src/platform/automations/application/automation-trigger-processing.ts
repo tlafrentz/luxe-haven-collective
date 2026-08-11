@@ -75,16 +75,20 @@ export function createAutomationTriggerService(dependencies: Readonly<{
       try { await requireAuthorized(input.actor, "scheduler", input.trigger); return await processCandidate({ trigger: input.trigger, sourceIdentity: input.slot.slotKey, occurredAt: input.slot.occurredAt, detectedAt: dependencies.clock(), correlationId: input.correlationId, causationDepth: 0, safeContext: { localDateTime: input.slot.localDateTime, timeZone: input.slot.timeZone, utcOffsetMinutes: input.slot.utcOffsetMinutes, adjustment: input.slot.adjustment, timePolicyVersion: input.slot.timePolicyVersion }, sourceAuthorized: true, sourceCurrent: true, conditionMatched: true, backfilled: input.backfilled, actorId: input.actor.actorId }); } catch (error) { return failure(error); }
     },
     async scanDueSchedules(input: Readonly<{ actor: SchedulerActor; tenantId: string; partitionKey: string; through: string; correlationId: string; maximumCount: number }>): Promise<TriggerResult<Readonly<{ processed: number; accepted: number; checkpoint: string }>>> {
-      const now = dependencies.clock(); let lease: SchedulerLease | null = null;
+      const now = dependencies.clock();
+      const through = new Date(
+        Math.max(Date.parse(input.through), Date.parse(now)),
+      ).toISOString();
+      let lease: SchedulerLease | null = null;
       try {
         if (!dependencies.enabled()) throw new AutomationTriggerError("SCHEDULER_DEGRADED", "Scheduling is disabled by the kill switch.");
         lease = await dependencies.coordination.claimLease({ tenantId: input.tenantId, partitionKey: input.partitionKey, ownerId: input.actor.actorId, now, durationMs: dependencies.limits.leaseDurationMs });
         if (!lease) throw new AutomationTriggerError("SCHEDULER_LEASE_UNAVAILABLE", "The scheduler partition is already leased.");
         const checkpoint = await dependencies.coordination.getCheckpoint(input.partitionKey); const from = checkpoint?.watermark ?? now;
-        const triggers = await dependencies.definitions.listScheduleTriggers(input.tenantId, from, input.through); let processed = 0, accepted = 0;
+        const triggers = await dependencies.definitions.listScheduleTriggers(input.tenantId, from, through); let processed = 0, accepted = 0;
         for (const trigger of triggers) {
           await requireAuthorized(input.actor, "scheduler", trigger);
-          const slots = calculateScheduleOccurrences({ trigger, from, through: input.through, maximumCount: Math.max(1, input.maximumCount - processed) });
+          const slots = calculateScheduleOccurrences({ trigger, from, through, maximumCount: Math.max(1, input.maximumCount - processed) });
           const missed = slots.filter((slot) => Date.parse(slot.occurredAt) < Date.parse(now));
           const ordinary = slots.filter((slot) => Date.parse(slot.occurredAt) >= Date.parse(now));
           const candidates: Candidate[] = [];
@@ -94,9 +98,9 @@ export function createAutomationTriggerService(dependencies: Readonly<{
           for (const candidate of candidates) { const result = await processCandidate(candidate); processed += 1; if (result.ok && result.value.runRequest) accepted += 1; if (processed >= input.maximumCount) break; }
           if (processed >= input.maximumCount) break;
         }
-        await dependencies.coordination.advanceCheckpoint({ partitionKey: input.partitionKey, expectedVersion: checkpoint?.version ?? 0, watermark: input.through, lease });
+        await dependencies.coordination.advanceCheckpoint({ partitionKey: input.partitionKey, expectedVersion: checkpoint?.version ?? 0, watermark: through, lease });
         await dependencies.coordination.release({ lease, now: dependencies.clock() });
-        return { ok: true, value: Object.freeze({ processed, accepted, checkpoint: input.through }) };
+        return { ok: true, value: Object.freeze({ processed, accepted, checkpoint: through }) };
       } catch (error) { if (lease) await dependencies.coordination.release({ lease, now: dependencies.clock() }).catch(() => undefined); return failure(error); }
     },
     async ingestDomainEvent(input: Readonly<{ actor: SchedulerActor; event: CanonicalDomainEvent; correlationId?: string }>): Promise<TriggerResult<Readonly<{ evaluated: number; accepted: number }>>> {
