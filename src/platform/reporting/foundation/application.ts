@@ -20,10 +20,11 @@ export async function validateGenerateReportRequest(input: GenerateReportRequest
   if (definition.comparisonPolicy === "unsupported" && input.comparisonPeriod) throw new ReportFoundationError("REPORT_COMPARISON_INVALID", "A comparison period is unsupported.");
   if (input.comparisonPeriod) validatePeriod(input.comparisonPeriod);
   if (input.customConfiguration && definition.family !== "custom") throw new ReportFoundationError("REPORT_INVALID_CONFIGURATION", "Custom configuration is unsupported.");
-  if (input.title && (input.title.length > 160 || /<[^>]+>/.test(input.title))) throw new ReportFoundationError("REPORT_INVALID_CONFIGURATION", "Report title must be plain text within 160 characters.");
+  const title = input.title?.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+  if (input.title && (!title || title.length > 160 || /<[^>]+>/.test(title))) throw new ReportFoundationError("REPORT_INVALID_CONFIGURATION", "Report title must be plain text within 160 characters.");
   const grant = await authorization.authorize({ actor, definition, scope });
   if (!grant.allowed) throw new ReportFoundationError("REPORT_SCOPE_FORBIDDEN", "Report scope is forbidden.");
   const requestedProperties = scope.kind === "property" ? [scope.propertyId] : "propertyIds" in scope ? scope.propertyIds : [];
   if (requestedProperties.some(id => !grant.authorizedPropertyIds.includes(id))) throw new ReportFoundationError("REPORT_SCOPE_FORBIDDEN", "Every property must be authorized.");
-  return Object.freeze({ definition, scope, period, comparisonPeriod: input.comparisonPeriod, authorizedPropertyIds: Object.freeze([...new Set(grant.authorizedPropertyIds)].sort()), title: input.title?.trim() });
+  return Object.freeze({ definition, scope, period, comparisonPeriod: input.comparisonPeriod, authorizedPropertyIds: Object.freeze([...new Set(grant.authorizedPropertyIds)].sort()), title });
 }

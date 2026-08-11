@@ -26,11 +26,21 @@ export type ReportSectionType = "summary" | "performance" | "comparison" | "prop
 export type ReportSection = Readonly<{ sectionId: string; sectionType: ReportSectionType; title: string; description?: string; order: number; visibility: ReportVisibility; status: "available" | "partial" | "unavailable"; metrics: readonly ReportMetric[]; findings: readonly ReportFinding[]; recommendations: readonly ReportRecommendation[]; tables?: readonly ReportTable[]; dataGaps: readonly ReportDataGap[] }>;
 
 export type ReportSnapshot = Readonly<{ schemaVersion: "rp001.report-snapshot.v1"; sections: readonly ReportSection[]; lineage: readonly SourceLineage[]; freshness: DataFreshness; dataGaps: readonly ReportDataGap[] }>;
+export type GeneratedReportSnapshot = ReportSnapshot & Readonly<{
+  definition: Readonly<{ definitionId: string; definitionVersion: number; family: ReportFamily; reportType: string; title: string }>;
+  report: Readonly<{ reportId: string; versionId: string; versionNumber: number; title: string; description?: string }>;
+  scope: ReportScope;
+  period: ReportPeriod;
+  comparisonPeriod?: ComparisonPeriod;
+  generatedAt: string;
+  requestedBy: string;
+  generation: Readonly<{ generatorVersion: string; deterministic: true; normalizedRequest: Readonly<Record<string, unknown>> }>;
+}>;
 export type Report = Readonly<{ reportId: string; tenantId: string; family: ReportFamily; reportType: string; definitionId: string; createdBy: string; createdAt: string; archivedAt?: string }>;
 export type ReportVersion = Readonly<{ reportId: string; reportVersionId: string; versionNumber: number; definitionId: string; definitionVersion: number; family: ReportFamily; reportType: string; title: string; description?: string; tenantId: string; requestedBy: string; generatedForId?: string; scope: ReportScope; authorizedPropertyIds: readonly string[]; ownerId?: string; opportunityId?: string; status: ReportStatus; period: ReportPeriod; comparisonPeriod?: ComparisonPeriod; snapshot?: ReportSnapshot; requestedAt: string; generationStartedAt?: string; generatedAt?: string; failureCode?: string; failureMessage?: string }>;
 
 export class ReportFoundationError extends Error {
-  constructor(public readonly code: "REPORT_DEFINITION_NOT_FOUND" | "REPORT_DEFINITION_DISABLED" | "REPORT_SCOPE_UNSUPPORTED" | "REPORT_SCOPE_FORBIDDEN" | "REPORT_PERIOD_INVALID" | "REPORT_PERIOD_UNSUPPORTED" | "REPORT_COMPARISON_INVALID" | "REPORT_SOURCE_NOT_FOUND" | "REPORT_DATA_INSUFFICIENT" | "REPORT_VERSION_NOT_FOUND" | "REPORT_INVALID_CONFIGURATION", message: string) { super(message); }
+  constructor(public readonly code: "REPORT_DEFINITION_NOT_FOUND" | "REPORT_DEFINITION_DISABLED" | "REPORT_SCOPE_UNSUPPORTED" | "REPORT_SCOPE_FORBIDDEN" | "REPORT_PERIOD_INVALID" | "REPORT_PERIOD_UNSUPPORTED" | "REPORT_COMPARISON_INVALID" | "REPORT_SOURCE_NOT_FOUND" | "REPORT_DATA_INSUFFICIENT" | "REPORT_VERSION_NOT_FOUND" | "REPORT_INVALID_CONFIGURATION" | "REPORT_GENERATION_FAILED" | "REPORT_SNAPSHOT_INVALID" | "REPORT_DISCLOSURE_VIOLATION" | "REPORT_IDEMPOTENCY_CONFLICT" | "REPORT_CONCURRENT_MODIFICATION", message: string) { super(message); }
 }
 
 export function normalizeScope(scope: ReportScope): ReportScope {
