@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(join(process.cwd(), "supabase/migrations/20260810020000_au001b_triggers_scheduling.sql"), "utf8").toLowerCase();
+const leaseReleaseFix = readFileSync(join(process.cwd(), "supabase/migrations/20260810052000_au001_scheduler_lease_release.sql"), "utf8").toLowerCase();
 
 describe("AU-001B trigger persistence migration", () => {
   it("creates every durable control-plane record with RLS in the same migration", () => {
@@ -22,5 +23,9 @@ describe("AU-001B trigger persistence migration", () => {
   it("uses service-only bounded leases and generation-bound checkpoints", () => {
     expect(migration).toContain("function public.claim_automation_scheduler_lease"); expect(migration).toContain("function public.heartbeat_automation_scheduler_lease"); expect(migration).toContain("function public.advance_automation_scheduler_checkpoint");
     expect(migration).toContain("grant execute on function public.claim_automation_scheduler_lease"); expect(migration).toContain("to service_role"); expect(migration).toContain("lease_generation");
+  });
+  it("releases a lease without violating the strict expiry constraint", () => {
+    expect(leaseReleaseFix).toContain("expires_at = p_now");
+    expect(leaseReleaseFix).toContain("heartbeat_at = p_now - interval '1 microsecond'");
   });
 });
