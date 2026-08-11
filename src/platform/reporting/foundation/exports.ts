@@ -13,6 +13,7 @@ import type {
   ReportVersion,
 } from "./model";
 import { ReportFoundationError } from "./model";
+import type { ReportingProductionConfiguration } from "./production-configuration";
 
 export type ReportExportFormat = "pdf" | "csv" | "csv_zip";
 export type ReportExportStatus =
@@ -76,6 +77,15 @@ export interface ReportExportRepository {
     tenantId: string,
   ): Promise<readonly ReportExport[]>;
   expire(id: string, tenantId: string): Promise<void>;
+  listExpired(
+    asOf: string,
+    batchSize: number,
+  ): Promise<readonly ReportExport[]>;
+  expireExact(
+    id: string,
+    tenantId: string,
+    storageKey: string,
+  ): Promise<boolean>;
 }
 export interface ReportArtifactStorage {
   store(
@@ -90,6 +100,12 @@ export interface ReportArtifactStorage {
   ): Promise<string>;
   remove(key: string): Promise<void>;
 }
+export interface ReportExportTelemetry {
+  emit(
+    event: string,
+    metadata: Readonly<Record<string, string | number | boolean>>,
+  ): void | Promise<void>;
+}
 export class ReportExportService {
   constructor(
     private readonly d: Readonly<{
@@ -97,7 +113,8 @@ export class ReportExportService {
       storage: ReportArtifactStorage;
       clock?: () => Date;
       id?: () => string;
-      retentionDays?: number;
+      configuration: ReportingProductionConfiguration;
+      telemetry?: ReportExportTelemetry;
     }>,
   ) {}
   async request(
@@ -111,8 +128,14 @@ export class ReportExportService {
       includeLineage?: boolean;
       idempotencyKey: string;
       correlationId?: string;
+      regeneration?: boolean;
     }>,
   ) {
+    if (!this.d.configuration.reportingEnabled)
+      throw new ReportFoundationError(
+        "REPORT_DEFINITION_DISABLED",
+        "Reporting is disabled.",
+      );
     if (
       !input.actor.authenticated ||
       input.reportVersion.tenantId !== input.actor.tenantId
@@ -164,9 +187,23 @@ export class ReportExportService {
         rendererVersion: format === "pdf" ? "rp001e.pdf.v1" : "rp001e.csv.v1",
         idempotencyKey: input.idempotencyKey,
       };
+    if (
+      (format === "pdf" && !this.d.configuration.pdfExportsEnabled) ||
+      (format !== "pdf" && !this.d.configuration.csvExportsEnabled)
+    )
+      throw new ReportFoundationError(
+        "REPORT_DEFINITION_DISABLED",
+        "This export format is disabled.",
+      );
+    await this.emit("report_export_requested", record);
+    if (input.regeneration)
+      await this.emit("report_export_regenerated", record);
     const reserved = await this.d.repository.reserve(record);
     if (reserved.replay) return reserved.record;
     await this.d.repository.markGenerating(id);
+    await this.emit("report_export_generation_started", record);
+    const started = Date.now();
+    let storedKey: string | undefined;
     try {
       const rendered =
           format === "pdf"
@@ -180,11 +217,13 @@ export class ReportExportService {
           now,
         ),
         storageKey = `${input.actor.tenantId}/${input.reportVersion.reportVersionId}/${id}/${fileName}`;
+      this.enforce(snapshot, format, rendered, Date.now() - started);
       await this.d.storage.store({
         key: storageKey,
         content: rendered.bytes,
         mediaType: rendered.mediaType,
       });
+      storedKey = storageKey;
       await this.d.repository.markReady(id, {
         storageKey,
         fileName,
@@ -193,14 +232,23 @@ export class ReportExportService {
         checksum,
         completedAt: now.toISOString(),
         expiresAt: new Date(
-          now.getTime() + (this.d.retentionDays ?? 30) * 86400000,
+          now.getTime() + this.d.configuration.exportRetentionDays * 86400000,
         ).toISOString(),
       });
+      await this.emit("report_export_completed", record, {
+        durationMs: Date.now() - started,
+        byteSize: rendered.bytes.byteLength,
+      });
       return (await this.d.repository.get(id, input.actor.tenantId))!;
-    } catch {
+    } catch (cause) {
+      if (storedKey)
+        await this.d.storage.remove(storedKey).catch(() => undefined);
       await this.d.repository.markFailed(id, {
-        code: "REPORT_EXPORT_FAILED",
+        code: exportFailureCode(cause),
         message: "The export could not be finalized safely.",
+      });
+      await this.emit("report_export_failed", record, {
+        failureCode: exportFailureCode(cause),
       });
       throw new ReportFoundationError(
         "REPORT_GENERATION_FAILED",
@@ -219,6 +267,7 @@ export class ReportExportService {
       input.exportId,
       input.actor.tenantId,
     );
+    if (item) await this.emit("report_export_download_requested", item);
     if (
       !input.actor.authenticated ||
       !item ||
@@ -236,17 +285,167 @@ export class ReportExportService {
         "REPORT_INVALID_CONFIGURATION",
         "The export artifact expired.",
       );
-    return this.d.storage.createDownloadAccess({
+    const access = await this.d.storage.createDownloadAccess({
       key: item.storageKey,
       fileName: item.fileName,
-      expiresInSeconds: 120,
+      expiresInSeconds: this.d.configuration.exportDownloadTtlSeconds,
     });
+    await this.emit("report_export_download_completed", item);
+    return access;
+  }
+  private enforce(
+    snapshot: GeneratedReportSnapshot,
+    format: ReportExportFormat,
+    rendered: { bytes: Uint8Array; pageCount?: number },
+    durationMs: number,
+  ) {
+    const c = this.d.configuration;
+    if (durationMs > c.maximumExportDurationMs)
+      throw exportLimit("REPORT_EXPORT_DURATION_LIMIT");
+    if (
+      format === "pdf" &&
+      ((rendered.pageCount ?? 0) > c.maximumPdfPages ||
+        rendered.bytes.byteLength > c.maximumPdfArtifactBytes)
+    )
+      throw exportLimit("REPORT_PDF_LIMIT");
+    const sections = snapshot.sections,
+      values = sections.flatMap((section) => [
+        section.title,
+        ...section.metrics.map((metric) => metric.label),
+        ...section.dataGaps.map((gap) => gap.message),
+        ...(section.tables ?? []).flatMap((table) =>
+          table.rows.flatMap((row) => Object.values(row).map(String)),
+        ),
+      ]);
+    const rows = sections.reduce(
+        (sum, section) =>
+          sum +
+          section.metrics.length +
+          (section.tables ?? []).reduce(
+            (n, table) => n + table.rows.length,
+            0,
+          ) +
+          section.dataGaps.length,
+        0,
+      ),
+      columns = Math.max(
+        0,
+        ...sections.flatMap((section) =>
+          (section.tables ?? []).map((table) => table.columns.length),
+        ),
+      ),
+      entries =
+        sections.reduce(
+          (sum, section) =>
+            sum +
+            (section.metrics.length ? 1 : 0) +
+            (section.tables?.length ?? 0) +
+            (section.dataGaps.length ? 1 : 0),
+          0,
+        ) + 1;
+    if (
+      format !== "pdf" &&
+      (rows > c.maximumCsvRows ||
+        columns > c.maximumCsvColumns ||
+        values.some((value) => value.length > c.maximumCsvCellCharacters))
+    )
+      throw exportLimit("REPORT_CSV_LIMIT");
+    if (
+      format === "csv" &&
+      rendered.bytes.byteLength > c.maximumCsvArtifactBytes
+    )
+      throw exportLimit("REPORT_CSV_LIMIT");
+    if (
+      format === "csv_zip" &&
+      (entries > c.maximumZipEntries ||
+        rendered.bytes.byteLength > c.maximumZipArtifactBytes)
+    )
+      throw exportLimit("REPORT_ZIP_LIMIT");
+  }
+  private async emit(
+    event: string,
+    item: Pick<
+      ReportExport,
+      "correlationId" | "id" | "format" | "rendererVersion"
+    >,
+    extra: Readonly<Record<string, string | number | boolean>> = {},
+  ) {
+    try {
+      await this.d.telemetry?.emit(event, {
+        correlationId: item.correlationId,
+        exportId: item.id,
+        format: item.format,
+        rendererVersion: item.rendererVersion,
+        ...extra,
+      });
+    } catch {
+      /* non-authoritative */
+    }
   }
   private now() {
     return (this.d.clock ?? (() => new Date()))();
   }
   private id() {
     return (this.d.id ?? (() => crypto.randomUUID()))();
+  }
+}
+
+export class ExpireReportArtifacts {
+  constructor(
+    private readonly d: Readonly<{
+      repository: ReportExportRepository;
+      storage: ReportArtifactStorage;
+      telemetry?: ReportExportTelemetry;
+    }>,
+  ) {}
+  async execute(
+    input: Readonly<{ asOf: Date; batchSize: number; correlationId: string }>,
+  ) {
+    const targets = await this.d.repository.listExpired(
+      input.asOf.toISOString(),
+      Math.max(1, Math.min(input.batchSize, 100)),
+    );
+    let expired = 0,
+      failed = 0;
+    for (const target of targets) {
+      if (
+        !target.storageKey ||
+        !target.expiresAt ||
+        Date.parse(target.expiresAt) > input.asOf.getTime()
+      )
+        continue;
+      try {
+        await this.d.storage.remove(target.storageKey);
+        if (
+          await this.d.repository.expireExact(
+            target.id,
+            target.tenantId,
+            target.storageKey,
+          )
+        ) {
+          expired++;
+          await safeEmit(this.d.telemetry, "report_export_expired", {
+            correlationId: input.correlationId,
+            exportId: target.id,
+            format: target.format,
+          });
+        }
+      } catch {
+        failed++;
+        await safeEmit(this.d.telemetry, "report_export_cleanup_failed", {
+          correlationId: input.correlationId,
+          exportId: target.id,
+          format: target.format,
+          failureCode: "REPORT_EXPORT_CLEANUP_FAILED",
+        });
+      }
+    }
+    await safeEmit(this.d.telemetry, "report_export_cleanup_completed", {
+      correlationId: input.correlationId,
+      count: expired,
+      failedCount: failed,
+    });
+    return Object.freeze({ expired, failed });
   }
 }
 
@@ -280,7 +479,7 @@ export async function renderCanonicalReportPdf(
     new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-"
   )
     throw new Error("invalid_pdf");
-  return { bytes, mediaType: "application/pdf" };
+  return { bytes, mediaType: "application/pdf", pageCount: doc.getPageCount() };
 }
 class PdfLayout {
   private page!: PDFPage;
@@ -709,6 +908,28 @@ function pdfMetric(metric: ReportMetric) {
   if (metric.valueType === "currency" && typeof metric.value === "number")
     return `${metric.currency ?? "USD"} ${metric.value.toFixed(2)}`;
   return String(metric.value);
+}
+function exportLimit(code: string) {
+  return new ReportFoundationError("REPORT_GENERATION_FAILED", code);
+}
+function exportFailureCode(cause: unknown) {
+  return cause instanceof ReportFoundationError &&
+    /^REPORT_[A-Z_]+$/.test(cause.message)
+    ? cause.message
+    : cause instanceof ReportFoundationError
+      ? cause.code
+      : "REPORT_EXPORT_FAILED";
+}
+async function safeEmit(
+  telemetry: ReportExportTelemetry | undefined,
+  event: string,
+  metadata: Readonly<Record<string, string | number | boolean>>,
+) {
+  try {
+    await telemetry?.emit(event, metadata);
+  } catch {
+    /* non-authoritative */
+  }
 }
 function cell(value: unknown) {
   return value === null || value === undefined

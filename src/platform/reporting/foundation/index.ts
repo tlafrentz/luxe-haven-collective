@@ -8,3 +8,4 @@ export * from "./data-providers";
 export * from "./custom-reports";
 export * from "./exports";
 export * from "./supabase-report-exports";
+export * from "./production-configuration";

@@ -5,6 +5,8 @@ export { ReportViewer } from "./presentation/report-viewer";
 export * as reportingFoundation from "./foundation";
 export { CUSTOM_REPORT_SECTION_REGISTRY, REPORT_METRIC_SOURCE_MATRIX, ReportFoundationError, ReportGenerator, SupabaseCanonicalReportRepository, customReportOptions, normalizeCustomReportConfiguration, standardReportCatalog } from "./foundation";
 export { CSV_SCHEMAS, ReportExportService, SupabaseReportArtifactStorage, SupabaseReportExportRepository, csvCell, renderCanonicalReportPdf, renderCsvExport } from "./foundation";
+export { parseReportingProductionConfiguration } from "./foundation";
 export type { GeneratedReportSnapshot, Report as CanonicalReport, ReportActor as CanonicalReportActor, ReportSection as CanonicalReportSection, ReportScope as CanonicalReportScope, ReportSourceData as CanonicalReportSourceData, ReportVersion as CanonicalReportVersion, StandardReportCatalogEntry } from "./foundation";
 export type { CustomReportConfiguration, CustomReportSectionDefinition } from "./foundation";
 export type { ReportArtifactStorage, ReportExport, ReportExportFormat, ReportExportRepository, ReportExportStatus } from "./foundation";
+export type { ReportingProductionConfiguration } from "./foundation";

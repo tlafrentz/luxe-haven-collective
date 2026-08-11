@@ -60,9 +60,13 @@ function custom(
     label: section.title,
     description: section.purpose,
     supportedScopeKinds: section.supportedScopes,
-    supportedVisibility: (section.visibility === "owner_safe"
-      ? ["owner_safe"]
-      : [section.visibility]) as readonly ReportVisibility[],
+    supportedVisibility: Object.freeze([
+      ...new Set(
+        sourceSections
+          .filter((item) => item.key === section.key)
+          .map((item) => item.visibility),
+      ),
+    ]) as readonly ReportVisibility[],
     requiredMetricKeys: Object.freeze([]),
     optionalMetricKeys: section.metricKeys,
     required: false,
@@ -85,26 +89,29 @@ export function customReportOptions(
       (section) =>
         section.supportedScopeKinds.includes(input.scopeKind) &&
         section.supportedVisibility.includes(input.visibility),
-    ).map((section) =>
-      Object.freeze({
+    ).map((section) => {
+      const metrics = Object.freeze(
+        section.optionalMetricKeys
+          .flatMap((key) => {
+            const metric = REPORT_METRIC_SOURCE_MATRIX.find(
+              (item) => item.metricKey === key,
+            );
+            return metric ? [metric] : [];
+          })
+          .filter(
+            (metric) =>
+              input.visibility !== "owner_safe" ||
+              metric.visibility === "owner_safe",
+          ),
+      );
+      return Object.freeze({
         ...section,
-        metrics: Object.freeze(
-          section.optionalMetricKeys
-            .map(
-              (key) =>
-                REPORT_METRIC_SOURCE_MATRIX.find(
-                  (metric) => metric.metricKey === key,
-                )!,
-            )
-            .filter(Boolean)
-            .filter(
-              (metric) =>
-                input.visibility !== "owner_safe" ||
-                metric.visibility === "owner_safe",
-            ),
+        optionalMetricKeys: Object.freeze(
+          metrics.map((metric) => metric.metricKey),
         ),
-      }),
-    ),
+        metrics,
+      });
+    }),
   );
 }
 export function normalizeCustomReportConfiguration(

@@ -197,41 +197,45 @@ export default async function ReportVersionPage({
           configured retention period.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <form action={requestCanonicalReportExportAction}>
-            <input name="reportId" type="hidden" value={reportId} />
-            <input name="versionId" type="hidden" value={versionId} />
-            <input name="format" type="hidden" value="pdf" />
-            <input name="includeLineage" type="hidden" value="true" />
-            <input
-              name="idempotencyKey"
-              type="hidden"
-              value={crypto.randomUUID()}
-            />
-            <button className="rounded-full bg-stone-950 px-4 py-2 font-semibold text-white">
-              Create PDF
-            </button>
-          </form>
-          <form action={requestCanonicalReportExportAction}>
-            <input name="reportId" type="hidden" value={reportId} />
-            <input name="versionId" type="hidden" value={versionId} />
-            <input name="format" type="hidden" value="csv" />
-            <input
-              name="idempotencyKey"
-              type="hidden"
-              value={crypto.randomUUID()}
-            />
-            {view.sections.map((section) => (
+          {model.capabilities.pdfExportAvailable ? (
+            <form action={requestCanonicalReportExportAction}>
+              <input name="reportId" type="hidden" value={reportId} />
+              <input name="versionId" type="hidden" value={versionId} />
+              <input name="format" type="hidden" value="pdf" />
+              <input name="includeLineage" type="hidden" value="true" />
               <input
-                key={section.sectionId}
-                name="sectionKeys"
+                name="idempotencyKey"
                 type="hidden"
-                value={section.sectionId}
+                value={crypto.randomUUID()}
               />
-            ))}
-            <button className="rounded-full border px-4 py-2 font-semibold">
-              Create CSV export
-            </button>
-          </form>
+              <button className="rounded-full bg-stone-950 px-4 py-2 font-semibold text-white">
+                Create PDF
+              </button>
+            </form>
+          ) : null}
+          {model.capabilities.csvExportAvailable ? (
+            <form action={requestCanonicalReportExportAction}>
+              <input name="reportId" type="hidden" value={reportId} />
+              <input name="versionId" type="hidden" value={versionId} />
+              <input name="format" type="hidden" value="csv" />
+              <input
+                name="idempotencyKey"
+                type="hidden"
+                value={crypto.randomUUID()}
+              />
+              {view.sections.map((section) => (
+                <input
+                  key={section.sectionId}
+                  name="sectionKeys"
+                  type="hidden"
+                  value={section.sectionId}
+                />
+              ))}
+              <button className="rounded-full border px-4 py-2 font-semibold">
+                Create CSV export
+              </button>
+            </form>
+          ) : null}
         </div>
         <ul className="mt-5 space-y-3">
           {model.exports.length ? (

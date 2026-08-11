@@ -3,7 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { generateCanonicalReportAction } from "@/app/actions/canonical-reporting";
 import { getGenerationOptions } from "@/features/reporting-suite/application/reporting-workspace-composition";
 import { CustomReportBuilder } from "@/features/reporting-suite";
-import { CUSTOM_REPORT_SECTION_REGISTRY } from "@/platform/reporting";
+import {
+  CUSTOM_REPORT_SECTION_REGISTRY,
+  REPORT_METRIC_SOURCE_MATRIX,
+} from "@/platform/reporting";
 export default async function ConfigureReportPage({
   params,
 }: {
@@ -146,29 +149,30 @@ export default async function ConfigureReportPage({
                   name="introductoryNote"
                 />
               </label>
-              <label className="block">
-                Visibility
-                <select
-                  className="mt-1 w-full rounded-lg border p-3"
-                  name="visibility"
-                >
-                  <option value="internal">Internal</option>
-                </select>
-              </label>
               <input name="includeLineageAppendix" type="hidden" value="true" />
               <CustomReportBuilder
-                sections={CUSTOM_REPORT_SECTION_REGISTRY.filter(
-                  (section) =>
-                    section.supportedScopeKinds.includes("portfolio") &&
-                    section.supportedVisibility.includes("internal"),
+                sections={CUSTOM_REPORT_SECTION_REGISTRY.filter((section) =>
+                  section.supportedScopeKinds.includes("portfolio"),
                 )
                   .slice(0, 12)
                   .map((section) => ({
                     key: section.key,
                     label: section.label,
                     description: section.description,
-                    metricKeys: section.optionalMetricKeys,
+                    metrics: section.optionalMetricKeys.flatMap((key) => {
+                      const metric = REPORT_METRIC_SOURCE_MATRIX.find(
+                        (item) => item.metricKey === key,
+                      );
+                      return metric
+                        ? [{ key, visibility: metric.visibility }]
+                        : [];
+                    }),
+                    visibilities: section.supportedVisibility.filter(
+                      (value): value is "internal" | "owner_safe" =>
+                        value === "internal" || value === "owner_safe",
+                    ),
                   }))}
+                ownerOnly={options.access.role === "owner"}
               />
             </div>
           ) : null}

@@ -1,14 +1,172 @@
-import type { GeneratedReportSnapshot, CanonicalReport as Report, CanonicalReportVersion as ReportVersion, StandardReportCatalogEntry } from "@/platform/reporting";
+import type {
+  GeneratedReportSnapshot,
+  CanonicalReport as Report,
+  CanonicalReportVersion as ReportVersion,
+  StandardReportCatalogEntry,
+} from "@/platform/reporting";
 import { standardReportCatalog } from "@/platform/reporting";
 
-export type ReportDataQuality = "complete" | "partial" | "stale" | "unknown" | "failed";
-export type ReportLibraryItemViewModel = Readonly<{ reportId: string; title: string; definition: Readonly<{ id: string; version: number; label: string; family: string }>; scopeLabel: string; periodLabel?: string; latestVersion: Readonly<{ versionId: string; versionNumber: number; status: "draft" | "generating" | "ready" | "failed" | "archived"; generatedAt?: string; dataQuality: ReportDataQuality }>; archivedAt?: string; permittedActions: readonly ("open" | "regenerate" | "archive" | "restore")[] }>;
+export type ReportDataQuality =
+  | "complete"
+  | "partial"
+  | "stale"
+  | "unknown"
+  | "failed";
+export type ReportLibraryItemViewModel = Readonly<{
+  reportId: string;
+  title: string;
+  definition: Readonly<{
+    id: string;
+    version: number;
+    label: string;
+    family: string;
+  }>;
+  scopeLabel: string;
+  periodLabel?: string;
+  latestVersion: Readonly<{
+    versionId: string;
+    versionNumber: number;
+    status: "draft" | "generating" | "ready" | "failed" | "archived";
+    generatedAt?: string;
+    dataQuality: ReportDataQuality;
+  }>;
+  archivedAt?: string;
+  permittedActions: readonly ("open" | "regenerate" | "archive" | "restore")[];
+}>;
 
-export function reportDataQuality(version: ReportVersion): ReportDataQuality { if (version.status === "failed") return "failed"; const snapshot = version.snapshot; if (!snapshot) return "unknown"; if (snapshot.freshness.status === "stale") return "stale"; if (snapshot.dataGaps.some(gap => gap.severity === "limiting")) return "partial"; return snapshot.freshness.status === "unknown" ? "unknown" : "complete"; }
-export function scopeLabel(version: ReportVersion) { const scope = version.scope; switch (scope.kind) { case "portfolio": return "Portfolio"; case "property": return "1 property"; case "selected_properties": return `${scope.propertyIds.length} selected properties`; case "owner_portfolio": return `Owner portfolio · ${scope.propertyIds.length} properties`; case "investment_opportunity": return "1 saved investment analysis"; case "investment_comparison": return `${scope.analysisVersionIds.length} saved analyses`; } }
-export function toLibraryItem(report: Report, latest: ReportVersion): ReportLibraryItemViewModel { const definition = standardReportCatalog.get(latest.definitionId, latest.definitionVersion); return Object.freeze({ reportId: report.reportId, title: latest.title, definition: { id: definition.definitionId, version: definition.definitionVersion, label: definition.title, family: definition.family }, scopeLabel: scopeLabel(latest), periodLabel: `${latest.period.startDate} – ${latest.period.endDate}`, latestVersion: { versionId: latest.reportVersionId, versionNumber: latest.versionNumber, status: report.archivedAt ? "archived" : latest.status, ...(latest.generatedAt ? { generatedAt: latest.generatedAt } : {}), dataQuality: reportDataQuality(latest) }, ...(report.archivedAt ? { archivedAt: report.archivedAt } : {}), permittedActions: report.archivedAt ? (["open", "restore"] as const) : (["open", "regenerate", "archive"] as const) }); }
+export function reportDataQuality(version: ReportVersion): ReportDataQuality {
+  if (version.status === "failed") return "failed";
+  const snapshot = version.snapshot;
+  if (!snapshot) return "unknown";
+  if (snapshot.freshness.status === "stale") return "stale";
+  if (snapshot.dataGaps.some((gap) => gap.severity === "limiting"))
+    return "partial";
+  return snapshot.freshness.status === "unknown" ? "unknown" : "complete";
+}
+export function scopeLabel(version: ReportVersion) {
+  const scope = version.scope;
+  switch (scope.kind) {
+    case "portfolio":
+      return "Portfolio";
+    case "property":
+      return "1 property";
+    case "selected_properties":
+      return `${scope.propertyIds.length} selected properties`;
+    case "owner_portfolio":
+      return `Owner portfolio · ${scope.propertyIds.length} properties`;
+    case "investment_opportunity":
+      return "1 saved investment analysis";
+    case "investment_comparison":
+      return `${scope.analysisVersionIds.length} saved analyses`;
+  }
+}
+export function toLibraryItem(
+  report: Report,
+  latest: ReportVersion,
+): ReportLibraryItemViewModel {
+  const definition = standardReportCatalog.get(
+    latest.definitionId,
+    latest.definitionVersion,
+  );
+  return Object.freeze({
+    reportId: report.reportId,
+    title: latest.title,
+    definition: {
+      id: definition.definitionId,
+      version: definition.definitionVersion,
+      label: definition.title,
+      family: definition.family,
+    },
+    scopeLabel: scopeLabel(latest),
+    periodLabel: `${latest.period.startDate} – ${latest.period.endDate}`,
+    latestVersion: {
+      versionId: latest.reportVersionId,
+      versionNumber: latest.versionNumber,
+      status: report.archivedAt ? "archived" : latest.status,
+      ...(latest.generatedAt ? { generatedAt: latest.generatedAt } : {}),
+      dataQuality: reportDataQuality(latest),
+    },
+    ...(report.archivedAt ? { archivedAt: report.archivedAt } : {}),
+    permittedActions: report.archivedAt
+      ? (["open", "restore"] as const)
+      : (["open", "regenerate", "archive"] as const),
+  });
+}
 
-export function buildViewer(input: Readonly<{ report: Report; version: ReportVersion; versions: readonly ReportVersion[] }>) { if (input.version.status !== "ready" || !input.version.snapshot) throw new Error("REPORT_VERSION_NOT_READY"); const snapshot = input.version.snapshot as GeneratedReportSnapshot, latest = [...input.versions].sort((a, b) => b.versionNumber - a.versionNumber)[0]; return Object.freeze({ reportId: input.report.reportId, versionId: input.version.reportVersionId, versionNumber: input.version.versionNumber, isLatestVersion: latest?.reportVersionId === input.version.reportVersionId, ...(latest && latest.reportVersionId !== input.version.reportVersionId ? { newerVersionId: latest.reportVersionId } : {}), title: input.version.title, definitionLabel: standardReportCatalog.get(input.version.definitionId, input.version.definitionVersion).title, scopeSummary: scopeLabel(input.version), periodSummary: `${input.version.period.startDate} – ${input.version.period.endDate} · ${input.version.period.timezone}`, generatedAt: input.version.generatedAt!, dataQuality: reportDataQuality(input.version), sections: snapshot.sections, lineage: snapshot.lineage, dataGaps: snapshot.dataGaps, freshness: snapshot.freshness, permittedActions: input.report.archivedAt ? ["restore" as const] : ["regenerate" as const, "archive" as const] }); }
+export function buildViewer(
+  input: Readonly<{
+    report: Report;
+    version: ReportVersion;
+    versions: readonly ReportVersion[];
+  }>,
+) {
+  if (input.version.status !== "ready" || !input.version.snapshot)
+    throw new Error("REPORT_VERSION_NOT_READY");
+  const snapshot = input.version.snapshot as GeneratedReportSnapshot,
+    latest = [...input.versions].sort(
+      (a, b) => b.versionNumber - a.versionNumber,
+    )[0];
+  return Object.freeze({
+    reportId: input.report.reportId,
+    versionId: input.version.reportVersionId,
+    versionNumber: input.version.versionNumber,
+    isLatestVersion: latest?.reportVersionId === input.version.reportVersionId,
+    ...(latest && latest.reportVersionId !== input.version.reportVersionId
+      ? { newerVersionId: latest.reportVersionId }
+      : {}),
+    title: input.version.title,
+    definitionLabel: standardReportCatalog.get(
+      input.version.definitionId,
+      input.version.definitionVersion,
+    ).title,
+    scopeSummary: scopeLabel(input.version),
+    periodSummary: `${input.version.period.startDate} – ${input.version.period.endDate} · ${input.version.period.timezone}`,
+    generatedAt: input.version.generatedAt!,
+    dataQuality: reportDataQuality(input.version),
+    sections: snapshot.sections,
+    lineage: snapshot.lineage,
+    dataGaps: snapshot.dataGaps,
+    freshness: snapshot.freshness,
+    permittedActions: input.report.archivedAt
+      ? ["restore" as const]
+      : ["regenerate" as const, "archive" as const],
+  });
+}
 
-export function definitionsForRole(role: string, permissions: readonly string[]) { const allowed = role === "owner" ? new Set(["owner.performance-report.v1"]) : undefined; return standardReportCatalog.definitions.filter(definition => (!allowed || allowed.has(definition.definitionId)) && definition.requiredPermissions.every(permission => permissions.includes(permission))); }
-export function definitionAvailability(definition: StandardReportCatalogEntry, propertyCount: number, analysisCount: number) { if (definition.family === "investment" && analysisCount < (definition.reportType === "investment_comparison" ? 2 : 1)) return { state: "unavailable" as const, reason: "A saved, authorized analysis version is required." }; if (["owner", "operations"].includes(definition.family) && propertyCount === 0) return { state: "unavailable" as const, reason: "No eligible properties are available." }; return { state: "available" as const }; }
+export function definitionsForRole(
+  role: string,
+  permissions: readonly string[],
+) {
+  const allowed =
+    role === "owner" ? new Set(["owner.performance-report.v1", "custom.report.v1"]) : undefined;
+  return standardReportCatalog.definitions.filter(
+    (definition) =>
+      (!allowed || allowed.has(definition.definitionId)) &&
+      definition.requiredPermissions.every((permission) =>
+        permissions.includes(permission),
+      ),
+  );
+}
+export function definitionAvailability(
+  definition: StandardReportCatalogEntry,
+  propertyCount: number,
+  analysisCount: number,
+) {
+  if (
+    definition.family === "investment" &&
+    analysisCount < (definition.reportType === "investment_comparison" ? 2 : 1)
+  )
+    return {
+      state: "unavailable" as const,
+      reason: "A saved, authorized analysis version is required.",
+    };
+  if (
+    ["owner", "operations"].includes(definition.family) &&
+    propertyCount === 0
+  )
+    return {
+      state: "unavailable" as const,
+      reason: "No eligible properties are available.",
+    };
+  return { state: "available" as const };
+}

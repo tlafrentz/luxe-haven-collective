@@ -2,15 +2,37 @@
 import { useState } from "react";
 export function CustomReportBuilder({
   sections,
+  ownerOnly = false,
 }: {
   sections: readonly {
     key: string;
     label: string;
     description: string;
-    metricKeys: readonly string[];
+    metrics: readonly {
+      key: string;
+      visibility: "internal" | "owner_safe" | "standard";
+    }[];
+    visibilities: readonly ("internal" | "owner_safe")[];
   }[];
+  ownerOnly?: boolean;
 }) {
   const [selected, setSelected] = useState<readonly string[]>([]);
+  const [visibility, setVisibility] = useState<"internal" | "owner_safe">(
+    ownerOnly ? "owner_safe" : "internal",
+  );
+  const eligible = sections.filter((section) =>
+    section.visibilities.includes(visibility),
+  );
+  const changeVisibility = (next: "internal" | "owner_safe") => {
+    setVisibility(next);
+    setSelected((current) =>
+      current.filter((key) =>
+        sections
+          .find((section) => section.key === key)
+          ?.visibilities.includes(next),
+      ),
+    );
+  };
   const toggle = (key: string) =>
     setSelected((current) =>
       current.includes(key)
@@ -28,13 +50,38 @@ export function CustomReportBuilder({
   return (
     <fieldset>
       <legend className="font-semibold">Approved sections</legend>
+      <label className="mt-2 block">
+        Visibility
+        <select
+          className="mt-1 w-full rounded-lg border p-3"
+          name="visibility"
+          value={visibility}
+          onChange={(event) =>
+            changeVisibility(event.target.value as "internal" | "owner_safe")
+          }
+          disabled={ownerOnly}
+        >
+          {!ownerOnly ? <option value="internal">Internal</option> : null}
+          <option value="owner_safe">Owner safe</option>
+        </select>
+      </label>
+      {ownerOnly ? (
+        <input name="visibility" type="hidden" value="owner_safe" />
+      ) : null}
+      <p aria-live="polite" className="mt-2 text-sm">
+        {visibility === "owner_safe"
+          ? "Only owner-safe sections and metrics are available."
+          : "Internal reporting content is available."}
+      </p>
       <p className="text-sm text-stone-600">
         Choose sections and canonical metrics, then arrange them with the
         keyboard-accessible controls.
       </p>
-      {selected.map((key) => <input key={key} name="sectionKeys" type="hidden" value={key} />)}
+      {selected.map((key) => (
+        <input key={key} name="sectionKeys" type="hidden" value={key} />
+      ))}
       <div className="mt-3 grid gap-3">
-        {sections.map((section) => {
+        {eligible.map((section) => {
           const active = selected.includes(section.key),
             order = selected.indexOf(section.key);
           return (
@@ -74,23 +121,33 @@ export function CustomReportBuilder({
                       Move down
                     </button>
                   </div>
-                  {section.metricKeys.length ? (
+                  {section.metrics.filter(
+                    (metric) =>
+                      visibility !== "owner_safe" ||
+                      metric.visibility === "owner_safe",
+                  ).length ? (
                     <fieldset className="mt-3">
                       <legend className="text-sm font-semibold">Metrics</legend>
-                      {section.metricKeys.map((key) => (
-                        <label
-                          className="mr-4 mt-2 inline-flex items-center gap-1 text-sm"
-                          key={key}
-                        >
-                          <input
-                            defaultChecked
-                            name={`metricKeys:${section.key}`}
-                            type="checkbox"
-                            value={key}
-                          />
-                          {key.replaceAll("-", " ")}
-                        </label>
-                      ))}
+                      {section.metrics
+                        .filter(
+                          (metric) =>
+                            visibility !== "owner_safe" ||
+                            metric.visibility === "owner_safe",
+                        )
+                        .map(({ key }) => (
+                          <label
+                            className="mr-4 mt-2 inline-flex items-center gap-1 text-sm"
+                            key={key}
+                          >
+                            <input
+                              defaultChecked
+                              name={`metricKeys:${section.key}`}
+                              type="checkbox"
+                              value={key}
+                            />
+                            {key.replaceAll("-", " ")}
+                          </label>
+                        ))}
                     </fieldset>
                   ) : null}
                 </div>

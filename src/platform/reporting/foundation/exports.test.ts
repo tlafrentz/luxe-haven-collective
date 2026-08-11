@@ -15,6 +15,8 @@ import {
   type ReportExportRepository,
 } from "./exports";
 import type { GeneratedReportSnapshot, ReportVersion } from "./model";
+import { parseReportingProductionConfiguration } from "./production-configuration";
+const configuration=parseReportingProductionConfiguration({REPORTING_ENABLED:"true",REPORTING_CUSTOM_REPORTS_ENABLED:"true",REPORTING_PDF_EXPORTS_ENABLED:"true",REPORTING_CSV_EXPORTS_ENABLED:"true"});
 
 const snapshot = {
   schemaVersion: "rp001.report-snapshot.v1",
@@ -210,6 +212,8 @@ describe("RP-001E export lifecycle", () => {
             item.reportVersionId === version && item.tenantId === tenant,
         ),
       expire: async () => {},
+      listExpired: async () => [],
+      expireExact: async () => true,
     };
     const storage: ReportArtifactStorage = {
       store: async (input) => {
@@ -224,7 +228,8 @@ describe("RP-001E export lifecycle", () => {
         repository,
         storage,
         id: () => `id_${++sequence}`,
-        clock: () => new Date("2026-08-11T00:00:00Z"),
+      clock: () => new Date("2026-08-11T00:00:00Z"),
+      configuration,
       }),
       version = {
         reportId: "report_1",

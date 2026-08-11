@@ -86,6 +86,30 @@ export class SupabaseReportExportRepository implements ReportExportRepository {
       .eq("status", "ready");
     if (error) throw failure();
   }
+  async listExpired(asOf: string, batchSize: number) {
+    const { data, error } = await this.client
+      .from("canonical_report_exports")
+      .select("*")
+      .eq("status", "ready")
+      .lte("expires_at", asOf)
+      .order("expires_at", { ascending: true })
+      .limit(batchSize);
+    if (error) throw failure();
+    return Object.freeze((data ?? []).map(mapExport));
+  }
+  async expireExact(id: string, tenantId: string, storageKey: string) {
+    const { data, error } = await this.client
+      .from("canonical_report_exports")
+      .update({ status: "expired", storage_key: null })
+      .eq("workspace_id", tenantId)
+      .eq("id", id)
+      .eq("status", "ready")
+      .eq("storage_key", storageKey)
+      .select("id")
+      .maybeSingle();
+    if (error) throw failure();
+    return Boolean(data);
+  }
   private async transition(
     id: string,
     expected: string,
