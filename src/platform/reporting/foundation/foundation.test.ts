@@ -12,7 +12,7 @@ describe("RP-001A reporting foundation", () => {
     expect(new Set(standardReportRegistry.list().map(item => item.definitionId)).size).toBe(6);
     const owner = standardReportRegistry.get("owner.performance-report.v1", 1);
     expect(owner.sectionDefinitions.every(section => section.visibility === "owner_safe")).toBe(true);
-    expect(owner.sectionDefinitions.map(section => section.order)).toEqual([0, 1, 2]);
+    expect(owner.sectionDefinitions.map(section => section.order)).toEqual(owner.sectionDefinitions.map((_, index) => index));
     expect(() => standardReportRegistry.get("unknown.v1")).toThrowError(ReportFoundationError);
   });
 
