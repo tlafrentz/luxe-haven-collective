@@ -51,6 +51,7 @@ export async function requestCanonicalReportExportAction(form: FormData) {
     idempotencyKey: String(form.get("idempotencyKey") ?? crypto.randomUUID()),
   });
   revalidatePath(`/dashboard/reports/${reportId}/versions/${versionId}`);
+  redirect(`/dashboard/reports/${reportId}/versions/${versionId}`);
 }
 
 export async function downloadCanonicalReportExportAction(form: FormData) {
