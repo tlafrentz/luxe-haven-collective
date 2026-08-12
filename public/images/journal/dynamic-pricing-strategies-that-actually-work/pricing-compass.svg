@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+<title id="title">The Pricing Compass</title>
+<desc id="desc">A four-direction framework balancing demand, positioning, market context, and operational reality.</desc>
+<rect width="1200" height="720" fill="#FAF8F4"/>
+<text x="600" y="70" text-anchor="middle" font-family="Georgia, serif" font-size="44" fill="#22201D">The Pricing Compass</text>
+<line x1="600" y1="180" x2="600" y2="545" stroke="#8A837A" stroke-width="2"/>
+<line x1="315" y1="360" x2="885" y2="360" stroke="#8A837A" stroke-width="2"/>
+<circle cx="600" cy="360" r="90" fill="#FFFFFF" stroke="#CFC8BE" stroke-width="2"/>
+<text x="600" y="350" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="27" fill="#146B51">PRICING</text>
+<text x="600" y="384" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#514C46">DECISION</text>
+<text x="600" y="146" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="27" fill="#A6671D">DEMAND</text>
+<text x="600" y="592" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="27" fill="#A6671D">OPERATIONAL REALITY</text>
+<text x="245" y="349" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="27" fill="#A6671D">POSITIONING</text>
+<text x="955" y="349" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="27" fill="#A6671D">MARKET CONTEXT</text>
+<text x="600" y="670" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#6B655E">Balance all four forces before changing a nightly rate.</text>
+</svg>

@@ -4,6 +4,7 @@ import { plans } from "@/lib/plans";
 import { guidebookPackages } from "@/lib/guidebook-packages";
 import { furnishingPackages } from "@/lib/furnishing-packages";
 import { investmentPackages } from "@/lib/investment-packages";
+import { insightArticles } from "@/lib/insights";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl =
@@ -24,6 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/terms",
     "/resources",
     "/resources/insights",
+    ...insightArticles.map((article) => `/resources/insights/${article.slug}`),
     "/resources/playbooks",
     "/resources/templates",
     "/resources/market-reports",
@@ -51,7 +53,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/guidebook-studio/find-my-fit",
     "/investment-intelligence",
     "/investment-intelligence/packages",
-    ...investmentPackages.map((pkg) => `/investment-intelligence/packages/${pkg.slug}`),
+    ...investmentPackages.map(
+      (pkg) => `/investment-intelligence/packages/${pkg.slug}`,
+    ),
     "/investment-intelligence/sample-reports",
     "/investment-intelligence/methodology",
     "/investment-intelligence/faq",

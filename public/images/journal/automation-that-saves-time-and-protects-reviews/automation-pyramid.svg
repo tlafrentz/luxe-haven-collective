@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500">
+<rect width="1200" height="500" fill="#faf8f4"/>
+<text x="600" y="50" text-anchor="middle" font-size="38" font-family="Georgia">Hospitality Automation Pyramid</text>
+<polygon points="600,90 250,430 950,430" fill="#fff" stroke="#b8b1a7"/>
+<text x="600" y="145" text-anchor="middle" font-size="24">Guest Delight</text>
+<text x="600" y="205" text-anchor="middle" font-size="24">Personalized Service</text>
+<text x="600" y="265" text-anchor="middle" font-size="24">Decision Support</text>
+<text x="600" y="325" text-anchor="middle" font-size="24">Workflow Automation</text>
+<text x="600" y="390" text-anchor="middle" font-size="24">Operational Consistency</text>
+</svg>
