@@ -164,7 +164,7 @@ export class ReportExportService {
     const now = this.now(),
       id = this.id(),
       format =
-        input.format === "csv" && selected.length > 1
+        input.format === "csv" && csvDatasetCount(snapshot, selected) > 1
           ? "csv_zip"
           : input.format,
       options = Object.freeze({
@@ -734,6 +734,22 @@ export function renderCsvExport(
   );
   datasets.set("manifest.csv", manifest);
   return { bytes: storedZip(datasets), mediaType: "application/zip" };
+}
+
+function csvDatasetCount(
+  snapshot: GeneratedReportSnapshot,
+  selectedSectionIds: readonly string[],
+) {
+  const selected = new Set(selectedSectionIds);
+  return snapshot.sections.reduce((count, section) => {
+    if (!selected.has(section.sectionId)) return count;
+    return (
+      count +
+      (section.metrics.length ? 1 : 0) +
+      (section.tables?.length ?? 0) +
+      (section.dataGaps.length ? 1 : 0)
+    );
+  }, 0);
 }
 function metricRow(
   snapshot: GeneratedReportSnapshot,

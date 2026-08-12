@@ -289,5 +289,19 @@ describe("RP-001E export lifecycle", () => {
         authorizedReportVersionIds: [version.reportVersionId],
       }),
     ).toContain("july-performance");
+
+    const csvExport = await service.request({
+      actor,
+      reportVersion: version,
+      format: "csv",
+      sectionKeys: ["revenue-performance"],
+      idempotencyKey: "csv-with-metrics-and-gaps",
+    });
+    expect(csvExport.format).toBe("csv_zip");
+    expect(csvExport.fileName).toMatch(/\.zip$/);
+    expect(csvExport.mediaType).toBe("application/zip");
+    expect([...objects.values()].at(-1)?.slice(0, 4)).toEqual(
+      new Uint8Array([80, 75, 3, 4]),
+    );
   });
 });
