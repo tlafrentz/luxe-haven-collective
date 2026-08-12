@@ -5,3 +5,4 @@ export * from "./gate";
 export * from "./identity";
 export * from "./readiness";
 export * from "./registration";
+export * from "./coordination";

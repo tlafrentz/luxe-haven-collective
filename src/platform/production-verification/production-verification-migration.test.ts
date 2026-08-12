@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const sql = readFileSync("supabase/migrations/20260811100000_ca001f_production_verification.sql", "utf8");
+const coordinationSql = readFileSync("supabase/migrations/20260812110000_ca001f_execution_coordination.sql", "utf8").toLowerCase();
 const tables = ["production_verification_plans", "production_verification_scenarios", "production_verification_evidence_definitions", "production_release_candidates", "production_verification_runs", "production_verification_instances", "production_verification_attempts", "controlled_verification_identities", "production_verification_resources", "production_verification_evidence", "production_verification_manual_observations", "production_verification_gate_evaluations", "production_verification_audit_events"];
 
 describe("CA-001F migration", () => {
@@ -27,4 +28,8 @@ describe("CA-001F migration", () => {
     expect(identitySql).toContain("controlled_verification_identity_origin_immutable");
     expect(identitySql).not.toMatch(/password|credential|token|secret|email/i);
   });
+});
+
+describe("CA-001F execution coordination migration",()=>{
+  it("creates one actor-authorized run and registered instances atomically",()=>{expect(coordinationSql).toContain("create function public.create_ca001f_verification_run");expect(coordinationSql).toContain("reviewer_separation_required");expect(coordinationSql).toContain("jsonb_to_recordset");expect(coordinationSql).toContain("revoke all on function public.create_ca001f_verification_run")});
 });

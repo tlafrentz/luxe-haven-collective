@@ -13,7 +13,7 @@ export interface ReadinessStateReader {
 export async function evaluateProductionExecutionReadiness(candidate: ProductionReleaseCandidate, reader: ReadinessStateReader): Promise<ProductionExecutionReadiness> {
   const blockers: string[] = [], current = await reader.resolveCurrentCandidate();
   if (current.commitSha !== candidate.commitSha || current.deploymentId !== candidate.deploymentId || current.aliasDeploymentId !== candidate.deploymentId) blockers.push("CANDIDATE_OR_ALIAS_MISMATCH");
-  if (current.latestMigrationCode !== "20260811120000") blockers.push("MIGRATION_SET_MISMATCH");
+  if (current.latestMigrationCode !== "20260812110000") blockers.push("MIGRATION_SET_MISMATCH");
   const registry = await reader.resolveRegistry();
   if (registry.planCode !== CA001F_PLAN.code || registry.planVersion !== CA001F_PLAN.version) blockers.push("ACTIVE_PLAN_UNAVAILABLE");
   if (VERIFICATION_SCENARIOS.some(s => !registry.scenarioCodes.includes(s.code))) blockers.push("SCENARIO_REGISTRY_INCOMPLETE");
