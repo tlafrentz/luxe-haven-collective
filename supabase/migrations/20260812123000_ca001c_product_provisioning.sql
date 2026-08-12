@@ -7,7 +7,7 @@ returns jsonb language plpgsql security definer set search_path=''as $$
 declare v_case public.onboarding_cases;v_existing public.activation_product_contexts;v_property uuid;v_context uuid;v_artifact text;v_capability text;v_context_type text;v_command text:=pg_catalog.encode(extensions.digest(p_idempotency_key,'sha256'),'hex');v_guidebook record;
 begin
  select*into v_case from public.onboarding_cases where id=p_onboarding_case_id and tenant_id=p_tenant_id and customer_account_id=p_customer_account_id;if not found then raise exception'PRODUCT_PROVISIONING_NOT_AUTHORIZED';end if;
- if not exists(select 1 from public.profiles where id=p_actor_id and role in('admin','administrator'))and not exists(select 1 from public.customer_account_memberships where profile_id=p_actor_id and tenant_id=p_tenant_id and customer_account_id=p_customer_account_id and status='active')then raise exception'PRODUCT_PROVISIONING_NOT_AUTHORIZED';end if;
+ if not exists(select 1 from public.profiles where id=p_actor_id and role='admin')and not exists(select 1 from public.customer_account_memberships where profile_id=p_actor_id and tenant_id=p_tenant_id and customer_account_id=p_customer_account_id and status='active')then raise exception'PRODUCT_PROVISIONING_NOT_AUTHORIZED';end if;
  select*into v_existing from public.activation_product_contexts where onboarding_case_id=p_onboarding_case_id and product_family=p_product_family;if found then return jsonb_build_object('contextType',v_existing.context_type,'contextId',v_existing.context_id,'firstValueReferenceId',v_existing.artifact_reference_id);end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_customer_account_id::text||':'||p_product_family,0));
  if not public.onboarding_product_limit_available(p_tenant_id,p_customer_account_id,p_product_family)then raise exception'PRODUCT_LIMIT_REACHED';end if;
@@ -36,7 +36,7 @@ revoke all on function public.provision_activation_product_context(uuid,uuid,uui
 create function public.authorize_onboarding_product_provisioning(p_actor_id uuid,p_tenant_id uuid,p_customer_account_id uuid,p_onboarding_case_id uuid)
 returns boolean language sql stable security definer set search_path=''as $$
  select exists(select 1 from public.onboarding_cases c where c.id=p_onboarding_case_id and c.tenant_id=p_tenant_id and c.customer_account_id=p_customer_account_id and c.status in('ready','in_progress','customer_action_required','internal_action_required','ready_for_provisioning','provisioning','ready_for_handoff'))
- and(exists(select 1 from public.profiles p where p.id=p_actor_id and p.role in('admin','administrator'))or exists(select 1 from public.customer_account_memberships m where m.profile_id=p_actor_id and m.tenant_id=p_tenant_id and m.customer_account_id=p_customer_account_id and m.status='active'))
+ and(exists(select 1 from public.profiles p where p.id=p_actor_id and p.role='admin')or exists(select 1 from public.customer_account_memberships m where m.profile_id=p_actor_id and m.tenant_id=p_tenant_id and m.customer_account_id=p_customer_account_id and m.status='active'))
 $$;
 revoke all on function public.authorize_onboarding_product_provisioning(uuid,uuid,uuid,uuid)from public,anon,authenticated;
 

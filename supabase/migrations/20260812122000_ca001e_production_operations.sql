@@ -1,6 +1,6 @@
 -- CA-001E owns only coordination data; these commands cannot alter commercial or product state.
 create function public.authorize_activation_operator(p_actor_id uuid,p_tenant_id uuid,p_customer_account_id uuid)
-returns boolean language sql stable security definer set search_path=''as $$select exists(select 1 from public.profiles p where p.id=p_actor_id and p.role in('admin','administrator')and exists(select 1 from public.customer_accounts a where a.id=p_customer_account_id and a.tenant_id=p_tenant_id))$$;
+returns boolean language sql stable security definer set search_path=''as $$select exists(select 1 from public.profiles p where p.id=p_actor_id and p.role='admin'and exists(select 1 from public.customer_accounts a where a.id=p_customer_account_id and a.tenant_id=p_tenant_id))$$;
 create function public.assign_activation_owner(p_actor_id uuid,p_assignment jsonb,p_expected_revision integer,p_correlation_id text)
 returns public.activation_assignments language plpgsql security definer set search_path=''as $$
 declare v_current public.activation_assignments;v_result public.activation_assignments;

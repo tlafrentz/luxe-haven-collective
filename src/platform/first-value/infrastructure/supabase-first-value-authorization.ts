@@ -14,7 +14,7 @@ export class SupabaseFirstValueAuthorization implements FirstValueAuthorization 
       this.client.from("customer_account_memberships").select("id").eq("profile_id", actorId).eq("tenant_id", tenantId).eq("customer_account_id", customerAccountId).eq("status", "active").maybeSingle(),
     ]);
     if (profileError || membershipError) throw new Error("FIRST_VALUE_AUTHORIZATION_FAILED");
-    return profile?.role === "admin" || profile?.role === "administrator" || Boolean(membership);
+    return profile?.role === "admin" || Boolean(membership);
   }
   async authorizeEntry(input:Readonly<{actorId:string;tenantId:string;customerAccountId:string;onboardingCaseId?:string;productFamily:FirstValueJourney["productFamily"]}>) {
     if (!await this.authorized(input.actorId,input.tenantId,input.customerAccountId)) return false;
