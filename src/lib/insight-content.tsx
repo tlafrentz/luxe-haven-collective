@@ -94,14 +94,19 @@ export function InsightBody({ source }: { source: string }) {
 
 function inline(value: string): ReactNode[] {
   return value
-    .split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g)
-    .map((part, index) =>
-      part.startsWith("**") && part.endsWith("**") ? (
+    .split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*)/g)
+    .map((part, index) => {
+      const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      return link ? (
+        <a key={index} href={link[2]}>
+          {link[1]}
+        </a>
+      ) : part.startsWith("**") && part.endsWith("**") ? (
         <strong key={index}>{part.slice(2, -2)}</strong>
       ) : part.startsWith("*") && part.endsWith("*") ? (
         <em key={index}>{part.slice(1, -1)}</em>
       ) : (
         part
-      ),
-    );
+      );
+    });
 }

@@ -62,13 +62,13 @@ export default async function InsightArticlePage({
         </div>
       </header>
       <div className="container-shell py-10">
-        <div className="relative aspect-[16/7] overflow-hidden rounded-2xl">
+        <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#f7f3ec]">
           <Image
             src={article.image}
             alt={article.heroAlt}
             fill
             priority
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 1280px) 100vw, 1200px"
           />
         </div>
