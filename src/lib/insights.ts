@@ -49,7 +49,7 @@ export const insightsCards: InsightCard[] = [
     action: "Read insight",
     meta: "Jun 28, 2026 · 6 min read",
     image:
-      "/images/journal/automation-that-saves-time-and-protects-reviews/automation-hero.jpg",
+      "/images/journal/automation-that-saves-time-and-protects-reviews/automation-hero-v2.png",
   },
   {
     eyebrow: "Technology",
@@ -61,7 +61,7 @@ export const insightsCards: InsightCard[] = [
     action: "Read insight",
     meta: "Jun 25, 2026 · 5 min read",
     image:
-      "/images/journal/stop-guessing-use-data-to-make-better-decisions/decision-intelligence-hero.jpg",
+      "/images/journal/stop-guessing-use-data-to-make-better-decisions/decision-intelligence-hero-v2.png",
   },
   {
     eyebrow: "Guest Experience",
