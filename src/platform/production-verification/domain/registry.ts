@@ -9,12 +9,28 @@ export type VerificationScenarioDefinition = Readonly<{
   expectedOutcomeCode: string; requiredEvidenceCodes: readonly string[];
   timeoutPolicyCode: string; retryPolicyCode: string; blocking: boolean;
   status: "draft" | "active" | "retired";
+  executionMode: "authoritative_mutation" | "observation";
+  authorityCode: "release" | "commerce" | "customer_account" | "onboarding" | "first_value" | "admin_activation" | "security" | "operations";
 }>;
+
+export const VERIFICATION_RETRY_POLICIES = Object.freeze([{ code: "SAFE_IDEMPOTENT_V1", version: 1, maximumAttempts: 3, retryableResultCodes: ["TRANSIENT_UPSTREAM_FAILURE", "TIMEOUT_AFTER_EFFECT", "EVIDENCE_PENDING"] }]);
+export const VERIFICATION_TIMEOUT_POLICIES = Object.freeze([{ code: "PRODUCTION_BOUNDED_V1", version: 1, timeoutSeconds: 120, timeoutResultCode: "SCENARIO_TIMED_OUT" }]);
+export const VERIFICATION_CLEANUP_POLICIES = Object.freeze([{ code: "EXACT_OWNING_DOMAIN_V1", version: 1, operationCode: "EXACT_RESOURCE_CLEANUP", forbidReusedResources: true }]);
+export const VERIFICATION_GATE_POLICIES = Object.freeze([{ code: "ALL_REQUIRED_AND_CLEAN_V1", version: 1, requireReviewer: true, requireManualObservations: true, requireExactCleanup: true }]);
+export const MANUAL_OBSERVATION_DEFINITIONS = Object.freeze([
+  { code: "HPM_USABILITY", version: 1, scenarioCode: "PV-007" }, { code: "GUIDEBOOK_EDITABILITY", version: 1, scenarioCode: "PV-009" },
+  { code: "FURNISHING_BRIEF_REVIEWABILITY", version: 1, scenarioCode: "PV-011" }, { code: "INVESTMENT_DISCLOSURE_CLARITY", version: 1, scenarioCode: "PV-012" },
+  { code: "ADMIN_ACTIVATION_USABILITY", version: 1, scenarioCode: "PV-018" }, { code: "CUSTOMER_ADMIN_ACCESSIBILITY", version: 1, scenarioCode: "PV-027" },
+]);
+
+const authorityFor = (category: VerificationScenarioCategory) => category === "release_identity" ? "release" : category === "commercial" ? "commerce" : category === "customer_account" ? "customer_account" : category === "onboarding" ? "onboarding" : category === "first_value" ? "first_value" : category === "admin_operations" ? "admin_activation" : category === "authorization" ? "security" : "operations";
+const observational = new Set(["PV-001", "PV-002", "PV-008", "PV-010", "PV-016", "PV-017", "PV-020", "PV-021", "PV-022", "PV-023", "PV-024", "PV-027", "PV-028", "PV-031"]);
 
 const scenario = (code: string, category: VerificationScenarioCategory, prerequisites: readonly string[] = [], productFamily?: VerificationScenarioDefinition["productFamily"]): VerificationScenarioDefinition => Object.freeze({
   code, version: 1, category, productFamily, requiredIdentityRoles: ["release_verifier"], prerequisiteScenarioCodes: prerequisites,
   executorCode: `EXECUTE_${code}`, evaluatorCode: `EVALUATE_${code}`, cleanupOperationCode: category === "cleanup" ? "EXACT_RESOURCE_CLEANUP" : undefined,
   expectedOutcomeCode: `${code}_PASS`, requiredEvidenceCodes: [`${code}_CANONICAL_EVIDENCE`], timeoutPolicyCode: "PRODUCTION_BOUNDED_V1", retryPolicyCode: "SAFE_IDEMPOTENT_V1", blocking: true, status: "active",
+  executionMode: observational.has(code) ? "observation" : "authoritative_mutation", authorityCode: authorityFor(category),
 });
 
 export const VERIFICATION_SCENARIOS = Object.freeze([
@@ -34,11 +50,13 @@ export const VERIFICATION_SCENARIOS = Object.freeze([
 ] satisfies readonly VerificationScenarioDefinition[]);
 
 export const CA001F_PLAN = Object.freeze({ code: "CA001_PRODUCTION_RELEASE", version: 1, milestoneCode: "CA-001F", supportedEnvironment: "production", requiredScenarioCodes: VERIFICATION_SCENARIOS.map(s => s.code), optionalScenarioCodes: [], releaseGatePolicyCode: "ALL_REQUIRED_AND_CLEAN_V1", cleanupPolicyCode: "EXACT_OWNING_DOMAIN_V1", evidencePolicyCode: "CANONICAL_REFERENCES_V1", status: "active" as const });
+export const VERIFICATION_EVIDENCE_DEFINITIONS = Object.freeze(VERIFICATION_SCENARIOS.map(s => Object.freeze({ code: s.requiredEvidenceCodes[0], version: 1, scenarioCode: s.code, sourceAuthorityCode: s.authorityCode, required: true })));
 
 export function validateVerificationRegistry() {
   const codes = new Set(VERIFICATION_SCENARIOS.map(s => s.code));
   if (codes.size !== VERIFICATION_SCENARIOS.length) throw new ProductionVerificationError("DUPLICATE_SCENARIO_CODE");
   for (const definition of VERIFICATION_SCENARIOS) for (const prerequisite of definition.prerequisiteScenarioCodes) if (!codes.has(prerequisite)) throw new ProductionVerificationError("UNKNOWN_SCENARIO_PREREQUISITE");
   if (CA001F_PLAN.requiredScenarioCodes.some(code => !codes.has(code))) throw new ProductionVerificationError("UNKNOWN_REQUIRED_SCENARIO");
+  if (VERIFICATION_EVIDENCE_DEFINITIONS.length !== VERIFICATION_SCENARIOS.length) throw new ProductionVerificationError("EVIDENCE_REGISTRY_INCOMPLETE");
   return true;
 }
