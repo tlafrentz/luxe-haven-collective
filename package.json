@@ -14,6 +14,7 @@
     "test:automation:runtime-identity": "tsx scripts/verification/verify-au001-runtime-identity-hosted.ts",
     "verify:reporting:production": "tsx scripts/verification/verify-rp001-production.ts",
     "reporting:expire-artifacts": "tsx scripts/operations/expire-rp001-report-artifacts.ts",
+    "reporting:bootstrap-verification": "tsx scripts/operations/bootstrap-rp001-verification-identities.ts",
     "automation:provision-execute-identity": "tsx scripts/operations/provision-au-execute-identity.ts",
     "automation:seed-internal-cohort": "tsx scripts/operations/seed-au-internal-cohort.ts",
     "test:watch": "vitest",
