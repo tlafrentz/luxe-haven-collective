@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { OC001_CATALOG_FINGERPRINT, OC001_OFFER_REGISTRY, validateOc001Offer, type Oc001OfferDefinition, type Oc001OfferFamily } from "../domain";
 
-const canonical=(value:unknown)=>JSON.stringify(value,(key,item)=>{if(["effective_from","effective_through"].includes(key)&&typeof item==="string"){const parsed=Date.parse(item);if(Number.isFinite(parsed))return new Date(parsed).toISOString()}return item!==null&&typeof item==="object"&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b))):item});
+const canonical=(value:unknown)=>JSON.stringify(value,(_key,item)=>{if(typeof item==="string"&&/^\d{4}-\d{2}-\d{2}T/.test(item)){const parsed=Date.parse(item);if(Number.isFinite(parsed))return new Date(parsed).toISOString()}return item!==null&&typeof item==="object"&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b))):item});
 const family=(value:Oc001OfferFamily)=>value==="guidebook"?"guidebook_studio":value;
 const customerType=(value:Oc001OfferDefinition):string=>value.family==="investment_intelligence"?"investor":value.family==="furnishing"?"service_client":value.offerCode.includes("portfolio")||value.offerCode.includes("professional")||value.offerCode.includes("enterprise")?"portfolio_operator":"individual_operator";
 const acquisition=(value:Oc001OfferDefinition)=>value.purchaseAction==="request_consultation"?"contact_sales":"self_service";

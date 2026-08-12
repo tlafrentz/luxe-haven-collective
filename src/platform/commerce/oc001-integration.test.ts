@@ -14,4 +14,5 @@ describe("OC-001 production composition",()=>{
   it("uses audited application operations for entitlement lifecycle changes",()=>{expect(lifecycle).toContain('rpc("activate_oc001_agreement_entitlements"');expect(lifecycle).toContain('rpc("transition_oc001_agreement_entitlements"');expect(lifecycle).not.toMatch(/from\("commercial_entitlements"\)\.update/)});
   it("uses hosted Checkout without hard-coded payment method types",()=>{expect(stripe).toContain("integration_identifier");expect(stripe).not.toContain("payment_method_types")});
   it("keeps multi-cadence prices out of the legacy single-price columns",()=>{expect(registration).toContain("currency:definition.prices.length===1?definition.prices[0].currency:null")});
+  it("normalizes persisted timestamp representations during drift checks",()=>{expect(registration).toContain('/^\\d{4}-\\d{2}-\\d{2}T/')});
 });
