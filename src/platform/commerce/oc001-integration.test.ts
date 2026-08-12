@@ -5,6 +5,7 @@ const checkout=readFileSync("src/app/actions/commerce-checkout.ts","utf8");
 const webhook=readFileSync("src/app/api/webhooks/stripe/route.ts","utf8");
 const lifecycle=readFileSync("src/platform/commerce/infrastructure/supabase-ca001b-lifecycle.ts","utf8");
 const stripe=readFileSync("src/platform/commerce/infrastructure/stripe/stripe-commerce-provider.ts","utf8");
+const registration=readFileSync("src/platform/commerce/application/oc001-catalog.ts","utf8");
 
 describe("OC-001 production composition",()=>{
   it("resolves checkout from the canonical purchase intent and Stripe mapping",()=>{expect(checkout).toContain('admin.rpc("create_oc001_purchase_intent"');expect(checkout).toContain("resolved.stripePriceReference");expect(checkout).not.toMatch(/amountMinor\s*:\s*addOns|providerPriceId\s*:\s*legacyOfferId/)});
@@ -12,4 +13,5 @@ describe("OC-001 production composition",()=>{
   it("uses verified provider events for authoritative activation and onboarding",()=>{expect(webhook).toContain("verifyStripeWebhook");expect(webhook).toContain("ProcessVerifiedCommercialEvent");expect(webhook).toContain("createProductionOnboarding");expect(webhook).not.toMatch(/success.*entitlement|redirect.*entitlement/i)});
   it("uses audited application operations for entitlement lifecycle changes",()=>{expect(lifecycle).toContain('rpc("activate_oc001_agreement_entitlements"');expect(lifecycle).toContain('rpc("transition_oc001_agreement_entitlements"');expect(lifecycle).not.toMatch(/from\("commercial_entitlements"\)\.update/)});
   it("uses hosted Checkout without hard-coded payment method types",()=>{expect(stripe).toContain("integration_identifier");expect(stripe).not.toContain("payment_method_types")});
+  it("keeps multi-cadence prices out of the legacy single-price columns",()=>{expect(registration).toContain("currency:definition.prices.length===1?definition.prices[0].currency:null")});
 });
