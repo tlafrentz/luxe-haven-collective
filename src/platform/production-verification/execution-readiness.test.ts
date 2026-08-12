@@ -37,9 +37,19 @@ describe("CA-001F identity and readiness boundaries", () => {
   it("registers references only after authoritative identity resolution and rejects reviewer overlap", async () => {
     const repository = { resolveAuthSubject: async () => ({ actorId: "subject", active: true, roles: ["release_verifier"], tenantIds: ["tenant"] }), find: async () => null, register: vi.fn(async () => undefined) };
     const operation = new RegisterControlledVerificationIdentity({ authorize: async () => true }, repository);
-    await operation.execute({ actorId: "admin", identity: { opaqueAuthSubjectReference: "opaque", identityTypeCode: "release_verifier", tenantId: "tenant", allowedScenarioCodes: ["PV-001"], expiresAt: new Date(Date.now()+60_000), fixtureOwnershipCode: "CONTROLLED", retentionClassification: "retain" }, fingerprint: "fingerprint", correlationId: "c" });
+    const identity={ opaqueAuthSubjectReference: "opaque", identityTypeCode: "release_verifier", tenantId: "tenant", allowedScenarioCodes: ["PV-001"], expiresAt: new Date(Date.now()+60_000), fixtureOwnershipCode: "CONTROLLED", retentionClassification: "retain" as const };
+    const first=await operation.execute({ actorId: "admin", identity, correlationId: "c" });
     expect(repository.register).toHaveBeenCalled();
+    expect(first.fingerprint).toMatch(/^[a-f0-9]{64}$/);
     await expect(authorizeReviewer({ resolve: async () => ({ active: true, roles: ["release_reviewer"] }) }, "same", "same")).rejects.toMatchObject({ code: "REVIEWER_SEPARATION_REQUIRED" });
+  });
+  it("rejects expired, unauthorized, cross-tenant, and drifted identity registration",async()=>{
+    const identity={opaqueAuthSubjectReference:"opaque",identityTypeCode:"release_verifier",tenantId:"tenant",allowedScenarioCodes:["PV-001"],expiresAt:new Date(Date.now()+60_000),fixtureOwnershipCode:"CONTROLLED",retentionClassification:"retain" as const};
+    const repository={resolveAuthSubject:async()=>({actorId:"subject",active:true,roles:[],tenantIds:["other"]}),find:async()=>null,register:vi.fn(async()=>undefined)};
+    await expect(new RegisterControlledVerificationIdentity({authorize:async()=>true},repository).execute({actorId:"admin",identity,correlationId:"c"})).rejects.toMatchObject({code:"CONTROLLED_IDENTITY_NOT_AUTHORITATIVE"});
+    await expect(new RegisterControlledVerificationIdentity({authorize:async()=>false},repository).execute({actorId:"admin",identity,correlationId:"c"})).rejects.toMatchObject({code:"IDENTITY_REGISTRATION_NOT_AUTHORIZED"});
+    const authoritative={...repository,resolveAuthSubject:async()=>({actorId:"subject",active:true,roles:[],tenantIds:["tenant"]}),find:async()=>({fingerprint:"different"})};
+    await expect(new RegisterControlledVerificationIdentity({authorize:async()=>true},authoritative).execute({actorId:"admin",identity,correlationId:"c"})).rejects.toMatchObject({code:"CONTROLLED_IDENTITY_DRIFT"});
   });
   it("fails closed until every production prerequisite resolves", async () => {
     const candidate = { id: "candidate", environmentCode: "production" as const, repositoryCode: "repo", commitSha: "sha", deploymentId: "deployment", deploymentUrl: "https://deployment.invalid", productionAlias: "https://alias.invalid", deployedAt: new Date(), databaseMigrationSetHash: "hash", latestMigrationCode: "20260811100000", registryVersions: {}, verificationPlanVersion: 1, featureConfigurationFingerprint: "fingerprint", createdAt: new Date() };

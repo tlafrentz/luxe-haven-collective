@@ -21,4 +21,10 @@ describe("CA-001F migration", () => {
     expect(sql).toContain("production_verification_active_attempt_uidx");
     expect(sql).toContain("unique(verification_run_id,owning_domain_code,resource_type_code,opaque_resource_id)");
   });
+  it("keeps controlled identity credentials out of verification persistence",()=>{
+    const identitySql=readFileSync("supabase/migrations/20260811120000_ca001f_controlled_identity_registration.sql","utf8");
+    expect(identitySql).toContain("add column fingerprint text not null");
+    expect(identitySql).toContain("controlled_verification_identity_origin_immutable");
+    expect(identitySql).not.toMatch(/password|credential|token|secret|email/i);
+  });
 });
