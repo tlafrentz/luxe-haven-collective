@@ -1,0 +1,8 @@
+import{readFileSync}from"node:fs";import{describe,expect,it}from"vitest";
+const read=(name:string)=>readFileSync(`supabase/migrations/${name}`,"utf8");
+describe("CA-001C-E production migrations",()=>{
+ it("keeps customer-owned operational tables behind RLS",()=>{for(const [file,tables]of[["20260812120000_ca001c_production_operations.sql",["onboarding_provisioning_attempts"]],["20260812123000_ca001c_product_provisioning.sql",["activation_product_contexts"]]]as const){const sql=read(file);for(const table of tables)expect(sql).toContain(`alter table public.${table} enable row level security`)}});
+ it("revokes actor-authorized commands from browser roles",()=>{for(const file of["20260812120000_ca001c_production_operations.sql","20260812121000_ca001d_production_operations.sql","20260812122000_ca001e_production_operations.sql","20260812123000_ca001c_product_provisioning.sql"]){const sql=read(file);expect(sql).toMatch(/revoke all on function[\s\S]+from (public,anon,authenticated|public, anon, authenticated)/)}});
+ it("enforces product limits under an account and family lock",()=>{const sql=read("20260812123000_ca001c_product_provisioning.sql");expect(sql).toContain("pg_advisory_xact_lock");expect(sql).toContain("onboarding_product_limit_available");expect(sql).toContain("PRODUCT_LIMIT_REACHED")});
+ it("does not add verification-specific state",()=>{for(const file of["20260812120000_ca001c_production_operations.sql","20260812121000_ca001d_production_operations.sql","20260812122000_ca001e_production_operations.sql","20260812123000_ca001c_product_provisioning.sql"])expect(read(file)).not.toMatch(/production_verification|PV-0\d/i)});
+});
