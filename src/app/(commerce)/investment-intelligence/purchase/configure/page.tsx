@@ -108,34 +108,6 @@ export default async function ConfigurePurchasePage({
               </select>
             </label>
 
-            <label className="block text-sm font-medium text-stone-700">
-              Promo Code (optional)
-              <input
-                name="promo"
-                className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4"
-              />
-            </label>
-
-            {!pkg.comparison.expertReview ? (
-              <label className="flex items-start gap-3 rounded-xl border border-stone-200 p-4 text-sm text-stone-700">
-                <input
-                  type="checkbox"
-                  name="addOns"
-                  value="expert-review"
-                  className="mt-0.5 size-4"
-                />
-                <span>
-                  <span className="block font-medium">
-                    Add Expert Review (+$149)
-                  </span>
-                  <span className="block text-xs text-stone-500">
-                    A licensed analyst reviews your assumptions and
-                    conclusions before your final report.
-                  </span>
-                </span>
-              </label>
-            ) : null}
-
             <button
               type="submit"
               className="w-full rounded-2xl bg-emerald-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import {
-  guidebookAddOns,
   guidebookPackages,
   guidebookPlanIncludes,
 } from "@/lib/guidebook-packages";
@@ -77,16 +76,8 @@ export default function GuidebookStudioPackagesPage() {
 
       <section className="border-t border-[#dce2dd] bg-[#f9faf8] py-14">
         <div className="container-shell max-w-3xl">
-          <h2 className="font-serif text-3xl">Add-ons available</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {guidebookAddOns.map((addOn) => (
-              <div key={addOn.slug} className="rounded-xl border bg-white p-5">
-                <p className="font-semibold">{addOn.name}</p>
-                <p className="mt-1 text-sm font-bold text-emerald-800">{addOn.priceLabel}</p>
-                <p className="mt-2 text-xs leading-5 text-stone-600">{addOn.description}</p>
-              </div>
-            ))}
-          </div>
+          <h2 className="font-serif text-3xl">Additional services</h2>
+          <p className="mt-4 text-sm leading-6 text-stone-600">No add-on is currently approved for online purchase. Contact Luxe Haven if you need scope beyond a listed package.</p>
           <p className="mt-6 text-sm text-stone-500">
             All plans include {guidebookPlanIncludes.map((item) => item.toLowerCase()).join(", ")}.
           </p>

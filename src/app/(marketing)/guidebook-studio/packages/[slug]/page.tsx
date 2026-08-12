@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 import { Check } from "lucide-react";
 import { SafeImage } from "@/components/shared/safe-image";
 import { mesaAirbnbImages } from "@/lib/mesa-airbnb";
+import { getPublishedOc001Offer } from "@/lib/oc001-public-catalog";
+import { Oc001PurchaseAction } from "@/components/marketing/oc001-purchase-action";
 import {
-  guidebookAddOns,
   guidebookPackages,
   guidebookPackagesBySlug,
   type GuidebookPackageSlug,
@@ -34,6 +35,7 @@ export default async function GuidebookPackageDetailPage({
   const { slug } = await params;
   const pkg = guidebookPackagesBySlug[slug as GuidebookPackageSlug];
   if (!pkg) notFound();
+  const offer = await getPublishedOc001Offer(`guidebook.${pkg.slug.replaceAll("-", "_")}`);
 
   const relatedPackages = guidebookPackages.filter((item) => item.slug !== pkg.slug);
 
@@ -75,15 +77,8 @@ export default async function GuidebookPackageDetailPage({
             </div>
 
             <div>
-              <h2 className="font-serif text-2xl">Add-ons available</h2>
-              <div className="mt-5 grid gap-4 sm:grid-cols-3">
-                {guidebookAddOns.map((addOn) => (
-                  <div key={addOn.slug} className="rounded-xl border bg-white p-4">
-                    <p className="text-sm font-semibold">{addOn.name}</p>
-                    <p className="mt-1 text-sm font-bold text-emerald-800">{addOn.priceLabel}</p>
-                  </div>
-                ))}
-              </div>
+              <h2 className="font-serif text-2xl">Additional services</h2>
+              <p className="mt-3 text-sm leading-6 text-stone-600">No add-on is currently approved for online purchase. Contact Luxe Haven to discuss additional scope.</p>
             </div>
 
             <div>
@@ -123,12 +118,7 @@ export default async function GuidebookPackageDetailPage({
                   {pkg.startingAt ? "starting at" : "one-time"}
                 </span>
               </p>
-              <Link
-                href={`/guidebook-studio/purchase/configure?package=${pkg.slug}`}
-                className="mt-6 flex min-h-11 items-center justify-center rounded-md bg-emerald-900 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
-              >
-                Select This Package
-              </Link>
+              <Oc001PurchaseAction offer={offer} configureHref={`/guidebook-studio/purchase/configure?package=${pkg.slug}`} label="Select This Package" />
               <Link
                 href="/guidebook-studio/packages"
                 className="mt-3 flex min-h-11 items-center justify-center rounded-md border border-[#789487] px-5 text-sm font-semibold text-[#26342e]"

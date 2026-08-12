@@ -183,6 +183,8 @@ export const plans: Plan[] = [
       hpmTierMonthlyPrices.starter,
     ),
     annualSavingsLabel: annualSavingsLabel(hpmTierMonthlyPrices.starter),
+    offerIdMonthly: "oc001-hpm-starter-monthly",
+    offerIdAnnual: "oc001-hpm-starter-annual",
     featuresByStage: {
       observe: ["Revenue Intelligence dashboard"],
       understand: ["Single-property performance summary"],
@@ -223,6 +225,8 @@ export const plans: Plan[] = [
       hpmTierMonthlyPrices.professional,
     ),
     annualSavingsLabel: annualSavingsLabel(hpmTierMonthlyPrices.professional),
+    offerIdMonthly: "oc001-hpm-professional-monthly",
+    offerIdAnnual: "oc001-hpm-professional-annual",
     featuresByStage: {
       observe: ["Revenue Intelligence", "Financial Intelligence"],
       understand: ["Executive Intelligence dashboards"],
@@ -262,6 +266,8 @@ export const plans: Plan[] = [
       hpmTierMonthlyPrices.portfolio,
     ),
     annualSavingsLabel: annualSavingsLabel(hpmTierMonthlyPrices.portfolio),
+    offerIdMonthly: "oc001-hpm-portfolio-monthly",
+    offerIdAnnual: "oc001-hpm-portfolio-annual",
     featuresByStage: {
       observe: ["Revenue Intelligence", "Financial Intelligence"],
       understand: ["Executive Intelligence", "Portfolio Intelligence"],

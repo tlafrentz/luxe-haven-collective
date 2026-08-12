@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Check } from "lucide-react";
+import { getPublishedOc001Offer } from "@/lib/oc001-public-catalog";
+import { Oc001PurchaseAction } from "@/components/marketing/oc001-purchase-action";
 import {
   investmentPackages,
   investmentPackagesBySlug,
@@ -35,6 +37,7 @@ export default async function InvestmentPackageDetailPage({
   const { slug } = await params;
   const pkg = investmentPackagesBySlug[slug as InvestmentPackageSlug];
   if (!pkg) notFound();
+  const offer = await getPublishedOc001Offer(`investment.${pkg.slug}`);
 
   const relatedPackages = investmentPackages.filter((item) => item.slug !== pkg.slug);
 
@@ -126,11 +129,11 @@ export default async function InvestmentPackageDetailPage({
             </div>
 
             <div>
-              <h2 className="font-serif text-2xl">Add-ons</h2>
+              <h2 className="font-serif text-2xl">Additional services</h2>
               <p className="mt-3 text-sm leading-6 text-stone-600">
                 {pkg.comparison.expertReview
                   ? "Expert Review is included automatically with this package."
-                  : "Expert Review ($149) is available as an add-on during purchase configuration — a licensed analyst reviews your assumptions and conclusions before your final report."}
+                  : "No expert-review add-on is currently approved for online purchase. Contact Luxe Haven to discuss additional review scope."}
               </p>
             </div>
 
@@ -169,12 +172,7 @@ export default async function InvestmentPackageDetailPage({
                 {pkg.priceLabel}
                 <span className="ml-1 text-sm font-normal text-stone-500">per analysis</span>
               </p>
-              <Link
-                href={`/investment-intelligence/purchase/configure?package=${pkg.slug}`}
-                className="mt-6 flex min-h-11 items-center justify-center rounded-md bg-emerald-900 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
-              >
-                Get Started
-              </Link>
+              <Oc001PurchaseAction offer={offer} configureHref={`/investment-intelligence/purchase/configure?package=${pkg.slug}`} label="Get Started" />
               <Link
                 href="/investment-intelligence/sample-reports"
                 className="mt-3 flex min-h-11 items-center justify-center rounded-md border border-[#789487] px-5 text-sm font-semibold text-[#26342e]"

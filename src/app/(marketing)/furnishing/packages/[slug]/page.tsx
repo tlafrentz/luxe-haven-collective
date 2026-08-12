@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Check } from "lucide-react";
+import { getPublishedOc001Offer } from "@/lib/oc001-public-catalog";
+import { Oc001PurchaseAction } from "@/components/marketing/oc001-purchase-action";
 import {
   furnishingPackages,
   furnishingPackagesBySlug,
@@ -35,6 +37,7 @@ export default async function FurnishingPackageDetailPage({
   const { slug } = await params;
   const pkg = furnishingPackagesBySlug[slug as FurnishingPackageSlug];
   if (!pkg) notFound();
+  const offer = await getPublishedOc001Offer(`furnishing.${pkg.slug}`);
 
   const relatedPackages = furnishingPackages.filter(
     (item) => item.slug !== pkg.slug,
@@ -146,10 +149,10 @@ export default async function FurnishingPackageDetailPage({
             </div>
 
             <div>
-              <h2 className="font-serif text-2xl">Add-ons</h2>
+              <h2 className="font-serif text-2xl">Additional services</h2>
               <p className="mt-3 text-sm leading-6 text-stone-600">
-                Compatible add-ons for this package are shown during purchase
-                configuration, once your property details are known.
+                No add-on is currently approved for online purchase. Additional
+                scope requires a separately approved commercial process.
               </p>
             </div>
 
@@ -194,12 +197,7 @@ export default async function FurnishingPackageDetailPage({
                   {pkg.startingAt ? "starting at" : "one-time"}
                 </span>
               </p>
-              <Link
-                href={`/furnishing/purchase/configure?package=${pkg.slug}`}
-                className="mt-6 flex min-h-11 items-center justify-center rounded-md bg-emerald-900 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
-              >
-                Select This Package
-              </Link>
+              <Oc001PurchaseAction offer={offer} configureHref={`/furnishing/purchase/configure?package=${pkg.slug}`} label="Select This Package" />
               <Link
                 href="/furnishing/rooms"
                 className="mt-3 flex min-h-11 items-center justify-center rounded-md border border-[#789487] px-5 text-sm font-semibold text-[#26342e]"

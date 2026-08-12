@@ -9,3 +9,4 @@ export * from "./ca001b-configuration";
 export * from "./administrative-customer-grant";
 export * from "./ca001b-checkout";
 export * from "./ca001b-lifecycle";
+export * from "./oc001-catalog";

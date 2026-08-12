@@ -5,3 +5,4 @@ export * from "./supabase-administrative-customer-grant";
 export * from "./in-memory-checkout-repositories";
 export * from "./supabase-commerce-catalog-repository";
 export * from "./ca001a-catalog";
+export * from "./supabase-ca001b-lifecycle";

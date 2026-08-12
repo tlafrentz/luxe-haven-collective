@@ -4,8 +4,12 @@ import {
   CommercePaymentError,
   getStripeWebhookConfig,
   normalizeStripeWebhookEvent,
+  ProcessVerifiedCommercialEvent,
+  SupabaseCommercialLifecycleRepository,
   verifyStripeWebhook,
 } from "@/platform/commerce";
+import { createProductionOnboarding } from "@/platform/onboarding";
+import { createHash } from "node:crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +31,18 @@ export async function POST(request: Request) {
   }
 
   const client = createAdminClient();
+  let purchaseIntentId=normalized.metadata.purchase_intent_id;
+  if(!purchaseIntentId&&normalized.providerSubscriptionId){const{data:agreement}=await client.from("commercial_agreements").select("checkout_attempt_id").eq("provider_agreement_reference",normalized.providerSubscriptionId).maybeSingle();if(agreement?.checkout_attempt_id){const{data:intent}=await client.from("commercial_purchase_intents").select("id").eq("checkout_attempt_id",agreement.checkout_attempt_id).maybeSingle();purchaseIntentId=intent?.id}}
+  if(purchaseIntentId){
+    const{data:intent,error:intentError}=await client.from("commercial_purchase_intents").select("id,tenant_id,customer_account_id,checkout_attempt_id,status").eq("id",purchaseIntentId).maybeSingle();
+    if(intentError||!intent?.checkout_attempt_id)return NextResponse.json({accepted:false,code:"commerce_webhook_processing_failed"},{status:503});
+    const processor=new ProcessVerifiedCommercialEvent({mode:normalized.environment,repository:new SupabaseCommercialLifecycleRepository(client),checksum:async value=>createHash("sha256").update(value).digest("hex")});
+    try{
+      const outcome=await processor.execute({providerEventId:normalized.providerEventId,accountMode:normalized.environment,eventType:normalized.providerEventType,occurredAt:normalized.providerCreatedAt.toISOString(),providerCustomerReference:normalized.providerCustomerId??"",...(normalized.providerSubscriptionId?{providerAgreementReference:normalized.providerSubscriptionId}:{}),checkoutAttemptId:String(intent.checkout_attempt_id),...(normalized.subscriptionStatus?{subscriptionStatus:normalized.subscriptionStatus.replace("past-due","past_due").replace("cancelled","canceled")}:{}),invoicePaid:normalized.eventType==="invoice.paid",paymentSucceeded:normalized.paymentStatus==="succeeded",...(normalized.cancelAtPeriodEnd!==undefined?{cancelAtPeriodEnd:normalized.cancelAtPeriodEnd}:{}),...(normalized.currentPeriodStart?{periodStart:normalized.currentPeriodStart.toISOString()}:{}),...(normalized.currentPeriodEnd?{periodEnd:normalized.currentPeriodEnd.toISOString()}:{}),});
+      const{data:resolvedAgreement}=await client.from("commercial_agreements").select("id,status").eq("checkout_attempt_id",intent.checkout_attempt_id).maybeSingle();if(resolvedAgreement?.status==="active"){const{data:member}=await client.from("customer_account_memberships").select("profile_id").eq("tenant_id",intent.tenant_id).eq("customer_account_id",intent.customer_account_id).eq("status","active").order("created_at").limit(1).maybeSingle();if(member)await createProductionOnboarding().assemble.execute({actorId:String(member.profile_id),tenantId:String(intent.tenant_id),customerAccountId:String(intent.customer_account_id),sourceType:"commercial_agreement",sourceReferenceId:String(resolvedAgreement.id),correlationId:normalized.providerEventId,idempotencyKey:`oc001:onboarding:${resolvedAgreement.id}`})}
+      return NextResponse.json({accepted:true,status:outcome.status});
+    }catch{return NextResponse.json({accepted:true,status:"review_required",code:"RECONCILIATION_REQUIRED"})}
+  }
   const receiptId = `commerce-receipt-${normalized.providerEventId}`;
   const serialized = {
     ...normalized,

@@ -6,6 +6,7 @@ import { PlanComparisonTable } from "@/components/marketing/plan-comparison-tabl
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { plans } from "@/lib/plans";
 import { faqs } from "@/lib/faqs";
+import { getPublishedOc001Offers } from "@/lib/oc001-public-catalog";
 
 export const metadata: Metadata = {
   title: "Compare Plans",
@@ -21,6 +22,7 @@ export default async function ComparePlansPage({
   const params = await searchParams;
   const billing: BillingCycle = params.billing === "annual" ? "annual" : "monthly";
   const selectedPlan = params.plan;
+  const publishedOffers = await getPublishedOc001Offers("hpm");
   const pricingFaqs = faqs.filter(
     (faq) => faq.audience === "owners" && faq.category === "revenue-pricing",
   );
@@ -56,6 +58,7 @@ export default async function ComparePlansPage({
               plan={plan}
               billing={billing}
               selected={selectedPlan === plan.slug}
+              ctaLabel={publishedOffers.some(offer => offer.offerCode === `hpm.${plan.slug}` && offer.checkoutAvailable) ? "Choose Plan" : "View availability"}
             />
           ))}
         </div>

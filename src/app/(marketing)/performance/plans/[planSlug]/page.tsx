@@ -5,6 +5,8 @@ import { Check } from "lucide-react";
 import { PlanCard } from "@/components/marketing/plan-card";
 import { lifecycleStages, plans, plansBySlug, type PlanSlug } from "@/lib/plans";
 import type { BillingCycle } from "@/components/marketing/billing-toggle";
+import { getPublishedOc001Offer } from "@/lib/oc001-public-catalog";
+import { Oc001PurchaseAction } from "@/components/marketing/oc001-purchase-action";
 
 export function generateStaticParams() {
   return plans.map((plan) => ({ planSlug: plan.slug }));
@@ -34,6 +36,7 @@ export default async function PlanDetailPage({
   const { planSlug } = await params;
   const plan = plansBySlug[planSlug as PlanSlug];
   if (!plan) notFound();
+  const offer = await getPublishedOc001Offer(`hpm.${plan.slug}`);
 
   const { billing: billingParam } = await searchParams;
   const billing: BillingCycle = billingParam === "annual" ? "annual" : "monthly";
@@ -178,12 +181,7 @@ export default async function PlanDetailPage({
                 Annual
               </Link>
             </div>
-            <Link
-              href={`/commerce/configure-workspace?plan=${plan.slug}&billing=${billing}`}
-              className="mt-6 flex min-h-11 items-center justify-center rounded-md bg-emerald-900 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
-            >
-              Choose {plan.name}
-            </Link>
+            <Oc001PurchaseAction offer={offer} configureHref={`/commerce/configure-workspace?plan=${plan.slug}&billing=${billing}`} label={`Choose ${plan.name}`} />
             <Link
               href="/performance/plans"
               className="mt-3 flex min-h-11 items-center justify-center rounded-md border border-[#789487] px-5 text-sm font-semibold text-[#26342e]"

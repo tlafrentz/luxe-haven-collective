@@ -4,7 +4,6 @@ import { CommerceProgressHeader } from "@/components/commerce/commerce-progress-
 import { createClient } from "@/lib/supabase/server";
 import { GuidebookSelectAddOnsForm } from "@/features/commerce-onboarding/guidebook-select-addons-form";
 import {
-  guidebookAddOns,
   guidebookPackagesBySlug,
   type GuidebookPackageSlug,
 } from "@/lib/guidebook-packages";
@@ -12,7 +11,7 @@ import { purchaseQuery, type GuidebookPurchaseParams } from "@/lib/guidebook-pur
 import { purchaseSteps, purchaseStepLabels } from "../steps";
 
 export const metadata: Metadata = {
-  title: "Select Package & Add-ons",
+  title: "Review Package",
   description: "Review your order.",
 };
 
@@ -44,7 +43,7 @@ export default async function GuidebookSelectPage({
           <h1 className="font-serif text-4xl">Review your order.</h1>
           <p className="mt-2 text-sm text-stone-600">{pkg.name} — {pkg.priceLabel}</p>
           <div className="mt-7">
-            <GuidebookSelectAddOnsForm pkg={pkg} addOns={guidebookAddOns} params={params} />
+            <GuidebookSelectAddOnsForm pkg={pkg} addOns={[]} params={{...params,addOns:undefined}} />
           </div>
         </div>
       </div>

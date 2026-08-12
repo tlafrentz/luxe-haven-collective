@@ -4,7 +4,6 @@ import { CommerceProgressHeader } from "@/components/commerce/commerce-progress-
 import { createClient } from "@/lib/supabase/server";
 import { FurnishingSelectAddOnsForm } from "@/features/commerce-onboarding/furnishing-select-addons-form";
 import {
-  furnishingAddOns,
   furnishingPackagesBySlug,
   type FurnishingPackageSlug,
 } from "@/lib/furnishing-packages";
@@ -15,7 +14,7 @@ import {
 import { purchaseSteps, purchaseStepLabels } from "../steps";
 
 export const metadata: Metadata = {
-  title: "Select Package & Add-ons",
+  title: "Review Package",
   description: "Review your order.",
 };
 
@@ -55,8 +54,8 @@ export default async function FurnishingSelectPage({
           <div className="mt-7">
             <FurnishingSelectAddOnsForm
               pkg={pkg}
-              addOns={furnishingAddOns}
-              params={params}
+              addOns={[]}
+              params={{...params,addOns:undefined}}
             />
           </div>
         </div>
