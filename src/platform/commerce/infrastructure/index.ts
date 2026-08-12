@@ -3,3 +3,4 @@ export * from "./default-catalog";
 export * from "./stripe";
 export * from "./in-memory-checkout-repositories";
 export * from "./supabase-commerce-catalog-repository";
+export * from "./ca001a-catalog";
