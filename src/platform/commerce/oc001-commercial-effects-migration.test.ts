@@ -1,8 +1,10 @@
 import {readFileSync} from "node:fs";
 import {describe,expect,it} from "vitest";
 const sql=readFileSync("supabase/migrations/20260813110000_oc001_commercial_effects.sql","utf8");
+const creditFix=readFileSync("supabase/migrations/20260813120000_fix_oc001_investment_credit_idempotency.sql","utf8");
 describe("OC-001 authoritative commercial effects",()=>{
  it("initializes versioned limits and investment credits from active agreements",()=>{expect(sql).toContain("initialize_oc001_agreement_effects");expect(sql).toContain("commercial_limit_grants");expect(sql).toContain("investment_credit_ledgers");expect(sql).toContain("when'II-SINGLE'then 1 else 5");});
+ it("rechecks credit idempotency after the account-scoped lock",()=>{const lookup="select * into c from public.investment_credit_consumptions where idempotency_key_hash=h";expect(creditFix.split(lookup)).toHaveLength(3);expect(creditFix.indexOf("pg_advisory_xact_lock")).toBeLessThan(creditFix.lastIndexOf(lookup));expect(creditFix.lastIndexOf(lookup)).toBeLessThan(creditFix.indexOf("OC001_INVESTMENT_CREDIT_UNAVAILABLE"));});
  it("reserves a credit once under an account-scoped lock",()=>{expect(sql).toContain("reserve_oc001_investment_credit");expect(sql).toContain("pg_advisory_xact_lock");expect(sql).toContain("unique(ledger_id,logical_analysis_reference)");expect(sql).toContain("idempotency_key_hash text not null unique");});
  it("starts Guidebook hosting for exactly twelve months through the owning artifact reference",()=>{expect(sql).toContain("register_oc001_guidebook_hosting");expect(sql).toContain("interval'12 months'");expect(sql).toContain("from public.guidebooks");});
  it("prices furnishing scope server-side and applies the bounded consultation credit once",()=>{expect(sql).toContain("create_oc001_furnishing_configuration");expect(sql).toContain("149500+p_additional_rooms*25000+p_additional_revisions*15000");expect(sql).toContain("least(c.amount_minor,24900)");expect(sql).toContain("status='reserved'");});
