@@ -1,7 +1,7 @@
 export const hpmTierMonthlyPrices = {
   starter: 99,
-  professional: 249,
-  portfolio: 599,
+  professional: 199,
+  portfolio: null,
 } as const;
 
 export type HpmTierSlug = keyof typeof hpmTierMonthlyPrices;

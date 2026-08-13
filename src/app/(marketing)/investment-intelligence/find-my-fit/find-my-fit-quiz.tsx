@@ -36,23 +36,23 @@ function recommend(answers: Answers): {
 
   if (answers.timeline === "quick-look") {
     slug = "essentials";
-    reasons.push("A quick first-look snapshot fits the Essentials package.");
+    reasons.push("A single decision fits the Single Analysis offer.");
   } else if (answers.shareWithLender) {
-    slug = "premier";
-    reasons.push("Sharing your analysis with a lender or partner calls for Premier's expert review and executive report.");
+    slug = "pro";
+    reasons.push("The Analysis Pack preserves multiple decision-ready analyses for comparison or sharing.");
   } else {
     slug = "pro";
-    reasons.push("A serious purchase decision benefits from Pro's full scenario modeling and risk assessment.");
+    reasons.push("Multiple opportunities are best served by the five-credit Analysis Pack.");
   }
 
-  if (answers.goal === "guidance" && slug !== "premier") {
-    slug = "premier";
-    reasons.push("Wanting expert guidance means a licensed analyst's review, included on Premier.");
+  if (answers.goal === "guidance" && slug !== "pro") {
+    slug = "pro";
+    reasons.push("The Analysis Pack includes priority support while keeping provider limitations explicit.");
   }
 
   const portfolioNote = answers.goal === "portfolio";
   if (portfolioNote) {
-    reasons.push("For a multi-property portfolio, start with one analysis and ask about Portfolio Advisory for ongoing coverage.");
+    reasons.push("For several opportunities, the five-credit pack preserves each analysis independently.");
   }
 
   return { slug, reasons: reasons.slice(0, 3), portfolioNote };

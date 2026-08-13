@@ -35,137 +35,42 @@ export type FurnishingPackage = {
 export const furnishingPackages: FurnishingPackage[] = [
   {
     slug: "essential",
-    name: "Essential",
-    price: 4995,
-    priceLabel: "$4,995",
-    startingAt: true,
-    tagline: "A focused, guest-ready foundation.",
-    description:
-      "Core furniture and décor across the rooms that matter most, coordinated for a durable, guest-ready launch.",
-    highlights: [
-      "Essential furniture package",
-      "Core décor selections",
-      "Delivery coordination",
-      "1 design revision",
-    ],
-    features: [
-      "Design direction for core living spaces",
-      "Curated, durable furniture and décor selections",
-      "Room-by-room budget estimate",
-      "Delivery coordination with your selected retailers",
-      "One round of design revision",
-      "Launch-readiness handoff checklist",
-    ],
+    name: "Consultation", price: 249, priceLabel: "$249", tagline: "Focused furnishing direction for one property.",
+    description: "A 60-minute virtual consultation with preliminary budget guidance and a written summary within two business days.",
+    highlights: ["Pre-call questionnaire","60-minute virtual consultation","Priority room recommendations","Written summary"],
+    features: ["Review of supplied listing, photographs, floor plan, or measurements","Target-guest and design-direction discussion","Preliminary furnishing-budget range","Written summary within two business days"],
     comparison: {
-      propertySize: "Up to 2 bed / 2 bath",
-      designServiceLevel: "Guided template direction",
-      furnitureQualityLevel: "Durable, guest-grade",
-      roomCoverage: "Core rooms (living, primary bedroom, kitchen)",
-      revisions: "1 round",
-      delivery: true,
-      installation: false,
-      styling: false,
-      concierge: false,
-      typicalTimeline: "3–5 weeks",
+      propertySize:"One property",designServiceLevel:"Consultation",furnitureQualityLevel:"Recommendations",roomCoverage:"Priority rooms",revisions:"Not included",delivery:false,installation:false,styling:false,concierge:false,typicalTimeline:"Summary within 2 business days",
     },
-    exclusions: [
-      "Installation and placement labor",
-      "Professional styling pass",
-      "Outdoor and secondary-bedroom coverage",
-    ],
-    cancellationPolicy:
-      "Full refund before design direction is approved; a pro-rated refund applies afterward based on work completed. See your order confirmation for exact terms.",
-    eligibilityLimitations:
-      "Best suited to properties of 2 bedrooms or fewer. Larger properties should compare the Elevated or Luxury package.",
+    exclusions:["Mood boards","Detailed layouts","Complete shopping lists","Procurement, ordering, delivery, assembly, or installation"],
+    cancellationPolicy:"Refundable before work begins; after work begins, refunds are limited to undelivered scope.",
+    eligibilityLimitations:"The $249 fee may be credited once toward a Design Plan for the same customer and property when purchased within 30 days.",
     offerId: "commerce-offer-furnishing-essential",
   },
   {
     slug: "elevated",
-    name: "Elevated",
-    price: 7995,
-    priceLabel: "$7,995",
-    startingAt: true,
-    tagline: "A cohesive, professionally curated property.",
-    description:
-      "A fully coordinated design across every core and secondary room, with delivery and installation support included.",
+    name: "Design Plan", price:1495, priceLabel:"$1,495 base", startingAt:true, tagline:"A reviewed design plan for a base 2BR/2BA property.",
+    description:"Submit your scope for review. Checkout opens only after Luxe Haven approves the authoritative configuration and price.",
     popular: true,
-    highlights: [
-      "Upgraded furniture & premium décor",
-      "Delivery & installation included",
-      "Up to 3 bed / 2 bath coverage",
-      "2 design revisions",
-    ],
-    features: [
-      "Custom design direction across all bedrooms and living spaces",
-      "Upgraded furniture and premium décor selections",
-      "Room-by-room budget estimate with product-level detail",
-      "Delivery and installation coordination",
-      "Two rounds of design revision",
-      "Launch-readiness handoff checklist",
-    ],
+    highlights:["Base 2BR/2BA property scope","Room-by-room furnishing plan","Curated products and budgets","One consolidated revision"],
+    features:["Design profile, color, and material palette","Layouts from customer-supplied measurements","Mood and design boards","Curated products, quantities, substitutes, and room budgets","Final implementation guide and review call"],
     comparison: {
-      propertySize: "Up to 3 bed / 2 bath",
-      designServiceLevel: "Custom design direction",
-      furnitureQualityLevel: "Upgraded, premium finishes",
-      roomCoverage: "All bedrooms, living, dining, kitchen",
-      revisions: "2 rounds",
-      delivery: true,
-      installation: true,
-      styling: true,
-      concierge: false,
-      typicalTimeline: "4–6 weeks",
+      propertySize:"Base 2 bed / 2 bath",designServiceLevel:"Detailed design plan",furnitureQualityLevel:"Curated recommendations",roomCoverage:"Living, dining, kitchen, workspace, TVs and mounts",revisions:"1 consolidated revision",delivery:false,installation:false,styling:false,concierge:false,typicalTimeline:"Begins after scope approval and verified payment",
     },
-    exclusions: [
-      "Whole-property outdoor furnishing beyond one seating area",
-      "Dedicated concierge project manager",
-    ],
-    cancellationPolicy:
-      "Full refund before design direction is approved; a pro-rated refund applies afterward based on work completed. See your order confirmation for exact terms.",
-    eligibilityLimitations:
-      "Best suited to properties up to 3 bedrooms / 2 bathrooms. Larger or more complex properties should compare Luxury.",
+    exclusions:["Purchasing","Procurement","Delivery management","Assembly","Installation","Styling","Photography"],
+    cancellationPolicy:"Refundable before work begins; after work begins, refunds are limited to undelivered scope.",
+    eligibilityLimitations:"Requires scope review before checkout. Additional rooms are $250 each and additional consolidated revisions are $150 each.",
     offerId: "commerce-offer-furnishing-elevated",
   },
   {
     slug: "luxury",
-    name: "Luxury",
-    price: 12995,
-    priceLabel: "$12,995",
-    startingAt: true,
-    tagline: "A fully expressive, differentiated stay.",
-    description:
-      "Whole-property design with custom curation, art and accessories, and white-glove installation from a dedicated concierge team.",
-    highlights: [
-      "Whole-property custom curation",
-      "Art & accessories included",
-      "White-glove installation",
-      "Unlimited revisions",
-    ],
-    features: [
-      "Whole-property custom design direction, including outdoor spaces",
-      "Custom-curated furniture, art, and accessories",
-      "Room-by-room budget estimate with product-level detail",
-      "White-glove delivery and installation",
-      "Unlimited design revisions",
-      "Dedicated concierge project manager",
-      "Launch-readiness handoff checklist",
-    ],
+    name:"Full-Service Furnishing",price:0,priceLabel:"Unavailable",tagline:"Deferred pending separate commercial approval.",
+    description:"This offer is not currently purchasable and does not promise procurement, ordering, delivery, installation, or styling.",
+    highlights:["Internal draft only","No public price","No checkout","No active Stripe mapping"],features:[],
     comparison: {
-      propertySize: "Whole property, any size",
-      designServiceLevel: "Concierge custom design",
-      furnitureQualityLevel: "Custom & curated",
-      roomCoverage: "Whole property, including outdoor",
-      revisions: "Unlimited",
-      delivery: true,
-      installation: true,
-      styling: true,
-      concierge: true,
-      typicalTimeline: "5–8 weeks",
+      propertySize:"Custom",designServiceLevel:"Deferred",furnitureQualityLevel:"Not defined",roomCoverage:"Not defined",revisions:"Not defined",delivery:false,installation:false,styling:false,concierge:false,typicalTimeline:"Unavailable",
     },
-    exclusions: ["Structural or renovation work"],
-    cancellationPolicy:
-      "Full refund before design direction is approved; a pro-rated refund applies afterward based on work completed. See your order confirmation for exact terms.",
-    eligibilityLimitations:
-      "Available for any property size. Timeline extends for properties over 5 bedrooms.",
+    exclusions:["Procurement","Ordering","Delivery","Installation","Styling"],cancellationPolicy:"Not available for purchase.",eligibilityLimitations:"Deferred and unpublished.",
     offerId: "commerce-offer-furnishing-luxury",
   },
 ];
@@ -186,37 +91,15 @@ export type FurnishingAddOn = {
 };
 
 export const furnishingAddOns: FurnishingAddOn[] = [
-  {
-    slug: "outdoor-upgrade",
-    name: "Outdoor Upgrade",
-    price: 1495,
-    priceLabel: "$1,495",
-    description:
-      "Weather-appropriate seating, dining, and lighting for patio, balcony, or yard space.",
-  },
-  {
-    slug: "art-package",
-    name: "Art Package",
-    price: 895,
-    priceLabel: "$895",
-    description:
-      "Curated wall art and accessories selected to match your design direction.",
-  },
-  {
-    slug: "smart-home-package",
-    name: "Smart Home Package",
-    price: 695,
-    priceLabel: "$695",
-    description:
-      "Smart locks, thermostat, and lighting configured for guest self check-in.",
-  },
+  {slug:"additional-room",name:"Additional Room",price:250,priceLabel:"$250",description:"One additional room included in an approved Design Plan configuration."},
+  {slug:"additional-revision",name:"Additional Revision",price:150,priceLabel:"$150",description:"One additional consolidated revision requested through the approved project operation."},
 ];
 
 export const furnishingPlanIncludes = [
   "Room-by-room design direction",
   "Product-level budget estimate",
-  "Procurement & receiving coordination",
-  "Launch-readiness handoff",
+  "Curated products with purchase links",
+  "No procurement, ordering, delivery, assembly, or installation",
 ];
 
 export type FurnishingRoomExample = {

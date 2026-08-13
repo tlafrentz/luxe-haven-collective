@@ -5,7 +5,6 @@ import { CommerceProgressHeader } from "@/components/commerce/commerce-progress-
 import { createClient } from "@/lib/supabase/server";
 import { beginCommerceCheckout } from "@/app/actions/commerce-checkout";
 import {
-  investmentAddOns,
   investmentPackagesBySlug,
   type InvestmentPackageSlug,
 } from "@/lib/investment-packages";
@@ -40,22 +39,12 @@ export default async function InvestmentCheckoutPage({
     redirect(`/investment-intelligence/purchase/account${query ? `?${query}` : ""}`);
   }
 
-  const selectedAddOnSlugs = params.addOns
-    ? params.addOns.split(",").filter(Boolean)
-    : [];
-  const selectedAddOns = pkg.comparison.expertReview
-    ? []
-    : investmentAddOns
-        .filter((addOn) => selectedAddOnSlugs.includes(addOn.slug))
-        .map((addOn) => ({ name: addOn.name, amountMinor: addOn.price * 100 }));
-  const total =
-    pkg.price +
-    selectedAddOns.reduce((sum, addOn) => sum + addOn.amountMinor / 100, 0);
+  const total = pkg.price;
 
   const checkoutAction = beginCommerceCheckout.bind(
     null,
     pkg.offerId,
-    selectedAddOns,
+    undefined,
     {
       successPath: `/investment-intelligence/purchase/confirmed`,
       cancelPath: `/investment-intelligence/purchase/checkout${query ? `?${query}` : ""}`,

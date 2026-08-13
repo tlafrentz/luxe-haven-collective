@@ -175,15 +175,15 @@ export const platformJourneys: Record<string, Journey> = {
         description: "For individual owners.",
       },
       {
-        name: "Professional",
+        name: "Growth",
         price: formatMonthlyPrice(hpmTierMonthlyPrices.professional),
         description: "For growing operators.",
         popular: true,
       },
       {
         name: "Portfolio",
-        price: formatMonthlyPrice(hpmTierMonthlyPrices.portfolio),
-        description: "For enterprise teams.",
+        price: "Unavailable",
+        description: "Deferred custom offer.",
       },
     ],
     includes: [

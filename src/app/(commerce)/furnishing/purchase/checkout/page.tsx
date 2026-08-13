@@ -29,7 +29,7 @@ export default async function FurnishingCheckoutPage({
   const pkg = params.package
     ? furnishingPackagesBySlug[params.package as FurnishingPackageSlug]
     : undefined;
-  if (!pkg || !pkg.offerId) redirect("/furnishing/packages");
+  if (!pkg || !pkg.offerId || pkg.slug === "luxury") redirect("/furnishing/packages");
 
   const supabase = await createClient();
   const {
@@ -40,20 +40,15 @@ export default async function FurnishingCheckoutPage({
     redirect(`/furnishing/purchase/account${query ? `?${query}` : ""}`);
   }
 
-  const selectedAddOnSlugs = params.addOns
-    ? params.addOns.split(",").filter(Boolean)
-    : [];
-  const selectedAddOns = furnishingAddOns
-    .filter((addOn) => selectedAddOnSlugs.includes(addOn.slug))
-    .map((addOn) => ({ name: addOn.name, amountMinor: addOn.price * 100 }));
-  const total =
-    pkg.price +
-    selectedAddOns.reduce((sum, addOn) => sum + addOn.amountMinor / 100, 0);
+  const selectedAddOnSlugs = params.addOns ? params.addOns.split(",").filter(Boolean) : [];
+  const selectedAddOns = furnishingAddOns.filter((addOn) => selectedAddOnSlugs.includes(addOn.slug));
+  const total = pkg.price + selectedAddOns.reduce((sum, addOn) => sum + addOn.price, 0);
+  if (pkg.slug === "elevated") return <main><CommerceProgressHeader current="checkout" steps={purchaseSteps} labels={purchaseStepLabels}/><div className="container-shell py-14"><div className="mx-auto max-w-xl rounded-2xl border bg-white p-8"><h1 className="font-serif text-4xl">Scope review required.</h1><p className="mt-4 text-stone-600">Your base 2BR/2BA Design Plan and any $250 rooms or $150 revisions must be reviewed before checkout. We’ll provide the authoritative configuration and final price after review.</p><a href="/contact" className="mt-7 inline-flex rounded-xl bg-emerald-900 px-5 py-3 font-semibold text-white">Submit scope for review</a></div></div></main>;
 
   const checkoutAction = beginCommerceCheckout.bind(
     null,
     pkg.offerId,
-    selectedAddOns,
+    undefined,
     {
       successPath: `/furnishing/purchase/confirmed`,
       cancelPath: `/furnishing/purchase/checkout${query ? `?${query}` : ""}`,

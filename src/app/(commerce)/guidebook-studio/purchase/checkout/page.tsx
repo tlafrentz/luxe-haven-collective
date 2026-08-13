@@ -5,7 +5,6 @@ import { CommerceProgressHeader } from "@/components/commerce/commerce-progress-
 import { createClient } from "@/lib/supabase/server";
 import { beginCommerceCheckout } from "@/app/actions/commerce-checkout";
 import {
-  guidebookAddOns,
   guidebookPackagesBySlug,
   type GuidebookPackageSlug,
 } from "@/lib/guidebook-packages";
@@ -37,13 +36,9 @@ export default async function GuidebookCheckoutPage({
     redirect(`/guidebook-studio/purchase/account${query ? `?${query}` : ""}`);
   }
 
-  const selectedAddOnSlugs = params.addOns ? params.addOns.split(",").filter(Boolean) : [];
-  const selectedAddOns = guidebookAddOns
-    .filter((addOn) => selectedAddOnSlugs.includes(addOn.slug))
-    .map((addOn) => ({ name: addOn.name, amountMinor: addOn.price * 100 }));
-  const total = pkg.price + selectedAddOns.reduce((sum, addOn) => sum + addOn.amountMinor / 100, 0);
+  const total = pkg.price;
 
-  const checkoutAction = beginCommerceCheckout.bind(null, pkg.offerId, selectedAddOns, {
+  const checkoutAction = beginCommerceCheckout.bind(null, pkg.offerId, undefined, {
     successPath: `/guidebook-studio/purchase/confirmed${query ? `?${query}` : ""}`,
     cancelPath: `/guidebook-studio/purchase/checkout${query ? `?${query}` : ""}`,
   });

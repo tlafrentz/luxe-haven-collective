@@ -1,4 +1,4 @@
-export type InvestmentPackageSlug = "essentials" | "pro" | "premier";
+export type InvestmentPackageSlug = "essentials" | "pro";
 
 export type InvestmentPackage = {
   slug: InvestmentPackageSlug;
@@ -31,24 +31,24 @@ export type InvestmentPackage = {
 export const investmentPackages: InvestmentPackage[] = [
   {
     slug: "essentials",
-    name: "Essentials",
+    name: "Single Analysis",
     price: 199,
     priceLabel: "$199",
-    tagline: "A quick, transparent snapshot before you go further.",
+    tagline: "One persisted, decision-ready analysis.",
     description:
-      "A high-level investment snapshot with market data, a baseline financial projection, and a clear recommendation — ideal for a first-look screen.",
+      "Validate assumptions, preserve market evidence, and save one usable analysis without requiring HPM.",
     highlights: [
-      "Market & location snapshot",
-      "Baseline financial projection",
-      "Overall recommendation",
-      "Delivered in 24-48 hours",
+      "One analysis credit",
+      "Financial outputs and market evidence",
+      "Score and recommendation",
+      "Saved opportunity access",
     ],
     features: [
-      "Property and market data pull (ADR, occupancy, RevPAR)",
-      "Baseline revenue and expense projection",
-      "Single-scenario cash flow estimate",
-      "Overall recommendation with confidence level",
-      "Inspectable calculations — every number traces to its source",
+      "One persisted Investment Intelligence analysis",
+      "Validated customer assumptions kept separate from provider observations",
+      "Financial outputs and disclosed market evidence",
+      "Score and recommendation",
+      "Saved opportunity access",
     ],
     comparison: {
       marketAnalysis: "Snapshot",
@@ -60,40 +60,37 @@ export const investmentPackages: InvestmentPackage[] = [
       turnaround: "24–48 hours",
     },
     exclusions: [
-      "Scenario comparison (optimistic/conservative/custom)",
-      "Comparable-set benchmarking beyond 5 properties",
-      "Human expert review of your analysis",
-      "Executive report export",
+      "HPM access",
+      "Appraisal or financing approval",
+      "Guaranteed returns",
     ],
     cancellationPolicy:
       "Full refund if requested before your analysis is generated. Once generated, the analysis credit has been fulfilled and is non-refundable.",
     eligibilityLimitations:
-      "Best suited to a first-look evaluation of a single property. Compare Pro or Premier for scenario modeling and expert review.",
+      "One materially new analysis or reanalysis consumes the credit; a verified platform retry does not.",
     offerId: "commerce-offer-investment-starter",
   },
   {
     slug: "pro",
-    name: "Pro",
-    price: 499,
-    priceLabel: "$499",
-    tagline: "Comprehensive underwriting with full scenario modeling.",
+    name: "Analysis Pack",
+    price: 399,
+    priceLabel: "$399",
+    tagline: "Five account-bound analysis credits.",
     description:
-      "A complete investment decision analysis with market intelligence, full financial modeling, scenario comparison, and risk assessment — everything you need to underwrite a purchase or rental arbitrage opportunity with confidence.",
+      "Run up to five persisted analyses with the same canonical outputs as Single Analysis and priority support.",
     popular: true,
     highlights: [
-      "Full market intelligence report",
-      "Base / optimistic / conservative scenarios",
-      "Comparable-set benchmarking",
-      "Risk assessment & sensitivity analysis",
+      "Five analysis credits",
+      "Persisted decision-ready analyses",
+      "Saved opportunity access",
+      "Priority support",
     ],
     features: [
-      "Full market intelligence: ADR, occupancy, RevPAR, seasonality",
-      "Complete financial modeling across purchase, financing, and operating assumptions",
-      "Base, optimistic, and conservative scenario comparison",
-      "Comparable-property benchmarking (up to 15 properties)",
-      "Risk assessment and sensitivity analysis",
-      "Overall recommendation with confidence level and key strengths",
-      "Save and revisit as an opportunity in your workspace",
+      "Five account-bound analysis credits",
+      "Validated assumptions and separate provider-observation lineage",
+      "Persisted financial outputs, market evidence, score, and recommendation",
+      "Saved opportunity access",
+      "Credits expire 12 months after purchase",
     ],
     comparison: {
       marketAnalysis: "Full market intelligence",
@@ -105,51 +102,15 @@ export const investmentPackages: InvestmentPackage[] = [
       turnaround: "24–48 hours",
     },
     exclusions: [
-      "Human expert review of your analysis",
-      "Custom scenario beyond the three standard cases",
+      "HPM access",
+      "Transferable credits",
+      "Refunds for used credits",
     ],
     cancellationPolicy:
       "Full refund if requested before your analysis is generated. Once generated, the analysis credit has been fulfilled and is non-refundable.",
     eligibilityLimitations:
-      "Available for purchase and rental arbitrage strategies. Best suited to a serious, single-property purchase decision.",
+      "Each materially new analysis consumes one credit; credits are non-transferable and expire after 12 months.",
     offerId: "commerce-offer-investment-pro",
-  },
-  {
-    slug: "premier",
-    name: "Premier",
-    price: 999,
-    priceLabel: "$999",
-    tagline: "Full underwriting plus a human expert review.",
-    description:
-      "Everything in Pro, plus a custom scenario, a licensed analyst's expert review of your assumptions and conclusions, and a polished executive report ready to share with lenders or partners.",
-    highlights: [
-      "Everything in Pro",
-      "Custom scenario modeling",
-      "Expert analyst review",
-      "Executive report export",
-    ],
-    features: [
-      "Everything included in the Pro package",
-      "A fourth, fully custom scenario built to your assumptions",
-      "Expert analyst review of assumptions, methodology, and conclusions",
-      "Polished executive report export (PDF) for lenders or partners",
-      "Priority turnaround",
-    ],
-    comparison: {
-      marketAnalysis: "Full market intelligence",
-      financialModeling: "Full model + custom scenario",
-      comparableProperties: "Up to 15",
-      riskAssessment: "Full sensitivity analysis",
-      scenarios: "4 (base/optimistic/conservative/custom)",
-      expertReview: true,
-      turnaround: "12–24 hours, priority queue",
-    },
-    exclusions: ["Ongoing portfolio advisory (see Portfolio Advisory for multi-property engagements)"],
-    cancellationPolicy:
-      "Full refund if requested before your analysis is generated or before expert review begins, whichever is first. Once expert review has started, the fee is non-refundable.",
-    eligibilityLimitations:
-      "Available for purchase and rental arbitrage strategies. Recommended for decisions involving outside lenders, partners, or committee approval.",
-    offerId: "commerce-offer-investment-premier",
   },
 ];
 
@@ -168,16 +129,7 @@ export type InvestmentAddOn = {
   description: string;
 };
 
-export const investmentAddOns: InvestmentAddOn[] = [
-  {
-    slug: "expert-review",
-    name: "Expert Review",
-    price: 149,
-    priceLabel: "$149",
-    description:
-      "A licensed analyst reviews your assumptions, methodology, and conclusions before you receive your final report. Included automatically with Premier.",
-  },
-];
+export const investmentAddOns: InvestmentAddOn[] = [];
 
 export type InvestmentSampleReport = {
   slug: string;
