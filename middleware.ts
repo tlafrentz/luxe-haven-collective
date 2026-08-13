@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isAdminRoute, isProtectedRoute } from "@/lib/auth/roles";
-import type { UserRole } from "@/types/database";
+import { resolveAdminAccess } from "@/lib/auth/admin";
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -32,8 +32,8 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && isAdminRoute(pathname)) {
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single<{ role: UserRole }>();
-    if (profile?.role !== "admin") return NextResponse.redirect(new URL("/dashboard", request.url));
+    const adminAccess = await resolveAdminAccess(supabase);
+    if (!adminAccess.authorized) return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return response;

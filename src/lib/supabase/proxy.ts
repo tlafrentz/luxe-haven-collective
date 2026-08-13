@@ -7,7 +7,7 @@ import {
   type NextRequest,
 } from "next/server";
 import { isAdminRoute, isProtectedRoute } from "@/lib/auth/roles";
-import type { UserRole } from "@/types/database";
+import { resolveAdminAccess } from "@/lib/auth/admin";
 
 export async function updateSession(
   request: NextRequest,
@@ -69,13 +69,9 @@ export async function updateSession(
   }
 
   if (user && isAdminRoute(pathname)) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single<{ role: UserRole }>();
+    const adminAccess = await resolveAdminAccess(supabase);
 
-    if (profile?.role !== "admin") {
+    if (!adminAccess.authorized) {
       return NextResponse.redirect(
         new URL("/dashboard", request.url),
       );

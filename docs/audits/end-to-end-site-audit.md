@@ -48,6 +48,8 @@ Role coverage: anonymous route compilation only; prospective customer, customer 
 
 Follow-up correction: production operator evidence confirms that both the marketing `Open Portal` CTA and direct `/admin` navigation resolve to `/dashboard` for the intended administrator. Source tracing shows both paths depend on an exact `profiles.role === "admin"` result; missing profile data and profile-query errors are silently treated like a legitimate non-admin. This is `AUD-009`, a P1 primary operator-workflow failure.
 
+Remediation update: `AUD-009` is implemented locally by routing middleware, server session resolution, and the marketing CTA through the database's canonical `is_admin()` authorization function, which is also used by admin RLS. The regression covers authorization when the profile projection is missing, denial without elevation, and fail-closed behavior when the authorization function is unavailable. Verification passed with 3 focused files/9 tests, the complete 713-file/3,864-test suite, focused ESLint, typecheck, and production build. The item remains failed for release accounting until the corrected build is deployed and the intended administrator verifies both entry paths in production.
+
 The same follow-up confirmed that the current homepage redesign was not requested or approved. Git history attributes the broad replacement to commit `fb1ab9d5` (`Redesign public homepage`), with related hero changes in the August 3–4 sequence. This is `AUD-010`; the audit does not infer that authorship implies approval.
 
 ## Automated evidence
