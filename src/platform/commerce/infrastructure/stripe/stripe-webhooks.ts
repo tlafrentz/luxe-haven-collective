@@ -69,6 +69,7 @@ export function normalizeStripeWebhookEvent(
   const object = event.data.object;
   const metadata = stringRecord(object.metadata);
   const subscriptionItem = firstSubscriptionItem(object);
+  const invoiceLine = firstInvoiceLine(object);
   const providerSubscriptionId = stringId(object.subscription)
     ?? stringId(nested(object, "parent", "subscription_details", "subscription"))
     ?? (event.type.startsWith("customer.subscription.") ? stringId(object.id) : undefined);
@@ -127,8 +128,8 @@ export function normalizeStripeWebhookEvent(
       invoiceStatus: mapInvoiceStatus(object.status),
       invoiceUrl: safeStripeUrl(object.hosted_invoice_url),
       invoicePdfUrl: safeStripeUrl(object.invoice_pdf),
-      currentPeriodStart: unixDate(object.period_start),
-      currentPeriodEnd: unixDate(object.period_end),
+      currentPeriodStart: unixDate(nested(invoiceLine, "period", "start") ?? object.period_start),
+      currentPeriodEnd: unixDate(nested(invoiceLine, "period", "end") ?? object.period_end),
       dueAt: unixDate(object.due_date),
       nextPaymentAttemptAt: unixDate(object.next_payment_attempt),
     } : {}),
@@ -213,6 +214,10 @@ function nested(value: unknown, ...path: string[]): unknown {
 }
 function firstSubscriptionItem(object: Record<string, unknown>): Record<string, unknown> {
   const data = nested(object, "items", "data");
+  return Array.isArray(data) && data[0] && typeof data[0] === "object" ? data[0] as Record<string, unknown> : {};
+}
+function firstInvoiceLine(object: Record<string, unknown>): Record<string, unknown> {
+  const data = nested(object, "lines", "data");
   return Array.isArray(data) && data[0] && typeof data[0] === "object" ? data[0] as Record<string, unknown> : {};
 }
 function unixDate(value: unknown): Date | undefined {

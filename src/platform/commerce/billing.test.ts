@@ -10,8 +10,10 @@ describe("Commerce Billing",()=>{
   expect(event.currentPeriodEnd?.getTime()).toBe(1_786_000_000_000);
  });
  it("normalizes invoice history and allows only Stripe-hosted document URLs",()=>{
-  const event=normalizeStripeWebhookEvent(envelope("invoice.paid",{id:"in_1",customer:"cus_1",subscription:"sub_1",number:"LHC-001",status:"paid",total:24900,currency:"usd",hosted_invoice_url:"https://invoice.stripe.com/i/test",invoice_pdf:"https://pay.stripe.com/invoice.pdf",period_start:1_784_000_000,period_end:1_786_000_000}),"test");
+  const event=normalizeStripeWebhookEvent(envelope("invoice.paid",{id:"in_1",customer:"cus_1",subscription:"sub_1",number:"LHC-001",status:"paid",total:24900,currency:"usd",hosted_invoice_url:"https://invoice.stripe.com/i/test",invoice_pdf:"https://pay.stripe.com/invoice.pdf",period_start:1_784_000_000,period_end:1_784_000_000,lines:{data:[{period:{start:1_784_000_000,end:1_786_000_000}}]}}),"test");
   expect(event).toMatchObject({eventType:"invoice.paid",providerInvoiceId:"in_1",providerSubscriptionId:"sub_1",invoiceNumber:"LHC-001",invoiceStatus:"paid",amountMinor:24900,currency:"USD"});
+  expect(event.currentPeriodStart?.getTime()).toBe(1_784_000_000_000);
+  expect(event.currentPeriodEnd?.getTime()).toBe(1_786_000_000_000);
   const unsafe=normalizeStripeWebhookEvent(envelope("invoice.updated",{id:"in_2",customer:"cus_1",subscription:"sub_1",status:"open",total:100,currency:"usd",hosted_invoice_url:"https://evil.example/invoice"}),"test");
   expect(unsafe.invoiceUrl).toBeUndefined();
  });
