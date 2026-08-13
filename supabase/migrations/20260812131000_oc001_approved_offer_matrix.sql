@@ -7,7 +7,9 @@ alter table public.commercial_offer_details
   add column included_hosting_months integer check(included_hosting_months>0),
   add column credit_expiration_months integer check(credit_expiration_months>0),
   add column scope_approval_required boolean not null default false;
-create unique index commercial_catalog_registration_audit_uidx on public.commercial_catalog_audit_events(event_code,offer_code,offer_version,reason_code) where event_code='oc001_offer_registered';
+-- Earlier draft registrations predate idempotent audit enforcement and must remain immutable history.
+-- The approved OC-001 namespace is uppercase, so constrain only the canonical production definitions.
+create unique index commercial_catalog_registration_audit_uidx on public.commercial_catalog_audit_events(event_code,offer_code,offer_version,reason_code) where event_code='oc001_offer_registered' and offer_code~'^[A-Z]';
 
 create or replace function public.read_published_offer_catalog(p_family text default null)
 returns jsonb language sql stable security definer set search_path='' as $$
