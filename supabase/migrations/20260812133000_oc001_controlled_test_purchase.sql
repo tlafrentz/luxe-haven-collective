@@ -1,6 +1,7 @@
 create function public.create_oc001_controlled_test_purchase_intent(
  p_executor_id uuid,p_customer_actor_id uuid,p_tenant_id uuid,p_customer_account_id uuid,p_identity_type_code text,p_offer_code text,p_offer_version integer,p_price_code text,p_price_version integer,p_configuration jsonb,p_checksum text,p_policy_snapshot jsonb,p_entitlement_snapshot jsonb,p_idempotency_hash text,p_correlation_id text
-)returns jsonb language plpgsql security definer set search_path=''as$$declare existing public.commercial_purchase_intents;mapping public.billing_price_mappings;created public.commercial_purchase_intents;
+) returns jsonb language plpgsql security definer set search_path='' as $$
+declare existing public.commercial_purchase_intents;mapping public.billing_price_mappings;created public.commercial_purchase_intents;
 begin
  if auth.role()<>'service_role'then raise exception'OC001_CONTROLLED_EXECUTION_NOT_AUTHORIZED';end if;
  if not exists(select 1 from public.controlled_verification_identities where opaque_auth_subject_reference=p_executor_id::text and identity_type_code='release_verifier'and status='active'and(expires_at is null or expires_at>now()))then raise exception'OC001_CONTROLLED_EXECUTOR_INVALID';end if;
