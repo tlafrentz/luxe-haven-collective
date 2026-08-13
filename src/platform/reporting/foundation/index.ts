@@ -9,3 +9,5 @@ export * from "./custom-reports";
 export * from "./exports";
 export * from "./supabase-report-exports";
 export * from "./production-configuration";
+export * from "./standard-report-catalog";
+export * from "./standard-report-administration";
