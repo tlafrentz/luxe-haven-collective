@@ -1,0 +1,11 @@
+import {readFileSync} from "node:fs";
+import {describe,expect,it} from "vitest";
+const sql=readFileSync("supabase/migrations/20260813110000_oc001_commercial_effects.sql","utf8");
+describe("OC-001 authoritative commercial effects",()=>{
+ it("initializes versioned limits and investment credits from active agreements",()=>{expect(sql).toContain("initialize_oc001_agreement_effects");expect(sql).toContain("commercial_limit_grants");expect(sql).toContain("investment_credit_ledgers");expect(sql).toContain("when'II-SINGLE'then 1 else 5");});
+ it("reserves a credit once under an account-scoped lock",()=>{expect(sql).toContain("reserve_oc001_investment_credit");expect(sql).toContain("pg_advisory_xact_lock");expect(sql).toContain("unique(ledger_id,logical_analysis_reference)");expect(sql).toContain("idempotency_key_hash text not null unique");});
+ it("starts Guidebook hosting for exactly twelve months through the owning artifact reference",()=>{expect(sql).toContain("register_oc001_guidebook_hosting");expect(sql).toContain("interval'12 months'");expect(sql).toContain("from public.guidebooks");});
+ it("prices furnishing scope server-side and applies the bounded consultation credit once",()=>{expect(sql).toContain("create_oc001_furnishing_configuration");expect(sql).toContain("149500+p_additional_rooms*25000+p_additional_revisions*15000");expect(sql).toContain("least(c.amount_minor,24900)");expect(sql).toContain("status='reserved'");});
+ it("issues the property-bound consultation credit once for thirty days",()=>{expect(sql).toContain("register_oc001_furnishing_consultation_credit");expect(sql).toContain("offer_code='FS-CONSULT'");expect(sql).toContain("interval'30 days'");expect(sql).toContain("on conflict(source_agreement_id,target_offer_code)");});
+ it("keeps all mutation operations service-only and actor-authorized",()=>{expect(sql.match(/auth\.role\(\)<>'service_role'/g)?.length).toBeGreaterThanOrEqual(3);expect(sql).toContain("customer_account_memberships");expect(sql).not.toMatch(/grant execute[^;]+to authenticated/);});
+});
