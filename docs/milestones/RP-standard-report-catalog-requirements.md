@@ -7,7 +7,7 @@ The catalog is the authoritative immutable definition layer for the Executive, O
 ## Governing rules
 
 - Definitions follow `draft → approved → active → retired`; active versions are immutable and material changes require a new version.
-- Exactly 13 launch definitions are active. Five reports awaiting canonical product data remain drafts and cannot be generated.
+- Experience reconciliation retired the 13 initially active v1 definitions because their exact RP-001 generator bindings do not exist. Replacement v2 contracts and the five reports awaiting canonical product data remain drafts and cannot be generated.
 - Performance reports use `shared_date_context.v1`; investment reports use immutable analysis snapshots through `snapshot_version.v1`.
 - Supported performance presets are current/previous month, month-to-date, current/previous quarter, quarter-to-date, current/previous year, year-to-date, rolling 30/90 days, and an authorized custom range.
 - Comparisons are allowlisted per report. Missing comparisons are disclosed, never coerced to zero; canonical calculations own percentage and denominator handling.
