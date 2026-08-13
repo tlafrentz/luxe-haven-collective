@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-13T12:48:58.339Z",
+  "generatedAt": "2026-08-13T13:41:54.883Z",
   "auditMode": "read-only",
   "completeCoverage": false,
   "summary": {
@@ -7,8 +7,8 @@
     "controls": 688,
     "routeResults": {
       "passed": 0,
-      "failed": 0,
-      "blocked": 393,
+      "failed": 2,
+      "blocked": 391,
       "deferred": 0,
       "untested": 0
     },
@@ -30,9 +30,9 @@
       "dynamic": false,
       "linked": "not exhaustively resolved",
       "build": "pass",
-      "runtime": "blocked",
-      "reason": "No pre-existing controlled identity/browser matrix supplied; audit forbids provisioning or external mutation",
-      "evidence": "npm run build (273 static pages generated; route emitted)"
+      "runtime": "failed",
+      "reason": "Current production homepage includes an unapproved redesign introduced by commit fb1ab9d5",
+      "evidence": "Operator production observation 2026-08-13 plus source/history trace"
     },
     {
       "route": "/about",
@@ -56,9 +56,9 @@
       "dynamic": false,
       "linked": "not exhaustively resolved",
       "build": "pass",
-      "runtime": "blocked",
-      "reason": "No pre-existing controlled identity/browser matrix supplied; audit forbids provisioning or external mutation",
-      "evidence": "npm run build (273 static pages generated; route emitted)"
+      "runtime": "failed",
+      "reason": "Confirmed production redirect to /dashboard for intended administrator; exact admin profile lookup fails closed without distinguishing missing/error/non-admin",
+      "evidence": "Operator production observation 2026-08-13 plus source/history trace"
     },
     {
       "route": "/admin/activations",

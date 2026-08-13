@@ -6,7 +6,7 @@ Recommendation: **NO-GO**
 
 ## Executive conclusion
 
-The platform compiles and its broad automated suite is healthy, but complete end-to-end release evidence does not exist. The canonical inventory contains 393 page/handler entry points and 688 statically discoverable controls. None received the required browser-plus-role-plus-persistence-plus-downstream evidence in this milestone because no controlled identities/browser harness were available and creating the necessary users, purchases, subscriptions, or provider resources was prohibited. Unknown items fail the requested completeness gate.
+The platform compiles and its broad automated suite is healthy, but complete end-to-end release evidence does not exist. The canonical inventory contains 393 page/handler entry points and 688 statically discoverable controls. Follow-up production evidence confirmed two missed release failures: the intended administrator cannot enter `/admin`, and the homepage contains an unapproved redesign. The remaining runtime items lack the required browser-plus-role-plus-persistence-plus-downstream evidence because no controlled identities/browser harness were available and creating the necessary users, purchases, subscriptions, or provider resources was prohibited. Unknown items fail the requested completeness gate.
 
 Complete coverage was **not achieved**. This report does not claim that a route works merely because it compiled, rendered during static generation, or has source/tests.
 
@@ -17,22 +17,22 @@ The audited-item denominator is 1,081: 393 route/runtime items plus 688 discover
 | Result | Total |
 |---|---:|
 | Passed | 0 |
-| Failed | 0 |
-| Blocked | 393 |
+| Failed | 2 |
+| Blocked | 391 |
 | Deferred | 0 |
 | Untested | 688 |
 
 Build compilation is recorded separately and is not counted as an end-to-end pass. Intentional product deferrals are catalog observations, not executed test items.
 
-Defect totals: P0 0, P1 3, P2 4, P3 1. Of these, one is a confirmed code-quality defect, three are missing requirements/incomplete wiring, and four are test-environment blockers. See the defect register for classification.
+Defect totals: P0 0, P1 4, P2 5, P3 1. Confirmed defects include loss of admin-portal access and the lint warning; the unapproved homepage redesign is a release-governance failure. See the defect register for full classification.
 
 ## Coverage inventory
 
 | Product area | Routes/handlers inventoried | Runtime result |
 |---|---:|---|
-| Admin | 114 | Blocked |
+| Admin | 114 | 1 failed; 113 blocked |
 | Customer dashboard | 75 | Blocked |
-| Public marketing / portal | 43 | Blocked |
+| Public marketing / portal | 43 | 1 failed; 42 blocked |
 | Investment Intelligence | 34 | Blocked |
 | Guidebook Studio | 33 | Blocked |
 | Furnishing Studio | 22 | Blocked |
@@ -45,6 +45,10 @@ Defect totals: P0 0, P1 3, P2 4, P3 1. Of these, one is a confirmed code-quality
 | Actions / Execute | 5 | Blocked |
 
 Role coverage: anonymous route compilation only; prospective customer, customer without HPM, HPM, Guidebook-only, Furnishing, Investment, owner, admin, cleaner/assignee, and wrong-tenant runtime tests were blocked. Viewport coverage: no browser viewport passed; desktop and mobile remain required. Workflow and state coverage: unit/component evidence exists, but no complete authenticated E2E workflow was credited.
+
+Follow-up correction: production operator evidence confirms that both the marketing `Open Portal` CTA and direct `/admin` navigation resolve to `/dashboard` for the intended administrator. Source tracing shows both paths depend on an exact `profiles.role === "admin"` result; missing profile data and profile-query errors are silently treated like a legitimate non-admin. This is `AUD-009`, a P1 primary operator-workflow failure.
+
+The same follow-up confirmed that the current homepage redesign was not requested or approved. Git history attributes the broad replacement to commit `fb1ab9d5` (`Redesign public homepage`), with related hero changes in the August 3–4 sequence. This is `AUD-010`; the audit does not infer that authorship implies approval.
 
 ## Automated evidence
 
