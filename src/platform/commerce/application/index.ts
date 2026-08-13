@@ -2,6 +2,7 @@ export * from "./catalog";
 export * from "./checkout";
 export * from "./payments";
 export * from "./billing";
+export * from "./oc001-special-purchases";
 export * from "./entitlements";
 export * from "./operations";
 export * from "./ca001a-entitlements";

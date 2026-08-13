@@ -6,3 +6,4 @@ export * from "./in-memory-checkout-repositories";
 export * from "./supabase-commerce-catalog-repository";
 export * from "./ca001a-catalog";
 export * from "./supabase-ca001b-lifecycle";
+export * from "./supabase-oc001-special-purchases";
