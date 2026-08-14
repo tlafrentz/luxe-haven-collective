@@ -104,6 +104,7 @@ export default async function GuidebookPreview({
         guidebook={guidebookView}
         source="link"
         trackEvents={false}
+        editablePreview
       />
     );
   }

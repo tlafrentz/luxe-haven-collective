@@ -39,11 +39,15 @@ describe("Guidebook Studio canonical Builder reconciliation", () => {
     expect(builder).toContain('unsaved: "Unsaved changes"');
     expect(builder).toContain('failed: "Save failed — Retry"');
     expect(builder).toContain('conflict: "Conflict detected — Review changes"');
+    expect(builder).toContain("guidebook-preview:block-selected");
+    expect(builder).toContain("LegacyBlockContentFields");
+    expect(builder).not.toContain("Current content\n        <textarea");
     const preview = source(
       "src/app/(public)/dashboard/guidebooks/[guidebookId]/preview/page.tsx",
     );
     expect(preview).toContain("PublicGuidebookExperience");
     expect(preview).toContain("index: false");
+    expect(preview).toContain("editablePreview");
   });
 
   it("does not expose the ordinary unnamed-customer fallback", () => {

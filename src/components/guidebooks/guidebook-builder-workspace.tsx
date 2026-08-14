@@ -33,7 +33,6 @@ import {
   uploadGuidebookMediaAction,
 } from "@/app/actions/guidebook-authoring";
 import {
-  blockSummary,
   autosaveDelay,
   compatibleComponents,
   ESSENTIAL_CONTENT_ITEMS,
@@ -160,6 +159,23 @@ export function GuidebookBuilderWorkspace({
     refreshMediaDimensions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.workspaceId, draft.guidebookId]);
+  useEffect(() => {
+    const selectPreviewBlock = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string; blockId?: string } | null;
+      if (data?.type !== "guidebook-preview:block-selected" || !data.blockId) return;
+      const owner = draft.sections.find((item) =>
+        item.blocks.some((candidate) => candidate.id === data.blockId),
+      );
+      if (!owner) return;
+      setSectionId(owner.id);
+      setBlockId(data.blockId);
+      setPanel("content");
+      setMobileInspectorOpen(true);
+    };
+    window.addEventListener("message", selectPreviewBlock);
+    return () => window.removeEventListener("message", selectPreviewBlock);
+  }, [draft.sections]);
   const components = useMemo(
     () =>
       compatibleComponents(section?.name ?? "").filter((item) =>
@@ -1249,28 +1265,69 @@ function PropertyPanel({
         This {block.type} block does not require additional accessibility settings.
       </p>
     );
+  if (block.type !== "component")
+    return <LegacyBlockContentFields block={block} canEdit={canEdit} onDirty={onDirty} onUpdate={onUpdate} />;
+  return null;
+}
+
+function LegacyBlockContentFields({
+  block,
+  canEdit,
+  onDirty,
+  onUpdate,
+}: {
+  block: Exclude<AuthoringBlock, { type: "component" }>;
+  canEdit: boolean;
+  onDirty: () => void;
+  onUpdate: (block: AuthoringBlock) => void;
+}) {
+  const field = (label: string, value: string, commit: (value: string) => void, multiline = false) => (
+    <AutosaveField
+      key={`${block.id}:${label}`}
+      label={label}
+      initialValue={value}
+      required={false}
+      multiline={multiline}
+      disabled={!canEdit}
+      onDirty={onDirty}
+      onCommit={commit}
+    />
+  );
+  let fields: React.ReactNode;
+  switch (block.type) {
+    case "heading":
+      fields = field("Heading", block.content.text, (text) => onUpdate({ ...block, content: { ...block.content, text } }));
+      break;
+    case "rich-text":
+      fields = field("Text", block.content.text, (text) => onUpdate({ ...block, content: { text } }), true);
+      break;
+    case "callout":
+      fields = <>{field("Title", block.content.title ?? "", (title) => onUpdate({ ...block, content: { ...block.content, title } }))}{field("Body", block.content.body, (body) => onUpdate({ ...block, content: { ...block.content, body } }), true)}</>;
+      break;
+    case "instruction":
+      fields = <>{field("Title", block.content.title ?? "", (title) => onUpdate({ ...block, content: { ...block.content, title } }))}{field("Steps (one per line)", block.content.steps.map((item) => item.text).join("\n"), (value) => onUpdate({ ...block, content: { ...block.content, steps: value.split("\n").filter(Boolean).map((text, index) => ({ id: block.content.steps[index]?.id ?? crypto.randomUUID(), text })) } }), true)}</>;
+      break;
+    case "checklist":
+      fields = <>{field("Title", block.content.title ?? "", (title) => onUpdate({ ...block, content: { ...block.content, title } }))}{field("Items (one per line)", block.content.items.map((item) => item.text).join("\n"), (value) => onUpdate({ ...block, content: { ...block.content, items: value.split("\n").filter(Boolean).map((text, index) => ({ id: block.content.items[index]?.id ?? crypto.randomUUID(), text })) } }), true)}</>;
+      break;
+    case "contact":
+      fields = <>{field("Name", block.content.name, (name) => onUpdate({ ...block, content: { ...block.content, name } }))}{field("Role", block.content.role ?? "", (role) => onUpdate({ ...block, content: { ...block.content, role } }))}{field("Phone", block.content.phone ?? "", (phone) => onUpdate({ ...block, content: { ...block.content, phone } }))}</>;
+      break;
+    case "location":
+      fields = <>{field("Label", block.content.label, (label) => onUpdate({ ...block, content: { ...block.content, label } }))}{field("Destination", block.content.destination, (destination) => onUpdate({ ...block, content: { ...block.content, destination } }))}{field("Map URL", block.content.mapUrl ?? "", (mapUrl) => onUpdate({ ...block, content: { ...block.content, mapUrl } }))}</>;
+      break;
+    case "link":
+      fields = <>{field("Label", block.content.label, (label) => onUpdate({ ...block, content: { ...block.content, label } }))}{field("URL", block.content.url, (url) => onUpdate({ ...block, content: { ...block.content, url } }))}</>;
+      break;
+    case "image":
+      fields = <>{field("Alternative text", block.content.alt, (alt) => onUpdate({ ...block, content: { ...block.content, alt } }))}{field("Caption", block.content.caption ?? "", (caption) => onUpdate({ ...block, content: { ...block.content, caption } }))}</>;
+      break;
+  }
   return (
     <div className="mt-5 space-y-4">
-      <label className="text-sm font-semibold">
-        Component type
-        <input
-          value={block.type}
-          readOnly
-          className="mt-2 block min-h-10 w-full rounded-xl border bg-stone-50 px-3"
-        />
-      </label>
-      <label className="text-sm font-semibold">
-        Current content
-        <textarea
-          value={blockSummary(block)}
-          readOnly
-          rows={5}
-          className="mt-2 block w-full rounded-xl border p-3"
-        />
-      </label>
-      <p className="text-xs text-stone-500">
-        Saves are revision-aware; published versions remain immutable.
-      </p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Edit {block.type.replaceAll("-", " ")}</p>
+      {fields}
+      <p className="text-xs text-stone-500">Changes autosave to a new draft revision. Published versions remain unchanged.</p>
     </div>
   );
 }

@@ -13,11 +13,13 @@ export function PublicGuidebookExperience({
   guidebook,
   source,
   trackEvents = true,
+  editablePreview = false,
 }: {
   slug: string;
   guidebook: PublicGuidebookView;
   source: "link" | "qr";
   trackEvents?: boolean;
+  editablePreview?: boolean;
 }) {
   const [active, setActive] = useState(guidebook.sections[0]?.key ?? ""),
     [progress, setProgress] = useState(0),
@@ -188,12 +190,14 @@ export function PublicGuidebookExperience({
               </h2>
               <div className="mt-6 space-y-5">
                 {section.blocks.map((block) => (
-                  <PublicBlock
-                    block={block}
-                    sectionKey={section.key}
-                    track={track}
+                  <div
                     key={block.id}
-                  />
+                    data-guidebook-block-id={block.id}
+                    onClick={editablePreview ? () => window.parent.postMessage({ type: "guidebook-preview:block-selected", blockId: block.id }, window.location.origin) : undefined}
+                    className={editablePreview ? "cursor-pointer rounded-xl outline-none transition hover:ring-2 hover:ring-[var(--guide-accent)] focus-within:ring-2 focus-within:ring-[var(--guide-accent)]" : undefined}
+                  >
+                    <PublicBlock block={block} sectionKey={section.key} track={track} />
+                  </div>
                 ))}
               </div>
             </section>
