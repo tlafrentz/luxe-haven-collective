@@ -13,6 +13,7 @@ export type GuidebookAccountActionState = {
 
 const schema = z
   .object({
+    fullName: z.string().trim().min(2, "Please enter your full name."),
     email: z.string().email("Please enter a valid email address."),
     password: z.string().min(8, "Password must be at least 8 characters."),
     confirmPassword: z.string(),
@@ -36,13 +37,13 @@ export async function createGuidebookAccountAction(
     };
   }
 
-  const { email, password, next } = parsed.data;
+  const { fullName, email, password, next } = parsed.data;
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { role: "owner" } },
+    options: { data: { full_name: fullName, role: "owner" } },
   });
 
   if (error) {

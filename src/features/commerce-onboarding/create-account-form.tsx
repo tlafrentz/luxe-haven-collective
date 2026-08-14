@@ -61,6 +61,17 @@ export function CreateAccountForm({ plan, billing }: { plan: Plan; billing: Bill
         <input type="hidden" name="workspaceDraft" value={JSON.stringify(answers)} />
 
         <label className="block text-sm font-medium text-stone-700">
+          Full name
+          <input
+            name="fullName"
+            autoComplete="name"
+            required
+            className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4"
+          />
+          <FieldError errors={state.errors?.fullName} />
+        </label>
+
+        <label className="block text-sm font-medium text-stone-700">
           Email
           <input
             name="email"

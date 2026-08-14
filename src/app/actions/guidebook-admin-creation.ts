@@ -14,8 +14,10 @@ import {
 
 export type AdminCustomerOption = {
   id: string;
+  profileId: string;
   name: string;
   email: string | null;
+  profileIncomplete: boolean;
 };
 
 export async function listCustomerWorkspacesAction(
@@ -31,7 +33,7 @@ export async function listCustomerWorkspacesAction(
   // they actually had.
   const { data } = await admin
     .from("owners")
-    .select("id,profiles!owners_profile_id_fkey!inner(full_name,email,role)")
+    .select("id,profile_id,display_name,company_name,business_email,profiles!owners_profile_id_fkey!inner(full_name,email,role)")
     .in("profiles.role", ["owner", "admin"])
     .order("id")
     .limit(50);
@@ -56,10 +58,62 @@ export async function listCustomerWorkspacesAction(
     };
     return {
       id: String(row.id),
-      name: profile.full_name?.trim() || "Unnamed customer",
+      profileId: String(row.profile_id),
+      name:
+        row.display_name?.trim() ||
+        profile.full_name?.trim() ||
+        row.company_name?.trim() ||
+        (profile.email
+          ? `Profile incomplete — ${profile.email}`
+          : row.business_email
+            ? `Profile incomplete — ${row.business_email}`
+            : "Profile incomplete"),
       email: profile.email ? String(profile.email) : null,
+      profileIncomplete: !profile.full_name?.trim(),
     };
   });
+}
+
+const repairCustomerIdentitySchema = z.object({
+  profileId: z.string().uuid(),
+  fullName: z.string().trim().min(2, "Enter the customer's full name."),
+});
+
+export async function repairCustomerIdentityAction(formData: FormData) {
+  const { user } = await requireRole(["admin"]);
+  const parsed = repairCustomerIdentitySchema.safeParse({
+    profileId: formData.get("profileId"),
+    fullName: formData.get("fullName"),
+  });
+  if (!parsed.success) redirect("/admin/guidebooks/new?identityError=invalid");
+
+  const admin = createAdminClient();
+  const correlationId = crypto.randomUUID();
+  const { data: profile, error } = await admin
+    .from("profiles")
+    .update({ full_name: parsed.data.fullName })
+    .eq("id", parsed.data.profileId)
+    .select("id")
+    .maybeSingle();
+
+  await admin.from("admin_audit_events").insert({
+    actor_id: user.id,
+    actor_role: "admin",
+    action: "repair_customer_identity",
+    category: "guidebook_studio",
+    target_type: "profile",
+    target_id: parsed.data.profileId,
+    result: error || !profile ? "failed" : "succeeded",
+    correlation_id: correlationId,
+    source: "server_action",
+    metadata: { changedFields: ["full_name"] },
+  });
+
+  if (error || !profile) redirect("/admin/guidebooks/new?identityError=save_failed");
+  await admin.auth.admin.updateUserById(parsed.data.profileId, {
+    user_metadata: { full_name: parsed.data.fullName },
+  });
+  redirect("/admin/guidebooks/new?identityUpdated=1");
 }
 
 export type AdminPropertyOption = {

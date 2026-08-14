@@ -726,6 +726,14 @@ export async function guidebookAuthoringCommandAction(
       );
     if (!draft || !evaluatePropertyAccess(access, draft.propertyId))
       return denied();
+    const pendingReview = await drafts.reviewLock(input.guidebookId);
+    if (pendingReview)
+      return {
+        ok: false as const,
+        status: "conflict" as const,
+        code: "DRAFT_IN_REVIEW" as const,
+        message: `Revision ${pendingReview.draftRevision} is locked while it is in review.`,
+      };
     const deps = {
         drafts,
         receipts: new SupabaseGuidebookCommandReceiptRepository(user.id),

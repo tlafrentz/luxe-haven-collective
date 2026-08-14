@@ -9,6 +9,7 @@ import { track } from "@/lib/analytics/track";
 
 const commerceAccountSchema = z
   .object({
+    fullName: z.string().trim().min(2, "Enter your full name."),
     email: z.string().email("Enter a valid email."),
     password: z.string().min(8, "Password must be at least 8 characters."),
     confirmPassword: z.string(),
@@ -49,7 +50,7 @@ export async function createCommerceAccountAction(
     return toFormErrors(parsed.error);
   }
 
-  const { email, password, plan: planSlug, billing, workspaceDraft } = parsed.data;
+  const { fullName, email, password, plan: planSlug, billing, workspaceDraft } = parsed.data;
 
   if (!plansBySlug[planSlug as PlanSlug]) {
     return { ok: false, message: "The selected plan could not be found." };
@@ -65,7 +66,7 @@ export async function createCommerceAccountAction(
   const { error: signUpError } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { role: "owner" } },
+    options: { data: { full_name: fullName, role: "owner" } },
   });
 
   if (signUpError) {

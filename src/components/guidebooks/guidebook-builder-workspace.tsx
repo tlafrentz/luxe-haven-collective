@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertCircle,
   ArrowDown,
@@ -34,6 +34,7 @@ import {
 } from "@/app/actions/guidebook-authoring";
 import {
   blockSummary,
+  autosaveDelay,
   compatibleComponents,
   ESSENTIAL_CONTENT_ITEMS,
   guidebookHealth,
@@ -42,16 +43,24 @@ import {
   type BuilderSaveState,
 } from "@/features/guidebook-builder";
 import { MESA_MODERN_TOKENS } from "@/features/template-library";
+import { EXPERIENCE_COMPONENT_V1 } from "@/features/experience-components";
 import {
   buildMediaDimensionMap,
   evaluateGuidebookPublicationReadiness,
-  resolveGuidebookTheme,
   type AuthoringBlock,
   type GuidebookDraft,
   type MediaDimensionMap,
 } from "@/features/guidebook-studio";
 
 type Command = Parameters<typeof guidebookAuthoringCommandAction>[0]["command"];
+type BuilderLifecycleStatus =
+  | "draft"
+  | "in_review"
+  | "changes_requested"
+  | "approved"
+  | "scheduled"
+  | "published"
+  | "archived";
 const HISTORY_LIMIT = 20;
 
 function usedComponentKeys(draft: GuidebookDraft) {
@@ -87,17 +96,21 @@ export function GuidebookBuilderWorkspace({
   versionId,
   canEdit,
   canPublish,
+  surface,
+  lifecycleStatus,
   basePath = "/dashboard/guidebooks",
-  previewVariables = {},
   propertyName = "Property",
+  customerLabel,
 }: {
   initialDraft: GuidebookDraft;
   versionId: string;
   canEdit: boolean;
   canPublish: boolean;
+  surface: "admin" | "dashboard";
+  lifecycleStatus: BuilderLifecycleStatus;
   basePath?: string;
-  previewVariables?: Readonly<Record<string, string | null | undefined>>;
   propertyName?: string;
+  customerLabel?: string;
 }) {
   const [draft, setDraft] = useState(initialDraft);
   const [sectionId, setSectionId] = useState(
@@ -109,10 +122,12 @@ export function GuidebookBuilderWorkspace({
     "outline",
   );
   const [mobileRailOpen, setMobileRailOpen] = useState(false);
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const [preview, setPreview] = useState<BuilderPreviewMode>("desktop");
   const [picker, setPicker] = useState(false);
   const [query, setQuery] = useState("");
   const [save, setSave] = useState<BuilderSaveState>("saved");
+  const [lastFailedCommand, setLastFailedCommand] = useState<Command | null>(null);
   const [history, setHistory] = useState<GuidebookDraft["sections"][]>([]);
   const [future, setFuture] = useState<GuidebookDraft["sections"][]>([]);
   const [mediaDimensions, setMediaDimensions] = useState<MediaDimensionMap>(
@@ -170,11 +185,15 @@ export function GuidebookBuilderWorkspace({
       if (result.ok) {
         setDraft(result.value);
         setSave("saved");
+        setLastFailedCommand(null);
         if (record) {
           setHistory((stack) => [...stack.slice(-(HISTORY_LIMIT - 1)), before]);
           setFuture([]);
         }
-      } else setSave(result.code === "DRAFT_CONFLICT" ? "conflict" : "failed");
+      } else {
+        setLastFailedCommand(value);
+        setSave(result.code === "DRAFT_CONFLICT" ? "conflict" : "failed");
+      }
     });
   }
   function command(value: Command) {
@@ -224,8 +243,18 @@ export function GuidebookBuilderWorkspace({
           </Link>
           <h1 className="font-semibold">{draft.title}</h1>
           <p className="flex items-center gap-2 text-xs text-stone-500">
-            {propertyName} · Draft revision {draft.revision} ·{" "}
-            <SaveStatus value={save} />
+            {surface === "admin" && customerLabel ? `${customerLabel} · ` : ""}
+            {propertyName} · Revision {draft.revision} ·{" "}
+            <SaveStatus
+              value={save}
+              onRetry={lastFailedCommand ? () => runCommand(lastFailedCommand, false) : undefined}
+            />
+          </p>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+            <LifecycleStatus value={lifecycleStatus} />
+            <span className="text-stone-500">
+              {surface === "admin" ? "Admin operator" : "Customer workspace"}
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
@@ -237,7 +266,7 @@ export function GuidebookBuilderWorkspace({
             <Menu className="size-4" />
           </button>
           <Link
-            href={`/guidebooks/${draft.guidebookId}/preview?viewport=desktop`}
+            href={`/dashboard/guidebooks/${draft.guidebookId}/preview?mode=draft&viewport=desktop`}
             className="rounded-lg border px-3 py-2"
           >
             Preview
@@ -512,19 +541,12 @@ export function GuidebookBuilderWorkspace({
                 const complete = item.componentKeys.every((key) =>
                   usedKeys.has(key),
                 );
-                if (!complete)
-                  for (const componentKey of item.componentKeys)
-                    command({
-                      type: "create-block",
-                      sectionId: targetSectionId,
-                      blockType: "component",
-                      componentKey,
-                    });
                 setSectionId(targetSectionId);
                 setBlockId("");
                 setPanel("content");
                 setRailMode("outline");
                 setMobileRailOpen(false);
+                if (!complete && canEdit) setPicker(true);
               }}
             />
           )}
@@ -561,47 +583,50 @@ export function GuidebookBuilderWorkspace({
             sectionId={section?.id}
             selected={blockId}
             mode={preview}
-            previewVariables={previewVariables}
             canEdit={canEdit}
             onSelect={(id) => {
               setBlockId(id);
               setPanel("content");
+              setMobileInspectorOpen(true);
             }}
             onCommand={command}
             onAddBlock={() => setPicker(true)}
           />
         </section>
-        <aside className="border-l bg-white p-4">
-          <h2 className="font-semibold">Properties</h2>
+        <aside
+          aria-label="Component properties"
+          className={`z-40 border-l bg-white p-4 lg:static lg:block ${mobileInspectorOpen ? "fixed inset-0 overflow-y-auto" : "hidden lg:block"}`}
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Properties</h2>
+            <button
+              type="button"
+              onClick={() => setMobileInspectorOpen(false)}
+              aria-label="Close component properties"
+              className="grid size-11 place-items-center rounded-lg border lg:hidden"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
           {panel === "validation" ? (
             <Validation
               issues={health.issues}
               onFix={(issue) => {
                 if (issue.sectionId) setSectionId(issue.sectionId);
                 if (issue.blockId) setBlockId(issue.blockId);
-                setPanel("content");
+                setPanel(issue.field === "alt" ? "accessibility" : "content");
               }}
             />
           ) : (
             <>
-              <div className="mt-4 flex gap-3 overflow-x-auto border-b text-xs">
-                {(
-                  [
-                    "content",
-                    "bindings",
-                    "media",
-                    "actions",
-                    "visibility",
-                    "layout",
-                    "theme",
-                  ] as BuilderPanel[]
-                ).map((item) => (
+              <div className="mt-4 grid gap-1 border-b pb-4 text-xs">
+                {supportedPanels(block).map((item) => (
                   <button
                     key={item}
                     onClick={() => setPanel(item)}
-                    className={`pb-2 capitalize ${panel === item ? "border-b-2 border-emerald-800 font-semibold" : ""}`}
+                    className={`min-h-11 rounded-lg px-3 text-left capitalize ${panel === item ? "bg-emerald-50 font-semibold text-emerald-900" : "hover:bg-stone-50"}`}
                   >
-                    {item}
+                    {item === "bindings" ? "Data & bindings" : item}
                   </button>
                 ))}
               </div>
@@ -621,6 +646,7 @@ export function GuidebookBuilderWorkspace({
                   workspaceId={draft.workspaceId}
                   guidebookId={draft.guidebookId}
                   canEdit={canEdit}
+                  onDirty={() => setSave("unsaved")}
                   onMediaUploaded={refreshMediaDimensions}
                   onUpdate={(value) =>
                     section &&
@@ -663,7 +689,6 @@ function Canvas({
   sectionId,
   selected,
   mode,
-  previewVariables,
   canEdit,
   onSelect,
   onCommand,
@@ -673,157 +698,60 @@ function Canvas({
   sectionId?: string;
   selected: string;
   mode: BuilderPreviewMode;
-  previewVariables: Readonly<Record<string, string | null | undefined>>;
   canEdit: boolean;
   onSelect: (id: string) => void;
   onCommand: (value: Command) => void;
   onAddBlock: () => void;
 }) {
-  const section = draft.sections.find((item) => item.id === sectionId),
-    narrow = mode === "mobile" || mode === "guest_portal",
-    pdf = mode === "pdf",
-    theme = resolveGuidebookTheme(draft.brand ?? {});
+  const section = draft.sections.find((item) => item.id === sectionId);
+  const viewport = mode === "mobile" ? "mobile" : mode === "tablet" ? "tablet" : "desktop";
+  const frameWidth = viewport === "mobile" ? "max-w-[390px]" : viewport === "tablet" ? "max-w-[834px]" : "max-w-[1280px]";
   return (
-    <div
-      className={`mx-auto min-h-[720px] overflow-hidden shadow-xl ${narrow ? "max-w-sm rounded-[2rem] border-[8px] border-stone-950" : pdf ? "aspect-[8.5/11] max-w-2xl" : "max-w-5xl rounded-xl"}`}
-      style={{ backgroundColor: theme.backgroundColor }}
-    >
-      <header className="p-5 text-white" style={{ backgroundColor: theme.primaryColor }}>
-        <strong style={{ fontFamily: theme.headingFontFamily }}>{draft.title}</strong>
-      </header>
-      <div className="p-8">
-        <p
-          className="text-xs font-bold uppercase tracking-[.2em]"
-          style={{ color: theme.accentColor }}
-        >
-          {section?.name ?? "Section"}
-        </p>
+    <div className="space-y-3">
+      <div className="rounded-xl border bg-white p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-stone-600">
+            {section?.name ?? "Select a section"} · Draft preview from saved revision {draft.revision}
+          </p>
+          {section && canEdit ? (
+            <button onClick={onAddBlock} className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-xs font-semibold">
+              <Plus className="size-4" /> Add block
+            </button>
+          ) : null}
+        </div>
         {section?.blocks.length ? (
-          <div className="mt-6 space-y-4">
+          <div className="mt-3 flex flex-wrap gap-2" aria-label={`${section.name} blocks`}>
             {section.blocks.map((item) => (
-              <article
-                key={item.id}
-                hidden={!item.visible}
-                onClick={() => onSelect(item.id)}
-                className={`group relative cursor-pointer rounded-xl border bg-white p-5 transition-all hover:border-emerald-300 hover:shadow-sm ${selected === item.id ? "ring-2 ring-emerald-600" : ""}`}
-              >
-                <span
-                  className="text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: theme.accentColor }}
-                >
-                  {item.type === "component"
-                    ? item.content.componentKey.replaceAll("_", " ")
-                    : item.type}
-                </span>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
-                  {resolvePreview(blockSummary(item), previewVariables)}
-                </p>
-                {selected === item.id ? (
-                  <div className="absolute right-2 top-2 flex gap-1">
-                    <Mini
-                      label="Move component up"
-                      onClick={() =>
-                        onCommand({
-                          type: "reorder-block",
-                          sectionId: section.id,
-                          blockId: item.id,
-                          direction: "up",
-                        })
-                      }
-                    >
-                      <ArrowUp />
-                    </Mini>
-                    <Mini
-                      label="Move component down"
-                      onClick={() =>
-                        onCommand({
-                          type: "reorder-block",
-                          sectionId: section.id,
-                          blockId: item.id,
-                          direction: "down",
-                        })
-                      }
-                    >
-                      <ArrowDown />
-                    </Mini>
-                    <Mini
-                      label="Duplicate component"
-                      onClick={() =>
-                        onCommand({
-                          type: "duplicate-block",
-                          sectionId: section.id,
-                          blockId: item.id,
-                        })
-                      }
-                    >
-                      <Copy />
-                    </Mini>
-                    <Mini
-                      label={item.visible ? "Hide component" : "Show component"}
-                      onClick={() =>
-                        onCommand({
-                          type: "block-visibility",
-                          sectionId: section.id,
-                          blockId: item.id,
-                          visible: !item.visible,
-                        })
-                      }
-                    >
-                      <EyeOff />
-                    </Mini>
-                    <Mini
-                      label="Delete component"
-                      onClick={() => {
-                        if (
-                          confirm(
-                            item.type === "component" &&
-                              item.content.source === "content_record"
-                              ? "Remove this component? The Content Library record will not be deleted."
-                              : "Remove this component and its inline draft content?",
-                          )
-                        )
-                          onCommand({
-                            type: "delete-block",
-                            sectionId: section.id,
-                            blockId: item.id,
-                          });
-                      }}
-                    >
-                      <Trash2 />
-                    </Mini>
-                  </div>
+              <div key={item.id} className={`flex items-center rounded-lg border ${selected === item.id ? "ring-2 ring-emerald-600" : ""}`}>
+                <button type="button" onClick={() => onSelect(item.id)} className="min-h-11 px-3 text-xs font-semibold">
+                  {item.type === "component" ? item.content.componentKey.replaceAll("_", " ") : item.type}
+                </button>
+                {selected === item.id && canEdit ? (
+                  <span className="flex border-l">
+                    <Mini label="Move block up" onClick={() => onCommand({ type: "reorder-block", sectionId: section.id, blockId: item.id, direction: "up" })}><ArrowUp /></Mini>
+                    <Mini label="Move block down" onClick={() => onCommand({ type: "reorder-block", sectionId: section.id, blockId: item.id, direction: "down" })}><ArrowDown /></Mini>
+                    <Mini label="Duplicate block" onClick={() => onCommand({ type: "duplicate-block", sectionId: section.id, blockId: item.id })}><Copy /></Mini>
+                    <Mini label="Delete block" onClick={() => {
+                      if (confirm("Remove this block from the draft?"))
+                        onCommand({ type: "delete-block", sectionId: section.id, blockId: item.id });
+                    }}><Trash2 /></Mini>
+                  </span>
                 ) : null}
-              </article>
+              </div>
             ))}
-            {section && canEdit ? (
-              <button
-                onClick={onAddBlock}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-sm font-semibold text-stone-600"
-              >
-                <Plus className="size-4" /> Add block
-              </button>
-            ) : null}
           </div>
         ) : (
-          <div className="grid min-h-[560px] place-items-center text-center">
-            <div>
-              <h2 className="text-2xl font-semibold">
-                This section doesn&apos;t have any components yet.
-              </h2>
-              <p className="mt-2 text-sm text-stone-500">
-                Add a component to begin authoring.
-              </p>
-              {section && canEdit ? (
-                <button
-                  onClick={onAddBlock}
-                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white"
-                >
-                  <Plus className="size-4" /> Add block
-                </button>
-              ) : null}
-            </div>
-          </div>
+          <p className="mt-3 text-sm text-stone-500">This section has no blocks yet.</p>
         )}
+      </div>
+      <div className={`mx-auto overflow-hidden rounded-xl border-4 border-stone-800 bg-white shadow-xl transition-[max-width] motion-reduce:transition-none ${frameWidth}`}>
+        <iframe
+          key={`${draft.revision}-${viewport}`}
+          title={`${draft.title} saved draft preview at ${viewport} width`}
+          src={`/dashboard/guidebooks/${draft.guidebookId}/preview?mode=draft&viewport=${viewport}&embed=1`}
+          className="h-[760px] w-full bg-white"
+          sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+        />
       </div>
     </div>
   );
@@ -980,6 +908,110 @@ function ThemePanel({
   );
 }
 
+function ComponentContentFields({
+  block,
+  canEdit,
+  onDirty,
+  onUpdate,
+}: {
+  block: Extract<AuthoringBlock, { type: "component" }>;
+  canEdit: boolean;
+  onDirty: () => void;
+  onUpdate: (content: typeof block.content) => void;
+}) {
+  const definition = EXPERIENCE_COMPONENT_V1.find(
+    (item) => item.key === block.content.componentKey,
+  );
+  if (!definition)
+    return (
+      <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        This existing block is preserved, but it cannot be edited or published until an administrator upgrades it.
+      </p>
+    );
+  if (!definition.content.length)
+    return (
+      <p className="mt-5 rounded-xl border bg-stone-50 p-4 text-sm text-stone-600">
+        This component uses property data or structured collections and has no direct text fields.
+      </p>
+    );
+  return (
+    <div className="mt-5 space-y-4">
+      <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold capitalize text-emerald-800">
+        {block.content.source === "content_record" ? "Library content" : "Guidebook content"}
+      </span>
+      {definition.content.map((field) => (
+        <AutosaveField
+          key={`${block.id}:${field.key}`}
+          label={field.label}
+          required={field.required}
+          multiline={field.type === "rich_text" || field.key === "body" || field.key === "instructions"}
+          maxLength={field.validation?.maxLength}
+          initialValue={block.content.fields[field.key] ?? ""}
+          disabled={!canEdit}
+          onDirty={onDirty}
+          onCommit={(value) =>
+            onUpdate({
+              ...block.content,
+              fields: { ...block.content.fields, [field.key]: value },
+            })
+          }
+        />
+      ))}
+      <p className="text-xs text-stone-500">
+        Changes save automatically. Scripts and unsupported markup are not accepted.
+      </p>
+    </div>
+  );
+}
+
+function AutosaveField({
+  label,
+  initialValue,
+  required,
+  multiline,
+  maxLength,
+  disabled,
+  onDirty,
+  onCommit,
+}: {
+  label: string;
+  initialValue: string;
+  required: boolean;
+  multiline: boolean;
+  maxLength?: number;
+  disabled: boolean;
+  onDirty: () => void;
+  onCommit: (value: string) => void;
+}) {
+  const [value, setValue] = useState(initialValue);
+  const committed = useRef(initialValue);
+  useEffect(() => {
+    if (value === committed.current) return;
+    const timer = window.setTimeout(() => {
+      committed.current = value;
+      onCommit(value);
+    }, autosaveDelay(true) ?? 650);
+    return () => window.clearTimeout(timer);
+  }, [onCommit, value]);
+  const common = {
+    value,
+    required,
+    maxLength,
+    disabled,
+    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setValue(event.target.value);
+      onDirty();
+    },
+    className: "mt-2 min-h-11 w-full rounded-xl border px-3 py-2 disabled:bg-stone-100",
+  };
+  return (
+    <label className="block text-sm font-semibold">
+      {label} {required ? <span aria-hidden="true">*</span> : null}
+      {multiline ? <textarea {...common} rows={6} /> : <input {...common} />}
+    </label>
+  );
+}
+
 function PropertyPanel({
   block,
   panel,
@@ -987,6 +1019,7 @@ function PropertyPanel({
   workspaceId,
   guidebookId,
   canEdit,
+  onDirty,
   onUpdate,
   onMediaUploaded,
 }: {
@@ -996,6 +1029,7 @@ function PropertyPanel({
   workspaceId: string;
   guidebookId: string;
   canEdit: boolean;
+  onDirty: () => void;
   onUpdate: (block: AuthoringBlock) => void;
   onMediaUploaded: () => void;
 }) {
@@ -1010,56 +1044,12 @@ function PropertyPanel({
       onUpdate({ ...block, content });
     if (panel === "content")
       return (
-        <div className="mt-5 space-y-4">
-          <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold capitalize text-emerald-800">
-            {block.content.source === "content_record" ? "Library" : "Inline"}
-          </span>
-          <label className="block text-sm font-semibold">
-            Heading
-            <input
-              defaultValue={block.content.fields.title ?? ""}
-              onBlur={(event) =>
-                update({
-                  ...block.content,
-                  fields: {
-                    ...block.content.fields,
-                    title: event.target.value,
-                  },
-                })
-              }
-              className="mt-2 min-h-11 w-full rounded-xl border px-3"
-            />
-          </label>
-          <label className="block text-sm font-semibold">
-            Content
-            <textarea
-              defaultValue={block.content.fields.body ?? ""}
-              onBlur={(event) =>
-                update({
-                  ...block.content,
-                  fields: { ...block.content.fields, body: event.target.value },
-                })
-              }
-              rows={8}
-              className="mt-2 w-full rounded-xl border p-3"
-            />
-          </label>
-          <VariableButtons
-            onInsert={(value) =>
-              update({
-                ...block.content,
-                fields: {
-                  ...block.content.fields,
-                  body: `${block.content.fields.body ?? ""}${value}`,
-                },
-              })
-            }
-          />
-          <p className="text-xs text-stone-500">
-            Text saves when focus leaves the field. HTML and presentation styles
-            are not accepted.
-          </p>
-        </div>
+        <ComponentContentFields
+          block={block}
+          canEdit={canEdit}
+          onDirty={onDirty}
+          onUpdate={update}
+        />
       );
     if (panel === "bindings")
       return (
@@ -1097,6 +1087,51 @@ function PropertyPanel({
           onUpdate={update}
           onMediaUploaded={onMediaUploaded}
         />
+      );
+    if (panel === "actions")
+      return (
+        <div className="mt-5 space-y-4">
+          <label className="block text-sm font-semibold">
+            Action label
+            <input
+              disabled={!canEdit}
+              defaultValue={block.content.fields.actionLabel ?? ""}
+              onBlur={(event) =>
+                update({
+                  ...block.content,
+                  fields: { ...block.content.fields, actionLabel: event.target.value },
+                })
+              }
+              className="mt-2 min-h-11 w-full rounded-xl border px-3 disabled:bg-stone-100"
+            />
+          </label>
+          <label className="block text-sm font-semibold">
+            Destination
+            <input
+              disabled={!canEdit}
+              type="url"
+              defaultValue={block.content.fields.actionUrl ?? ""}
+              onBlur={(event) =>
+                update({
+                  ...block.content,
+                  fields: { ...block.content.fields, actionUrl: event.target.value },
+                })
+              }
+              placeholder="https://"
+              className="mt-2 min-h-11 w-full rounded-xl border px-3 disabled:bg-stone-100"
+            />
+          </label>
+        </div>
+      );
+    if (panel === "accessibility")
+      return block.content.mediaRefs.length ? (
+        <p className="mt-5 rounded-xl border bg-stone-50 p-4 text-sm text-stone-600">
+          Alternative text is managed with the selected image in Media.
+        </p>
+      ) : (
+        <p className="mt-5 rounded-xl border bg-stone-50 p-4 text-sm text-stone-600">
+          This {block.content.componentKey.replaceAll("_", " ")} has no image requiring alternative text.
+        </p>
       );
     if (panel === "visibility")
       return (
@@ -1183,6 +1218,36 @@ function PropertyPanel({
           ))}
         </div>
       </div>
+    );
+  if (panel === "visibility")
+    return (
+      <label className="mt-5 flex min-h-11 items-center justify-between rounded-xl border p-4 text-sm font-semibold">
+        Visible in guidebook
+        <input
+          type="checkbox"
+          disabled={!canEdit}
+          checked={block.visible}
+          onChange={(event) => onUpdate({ ...block, visible: event.target.checked })}
+        />
+      </label>
+    );
+  if (panel === "accessibility")
+    return block.type === "image" ? (
+      <label className="mt-5 block text-sm font-semibold">
+        Image description
+        <input
+          disabled={!canEdit}
+          value={block.content.alt}
+          onChange={(event) =>
+            onUpdate({ ...block, content: { ...block.content, alt: event.target.value } })
+          }
+          className="mt-2 min-h-11 w-full rounded-xl border px-3 disabled:bg-stone-100"
+        />
+      </label>
+    ) : (
+      <p className="mt-5 rounded-xl border bg-stone-50 p-4 text-sm text-stone-600">
+        This {block.type} block does not require additional accessibility settings.
+      </p>
     );
   return (
     <div className="mt-5 space-y-4">
@@ -1441,42 +1506,6 @@ function Picker({
     </div>
   );
 }
-function VariableButtons({ onInsert }: { onInsert: (value: string) => void }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold">Insert property variable</p>
-      <div className="mt-2 flex flex-wrap gap-1">
-        {[
-          "property.name",
-          "property.address",
-          "stay.check_in_time",
-          "stay.check_out_time",
-          "wifi.network",
-          "wifi.password",
-          "host.phone",
-          "host.email",
-        ].map((key) => (
-          <button
-            key={key}
-            onClick={() => onInsert(`{{${key}}}`)}
-            className="rounded border px-2 py-1 text-xs"
-          >
-            {key}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-function resolvePreview(
-  value: string,
-  variables: Readonly<Record<string, string | null | undefined>>,
-) {
-  return value.replace(
-    /\{\{([^}]+)\}\}/g,
-    (_match, key: string) => variables[key]?.trim() || `Missing value: ${key}`,
-  );
-}
 function Validation({
   issues,
   onFix,
@@ -1495,6 +1524,9 @@ function Validation({
           >
             <strong className="capitalize">{issue.severity}</strong>
             <p>{issue.message}</p>
+            {issue.field ? (
+              <small className="mt-1 block font-semibold">Field: {issue.field}</small>
+            ) : null}
           </button>
         ))
       ) : (
@@ -1534,13 +1566,71 @@ function Mini({
     </button>
   );
 }
-function SaveStatus({ value }: { value: BuilderSaveState }) {
+function SaveStatus({
+  value,
+  onRetry,
+}: {
+  value: BuilderSaveState;
+  onRetry?: () => void;
+}) {
+  const label: Record<BuilderSaveState, string> = {
+    unsaved: "Unsaved changes",
+    loading: "Loading…",
+    saving: "Saving…",
+    saved: "Saved",
+    conflict: "Conflict detected — Review changes",
+    offline: "Save paused — Offline",
+    failed: "Save failed — Retry",
+  };
   return (
-    <span
-      role="status"
-      className={`rounded-full px-2 py-1 font-semibold ${value === "saved" ? "bg-emerald-50 text-emerald-800" : value === "conflict" || value === "failed" ? "bg-rose-50 text-rose-800" : "bg-amber-50"}`}
-    >
-      {value}
+    <span role="status" aria-live="polite">
+      {value === "failed" && onRetry ? (
+        <button type="button" onClick={onRetry} className="rounded-full bg-rose-50 px-2 py-1 font-semibold text-rose-800">
+          {label[value]}
+        </button>
+      ) : value === "conflict" ? (
+        <button type="button" onClick={() => window.location.reload()} className="rounded-full bg-rose-50 px-2 py-1 font-semibold text-rose-800">
+          {label[value]}
+        </button>
+      ) : (
+        <span className={`rounded-full px-2 py-1 font-semibold ${value === "saved" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50"}`}>
+          {label[value]}
+        </span>
+      )}
     </span>
   );
+}
+
+function LifecycleStatus({ value }: { value: BuilderLifecycleStatus }) {
+  const label: Record<BuilderLifecycleStatus, string> = {
+    draft: "Draft",
+    in_review: "In review",
+    changes_requested: "Changes requested",
+    approved: "Approved",
+    scheduled: "Scheduled",
+    published: "Published",
+    archived: "Archived",
+  };
+  return (
+    <span className="rounded-full border border-stone-300 bg-white px-2 py-1 font-semibold text-stone-700">
+      {label[value]}
+    </span>
+  );
+}
+
+function supportedPanels(block?: AuthoringBlock): BuilderPanel[] {
+  if (!block) return ["theme"];
+  const panels: BuilderPanel[] = ["content"];
+  if (block.type === "component") {
+    panels.push("bindings");
+    if (["hero", "image", "gallery", "recommendation_card", "property_summary"].includes(block.content.componentKey))
+      panels.push("media");
+    if (["review_cta", "social_links", "address_card", "transportation_card", "recommendation_card"].includes(block.content.componentKey))
+      panels.push("actions");
+  } else {
+    if (block.type === "image") panels.push("media");
+    if (["link", "location", "contact"].includes(block.type)) panels.push("actions");
+  }
+  panels.push("visibility", "layout", "accessibility");
+  return panels;
 }

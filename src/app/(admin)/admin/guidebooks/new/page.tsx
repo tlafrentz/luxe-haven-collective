@@ -4,6 +4,7 @@ import {
   createGuidebookAsAdminAction,
   createWorkspacePropertyAsAdminAction,
   listCustomerWorkspacesAction,
+  repairCustomerIdentityAction,
   listWorkspacePropertiesAction,
 } from "@/app/actions/guidebook-admin-creation";
 import { listGuidebookProducersAction } from "@/app/actions/guidebook-change-requests";
@@ -91,10 +92,10 @@ async function WorkspaceStep({ query }: { query?: string }) {
       {customers.length ? (
         <ul className="mt-5 divide-y divide-stone-100">
           {customers.map((customer) => (
-            <li key={customer.id}>
+            <li key={customer.id} className="py-3">
               <Link
                 href={`/admin/guidebooks/new?workspace=${customer.id}`}
-                className="flex items-center justify-between gap-3 py-3 hover:text-emerald-800"
+                className="flex items-center justify-between gap-3 hover:text-emerald-800"
               >
                 <span>
                   <span className="block font-semibold">{customer.name}</span>
@@ -104,6 +105,23 @@ async function WorkspaceStep({ query }: { query?: string }) {
                 </span>
                 <span className="text-sm font-semibold">Select →</span>
               </Link>
+              {customer.profileIncomplete ? (
+                <form action={repairCustomerIdentityAction} className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input type="hidden" name="profileId" value={customer.profileId} />
+                  <label className="sr-only" htmlFor={`full-name-${customer.profileId}`}>Customer full name</label>
+                  <input
+                    id={`full-name-${customer.profileId}`}
+                    name="fullName"
+                    required
+                    autoComplete="off"
+                    placeholder="Enter customer full name"
+                    className="min-h-11 flex-1 rounded-xl border border-stone-200 px-4 text-sm"
+                  />
+                  <button className="min-h-11 rounded-xl border border-emerald-800 px-4 text-sm font-semibold text-emerald-900">
+                    Repair profile
+                  </button>
+                </form>
+              ) : null}
             </li>
           ))}
         </ul>

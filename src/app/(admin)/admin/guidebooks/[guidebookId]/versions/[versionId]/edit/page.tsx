@@ -1,2 +1,10 @@
-import{notFound}from"next/navigation";import{getGuidebookEditorRequest}from"@/app/actions/guidebook-studio";import{loadGuidebookAuthoringAction}from"@/app/actions/guidebook-authoring";import{GuidebookBuilderWorkspace}from"@/components/guidebooks/guidebook-builder-workspace";export const dynamic="force-dynamic";
-export default async function Page({params}:{params:Promise<{guidebookId:string;versionId:string}>}){const{guidebookId,versionId}=await params,result=await getGuidebookEditorRequest(guidebookId);if(!result.ok){if(result.code==="guidebook_not_found")notFound();return <main className="p-10"><p role="alert">Guidebook unavailable in this workspace.</p></main>}const authoring=await loadGuidebookAuthoringAction({workspaceId:String(result.guidebook.workspace_id),guidebookId});if(!authoring.ok)return <main className="p-10"><p role="alert">{authoring.message}</p></main>;const canEdit=result.permissions.manage&&result.guidebook.status!=="archived"&&authoring.canEdit;return <GuidebookBuilderWorkspace initialDraft={authoring.draft} versionId={versionId} canEdit={canEdit} canPublish={canEdit&&result.entitlements.publish&&result.entitlements.host} propertyName={result.property?.name??"Property"}/>}
+import { redirect } from "next/navigation";
+
+export default async function LegacyAdminVersionEditorAlias({
+  params,
+}: {
+  params: Promise<{ guidebookId: string; versionId: string }>;
+}) {
+  const { guidebookId } = await params;
+  redirect(`/admin/guidebooks/${guidebookId}/edit`);
+}

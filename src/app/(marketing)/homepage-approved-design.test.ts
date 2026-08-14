@@ -32,7 +32,12 @@ describe("approved homepage contract", () => {
   });
 
   it("publishes the approved navigation and separates notary from platform", () => {
-    for (const label of ["HPM", "Guidebook", "Furnishing", "Investment Intelligence", "Resources", "About"])
+    for (const label of [
+      "Solutions", "Platform", "Resources", "Properties", "About",
+      "Hospitality Management", "Revenue Optimization", "Hospitality Consulting", "Furnishing Services",
+      "HPM", "Guidebook Studio", "Furnishing Studio", "Investment Intelligence",
+      "Insights", "Playbooks", "Templates & Checklists",
+    ])
       expect(header).toContain(`\"${label}\"`);
     expect(header).not.toContain("Pricing");
     expect(header).not.toContain("Notary");

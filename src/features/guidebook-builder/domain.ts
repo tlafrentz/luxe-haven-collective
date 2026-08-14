@@ -2,6 +2,10 @@ import type {
   AuthoringBlock,
   GuidebookDraft,
 } from "@/features/guidebook-studio";
+import {
+  buildComponentVersion,
+  EXPERIENCE_COMPONENT_V1,
+} from "@/features/experience-components";
 export type BuilderPreviewMode =
   | "desktop"
   | "tablet"
@@ -9,6 +13,7 @@ export type BuilderPreviewMode =
   | "pdf"
   | "guest_portal";
 export type BuilderSaveState =
+  | "unsaved"
   | "loading"
   | "saving"
   | "saved"
@@ -22,15 +27,17 @@ export type BuilderPanel =
   | "actions"
   | "visibility"
   | "layout"
+  | "accessibility"
   | "theme"
   | "validation";
 export type BuilderIssue = {
   code: string;
-  severity: "error" | "warning" | "info";
+  severity: "blocking" | "warning" | "recommendation";
   message: string;
   blocking: boolean;
   sectionId?: string;
   blockId?: string;
+  field?: string;
 };
 export const BUILDER_COMPONENTS: ReadonlyArray<{
   key: string;
@@ -229,8 +236,24 @@ export function compatibleComponents(sectionName: string) {
   const key = sectionName.toLowerCase();
   return BUILDER_COMPONENTS.filter(
     (item) =>
-      item.sectionHints.includes("all") ||
-      item.sectionHints.some((h) => key.includes(h)),
+      builderComponentIsEligible(item.key) &&
+      (item.sectionHints.includes("all") ||
+        item.sectionHints.some((h) => key.includes(h))),
+  );
+}
+export function builderComponentIsEligible(componentKey: string) {
+  const seed = EXPERIENCE_COMPONENT_V1.find((item) => item.key === componentKey);
+  if (!seed) return false;
+  const version = buildComponentVersion(seed);
+  return (
+    version.lifecycleStatus === "published" &&
+    Boolean(version.contentSchema) &&
+    Boolean(version.bindingContract) &&
+    Boolean(version.accessibilityContract) &&
+    Object.values(version.rendererContract).every(
+      (renderer) =>
+        renderer.support !== "unsupported" && Boolean(renderer.rendererKey),
+    )
   );
 }
 export function guidebookHealth(draft: GuidebookDraft): {
@@ -243,7 +266,7 @@ export function guidebookHealth(draft: GuidebookDraft): {
   if (!visible.length)
     issues.push({
       code: "sections_required",
-      severity: "error",
+      severity: "blocking",
       message:
         "Guests need at least one visible section before this guidebook can be published.",
       blocking: true,
@@ -261,7 +284,7 @@ export function guidebookHealth(draft: GuidebookDraft): {
     if (!names.some((n) => n.includes(needle)))
       issues.push({
         code: `missing_${needle}`,
-        severity: needle === "wifi" ? "error" : "warning",
+        severity: needle === "wifi" ? "blocking" : "warning",
         message: `Add ${label}. ${reason}`,
         blocking: needle === "wifi",
       });
@@ -278,17 +301,19 @@ export function guidebookHealth(draft: GuidebookDraft): {
       if (block.type === "image" && !block.content.alt.trim())
         issues.push({
           code: "image_alt_missing",
-          severity: "error",
+          severity: "blocking",
           message:
             "Describe this image so guests using assistive technology understand its purpose.",
           blocking: true,
           sectionId: section.id,
           blockId: block.id,
+          field: "alt",
         });
   }
   const penalty = issues.reduce(
     (sum, i) =>
-      sum + (i.severity === "error" ? 15 : i.severity === "warning" ? 5 : 1),
+      sum +
+      (i.severity === "blocking" ? 15 : i.severity === "warning" ? 5 : 1),
     0,
   );
   return {
@@ -326,5 +351,5 @@ export function blockSummary(block: AuthoringBlock) {
   }
 }
 export function autosaveDelay(changePending: boolean) {
-  return changePending ? 30_000 : null;
+  return changePending ? 650 : null;
 }

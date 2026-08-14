@@ -131,6 +131,20 @@ export class SupabaseGuidebookDraftRepository
       );
     return valid;
   }
+  async reviewLock(guidebookId: string) {
+    const { data, error } = await this.client
+      .from("guidebook_approval_requests")
+      .select("id,draft_revision")
+      .eq("guidebook_id", guidebookId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw classified("DRAFT_PERSIST_FAILED");
+    return data
+      ? { id: String(data.id), draftRevision: Number(data.draft_revision) }
+      : null;
+  }
 }
 export class SupabaseGuidebookCommandReceiptRepository
   implements GuidebookCommandReceiptRepository
