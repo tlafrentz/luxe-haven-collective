@@ -16,6 +16,7 @@ import {
   setGuidebookSectionVisibility,
   updateGuidebookBlock,
   updateGuidebookBrand,
+  updateGuidebookDetails,
   type AuthoringDependencies,
   type AuthoringResult,
   type CommandContext,
@@ -203,6 +204,21 @@ describe("GB-001B authoring application", () => {
     expect(result.ok && result.value.sections.map((s) => s.name)).toEqual([
       "Welcome",
     ]);
+  });
+  it("persists editable hero copy in the canonical draft revision", async () => {
+    const x = setup(),
+      c = context({ commandId: "hero" });
+    const result = await updateGuidebookDetails(x.deps, c, {
+      heroHeadline: "Settle in and stay awhile.",
+      description: "Your local guide to an effortless Mesa stay.",
+    });
+    expect(result.ok && result.value.brand?.heroHeadline).toBe(
+      "Settle in and stay awhile.",
+    );
+    expect(result.ok && result.value.description).toBe(
+      "Your local guide to an effortless Mesa stay.",
+    );
+    expect(x.drafts.saves).toBe(1);
   });
   it("executes block create, update, visibility, reorder, duplicate, and delete", async () => {
     const x = setup();

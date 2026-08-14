@@ -972,24 +972,39 @@ function HeroPanel({
   const [headline, setHeadline] = useState(draft.brand?.heroHeadline ?? "Welcome home.");
   const [description, setDescription] = useState(draft.description);
   const committed = useRef({ headline, description });
+  const onUpdateRef = useRef(onUpdate);
+  const timerRef = useRef<number | null>(null);
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
+  function commit() {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = null;
+    if (headline === committed.current.headline && description === committed.current.description) return;
+    committed.current = { headline, description };
+    onUpdateRef.current(description, headline);
+  }
   useEffect(() => {
     if (headline === committed.current.headline && description === committed.current.description) return;
-    const timer = window.setTimeout(() => {
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
       committed.current = { headline, description };
-      onUpdate(description, headline);
+      onUpdateRef.current(description, headline);
     }, autosaveDelay(true) ?? 650);
-    return () => window.clearTimeout(timer);
-  }, [description, headline, onUpdate]);
+    return () => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    };
+  }, [description, headline]);
   return (
     <div className="mt-5 space-y-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Edit hero</p>
       <label className="block text-sm font-semibold">
         Headline
-        <input value={headline} disabled={!canEdit} onChange={(event) => { setHeadline(event.target.value); onDirty(); }} className="mt-2 min-h-11 w-full rounded-xl border px-3 disabled:bg-stone-100" />
+        <input value={headline} disabled={!canEdit} onChange={(event) => { setHeadline(event.target.value); onDirty(); }} onBlur={commit} className="mt-2 min-h-11 w-full rounded-xl border px-3 disabled:bg-stone-100" />
       </label>
       <label className="block text-sm font-semibold">
         Supporting text
-        <textarea value={description} disabled={!canEdit} onChange={(event) => { setDescription(event.target.value); onDirty(); }} rows={5} className="mt-2 w-full rounded-xl border p-3 disabled:bg-stone-100" />
+        <textarea value={description} disabled={!canEdit} onChange={(event) => { setDescription(event.target.value); onDirty(); }} onBlur={commit} rows={5} className="mt-2 w-full rounded-xl border p-3 disabled:bg-stone-100" />
       </label>
       <div className="rounded-xl border bg-stone-50 p-4 text-xs text-stone-600">
         <strong className="block text-stone-900">Property-bound details</strong>
