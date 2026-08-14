@@ -150,7 +150,12 @@ export function PublicGuidebookExperience({
         />
       </div>
       <article className="mx-auto min-h-screen max-w-6xl bg-[var(--guide-background)] shadow-[0_24px_80px_rgba(50,40,25,.12)]">
-        <Hero guidebook={guidebook} />
+        <div
+          onClick={editablePreview ? () => window.parent.postMessage({ type: "guidebook-preview:hero-selected" }, window.location.origin) : undefined}
+          className={editablePreview ? "cursor-pointer outline-none ring-inset transition hover:ring-2 hover:ring-[var(--guide-accent)]" : undefined}
+        >
+          <Hero guidebook={guidebook} />
+        </div>
         <nav
           aria-label="Guidebook sections"
           className="sticky top-0 z-40 border-y border-stone-200/80 bg-[var(--guide-background)]/95 px-3 py-3 backdrop-blur"
@@ -266,7 +271,7 @@ function Hero({ guidebook }: { guidebook: PublicGuidebookView }) {
             className="mt-4 text-5xl leading-[.95] sm:text-7xl"
             style={{ fontFamily: "var(--guide-heading-font)" }}
           >
-            Welcome home.
+            {guidebook.heroHeadline ?? "Welcome home."}
           </h1>
           <p className="mt-6 max-w-xl text-base leading-7 text-white/85 sm:text-lg">
             {guidebook.description}

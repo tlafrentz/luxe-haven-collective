@@ -117,6 +117,7 @@ export function GuidebookBuilderWorkspace({
     initialDraft.sections[0]?.id ?? "",
   );
   const [blockId, setBlockId] = useState("");
+  const [heroSelected, setHeroSelected] = useState(false);
   const [panel, setPanel] = useState<BuilderPanel>("content");
   const [railMode, setRailMode] = useState<"outline" | "readiness">(
     "outline",
@@ -170,12 +171,26 @@ export function GuidebookBuilderWorkspace({
       );
       if (!owner) return;
       setSectionId(owner.id);
+      setHeroSelected(false);
       setBlockId(data.blockId);
       setPanel("content");
       setMobileInspectorOpen(true);
     };
+    const selectPreviewHero = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string } | null;
+      if (data?.type !== "guidebook-preview:hero-selected") return;
+      setHeroSelected(true);
+      setBlockId("");
+      setPanel("content");
+      setMobileInspectorOpen(true);
+    };
     window.addEventListener("message", selectPreviewBlock);
-    return () => window.removeEventListener("message", selectPreviewBlock);
+    window.addEventListener("message", selectPreviewHero);
+    return () => {
+      window.removeEventListener("message", selectPreviewBlock);
+      window.removeEventListener("message", selectPreviewHero);
+    };
   }, [draft.sections]);
   const components = useMemo(
     () =>
@@ -602,6 +617,7 @@ export function GuidebookBuilderWorkspace({
             mode={preview}
             canEdit={canEdit}
             onSelect={(id) => {
+              setHeroSelected(false);
               setBlockId(id);
               setPanel("content");
               setMobileInspectorOpen(true);
@@ -625,7 +641,17 @@ export function GuidebookBuilderWorkspace({
               <X className="size-4" />
             </button>
           </div>
-          {panel === "validation" ? (
+          {heroSelected ? (
+            <HeroPanel
+              draft={draft}
+              propertyName={propertyName}
+              canEdit={canEdit}
+              onDirty={() => setSave("unsaved")}
+              onUpdate={(description, heroHeadline) =>
+                command({ type: "update-details", description, heroHeadline })
+              }
+            />
+          ) : panel === "validation" ? (
             <Validation
               issues={health.issues}
               onFix={(issue) => {
@@ -926,6 +952,50 @@ function ThemePanel({
         Applies to the guest-facing guide. Colors save immediately; the logo
         URL saves when you leave the field.
       </p>
+    </div>
+  );
+}
+
+function HeroPanel({
+  draft,
+  propertyName,
+  canEdit,
+  onDirty,
+  onUpdate,
+}: {
+  draft: GuidebookDraft;
+  propertyName: string;
+  canEdit: boolean;
+  onDirty: () => void;
+  onUpdate: (description: string, heroHeadline: string) => void;
+}) {
+  const [headline, setHeadline] = useState(draft.brand?.heroHeadline ?? "Welcome home.");
+  const [description, setDescription] = useState(draft.description);
+  const committed = useRef({ headline, description });
+  useEffect(() => {
+    if (headline === committed.current.headline && description === committed.current.description) return;
+    const timer = window.setTimeout(() => {
+      committed.current = { headline, description };
+      onUpdate(description, headline);
+    }, autosaveDelay(true) ?? 650);
+    return () => window.clearTimeout(timer);
+  }, [description, headline, onUpdate]);
+  return (
+    <div className="mt-5 space-y-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Edit hero</p>
+      <label className="block text-sm font-semibold">
+        Headline
+        <input value={headline} disabled={!canEdit} onChange={(event) => { setHeadline(event.target.value); onDirty(); }} className="mt-2 min-h-11 w-full rounded-xl border px-3 disabled:bg-stone-100" />
+      </label>
+      <label className="block text-sm font-semibold">
+        Supporting text
+        <textarea value={description} disabled={!canEdit} onChange={(event) => { setDescription(event.target.value); onDirty(); }} rows={5} className="mt-2 w-full rounded-xl border p-3 disabled:bg-stone-100" />
+      </label>
+      <div className="rounded-xl border bg-stone-50 p-4 text-xs text-stone-600">
+        <strong className="block text-stone-900">Property-bound details</strong>
+        <span className="mt-1 block">{propertyName}, check-in, and checkout come from the authorized property record.</span>
+      </div>
+      <p className="text-xs text-stone-500">Changes autosave to the draft. Published versions remain unchanged.</p>
     </div>
   );
 }

@@ -26,6 +26,7 @@ export type PublicGuidebookBlock = Readonly<{
 }>;
 export type PublicGuidebookView = Readonly<{
   title: string;
+  heroHeadline?: string;
   description: string;
   propertyName: string;
   coverImage?: string;
@@ -93,6 +94,7 @@ export const guidebookPublicRenderer: ArtifactRenderer<
       logo = sanitizePublicUrl(brand.logoUrl, { allowRelative: true });
     return deepFreeze({
       title: sanitizePublicText(payload.title ?? "Guest Guide", 200),
+      heroHeadline: sanitizePublicText(brand.heroHeadline ?? "Welcome home.", 200),
       description: sanitizePublicText(
         payload.description ?? "Everything you need for your stay.",
         2000,

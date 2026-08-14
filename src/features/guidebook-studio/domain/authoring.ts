@@ -85,6 +85,7 @@ export type AuthoringSection = Readonly<{
   blocks: readonly AuthoringBlock[];
 }>;
 export type GuidebookBrandIdentity = Readonly<{
+  heroHeadline?: string;
   logoUrl?: string;
   primaryColor?: string;
   accentColor?: string;

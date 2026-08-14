@@ -40,6 +40,9 @@ describe("Guidebook Studio canonical Builder reconciliation", () => {
     expect(builder).toContain('failed: "Save failed — Retry"');
     expect(builder).toContain('conflict: "Conflict detected — Review changes"');
     expect(builder).toContain("guidebook-preview:block-selected");
+    expect(builder).toContain("guidebook-preview:hero-selected");
+    expect(builder).toContain("Edit hero");
+    expect(builder).toContain('type: "update-details"');
     expect(builder).toContain("LegacyBlockContentFields");
     expect(builder).toContain("Basic blocks");
     expect(builder).toContain('type: "location", name: "Location"');

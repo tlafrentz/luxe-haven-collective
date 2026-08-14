@@ -374,6 +374,22 @@ export const updateGuidebookBrand = (
     fingerprint(input),
     (draft) => ({ ...draft, brand: input.brand }),
   );
+export const updateGuidebookDetails = (
+  deps: AuthoringDependencies,
+  context: CommandContext,
+  input: Readonly<{ description: string; heroHeadline: string }>,
+) =>
+  executeMutation(
+    deps,
+    context,
+    "update-details",
+    fingerprint(input),
+    (draft) => ({
+      ...draft,
+      description: input.description.trim(),
+      brand: { ...draft.brand, heroHeadline: input.heroHeadline.trim() },
+    }),
+  );
 export const duplicateGuidebookSection = (
   deps: AuthoringDependencies,
   context: CommandContext,

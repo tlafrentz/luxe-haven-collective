@@ -30,6 +30,7 @@ import {
   setGuidebookSectionVisibility,
   updateGuidebookBlock,
   updateGuidebookBrand,
+  updateGuidebookDetails,
   withGuidebookOperationDeadline,
   SupabaseGuidebookAnalyticsRepository,
   SupabaseGuidebookAuthoringObserver,
@@ -82,7 +83,8 @@ type Command =
   | { type: "duplicate-block"; sectionId: string; blockId: string }
   | { type: "delete-block"; sectionId: string; blockId: string }
   | { type: "restore-sections"; sections: readonly AuthoringSection[] }
-  | { type: "update-brand"; brand: GuidebookBrandIdentity };
+  | { type: "update-brand"; brand: GuidebookBrandIdentity }
+  | { type: "update-details"; description: string; heroHeadline: string };
 
 export async function uploadGuidebookMediaAction(formData: FormData) {
   try {
@@ -782,6 +784,8 @@ export async function guidebookAuthoringCommandAction(
         return restoreGuidebookSections(deps, context, input.command);
       case "update-brand":
         return updateGuidebookBrand(deps, context, input.command);
+      case "update-details":
+        return updateGuidebookDetails(deps, context, input.command);
     }
   } catch (error) {
     if (errorCode(error) === "GUIDEBOOK_UNAUTHORIZED") return denied();
