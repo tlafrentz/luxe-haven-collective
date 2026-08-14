@@ -135,7 +135,13 @@ export async function listGuidebookDraftMediaAction(input: {
   workspaceId: string;
   guidebookId: string;
 }): Promise<
-  { id: string; mimeType: string; url: string; width?: number; height?: number }[]
+  {
+    id: string;
+    mimeType: string;
+    url: string;
+    width?: number;
+    height?: number;
+  }[]
 > {
   const { access } = await authorized(input.workspaceId, "guidebooks.manage");
   const media = await new SupabaseGuidebookMediaRepository().listReady({
@@ -308,29 +314,40 @@ export async function listGuidebookPropertyOptionsAction(workspaceId: string) {
     evaluatePropertyAccess(access, id),
   );
   if (!accessibleIds.length) return [];
-  const [{ data: properties, error: propertyError }, { data: guidebooks, error: guidebookError }] =
-    await Promise.all([
-      admin
-        .from("properties")
-        .select("id,name,city,state,featured_image")
-        .eq("owner_id", access.ownerId)
-        .in("id", accessibleIds),
-      admin
-        .from("guidebooks")
-        .select("property_id,status")
-        .eq("workspace_id", access.workspaceId)
-        .neq("status", "archived")
-        .in("property_id", accessibleIds),
-    ]);
+  const [
+    { data: properties, error: propertyError },
+    { data: guidebooks, error: guidebookError },
+  ] = await Promise.all([
+    admin
+      .from("properties")
+      .select("id,name,city,state,featured_image")
+      .eq("owner_id", access.ownerId)
+      .in("id", accessibleIds),
+    admin
+      .from("guidebooks")
+      .select("id,property_id,status,updated_at")
+      .eq("workspace_id", access.workspaceId)
+      .neq("status", "archived")
+      .order("updated_at", { ascending: false })
+      .in("property_id", accessibleIds),
+  ]);
   if (propertyError || guidebookError) throw propertyError ?? guidebookError;
-  const active = new Set((guidebooks ?? []).map((row) => String(row.property_id)));
+  const existingGuidebookByProperty = new Map<string, string>();
+  for (const guidebook of guidebooks ?? []) {
+    const propertyId = String(guidebook.property_id);
+    if (!existingGuidebookByProperty.has(propertyId)) {
+      existingGuidebookByProperty.set(propertyId, String(guidebook.id));
+    }
+  }
   return (properties ?? []).map((property) => ({
     id: String(property.id),
     name: String(property.name),
     location: [property.city, property.state].filter(Boolean).join(", "),
     image: property.featured_image ? String(property.featured_image) : null,
     capabilities: [...(capabilityMap.get(String(property.id)) ?? [])],
-    hasActiveGuidebook: active.has(String(property.id)),
+    hasActiveGuidebook: existingGuidebookByProperty.has(String(property.id)),
+    existingGuidebookId:
+      existingGuidebookByProperty.get(String(property.id)) ?? null,
   }));
 }
 export async function createGuidebookResultAction(formData: FormData) {
@@ -415,7 +432,11 @@ export async function createGuidebookResultAction(formData: FormData) {
       if (draft) {
         const persistedAt = new Date().toISOString();
         await drafts.save(
-          { ...context, guidebookId: result.value.guidebookId, expectedRevision: draft.revision },
+          {
+            ...context,
+            guidebookId: result.value.guidebookId,
+            expectedRevision: draft.revision,
+          },
           {
             ...draft,
             brand,

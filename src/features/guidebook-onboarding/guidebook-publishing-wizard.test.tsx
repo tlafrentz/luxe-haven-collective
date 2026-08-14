@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GuidebookPublishingWizard } from "./guidebook-publishing-wizard";
 
@@ -18,7 +24,13 @@ vi.mock("next/image", () => ({
 }));
 
 const mockTemplates = [
-  { id: "template-1", name: "Mesa Modern", description: "", category: "modern", tags: [] },
+  {
+    id: "template-1",
+    name: "Mesa Modern",
+    description: "",
+    category: "modern",
+    tags: [],
+  },
 ];
 
 vi.mock("@/app/actions/guidebook-templates", () => ({
@@ -51,7 +63,15 @@ describe("GuidebookPublishingWizard", () => {
     expect(
       screen.getByRole("heading", { name: "Welcome to Guidebook Studio!" }),
     ).toBeTruthy();
-    for (const label of ["Welcome", "Property", "Style", "Template", "Brand", "Details", "Create"]) {
+    for (const label of [
+      "Welcome",
+      "Property",
+      "Style",
+      "Template",
+      "Brand",
+      "Details",
+      "Create",
+    ]) {
       expect(screen.getByText(label, { selector: "li" })).toBeTruthy();
     }
   });
@@ -78,7 +98,9 @@ describe("GuidebookPublishingWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(
-      screen.getByRole("heading", { name: "Choose a template to get started." }),
+      screen.getByRole("heading", {
+        name: "Choose a template to get started.",
+      }),
     ).toBeTruthy();
     await act(async () => {
       await Promise.resolve();
@@ -109,16 +131,32 @@ describe("GuidebookPublishingWizard", () => {
     expect(screen.getByText(/HPM enrollment is not required/i)).toBeTruthy();
   });
 
-  it("prevents a second active guidebook for the same property", () => {
+  it("opens the existing guidebook instead of creating a duplicate", () => {
     render(
       <GuidebookPublishingWizard
         workspaceId="workspace-1"
-        properties={[{ ...properties[0], hasActiveGuidebook: true, capabilities: ["guidebook", "hpm"] }]}
+        properties={[
+          {
+            ...properties[0],
+            hasActiveGuidebook: true,
+            existingGuidebookId: "guidebook-1",
+            capabilities: ["guidebook", "hpm"],
+          },
+        ]}
         createAction={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Let's Get Started" }));
-    fireEvent.click(screen.getByRole("button", { name: /Select Existing Property/ }));
-    expect(screen.getByRole("button", { name: /already has an active guidebook/ }).hasAttribute("disabled")).toBe(true);
+    fireEvent.click(
+      screen.getByRole("button", { name: /Select Existing Property/ }),
+    );
+    expect(
+      screen
+        .getByRole("link", { name: "Open guidebook for Desert Retreat" })
+        .getAttribute("href"),
+    ).toBe("/dashboard/guidebooks/guidebook-1/edit");
+    expect(
+      screen.queryByRole("button", { name: /already has an active guidebook/ }),
+    ).toBeNull();
   });
 });

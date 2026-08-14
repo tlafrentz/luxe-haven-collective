@@ -32,7 +32,7 @@ export async function listCustomerWorkspacesAction(
   const { data } = await admin
     .from("owners")
     .select("id,profiles!owners_profile_id_fkey!inner(full_name,email,role)")
-    .eq("profiles.role", "owner")
+    .in("profiles.role", ["owner", "admin"])
     .order("id")
     .limit(50);
   let rows = data ?? [];
@@ -214,7 +214,9 @@ export async function createWorkspacePropertyAsAdminAction(formData: FormData) {
     action: "property_created_from_guidebook_flow",
     command_id: `admin-create-property:${property.id}`,
   });
-  redirect(`/admin/guidebooks/new?workspace=${workspaceId}&property=${property.id}`);
+  redirect(
+    `/admin/guidebooks/new?workspace=${workspaceId}&property=${property.id}`,
+  );
 }
 
 const createSchema = z.object({
@@ -237,8 +239,14 @@ export async function createGuidebookAsAdminAction(formData: FormData) {
     targetPublishDate: formData.get("targetPublishDate") || undefined,
   });
   if (!parsed.success) return;
-  const { workspaceId, propertyId, title, authoringMode, producerId, targetPublishDate } =
-    parsed.data;
+  const {
+    workspaceId,
+    propertyId,
+    title,
+    authoringMode,
+    producerId,
+    targetPublishDate,
+  } = parsed.data;
 
   const admin = createAdminClient();
   const { data: property } = await admin

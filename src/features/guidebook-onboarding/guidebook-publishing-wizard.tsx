@@ -3,8 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { Building2, Check, Palette, Plus, Sparkles, TriangleAlert } from "lucide-react";
-import { getPublishedGuidebookTemplates, type PublishedGuidebookTemplate } from "@/app/actions/guidebook-templates";
+import {
+  Building2,
+  Check,
+  Palette,
+  Plus,
+  Sparkles,
+  TriangleAlert,
+} from "lucide-react";
+import {
+  getPublishedGuidebookTemplates,
+  type PublishedGuidebookTemplate,
+} from "@/app/actions/guidebook-templates";
 import { usStates, usTimeZones } from "./property-options";
 
 type PropertyOption = Readonly<{
@@ -14,11 +24,37 @@ type PropertyOption = Readonly<{
   image: string | null;
   capabilities: readonly string[];
   hasActiveGuidebook: boolean;
+  existingGuidebookId?: string | null;
 }>;
-const steps = ["Welcome", "Property", "Style", "Template", "Brand", "Details", "Create"] as const;
-const styleOptions = ["Luxury", "Beach", "Cabin", "Family", "Minimal", "Boutique"] as const;
-const photographyStyles = ["Bright & Airy", "Warm & Moody", "Natural Light", "Editorial"] as const;
-const brandVoices = ["Warm & Welcoming", "Polished & Professional", "Playful & Casual", "Minimal & Direct"] as const;
+const steps = [
+  "Welcome",
+  "Property",
+  "Style",
+  "Template",
+  "Brand",
+  "Details",
+  "Create",
+] as const;
+const styleOptions = [
+  "Luxury",
+  "Beach",
+  "Cabin",
+  "Family",
+  "Minimal",
+  "Boutique",
+] as const;
+const photographyStyles = [
+  "Bright & Airy",
+  "Warm & Moody",
+  "Natural Light",
+  "Editorial",
+] as const;
+const brandVoices = [
+  "Warm & Welcoming",
+  "Polished & Professional",
+  "Playful & Casual",
+  "Minimal & Direct",
+] as const;
 const emptyProperty = {
   name: "",
   address: "",
@@ -64,7 +100,10 @@ export function GuidebookPublishingWizard({
       initialProperties.length ? "choice" : "new",
     ),
     [propertyId, setPropertyId] = useState(initialPropertyId ?? "");
-  const [fields, setFields] = useState({ ...emptyProperty, ...initialPropertyFields }),
+  const [fields, setFields] = useState({
+      ...emptyProperty,
+      ...initialPropertyFields,
+    }),
     [title, setTitle] = useState(""),
     [slug, setSlug] = useState(""),
     [locale, setLocale] = useState("en-US"),
@@ -90,7 +129,9 @@ export function GuidebookPublishingWizard({
     Promise.resolve().then(() => {
       if (!cancelled) setTemplatesLoading(true);
     });
-    getPublishedGuidebookTemplates(styleFilter ? styleFilter.toLowerCase() : undefined)
+    getPublishedGuidebookTemplates(
+      styleFilter ? styleFilter.toLowerCase() : undefined,
+    )
       .then((result) => {
         if (cancelled) return;
         setTemplates(result);
@@ -187,17 +228,24 @@ export function GuidebookPublishingWizard({
             <span className="mx-auto grid size-14 place-items-center rounded-full bg-blue-50 text-blue-700">
               <Sparkles className="size-6" />
             </span>
-            <h2 className="mt-6 text-3xl font-semibold">Welcome to Guidebook Studio!</h2>
+            <h2 className="mt-6 text-3xl font-semibold">
+              Welcome to Guidebook Studio!
+            </h2>
             <p className="mt-3 text-stone-600">
               Let&apos;s create a guidebook that your guests will love.
             </p>
             <ul className="mx-auto mt-7 max-w-xs space-y-3 text-left">
-              {["Simple steps", "Beautiful results", "Happy guests"].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm font-medium text-stone-700">
-                  <Check className="size-5 text-emerald-600" />
-                  {item}
-                </li>
-              ))}
+              {["Simple steps", "Beautiful results", "Happy guests"].map(
+                (item) => (
+                  <li
+                    key={item}
+                    className="flex items-center gap-3 text-sm font-medium text-stone-700"
+                  >
+                    <Check className="size-5 text-emerald-600" />
+                    {item}
+                  </li>
+                ),
+              )}
             </ul>
             <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-stone-400">
               This will take about 10 minutes.
@@ -234,52 +282,81 @@ export function GuidebookPublishingWizard({
                 </button>
                 {properties.length ? (
                   <div className="mt-4 grid gap-4 md:grid-cols-3">
-                    {properties.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => item.hasActiveGuidebook ? undefined : chooseProperty(item.id)}
-                        disabled={item.hasActiveGuidebook}
-                        aria-label={`${item.name}${item.hasActiveGuidebook ? ", already has an active guidebook" : ""}`}
-                        className={`overflow-hidden rounded-xl border text-left ${item.id === propertyId ? "ring-2 ring-blue-600" : ""}`}
-                      >
-                        {item.image ? (
-                          <Image
-                            src={item.image}
-                            alt=""
-                            width={420}
-                            height={180}
-                            className="h-28 w-full object-cover"
-                          />
-                        ) : (
-                          <div className="grid h-28 place-items-center bg-stone-100">
-                            <Building2 className="text-stone-400" />
-                          </div>
-                        )}
-                        <span className="block p-4">
-                          <strong>{item.name}</strong>
-                          <small className="mt-1 block text-stone-500">
-                            {item.location}
-                          </small>
-                          <span className="mt-3 flex flex-wrap gap-1.5">
-                            {item.capabilities.map((capability) => (
-                              <small key={capability} className="rounded-full bg-stone-100 px-2 py-1 font-medium capitalize text-stone-600">
-                                {capability === "hpm" ? "HPM" : capability}
-                              </small>
-                            ))}
-                            {item.hasActiveGuidebook ? (
-                              <small className="rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-800">
-                                Active guidebook exists
-                              </small>
-                            ) : null}
+                    {properties.map((item) => {
+                      const card = (
+                        <>
+                          {item.image ? (
+                            <Image
+                              src={item.image}
+                              alt=""
+                              width={420}
+                              height={180}
+                              className="h-28 w-full object-cover"
+                            />
+                          ) : (
+                            <div className="grid h-28 place-items-center bg-stone-100">
+                              <Building2 className="text-stone-400" />
+                            </div>
+                          )}
+                          <span className="block p-4">
+                            <strong>{item.name}</strong>
+                            <small className="mt-1 block text-stone-500">
+                              {item.location}
+                            </small>
+                            <span className="mt-3 flex flex-wrap gap-1.5">
+                              {item.capabilities.map((capability) => (
+                                <small
+                                  key={capability}
+                                  className="rounded-full bg-stone-100 px-2 py-1 font-medium capitalize text-stone-600"
+                                >
+                                  {capability === "hpm" ? "HPM" : capability}
+                                </small>
+                              ))}
+                              {item.hasActiveGuidebook ? (
+                                <small className="rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-800">
+                                  Active guidebook exists
+                                </small>
+                              ) : null}
+                              {item.existingGuidebookId ? (
+                                <small className="mt-3 block font-semibold text-blue-700">
+                                  Open guidebook →
+                                </small>
+                              ) : null}
+                            </span>
                           </span>
-                        </span>
-                      </button>
-                    ))}
+                        </>
+                      );
+                      return item.existingGuidebookId ? (
+                        <Link
+                          key={item.id}
+                          href={`${basePath}/${item.existingGuidebookId}/edit`}
+                          aria-label={`Open guidebook for ${item.name}`}
+                          className="overflow-hidden rounded-xl border text-left transition hover:border-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                        >
+                          {card}
+                        </Link>
+                      ) : (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => chooseProperty(item.id)}
+                          aria-label={item.name}
+                          className={`overflow-hidden rounded-xl border text-left ${item.id === propertyId ? "ring-2 ring-blue-600" : ""}`}
+                        >
+                          {card}
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="mt-10 rounded-xl border border-dashed p-8 text-center">
-                    <p className="font-semibold">Add your first guidebook property</p>
-                    <p className="mt-2 text-sm text-stone-500">You can publish a complete guidebook without enrolling in HPM.</p>
+                    <p className="font-semibold">
+                      Add your first guidebook property
+                    </p>
+                    <p className="mt-2 text-sm text-stone-500">
+                      You can publish a complete guidebook without enrolling in
+                      HPM.
+                    </p>
                     <button
                       onClick={() => setMode("new")}
                       className="mt-3 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
@@ -291,41 +368,50 @@ export function GuidebookPublishingWizard({
               </div>
             ) : (
               <>
-              {!properties.length ? (
-                <div className="mt-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">
-                  <strong>Add your first guidebook property.</strong> Only the details guests need are required. HPM enrollment is not required.
-                </div>
-              ) : null}
-              <PropertyForm
-                fields={fields}
-                setFields={setFields}
-                pending={pending}
-                error={error}
-                duplicate={properties.find((item) => item.id === duplicateId)}
-                onSave={() => saveProperty()}
-                onExisting={() => {
-                  chooseProperty(duplicateId);
-                  setMode("existing");
-                  setDuplicateId("");
-                }}
-                onAnyway={() => saveProperty(true)}
-                onBack={() => setMode(properties.length ? "choice" : "new")}
-              />
+                {!properties.length ? (
+                  <div className="mt-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">
+                    <strong>Add your first guidebook property.</strong> Only the
+                    details guests need are required. HPM enrollment is not
+                    required.
+                  </div>
+                ) : null}
+                <PropertyForm
+                  fields={fields}
+                  setFields={setFields}
+                  pending={pending}
+                  error={error}
+                  duplicate={properties.find((item) => item.id === duplicateId)}
+                  onSave={() => saveProperty()}
+                  onExisting={() => {
+                    chooseProperty(duplicateId);
+                    setMode("existing");
+                    setDuplicateId("");
+                  }}
+                  onAnyway={() => saveProperty(true)}
+                  onBack={() => setMode(properties.length ? "choice" : "new")}
+                />
               </>
             )}
           </>
         ) : null}
         {step === 2 ? (
           <>
-            <h2 className="text-2xl font-semibold">Let&apos;s match your style.</h2>
+            <h2 className="text-2xl font-semibold">
+              Let&apos;s match your style.
+            </h2>
             <p className="mt-2 text-sm text-stone-500">
-              This helps us recommend the right templates. You can skip this step.
+              This helps us recommend the right templates. You can skip this
+              step.
             </p>
             <div className="mt-7 grid gap-4 sm:grid-cols-3">
               {styleOptions.map((option) => (
                 <button
                   key={option}
-                  onClick={() => setStyleFilter((current) => (current === option ? "" : option))}
+                  onClick={() =>
+                    setStyleFilter((current) =>
+                      current === option ? "" : option,
+                    )
+                  }
                   className={`rounded-xl border p-6 text-left transition ${
                     styleFilter === option
                       ? "border-blue-600 bg-blue-50"
@@ -341,7 +427,9 @@ export function GuidebookPublishingWizard({
         ) : null}
         {step === 3 ? (
           <>
-            <h2 className="text-2xl font-semibold">Choose a template to get started.</h2>
+            <h2 className="text-2xl font-semibold">
+              Choose a template to get started.
+            </h2>
             <div className="mt-5 flex flex-wrap gap-2">
               {["All", ...styleOptions].map((option) => {
                 const value = option === "All" ? "" : option;
@@ -351,7 +439,9 @@ export function GuidebookPublishingWizard({
                     key={option}
                     onClick={() => setStyleFilter(value)}
                     className={`rounded-full border px-4 py-1.5 text-xs font-semibold ${
-                      isActive ? "border-blue-700 bg-blue-700 text-white" : "border-stone-300 text-stone-600"
+                      isActive
+                        ? "border-blue-700 bg-blue-700 text-white"
+                        : "border-stone-300 text-stone-600"
                     }`}
                   >
                     {option}
@@ -370,7 +460,9 @@ export function GuidebookPublishingWizard({
                       key={template.id}
                       onClick={() => setTemplateId(template.id)}
                       className={`overflow-hidden rounded-2xl border-2 bg-white text-left shadow-sm transition ${
-                        isSelected ? "border-blue-600" : "border-transparent hover:border-stone-300"
+                        isSelected
+                          ? "border-blue-600"
+                          : "border-transparent hover:border-stone-300"
                       }`}
                     >
                       <div className="h-32 bg-gradient-to-br from-[#0b2b24] via-[#c78a38] to-[#f4ead7]" />
@@ -389,7 +481,9 @@ export function GuidebookPublishingWizard({
                           ) : null}
                         </div>
                         {template.description ? (
-                          <p className="mt-2 text-sm leading-6 text-stone-500">{template.description}</p>
+                          <p className="mt-2 text-sm leading-6 text-stone-500">
+                            {template.description}
+                          </p>
                         ) : null}
                       </div>
                     </button>
@@ -398,7 +492,8 @@ export function GuidebookPublishingWizard({
               </div>
             ) : (
               <p className="mt-8 text-sm text-stone-500">
-                No published templates match this style yet. Try &quot;All&quot;.
+                No published templates match this style yet. Try
+                &quot;All&quot;.
               </p>
             )}
             {selectedTemplate ? (
@@ -411,7 +506,9 @@ export function GuidebookPublishingWizard({
         {step === 4 ? (
           <>
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Add your brand identity.</h2>
+              <h2 className="text-2xl font-semibold">
+                Add your brand identity.
+              </h2>
               <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-500">
                 Optional
               </span>
@@ -421,7 +518,12 @@ export function GuidebookPublishingWizard({
                 Logo URL
                 <input
                   value={brand.logoUrl}
-                  onChange={(event) => setBrand((current) => ({ ...current, logoUrl: event.target.value }))}
+                  onChange={(event) =>
+                    setBrand((current) => ({
+                      ...current,
+                      logoUrl: event.target.value,
+                    }))
+                  }
                   placeholder="https://…"
                   className="mt-2 block min-h-11 w-full rounded-lg border px-3"
                 />
@@ -433,12 +535,22 @@ export function GuidebookPublishingWizard({
                     <input
                       type="color"
                       value={brand.primaryColor}
-                      onChange={(event) => setBrand((current) => ({ ...current, primaryColor: event.target.value }))}
+                      onChange={(event) =>
+                        setBrand((current) => ({
+                          ...current,
+                          primaryColor: event.target.value,
+                        }))
+                      }
                       className="size-11 rounded-lg border"
                     />
                     <input
                       value={brand.primaryColor}
-                      onChange={(event) => setBrand((current) => ({ ...current, primaryColor: event.target.value }))}
+                      onChange={(event) =>
+                        setBrand((current) => ({
+                          ...current,
+                          primaryColor: event.target.value,
+                        }))
+                      }
                       className="min-h-11 w-full rounded-lg border px-3"
                     />
                   </div>
@@ -449,12 +561,22 @@ export function GuidebookPublishingWizard({
                     <input
                       type="color"
                       value={brand.accentColor}
-                      onChange={(event) => setBrand((current) => ({ ...current, accentColor: event.target.value }))}
+                      onChange={(event) =>
+                        setBrand((current) => ({
+                          ...current,
+                          accentColor: event.target.value,
+                        }))
+                      }
                       className="size-11 rounded-lg border"
                     />
                     <input
                       value={brand.accentColor}
-                      onChange={(event) => setBrand((current) => ({ ...current, accentColor: event.target.value }))}
+                      onChange={(event) =>
+                        setBrand((current) => ({
+                          ...current,
+                          accentColor: event.target.value,
+                        }))
+                      }
                       className="min-h-11 w-full rounded-lg border px-3"
                     />
                   </div>
@@ -464,7 +586,12 @@ export function GuidebookPublishingWizard({
                 Photography Style
                 <select
                   value={brand.photographyStyle}
-                  onChange={(event) => setBrand((current) => ({ ...current, photographyStyle: event.target.value }))}
+                  onChange={(event) =>
+                    setBrand((current) => ({
+                      ...current,
+                      photographyStyle: event.target.value,
+                    }))
+                  }
                   className="mt-2 block min-h-11 w-full rounded-lg border bg-white px-3"
                 >
                   {photographyStyles.map((option) => (
@@ -476,7 +603,12 @@ export function GuidebookPublishingWizard({
                 Brand Voice
                 <select
                   value={brand.voice}
-                  onChange={(event) => setBrand((current) => ({ ...current, voice: event.target.value }))}
+                  onChange={(event) =>
+                    setBrand((current) => ({
+                      ...current,
+                      voice: event.target.value,
+                    }))
+                  }
                   className="mt-2 block min-h-11 w-full rounded-lg border bg-white px-3"
                 >
                   {brandVoices.map((option) => (
@@ -542,15 +674,17 @@ export function GuidebookPublishingWizard({
               <dt>Template</dt>
               <dd className="font-semibold">{selectedTemplate?.name ?? "—"}</dd>
               <dt>Brand identity</dt>
-              <dd className="font-semibold">{brandSkipped ? "Skipped" : "Configured"}</dd>
+              <dd className="font-semibold">
+                {brandSkipped ? "Skipped" : "Configured"}
+              </dd>
               <dt>Name</dt>
               <dd className="font-semibold">{title || suggestedTitle}</dd>
               <dt>Locale</dt>
               <dd>{locale}</dd>
             </dl>
             <p className="mt-5 text-sm text-stone-600">
-              The Builder will open with your selected template&apos;s starter section
-              structure. Preview and publishing come next.
+              The Builder will open with your selected template&apos;s starter
+              section structure. Preview and publishing come next.
             </p>
           </>
         ) : null}
@@ -586,9 +720,21 @@ export function GuidebookPublishingWizard({
             <input type="hidden" name="templateId" value={templateId} />
             {brandSkipped ? null : (
               <>
-                <input type="hidden" name="brandLogoUrl" value={brand.logoUrl} />
-                <input type="hidden" name="brandPrimaryColor" value={brand.primaryColor} />
-                <input type="hidden" name="brandAccentColor" value={brand.accentColor} />
+                <input
+                  type="hidden"
+                  name="brandLogoUrl"
+                  value={brand.logoUrl}
+                />
+                <input
+                  type="hidden"
+                  name="brandPrimaryColor"
+                  value={brand.primaryColor}
+                />
+                <input
+                  type="hidden"
+                  name="brandAccentColor"
+                  value={brand.accentColor}
+                />
               </>
             )}
             <input
