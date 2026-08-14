@@ -1,4 +1,5 @@
 export type CommerceOnboardingEvent =
+  | "homepage_action"
   | "plan_selected"
   | "workspace_configuration_completed"
   | "account_created"

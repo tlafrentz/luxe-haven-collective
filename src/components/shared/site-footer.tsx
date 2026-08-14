@@ -1,124 +1,26 @@
-import Link from "next/link";
+import { HomepageLink } from "@/components/marketing/homepage-link";
+import { getSessionProfile } from "@/lib/auth/session";
 
 const groups = [
-  [
-    "Solutions",
-    [
-      ["Improve Guest Experience", "/solutions/guest-experience"],
-      ["Invest Better", "/solutions/investment"],
-      ["Launch a Property", "/solutions/property-launch"],
-      ["Operate Better", "/solutions/operations"],
-    ],
-  ],
-  [
-    "Platform",
-    [
-      ["HPM Platform", "/performance/overview"],
-      ["Guidebook Studio", "/guidebook-studio"],
-      ["Furnishing Studio", "/furnishing"],
-      ["Investment Intelligence", "/investment-intelligence"],
-    ],
-  ],
-  [
-    "Resources",
-    [
-      ["Luxe Haven Press", "/resources"],
-      ["Insights", "/resources/insights"],
-      ["Playbooks", "/resources/playbooks"],
-      ["Templates", "/resources/templates"],
-      ["Market Reports", "/resources/market-reports"],
-      ["FAQ", "/faq"],
-    ],
-  ],
-  [
-    "About",
-    [
-      ["About Us", "/about"],
-      ["Our Approach", "/approach"],
-      ["Contact", "/contact"],
-    ],
-  ],
+  ["Platform", [["HPM","/hpm"],["Guidebook Studio","/guidebook-studio"],["Furnishing","/furnishing"],["Investment Intelligence","/investment-intelligence"]]],
+  ["Resources", [["Owner Playbooks","/resources/playbooks"],["Insights","/resources/insights"],["Templates & Checklists","/resources/templates"]]],
+  ["Company", [["About","/about"],["Our Approach","/approach"],["Contact","/contact"]]],
 ] as const;
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const { user } = await getSessionProfile();
+  const authenticated = Boolean(user);
   return (
-    <footer className="border-t bg-white">
-      <div className="container-shell grid gap-10 py-12 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(4,1fr)_1.15fr]">
+    <footer className="border-t border-[#d8d0c3] bg-[#fbf8f1] text-[#233a33]">
+      <div className="mx-auto grid max-w-[1340px] gap-10 px-6 py-12 sm:px-10 md:grid-cols-2 lg:grid-cols-[1.5fr_repeat(4,1fr)]">
         <div>
-          <Link href="/" className="font-serif text-xl text-emerald-900">
-            LH{" "}
-            <span className="ml-2 text-xs font-sans font-bold uppercase tracking-[.15em]">
-              Luxe Haven Collective
-            </span>
-          </Link>
-          <p className="mt-5 max-w-sm text-xs leading-6 text-stone-600">
-            Boutique hospitality, short-term rental performance systems, and
-            professional Texas notary services—delivered with care,
-            responsiveness, and modern design.
-          </p>
-          <div className="mt-5 flex gap-4 text-xs">
-            <a href="https://www.facebook.com" target="_blank" rel="noreferrer">
-              Facebook
-            </a>
-            <a
-              href="https://www.instagram.com"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Instagram
-            </a>
-            <a href="https://www.linkedin.com" target="_blank" rel="noreferrer">
-              LinkedIn
-            </a>
-          </div>
+          <HomepageLink actionId="footer_home" sourceSection="footer" authenticated={authenticated} href="/" className="flex items-center gap-3 text-[#95691f]"><span className="font-serif text-3xl">LH</span><span className="text-[9px] font-bold uppercase tracking-[.14em]">Luxe Haven<br/>Collective</span></HomepageLink>
+          <p className="mt-5 max-w-xs text-xs leading-5 text-[#59635f]">An operating system for independent hospitality owners—connecting performance, guest experience, execution, and learning.</p>
         </div>
-        {groups.map(([title, links]) => (
-          <div key={title}>
-            <p className="text-xs font-bold uppercase tracking-[.12em]">
-              {title}
-            </p>
-            <div className="mt-4 grid gap-2.5">
-              {links.map(([label, href]) => (
-                <Link
-                  key={label}
-                  href={href}
-                  className="text-xs text-stone-600 hover:text-emerald-800"
-                >
-                  {label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        ))}
-        <div className="rounded-xl border p-5">
-          <p className="text-xs font-bold uppercase tracking-[.12em]">
-            For owners
-          </p>
-          <p className="mt-3 text-xs leading-5 text-stone-600">
-            Discover where your property may be leaving revenue, reviews, or
-            repeat stays on the table.
-          </p>
-          <Link
-            href="/lead-magnet"
-            className="mt-5 inline-flex text-xs font-semibold text-emerald-800"
-          >
-            Get the free checklist →
-          </Link>
-        </div>
+        {groups.map(([title,links])=><div key={title}><h2 className="text-[10px] font-bold uppercase tracking-[.12em]">{title}</h2><ul className="mt-4 grid gap-1">{links.map(([label,href])=><li key={href}><HomepageLink actionId={`footer_${label.toLowerCase().replaceAll(/[^a-z]+/g,"_")}`} sourceSection="footer" authenticated={authenticated} href={href} className="inline-flex min-h-9 items-center text-xs text-[#59635f] hover:text-[#07513f]">{label}</HomepageLink></li>)}</ul></div>)}
+        <div className="lg:border-l lg:border-[#d8d0c3] lg:pl-8"><h2 className="text-[10px] font-bold uppercase tracking-[.12em]">Texas Notary Services</h2><HomepageLink actionId="footer_texas_notary" sourceSection="footer" authenticated={authenticated} href="/notary" className="mt-4 inline-flex min-h-11 items-center text-xs font-semibold text-[#07513f]">Learn more →</HomepageLink></div>
       </div>
-      <div className="border-t py-5">
-        <div className="container-shell flex flex-wrap justify-between gap-3 text-[10px] text-stone-500">
-          <p>
-            © {new Date().getFullYear()} Luxe Haven Collective. All rights
-            reserved.
-          </p>
-          <div className="flex gap-5">
-            <Link href="/privacy">Privacy Policy</Link>
-            <Link href="/terms">Terms of Service</Link>
-            <Link href="/notary">Notary Disclaimer</Link>
-          </div>
-        </div>
-      </div>
+      <div className="border-t border-[#d8d0c3]"><div className="mx-auto flex max-w-[1340px] flex-wrap items-center justify-between gap-4 px-6 py-5 text-[10px] text-[#68716d] sm:px-10"><p>© {new Date().getFullYear()} Luxe Haven Collective. All rights reserved.</p><div className="flex flex-wrap gap-5"><HomepageLink actionId="footer_privacy" sourceSection="footer" authenticated={authenticated} href="/privacy">Privacy Policy</HomepageLink><HomepageLink actionId="footer_terms" sourceSection="footer" authenticated={authenticated} href="/terms">Terms of Service</HomepageLink><HomepageLink actionId="footer_notary_disclaimer" sourceSection="footer" authenticated={authenticated} href="/notary">Notary Disclaimer</HomepageLink></div></div></div>
     </footer>
   );
 }

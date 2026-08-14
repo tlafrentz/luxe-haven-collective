@@ -1,165 +1,49 @@
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { HomepageLink } from "@/components/marketing/homepage-link";
 import { getSessionProfile } from "@/lib/auth/session";
-import { resourceLinks } from "@/components/marketing/resources-navigation";
-import { platformLinks } from "@/lib/platform-journeys";
-import { solutionLinks } from "@/lib/solution-journeys";
 
-const nav = [
-  { href: "/solutions", label: "Solutions" },
-  { href: "/performance", label: "Platform" },
-  { href: "/resources", label: "Resources" },
-  { href: "/stays", label: "Properties" },
-  { href: "/about", label: "About" },
-];
+const navigation = [
+  ["HPM", "/hpm", "header_hpm"],
+  ["Guidebook", "/guidebook-studio", "header_guidebook"],
+  ["Furnishing", "/furnishing", "header_furnishing"],
+  ["Investment Intelligence", "/investment-intelligence", "header_investment"],
+  ["Resources", "/resources", "header_resources"],
+  ["About", "/about", "header_about"],
+] as const;
 
 export async function SiteHeader() {
   const { user, profile } = await getSessionProfile();
-  const portalHref = profile?.role === "admin" ? "/admin" : "/dashboard";
+  const authenticated = Boolean(user);
+  const workspaceHref = profile?.role === "admin" ? "/admin" : "/dashboard";
+
   return (
-    <header className="sticky top-0 z-50 border-b border-[#dde1dd] bg-white/95 backdrop-blur-xl">
+    <header className="relative z-50 border-b border-[#d8d0c3] bg-[#fbf8f1] text-[#17372f]">
       <div className="mx-auto flex min-h-[76px] max-w-[1440px] items-center justify-between gap-5 px-5 sm:px-8">
-        <Link
-          href="/"
-          aria-label="Luxe Haven Collective home"
-          className="flex shrink-0 items-center gap-3 text-[#8d6b1d]"
-        >
+        <HomepageLink actionId="header_home" sourceSection="header" authenticated={authenticated} href="/" aria-label="Luxe Haven Collective home" className="flex shrink-0 items-center gap-3 text-[#95691f]">
           <span className="font-serif text-3xl leading-none">LH</span>
-          <span className="border-l border-[#d7c89d] pl-3 text-[10px] font-bold uppercase leading-[1.2] tracking-[0.13em]">
-            Luxe Haven
-            <br />
-            Collective
-          </span>
-        </Link>
-        <nav
-          aria-label="Primary navigation"
-          className="hidden items-center gap-7 text-sm font-medium text-[#26342e] lg:flex"
-        >
-          {nav.map((item) =>
-            item.label === "Resources" ||
-            item.label === "Platform" ||
-            item.label === "Solutions" ? (
-              <div key={item.href} className="group relative py-2">
-                <Link
-                  href={item.href}
-                  className="transition hover:text-[#074e38] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
-                >
-                  {item.label}
-                  <span aria-hidden>⌄</span>
-                </Link>
-                <div className="pointer-events-none invisible absolute left-1/2 top-full w-60 -translate-x-1/2 translate-y-1 rounded-xl border bg-white p-2 opacity-0 shadow-xl transition group-hover:pointer-events-auto group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
-                  {(item.label === "Resources"
-                    ? resourceLinks
-                    : item.label === "Platform"
-                      ? platformLinks
-                      : solutionLinks
-                  ).map(([label, href]) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      className="block rounded-lg px-3 py-2.5 text-sm hover:bg-stone-50 hover:text-emerald-800"
-                    >
-                      {label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="transition hover:text-[#074e38]"
-              >
-                {item.label}
-              </Link>
-            ),
-          )}
+          <span className="border-l border-[#d4bd8d] pl-3 text-[9px] font-bold uppercase leading-[1.2] tracking-[.14em]">Luxe Haven<br />Collective</span>
+        </HomepageLink>
+        <nav aria-label="Primary navigation" className="hidden items-center gap-7 lg:flex">
+          {navigation.map(([label, href, id]) => (
+            <HomepageLink key={href} actionId={id} sourceSection="header" authenticated={authenticated} href={href} className="inline-flex min-h-11 items-center text-sm font-medium transition hover:text-[#9a6a1b] focus-visible:outline-2 focus-visible:outline-offset-4">{label}</HomepageLink>
+          ))}
         </nav>
-        <div className="hidden items-center gap-3 md:flex">
-          {!user ? (
-            <Link
-              href="/login"
-              className="inline-flex min-h-11 items-center rounded-md border border-[#6f8b7f] px-5 text-sm font-semibold text-[#34423b] transition hover:bg-[#f1f5f2]"
-            >
-              Sign in
-            </Link>
-          ) : null}
-          <Link
-            href={user ? portalHref : "/get-started"}
-            className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#074e38] px-5 text-sm font-semibold text-white transition hover:bg-[#053d2c]"
-          >
-            {user ? "Open Portal" : "Talk with an Expert"}
-            <ArrowUpRight aria-hidden size={15} />
-          </Link>
+        <div className="hidden items-center gap-3 lg:flex">
+          <HomepageLink actionId="header_sign_in" sourceSection="header" authenticated={authenticated} href={authenticated ? workspaceHref : "/login"} className="inline-flex min-h-11 items-center rounded-sm border border-[#6f887f] px-5 text-sm font-semibold">
+            {authenticated ? "Open Workspace" : "Sign in"}
+          </HomepageLink>
+          <HomepageLink actionId="header_start_conversation" sourceSection="header" authenticated={authenticated} href="/contact" className="inline-flex min-h-11 items-center gap-2 rounded-sm bg-[#073f32] px-5 text-sm font-semibold text-white">Start the Conversation <ArrowRight className="size-4" /></HomepageLink>
         </div>
-        <details className="relative md:hidden">
-          <summary className="cursor-pointer list-none rounded-md border border-[#aeb8b2] px-4 py-2 text-sm font-semibold text-[#17372c]">
-            Menu
-          </summary>
-          <div className="absolute right-0 top-12 w-72 rounded-xl border border-[#d8ded9] bg-white p-3 shadow-2xl">
-            <nav className="grid gap-1">
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-lg px-3 py-2.5 text-sm text-[#4f5953] hover:bg-[#f1f5f2]"
-                >
-                  {item.label}
-                </Link>
-              ))}
+        <details className="group relative lg:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-sm border border-[#82958f] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2">Menu</summary>
+          <div className="absolute right-0 top-13 w-[min(90vw,330px)] rounded-sm border border-[#d8d0c3] bg-[#fbf8f1] p-3 shadow-2xl">
+            <nav aria-label="Mobile navigation" className="grid">
+              {navigation.map(([label, href, id]) => <HomepageLink key={href} actionId={id} sourceSection="header_mobile" authenticated={authenticated} href={href} className="flex min-h-11 items-center rounded-sm px-3 text-sm font-medium hover:bg-[#f0eadf]">{label}</HomepageLink>)}
             </nav>
-            <div className="mt-2 border-t pt-2">
-              <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
-                Solutions
-              </p>
-              {solutionLinks.map(([label, href]) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="block rounded-lg px-3 py-2 text-xs text-stone-500 hover:bg-stone-50"
-                >
-                  {label}
-                </Link>
-              ))}
-              <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
-                Platform
-              </p>
-              {platformLinks.map(([label, href]) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="block rounded-lg px-3 py-2 text-xs text-stone-500 hover:bg-stone-50"
-                >
-                  {label}
-                </Link>
-              ))}
-              <p className="mt-2 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
-                Resources
-              </p>
-              {resourceLinks.slice(1).map(([label, href]) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="block rounded-lg px-3 py-2 text-xs text-stone-500 hover:bg-stone-50"
-                >
-                  {label}
-                </Link>
-              ))}
+            <div className="mt-2 grid gap-2 border-t border-[#d8d0c3] pt-3">
+              <HomepageLink actionId="header_sign_in" sourceSection="header_mobile" authenticated={authenticated} href={authenticated ? workspaceHref : "/login"} className="flex min-h-11 items-center justify-center rounded-sm border border-[#6f887f] px-4 text-sm font-semibold">{authenticated ? "Open Workspace" : "Sign in"}</HomepageLink>
+              <HomepageLink actionId="header_start_conversation" sourceSection="header_mobile" authenticated={authenticated} href="/contact" className="flex min-h-11 items-center justify-center rounded-sm bg-[#073f32] px-4 text-sm font-semibold text-white">Start the Conversation</HomepageLink>
             </div>
-            {!user ? (
-              <Link
-                href="/login"
-                className="mt-2 flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-[#34423b] hover:bg-[#f1f5f2]"
-              >
-                Sign in
-              </Link>
-            ) : null}
-            <Link
-              href={user ? portalHref : "/get-started"}
-              className="mt-3 flex min-h-11 items-center justify-center rounded-md bg-[#074e38] px-4 text-sm font-semibold text-white"
-            >
-              {user ? "Open Portal" : "Get Started"}
-            </Link>
           </div>
         </details>
       </div>
