@@ -192,11 +192,33 @@ function mapBlock(block: Record<string, unknown>,media:Record<string,{url?:unkno
     });
   if (raw === "heading") return { id, type: "heading", text };
   if (raw === "rich-text") return { id, type: "paragraph", text };
-  if (raw === "callout") return { id, type: "callout", text };
+  if (raw === "component") {
+    const key = String(content.componentKey ?? content.component_key ?? ""),
+      fields = content.fields && typeof content.fields === "object"
+        ? content.fields as Record<string, unknown>
+        : {},
+      title = sanitizePublicText(fields.title ?? fields.name ?? fields.label, 500),
+      body = sanitizePublicText(fields.body ?? fields.description ?? fields.instructions ?? fields.subtitle ?? fields.alternative, 4000),
+      componentText = [title, body].filter(Boolean).join("\n");
+    if (["callout", "rule_card", "safety_notice", "critical_action_panel", "thank_you_panel"].includes(key))
+      return { id, type: "callout", text: componentText };
+    if (["arrival_instructions", "parking_card", "access_instructions", "wifi_card", "appliance_card", "step_list", "timeline"].includes(key))
+      return { id, type: "instruction", text: componentText };
+    if (["rich_text", "section_header", "amenity_card", "local_guide_category", "newsletter_cta"].includes(key))
+      return { id, type: key === "section_header" ? "heading" : "paragraph", text: componentText };
+    return { id, type: "paragraph", text: componentText || key.replaceAll("_", " ") };
+  }
+  if (raw === "callout")
+    return {
+      id,
+      type: "callout",
+      text: [sanitizePublicText(content.title, 500), sanitizePublicText(content.body ?? content.text, 4000)].filter(Boolean).join("\n"),
+    };
   if (raw === "checklist")
     return {
       id,
       type: "checklist",
+      text: sanitizePublicText(content.title, 500),
       items: (Array.isArray(content.items) ? content.items : text.split("\n"))
         .map((item) =>
           sanitizePublicText(
@@ -212,7 +234,7 @@ function mapBlock(block: Record<string, unknown>,media:Record<string,{url?:unkno
     return {
       id,
       type: "instruction",
-      text,
+      text: sanitizePublicText(content.title ?? content.text, 1000),
       items: Array.isArray(content.steps)
         ? content.steps
             .map((item) =>

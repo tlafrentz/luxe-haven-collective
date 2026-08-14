@@ -99,6 +99,28 @@ describe("public guidebook renderer", () => {
     expect(view).not.toHaveProperty("payload");
     expect(JSON.stringify(view)).not.toContain("javascript:alert");
   });
+  it("projects governed component fields into visible guest content", () => {
+    const view = guidebookPublicRenderer.render({
+      ...artifact,
+      payload: {
+        ...artifact.payload,
+        sections: [{
+          id: "components",
+          title: "House Rules",
+          blocks: [
+            { id: "arrival", type: "component", content: { componentKey: "arrival_instructions", fields: { title: "Check in after 4 PM" } } },
+            { id: "rule", type: "component", content: { componentKey: "rule_card", fields: { title: "Quiet hours", description: "Please keep noise low after 10 PM." } } },
+            { id: "copy", type: "component", content: { componentKey: "rich_text", fields: { body: "Parking is available in the driveway." } } },
+          ],
+        }],
+      },
+    });
+    expect(view.sections[0]?.blocks).toMatchObject([
+      { type: "instruction", text: "Check in after 4 PM" },
+      { type: "callout", text: "Quiet hours\nPlease keep noise low after 10 PM." },
+      { type: "paragraph", text: "Parking is available in the driveway." },
+    ]);
+  });
   it("renders all nine v1 blocks through the hostile public boundary and resolves images only from the immutable manifest", () => {
     const malicious = `<img src=x onerror=steal()><script>bad()</script>Safe`,
       mediaRef = `gbm_${"a".repeat(26)}`,

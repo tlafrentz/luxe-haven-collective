@@ -325,8 +325,10 @@ function PublicBlock({
     );
   if (block.type === "checklist")
     return (
-      <ul className="space-y-3">
-        {block.items?.map((item) => (
+      <div>
+        {block.text ? <p className="mb-3 font-semibold">{block.text}</p> : null}
+        <ul className="space-y-3">
+          {block.items?.map((item) => (
           <li
             className="flex gap-3 rounded-xl bg-white p-4 shadow-sm"
             key={item}
@@ -334,8 +336,9 @@ function PublicBlock({
             <span aria-hidden>✓</span>
             <span>{item}</span>
           </li>
-        ))}
-      </ul>
+          ))}
+        </ul>
+      </div>
     );
   if (block.type === "instruction")
     return (
