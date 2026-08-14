@@ -41,6 +41,9 @@ describe("Guidebook Studio canonical Builder reconciliation", () => {
     expect(builder).toContain('conflict: "Conflict detected — Review changes"');
     expect(builder).toContain("guidebook-preview:block-selected");
     expect(builder).toContain("LegacyBlockContentFields");
+    expect(builder).toContain("Basic blocks");
+    expect(builder).toContain('type: "location", name: "Location"');
+    expect(builder).toContain('type: "checklist", name: "Checklist"');
     expect(builder).not.toContain("Current content\n        <textarea");
     const preview = source(
       "src/app/(public)/dashboard/guidebooks/[guidebookId]/preview/page.tsx",

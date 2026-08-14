@@ -190,8 +190,10 @@ function mapBlock(block: Record<string, unknown>,media:Record<string,{url?:unkno
       allowContact: true,
       allowRelative: true,
     });
-  if (raw === "heading") return { id, type: "heading", text };
-  if (raw === "rich-text") return { id, type: "paragraph", text };
+  if (raw === "heading")
+    return { id, type: "heading", text: sanitizePublicText(content.text ?? content.title, 500) };
+  if (raw === "rich-text")
+    return { id, type: "paragraph", text: sanitizePublicText(content.text ?? content.body ?? content.markdown, 4000) };
   if (raw === "component") {
     const key = String(content.componentKey ?? content.component_key ?? ""),
       fields = content.fields && typeof content.fields === "object"
@@ -273,7 +275,12 @@ function mapBlock(block: Record<string, unknown>,media:Record<string,{url?:unkno
     };
   }
   if (raw === "location")
-    return { id, type: "location", text, ...(url ? { url } : {}) };
+    return {
+      id,
+      type: "location",
+      text: [sanitizePublicText(content.label, 500), sanitizePublicText(content.destination ?? content.text, 2000)].filter(Boolean).join("\n"),
+      ...(url ? { url } : {}),
+    };
   if (raw === "link")
     return {
       id,

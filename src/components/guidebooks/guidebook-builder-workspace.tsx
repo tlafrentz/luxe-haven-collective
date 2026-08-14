@@ -47,6 +47,7 @@ import {
   buildMediaDimensionMap,
   evaluateGuidebookPublicationReadiness,
   type AuthoringBlock,
+  type AuthoringBlockType,
   type GuidebookDraft,
   type MediaDimensionMap,
 } from "@/features/guidebook-studio";
@@ -692,6 +693,11 @@ export function GuidebookBuilderWorkspace({
                 blockType: "component",
                 componentKey,
               });
+            setPicker(false);
+          }}
+          insertBasic={(blockType) => {
+            if (section)
+              command({ type: "create-block", sectionId: section.id, blockType });
             setPicker(false);
           }}
         />
@@ -1480,6 +1486,7 @@ function Picker({
   setQuery,
   close,
   insert,
+  insertBasic,
 }: {
   components: ReturnType<typeof compatibleComponents>;
   query: string;
@@ -1488,7 +1495,26 @@ function Picker({
   insert: (
     value: ReturnType<typeof compatibleComponents>[number]["key"],
   ) => void;
+  insertBasic: (value: Exclude<AuthoringBlockType, "component">) => void;
 }) {
+  const basicBlocks: readonly Readonly<{
+    type: Exclude<AuthoringBlockType, "component">;
+    name: string;
+    description: string;
+  }>[] = [
+    { type: "heading", name: "Heading", description: "Add a semantic section or subsection heading." },
+    { type: "rich-text", name: "Rich Text", description: "Add paragraphs and longer guest guidance." },
+    { type: "callout", name: "Callout", description: "Highlight an important note or reminder." },
+    { type: "checklist", name: "Checklist", description: "Add an editable list of guest tasks." },
+    { type: "instruction", name: "Instructions", description: "Add ordered step-by-step guidance." },
+    { type: "contact", name: "Contact", description: "Add an authorized guest contact." },
+    { type: "location", name: "Location", description: "Add a place, destination, and map link." },
+    { type: "link", name: "Link", description: "Add a labeled destination link." },
+    { type: "image", name: "Image", description: "Add an image with accessible text." },
+  ];
+  const matchingBasicBlocks = basicBlocks.filter((item) =>
+    `${item.name} ${item.description}`.toLowerCase().includes(query.toLowerCase()),
+  );
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-5"
@@ -1500,10 +1526,10 @@ function Picker({
         <div className="flex justify-between">
           <div>
             <h2 id="component-picker-title" className="text-xl font-semibold">
-              Add a Component
+              Add a block
             </h2>
             <p className="text-sm text-stone-500">
-              Compatible with this section and Mesa Modern.
+              Choose a basic content block or an approved component compatible with this section.
             </p>
           </div>
           <button onClick={close}>Close</button>
@@ -1515,7 +1541,7 @@ function Picker({
             autoFocus
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search components…"
+            placeholder="Search blocks and components…"
             className="min-h-10 w-full rounded-xl border pl-9"
           />
         </label>
@@ -1536,7 +1562,23 @@ function Picker({
             </span>
           ))}
         </div>
+        {matchingBasicBlocks.length ? (
+          <div className="mt-5">
+            <h3 className="text-sm font-semibold">Basic blocks</h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {matchingBasicBlocks.map((item) => (
+                <button key={item.type} onClick={() => insertBasic(item.type)} className="rounded-xl border p-5 text-left hover:border-emerald-600">
+                  <span className="text-xs font-semibold text-emerald-700">Content</span>
+                  <strong className="mt-2 block">{item.name}</strong>
+                  <p className="mt-2 text-xs text-stone-500">{item.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {components.length ? (
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold">Approved components</h3>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             {components.map((item) => (
               <button
@@ -1554,11 +1596,12 @@ function Picker({
               </button>
             ))}
           </div>
-        ) : (
+          </div>
+        ) : !matchingBasicBlocks.length ? (
           <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-stone-500">
-            No compatible components match your search.
+            No compatible blocks or components match your search.
           </p>
-        )}
+        ) : null}
       </section>
     </div>
   );

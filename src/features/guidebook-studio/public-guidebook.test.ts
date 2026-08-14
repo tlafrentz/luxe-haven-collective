@@ -121,6 +121,22 @@ describe("public guidebook renderer", () => {
       { type: "paragraph", text: "Parking is available in the driveway." },
     ]);
   });
+  it("preserves canonical legacy heading and location fields", () => {
+    const view = guidebookPublicRenderer.render({
+      ...artifact,
+      payload: {
+        ...artifact.payload,
+        sections: [{ id: "local", title: "Local Recommendations", blocks: [
+          { id: "name", type: "heading", content: { title: "Mesa Farmers Market" } },
+          { id: "place", type: "location", content: { label: "Mesa Farmers Market", destination: "20 E Main St", mapUrl: "https://maps.example.com/mesa" } },
+        ] }],
+      },
+    });
+    expect(view.sections[0]?.blocks).toMatchObject([
+      { type: "heading", text: "Mesa Farmers Market" },
+      { type: "location", text: "Mesa Farmers Market\n20 E Main St", url: "https://maps.example.com/mesa" },
+    ]);
+  });
   it("renders all nine v1 blocks through the hostile public boundary and resolves images only from the immutable manifest", () => {
     const malicious = `<img src=x onerror=steal()><script>bad()</script>Safe`,
       mediaRef = `gbm_${"a".repeat(26)}`,
