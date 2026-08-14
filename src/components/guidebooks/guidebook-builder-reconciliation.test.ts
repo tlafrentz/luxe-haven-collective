@@ -43,8 +43,10 @@ describe("Guidebook Studio canonical Builder reconciliation", () => {
     expect(builder).toContain("guidebook-preview:hero-selected");
     expect(builder).toContain("Edit hero");
     expect(builder).toContain('type: "update-details"');
-    expect(builder).toContain("onUpdateRef.current(description, headline)");
-    expect(builder).toContain("onBlur={commit}");
+    expect(builder).toContain("onUpdateRef.current(pending.description, pending.headline)");
+    expect(builder).toContain("onBlur={() => void commit()}");
+    expect(builder).toContain("Save hero");
+    expect(builder).toContain("Hero saved to the draft.");
     expect(builder).toContain("LegacyBlockContentFields");
     expect(builder).toContain("Basic blocks");
     expect(builder).toContain('type: "location", name: "Location"');

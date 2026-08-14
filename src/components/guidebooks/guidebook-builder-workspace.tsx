@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertCircle,
   ArrowDown,
@@ -202,34 +202,38 @@ export function GuidebookBuilderWorkspace({
     [section?.name, query],
   );
 
-  function runCommand(value: Command, record: boolean) {
-    if (!canEdit) return;
+  function runCommand(value: Command, record: boolean): Promise<boolean> {
+    if (!canEdit) return Promise.resolve(false);
     const before = draft.sections;
     setSave("saving");
-    startTransition(async () => {
-      const result = await guidebookAuthoringCommandAction({
-        workspaceId: draft.workspaceId,
-        guidebookId: draft.guidebookId,
-        expectedRevision: draft.revision,
-        commandId: crypto.randomUUID(),
-        command: value,
-      });
-      if (result.ok) {
-        setDraft(result.value);
-        setSave("saved");
-        setLastFailedCommand(null);
-        if (record) {
-          setHistory((stack) => [...stack.slice(-(HISTORY_LIMIT - 1)), before]);
-          setFuture([]);
+    return new Promise((resolve) => {
+      startTransition(async () => {
+        const result = await guidebookAuthoringCommandAction({
+          workspaceId: draft.workspaceId,
+          guidebookId: draft.guidebookId,
+          expectedRevision: draft.revision,
+          commandId: crypto.randomUUID(),
+          command: value,
+        });
+        if (result.ok) {
+          setDraft(result.value);
+          setSave("saved");
+          setLastFailedCommand(null);
+          if (record) {
+            setHistory((stack) => [...stack.slice(-(HISTORY_LIMIT - 1)), before]);
+            setFuture([]);
+          }
+          resolve(true);
+        } else {
+          setLastFailedCommand(value);
+          setSave(result.code === "DRAFT_CONFLICT" ? "conflict" : "failed");
+          resolve(false);
         }
-      } else {
-        setLastFailedCommand(value);
-        setSave(result.code === "DRAFT_CONFLICT" ? "conflict" : "failed");
-      }
+      });
     });
   }
   function command(value: Command) {
-    runCommand(value, true);
+    return runCommand(value, true);
   }
   function undo() {
     const previous = history[history.length - 1];
@@ -967,45 +971,64 @@ function HeroPanel({
   propertyName: string;
   canEdit: boolean;
   onDirty: () => void;
-  onUpdate: (description: string, heroHeadline: string) => void;
+  onUpdate: (description: string, heroHeadline: string) => Promise<boolean>;
 }) {
   const [headline, setHeadline] = useState(draft.brand?.heroHeadline ?? "Welcome home.");
   const [description, setDescription] = useState(draft.description);
   const committed = useRef({ headline, description });
   const onUpdateRef = useRef(onUpdate);
   const timerRef = useRef<number | null>(null);
+  const savingRef = useRef(false);
+  const [heroSave, setHeroSave] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   useEffect(() => {
     onUpdateRef.current = onUpdate;
   }, [onUpdate]);
-  function commit() {
+  const commit = useCallback(async () => {
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     timerRef.current = null;
     if (headline === committed.current.headline && description === committed.current.description) return;
-    committed.current = { headline, description };
-    onUpdateRef.current(description, headline);
-  }
+    if (savingRef.current) return;
+    const pending = { headline, description };
+    savingRef.current = true;
+    setHeroSave("saving");
+    const saved = await onUpdateRef.current(pending.description, pending.headline);
+    savingRef.current = false;
+    if (saved) {
+      committed.current = pending;
+      setHeroSave("saved");
+    } else {
+      setHeroSave("failed");
+    }
+  }, [description, headline]);
   useEffect(() => {
     if (headline === committed.current.headline && description === committed.current.description) return;
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null;
-      committed.current = { headline, description };
-      onUpdateRef.current(description, headline);
+      void commit();
     }, autosaveDelay(true) ?? 650);
     return () => {
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     };
-  }, [description, headline]);
+  }, [commit, description, headline]);
   return (
     <div className="mt-5 space-y-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Edit hero</p>
       <label className="block text-sm font-semibold">
         Headline
-        <input value={headline} disabled={!canEdit} onChange={(event) => { setHeadline(event.target.value); onDirty(); }} onBlur={commit} className="mt-2 min-h-11 w-full rounded-xl border px-3 disabled:bg-stone-100" />
+        <input value={headline} disabled={!canEdit} onChange={(event) => { setHeadline(event.target.value); setHeroSave("idle"); onDirty(); }} onBlur={() => void commit()} className="mt-2 min-h-11 w-full rounded-xl border px-3 disabled:bg-stone-100" />
       </label>
       <label className="block text-sm font-semibold">
         Supporting text
-        <textarea value={description} disabled={!canEdit} onChange={(event) => { setDescription(event.target.value); onDirty(); }} onBlur={commit} rows={5} className="mt-2 w-full rounded-xl border p-3 disabled:bg-stone-100" />
+        <textarea value={description} disabled={!canEdit} onChange={(event) => { setDescription(event.target.value); setHeroSave("idle"); onDirty(); }} onBlur={() => void commit()} rows={5} className="mt-2 w-full rounded-xl border p-3 disabled:bg-stone-100" />
       </label>
+      <div aria-live="polite" className="flex items-center gap-3">
+        <button type="button" disabled={!canEdit || heroSave === "saving"} onClick={() => void commit()} className="min-h-11 rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white disabled:opacity-50">
+          {heroSave === "saving" ? "Saving…" : heroSave === "failed" ? "Retry save" : "Save hero"}
+        </button>
+        <span className={`text-xs ${heroSave === "failed" ? "text-rose-700" : "text-stone-500"}`}>
+          {heroSave === "saved" ? "Hero saved to the draft." : heroSave === "failed" ? "Hero was not saved. Retry." : ""}
+        </span>
+      </div>
       <div className="rounded-xl border bg-stone-50 p-4 text-xs text-stone-600">
         <strong className="block text-stone-900">Property-bound details</strong>
         <span className="mt-1 block">{propertyName}, check-in, and checkout come from the authorized property record.</span>
