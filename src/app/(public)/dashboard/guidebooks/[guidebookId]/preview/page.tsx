@@ -16,6 +16,7 @@ import {
 } from "@/features/guidebook-studio";
 
 export const dynamic = "force-dynamic";
+export const metadata = { robots: { index: false, follow: false } };
 
 const viewportWidths: Record<string, number> = {
   mobile: 390,
