@@ -67,8 +67,16 @@ export function GuidebookPublishWorkspace({
   );
   const photoCount = draft.sections
     .flatMap((section) => section.blocks)
-    .filter((block) => block.type === "component")
-    .reduce((sum, block) => sum + block.content.mediaRefs.length, 0);
+    .reduce(
+      (sum, block) =>
+        sum +
+        (block.type === "component"
+          ? block.content.mediaRefs.length
+          : block.type === "image" && block.content.mediaRef
+            ? 1
+            : 0),
+      0,
+    );
   const checklist = [
     { label: "All essential sections complete", done: readiness.status !== "not-ready" },
     { label: "At least 6 photos added", done: photoCount >= 6 },
@@ -94,7 +102,10 @@ export function GuidebookPublishWorkspace({
         </p>
       </header>
       <section className="rounded-2xl border bg-white p-6">
-        <h2 className="text-xl font-semibold">Ready to publish?</h2>
+        <h2 className="text-xl font-semibold">Recommended before publishing</h2>
+        <p className="mt-2 text-sm text-stone-600">
+          These content recommendations are separate from the blocking validation checks below.
+        </p>
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {checklist.map((item) => (
             <li key={item.label} className="flex items-center gap-2 text-sm">
@@ -103,7 +114,15 @@ export function GuidebookPublishWorkspace({
               ) : (
                 <CircleAlert className="size-5 shrink-0 text-amber-600" />
               )}
-              {item.label}
+              <span>{item.label}</span>
+              {item.label === "At least 6 photos added" && !item.done ? (
+                <Link
+                  href={`${basePath}/${draft.guidebookId}/edit#add-photos`}
+                  className="ml-auto rounded-lg border px-3 py-2 text-xs font-semibold text-emerald-800"
+                >
+                  Add photos
+                </Link>
+              ) : null}
             </li>
           ))}
         </ul>

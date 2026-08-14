@@ -47,6 +47,9 @@ describe("Guidebook Studio canonical Builder reconciliation", () => {
     expect(builder).toContain("onBlur={() => void commit()}");
     expect(builder).toContain("Save hero");
     expect(builder).toContain("Hero saved to the draft.");
+    expect(builder).toContain('window.location.hash !== "#add-photos"');
+    expect(builder).toContain("choose an approved Image or Gallery component");
+    expect(builder).not.toContain('{ type: "image", name: "Image", description: "Add an image with accessible text." }');
     expect(builder).toContain("LegacyBlockContentFields");
     expect(builder).toContain("Basic blocks");
     expect(builder).toContain('type: "location", name: "Location"');

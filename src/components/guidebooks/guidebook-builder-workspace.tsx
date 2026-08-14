@@ -162,6 +162,14 @@ export function GuidebookBuilderWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.workspaceId, draft.guidebookId]);
   useEffect(() => {
+    if (window.location.hash !== "#add-photos" || !canEdit) return;
+    const timer = window.setTimeout(() => {
+      setQuery("media");
+      setPicker(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canEdit]);
+  useEffect(() => {
     const selectPreviewBlock = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string; blockId?: string } | null;
@@ -1478,6 +1486,8 @@ function MediaPanel({
   }, [workspaceId, guidebookId]);
 
   const selected = block.content.mediaRefs[0];
+  const allowsMultiple = block.content.componentKey === "gallery";
+  const selectedIds = new Set(block.content.mediaRefs.map((item) => item.assetId));
   const selectedMedia = media.find((item) => item.id === selected?.assetId);
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -1501,7 +1511,10 @@ function MediaPanel({
     onMediaUploaded();
     onUpdate({
       ...block.content,
-      mediaRefs: [{ assetId: result.value.id, versionId: "v1", alt: "", decorative: false }],
+      mediaRefs: [
+        ...(allowsMultiple ? block.content.mediaRefs : []),
+        { assetId: result.value.id, versionId: "v1", alt: "", decorative: false },
+      ].slice(0, 12),
     });
   }
 
@@ -1509,6 +1522,11 @@ function MediaPanel({
     <div className="mt-5 space-y-4">
       {selected ? (
         <div className="rounded-xl border p-3">
+          {allowsMultiple ? (
+            <p className="mb-2 text-xs font-semibold">
+              {block.content.mediaRefs.length} photo{block.content.mediaRefs.length === 1 ? "" : "s"} selected
+            </p>
+          ) : null}
           {selectedMedia ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={selectedMedia.url} alt="" className="h-32 w-full rounded-lg object-cover" />
@@ -1565,15 +1583,19 @@ function MediaPanel({
             {media.map((item) => (
               <button
                 key={item.id}
-                onClick={() =>
+                onClick={() => {
+                  const nextRef = { assetId: item.id, versionId: "v1", alt: "", decorative: false };
                   onUpdate({
                     ...block.content,
-                    mediaRefs: [
-                      { assetId: item.id, versionId: "v1", alt: selected?.alt ?? "", decorative: false },
-                    ],
-                  })
-                }
-                className={`overflow-hidden rounded-lg border-2 ${item.id === selected?.assetId ? "border-emerald-700" : "border-transparent"}`}
+                    mediaRefs: allowsMultiple
+                      ? selectedIds.has(item.id)
+                        ? block.content.mediaRefs.filter((ref) => ref.assetId !== item.id)
+                        : [...block.content.mediaRefs, nextRef].slice(0, 12)
+                      : [{ ...nextRef, alt: selected?.alt ?? "" }],
+                  });
+                }}
+                aria-pressed={selectedIds.has(item.id)}
+                className={`overflow-hidden rounded-lg border-2 ${selectedIds.has(item.id) ? "border-emerald-700" : "border-transparent"}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={item.url} alt="" className="h-16 w-full object-cover" />
@@ -1618,7 +1640,6 @@ function Picker({
     { type: "contact", name: "Contact", description: "Add an authorized guest contact." },
     { type: "location", name: "Location", description: "Add a place, destination, and map link." },
     { type: "link", name: "Link", description: "Add a labeled destination link." },
-    { type: "image", name: "Image", description: "Add an image with accessible text." },
   ];
   const matchingBasicBlocks = basicBlocks.filter((item) =>
     `${item.name} ${item.description}`.toLowerCase().includes(query.toLowerCase()),
@@ -1653,6 +1674,9 @@ function Picker({
             className="min-h-10 w-full rounded-xl border pl-9"
           />
         </label>
+        <p className="mt-3 text-xs text-stone-500">
+          To add photos, choose an approved Image or Gallery component. After it is added, select the block and open its Media panel to upload or reuse an image.
+        </p>
         <div className="mt-4 flex gap-2 overflow-x-auto">
           {[
             "All",
