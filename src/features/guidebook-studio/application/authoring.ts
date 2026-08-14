@@ -370,7 +370,7 @@ export const updateGuidebookBrand = (
   executeMutation(
     deps,
     context,
-    "update-brand",
+    "draft-save",
     fingerprint(input),
     (draft) => ({ ...draft, brand: input.brand }),
   );
@@ -382,7 +382,7 @@ export const updateGuidebookDetails = (
   executeMutation(
     deps,
     context,
-    "update-details",
+    "draft-save",
     fingerprint(input),
     (draft) => ({
       ...draft,

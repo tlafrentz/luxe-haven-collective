@@ -219,6 +219,7 @@ describe("GB-001B authoring application", () => {
       "Your local guide to an effortless Mesa stay.",
     );
     expect(x.drafts.saves).toBe(1);
+    expect([...x.receipts.values.values()][0]?.operation).toBe("draft-save");
   });
   it("executes block create, update, visibility, reorder, duplicate, and delete", async () => {
     const x = setup();
