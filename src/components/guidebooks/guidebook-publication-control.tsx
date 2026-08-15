@@ -14,6 +14,7 @@ export function GuidebookPublicationControl({
   publicSlug,
   basePath,
   label = "Publish Guidebook",
+  isUpdate = false,
   mediaDimensions = {},
 }: {
   draft: GuidebookDraft;
@@ -21,6 +22,7 @@ export function GuidebookPublicationControl({
   publicSlug?: string;
   basePath?: string;
   label?: string;
+  isUpdate?: boolean;
   mediaDimensions?: MediaDimensionMap;
 }) {
   const [state, setState] = useState<
@@ -97,6 +99,12 @@ export function GuidebookPublicationControl({
   return (
     <section className="rounded-3xl border bg-white p-6">
       <h2 className="font-semibold">Publish current draft</h2>
+      {isUpdate ? (
+        <p className="mt-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-950">
+          Your live guide remains on the prior immutable version until you
+          publish this draft as a new version.
+        </p>
+      ) : null}
       <p className="mt-2 text-sm text-stone-600">
         {readiness.status === "ready"
           ? "The canonical draft is ready."

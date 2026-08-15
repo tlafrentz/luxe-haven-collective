@@ -291,6 +291,8 @@ export function GuidebookPublishWorkspace({
         canPublish={canPublish}
         publicSlug={publicSlug}
         basePath={basePath}
+        label={status === "published" ? "Publish Updated Version" : "Publish Guidebook"}
+        isUpdate={status === "published"}
         mediaDimensions={mediaDimensions}
       />
       {status === "published" ? (
