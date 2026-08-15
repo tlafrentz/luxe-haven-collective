@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { getGuidebookEditorRequest } from "@/app/actions/guidebook-studio";
 import { GuidebookNavigation } from "@/components/guidebooks/guidebook-navigation";
@@ -50,7 +49,7 @@ export default async function GuidebookSharePage({
               <CopyGuidebookLink path={path} />
               <ShareGuidebookLink path={path} title={result.guidebook.title} />
               <a
-                href={`/dashboard/guidebooks/${guidebookId}/share/qr`}
+                href={`/dashboard/guidebooks/${guidebookId}/share/qr?download=1`}
                 download
                 className="rounded-full border px-5 py-3 text-sm font-semibold"
               >
@@ -78,7 +77,11 @@ export default async function GuidebookSharePage({
               </Link>
             </div>
             <div className="mt-5 rounded-2xl border bg-white p-4">
-              <Image
+              {/* This authenticated image must be requested by the browser so
+                  the session cookie is retained. Next/Image optimization uses
+                  a server-side fetch that cannot access the viewer's session. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={`/dashboard/guidebooks/${guidebookId}/share/qr`}
                 width={192}
                 height={192}

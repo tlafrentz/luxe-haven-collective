@@ -7,6 +7,7 @@ export async function GET(request: Request, context: Readonly<{ params: Promise<
   const result = await getGuidebookEditorRequest(guidebookId);
   if (!result.ok || result.guidebook.status !== "published" || result.guidebook.public_url_status !== "active") return new Response("Unavailable", { status: 404 });
   const destination = `${new URL(request.url).origin}/stay/${result.guidebook.public_slug}?source=qr`;
+  const shouldDownload = new URL(request.url).searchParams.get("download") === "1";
   const svg = await QRCode.toString(destination, { type: "svg", errorCorrectionLevel: "M", margin: 4, width: 512, color: { dark: "#1c1917", light: "#ffffff" } });
-  return new Response(svg, { headers: { "content-type": "image/svg+xml; charset=utf-8", "content-disposition": `attachment; filename="guidebook-${guidebookId.slice(0, 8)}-qr.svg"`, "cache-control": "private, no-store", "x-guidebook-destination": destination } });
+  return new Response(svg, { headers: { "content-type": "image/svg+xml; charset=utf-8", "content-disposition": `${shouldDownload ? "attachment" : "inline"}; filename="guidebook-${guidebookId.slice(0, 8)}-qr.svg"`, "cache-control": "private, no-store", "x-guidebook-destination": destination } });
 }

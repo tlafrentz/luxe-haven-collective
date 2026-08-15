@@ -22,10 +22,26 @@ describe("Guidebook QR route", () => {
     const response = await GET(request, context);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("image/svg+xml");
+    expect(response.headers.get("content-disposition")).toMatch(/^inline;/);
     expect(response.headers.get("x-guidebook-destination")).toBe(
       `https://luxe.example/stay/${"a".repeat(24)}?source=qr`,
     );
     expect(editor).toHaveBeenCalledWith("guidebook-owner");
+  });
+  it("uses an attachment only for an explicit download", async () => {
+    editor.mockResolvedValue({
+      ok: true,
+      guidebook: {
+        status: "published",
+        public_url_status: "active",
+        public_slug: "a".repeat(24),
+      },
+    });
+    const response = await GET(
+      new Request(`${request.url}?download=1`),
+      context,
+    );
+    expect(response.headers.get("content-disposition")).toMatch(/^attachment;/);
   });
   it.each(["anonymous", "other-owner", "missing"])(
     "returns the same response for %s denial",
