@@ -135,6 +135,26 @@ function setup() {
 }
 
 describe("GB-001B authoring application", () => {
+  it("does not impose component-only requirements on migrated mixed drafts", () => {
+    const mixed: GuidebookDraft = {
+      ...draft(),
+      sections: [
+        {
+          id: "welcome",
+          name: "Welcome",
+          visible: true,
+          position: 0,
+          blocks: [
+            { id: "legacy", type: "rich-text", schemaVersion: GUIDEBOOK_BLOCK_SCHEMA, position: 0, visible: true, content: { text: "Welcome" } },
+            initialBlock("component", "gallery", 1, "gallery") as Extract<AuthoringBlock, { type: "component" }>,
+          ],
+        },
+      ],
+    };
+    const readiness = evaluateReadiness(mixed);
+    expect(readiness.issues.map((issue) => issue.code)).not.toContain("MISSING_WIFI_CARD");
+    expect(readiness.issues.map((issue) => issue.code)).not.toContain("MISSING_EMERGENCY_CONTACT_CARD");
+  });
   it("executes all six section commands with deterministic positions", async () => {
     const x = setup();
     let c = context({ commandId: "create" }),

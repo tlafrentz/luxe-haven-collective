@@ -164,11 +164,27 @@ export function GuidebookBuilderWorkspace({
   useEffect(() => {
     if (window.location.hash !== "#add-photos" || !canEdit) return;
     const timer = window.setTimeout(() => {
-      setQuery("media");
-      setPicker(true);
+      const existing = draft.sections
+        .flatMap((section) => section.blocks.map((block) => ({ section, block })))
+        .find(
+          ({ block }) =>
+            block.type === "component" &&
+            ["image", "gallery"].includes(block.content.componentKey),
+        );
+      if (existing) {
+        setSectionId(existing.section.id);
+        setBlockId(existing.block.id);
+        setHeroSelected(false);
+        setPanel("media");
+        setMobileInspectorOpen(true);
+      } else {
+        setQuery("media");
+        setPicker(true);
+      }
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [canEdit]);
+  }, [canEdit, draft.sections]);
   useEffect(() => {
     const selectPreviewBlock = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;

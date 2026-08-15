@@ -514,10 +514,12 @@ export function evaluateReadiness(
     }
   }
   const components=visible.flatMap(section=>section.blocks.filter((block):block is ComponentBlock=>block.visible&&block.type==="component"));
+  const hasLegacyContent=visible.some(section=>section.blocks.some(block=>block.visible&&block.type!=="component"));
   if(components.length){
     const keys=new Set(components.map(block=>block.content.componentKey));
-    for(const [key,label] of [["hero","Hero"],["wifi_card","Wi-Fi Card"],["emergency_contact_card","Emergency Contact Card"],["departure_checklist","Departure Checklist"]] as const)
-      if(!keys.has(key))issues.push({code:`MISSING_${key.toUpperCase()}`,severity:"error",message:`Add a ${label} before publishing.`,target:"components"});
+    if(!hasLegacyContent)
+      for(const [key,label] of [["hero","Hero"],["wifi_card","Wi-Fi Card"],["emergency_contact_card","Emergency Contact Card"],["departure_checklist","Departure Checklist"]] as const)
+        if(!keys.has(key))issues.push({code:`MISSING_${key.toUpperCase()}`,severity:"error",message:`Add a ${label} before publishing.`,target:"components"});
     for(const block of components){
       const requiredVariables:Record<string,readonly string[]>={wifi_card:["wifi.network","wifi.password"],arrival_instructions:["stay.check_in_time"],departure_checklist:["stay.check_out_time"],emergency_contact_card:["emergency.contact"]};
       for(const key of requiredVariables[block.content.componentKey]??[]){const inline=Object.values(block.content.fields).some(value=>value.includes(`{{${key}}}`));if(!inline&&!block.content.variableBindings[key])issues.push({code:"VARIABLE_BINDING_MISSING",severity:"error",message:`Bind ${key} before publishing.`,blockId:block.id,target:`block:${block.id}`})}
@@ -525,7 +527,7 @@ export function evaluateReadiness(
       for(const media of block.content.mediaRefs)if(!media.decorative&&!media.alt.trim())issues.push({code:"MEDIA_ALT_MISSING",severity:"warning",message:"Add alt text to this image.",blockId:block.id,target:`block:${block.id}`});
       for(const media of block.content.mediaRefs)if(isLowResolution(mediaDimensions[media.assetId]))issues.push({code:"IMAGE_LOW_RESOLUTION",severity:"warning",message:"This image is lower resolution than recommended; consider replacing it.",blockId:block.id,target:`block:${block.id}`});
     }
-    if(!keys.has("review_cta"))issues.push({code:"REVIEW_CTA_MISSING",severity:"warning",message:"Consider adding a Review CTA.",target:"components"});
+    if(!hasLegacyContent&&!keys.has("review_cta"))issues.push({code:"REVIEW_CTA_MISSING",severity:"warning",message:"Consider adding a Review CTA.",target:"components"});
   }
   return freeze({
     status: issues.some((issue) => issue.severity === "error")
