@@ -7,6 +7,7 @@ import {
   duplicateGuidebookBlock,
   duplicateGuidebookSection,
   loadGuidebookEngagementSummary,
+  moveGuidebookMediaToSection,
   publishGuidebookVersion,
   reorderGuidebookBlocks,
   reorderGuidebookSections,
@@ -240,6 +241,36 @@ describe("GB-001B authoring application", () => {
     );
     expect(x.drafts.saves).toBe(1);
     expect([...x.receipts.values.values()][0]?.operation).toBe("draft-save");
+  });
+  it("moves one Gallery photo into a chosen section as an Image block", async () => {
+    const x = setup();
+    x.drafts.value = {
+      ...draft(),
+      sections: [
+        {
+          id: "s1", name: "Welcome", visible: true, position: 0,
+          blocks: [{
+            ...(initialBlock("component", "gallery", 0, "gallery") as Extract<AuthoringBlock, { type: "component" }>),
+            content: {
+              ...(initialBlock("component", "gallery", 0, "gallery") as Extract<AuthoringBlock, { type: "component" }>).content,
+              mediaRefs: [
+                { assetId: "gbm_photo_one", versionId: "v1", alt: "Pool", decorative: false },
+                { assetId: "gbm_photo_two", versionId: "v1", alt: "Patio", decorative: false },
+              ],
+            },
+          }],
+        },
+        { id: "s2", name: "Amenities", visible: true, position: 1, blocks: [] },
+      ],
+    };
+    const result = await moveGuidebookMediaToSection(x.deps, context({ commandId: "move-photo" }), {
+      sourceSectionId: "s1",
+      sourceBlockId: "gallery",
+      assetId: "gbm_photo_one",
+      targetSectionId: "s2",
+    });
+    expect(result.ok && (result.value.sections[0].blocks[0] as Extract<AuthoringBlock, { type: "component" }>).content.mediaRefs.map((item) => item.assetId)).toEqual(["gbm_photo_two"]);
+    expect(result.ok && (result.value.sections[1].blocks[0] as Extract<AuthoringBlock, { type: "component" }>).content).toMatchObject({ componentKey: "image", mediaRefs: [{ assetId: "gbm_photo_one", alt: "Pool" }] });
   });
   it("executes block create, update, visibility, reorder, duplicate, and delete", async () => {
     const x = setup();

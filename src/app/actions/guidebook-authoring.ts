@@ -19,6 +19,7 @@ import {
   duplicateGuidebookBlock,
   duplicateGuidebookSection,
   loadGuidebookEngagementSummary,
+  moveGuidebookMediaToSection,
   publishGuidebookVersion,
   restoreGuidebook,
   restoreHistoricalGuidebookContent,
@@ -84,7 +85,14 @@ type Command =
   | { type: "delete-block"; sectionId: string; blockId: string }
   | { type: "restore-sections"; sections: readonly AuthoringSection[] }
   | { type: "update-brand"; brand: GuidebookBrandIdentity }
-  | { type: "update-details"; description: string; heroHeadline: string };
+  | { type: "update-details"; description: string; heroHeadline: string }
+  | {
+      type: "move-media-to-section";
+      sourceSectionId: string;
+      sourceBlockId: string;
+      assetId: string;
+      targetSectionId: string;
+    };
 
 export async function uploadGuidebookMediaAction(formData: FormData) {
   try {
@@ -786,6 +794,8 @@ export async function guidebookAuthoringCommandAction(
         return updateGuidebookBrand(deps, context, input.command);
       case "update-details":
         return updateGuidebookDetails(deps, context, input.command);
+      case "move-media-to-section":
+        return moveGuidebookMediaToSection(deps, context, input.command);
     }
   } catch (error) {
     if (errorCode(error) === "GUIDEBOOK_UNAUTHORIZED") return denied();

@@ -469,6 +469,41 @@ export const updateGuidebookBlock = (
       };
     }),
   );
+export const moveGuidebookMediaToSection = (
+  deps: AuthoringDependencies,
+  context: CommandContext,
+  input: Readonly<{
+    sourceSectionId: string;
+    sourceBlockId: string;
+    assetId: string;
+    targetSectionId: string;
+  }>,
+) =>
+  executeMutation(deps, context, "draft-save", fingerprint(input), (draft, id) => {
+    const sourceSection = requireSection(draft, input.sourceSectionId),
+      sourceBlock = requireBlock(sourceSection, input.sourceBlockId);
+    if (sourceBlock.type !== "component")
+      throw failure("BLOCK_TYPE_UNSUPPORTED", "Only component media can be moved.");
+    const media = sourceBlock.content.mediaRefs.find((item) => item.assetId === input.assetId);
+    if (!media) throw failure("BLOCK_NOT_FOUND", "The photo was not found.");
+    requireSection(draft, input.targetSectionId);
+    const image = initialBlock("component", id(), 0, "image") as Extract<AuthoringBlock, { type: "component" }>;
+    return {
+      ...draft,
+      sections: draft.sections.map((section) => {
+        let blocks = section.blocks;
+        if (section.id === input.sourceSectionId)
+          blocks = blocks.map((block) =>
+            block.id === sourceBlock.id && block.type === "component"
+              ? { ...block, content: { ...block.content, mediaRefs: block.content.mediaRefs.filter((item) => item.assetId !== input.assetId) } }
+              : block,
+          );
+        if (section.id === input.targetSectionId)
+          blocks = [...blocks, { ...image, position: blocks.length, content: { ...image.content, mediaRefs: [media] } }];
+        return { ...section, blocks: blocks.map((block, position) => ({ ...block, position })) };
+      }),
+    };
+  });
 export const reorderGuidebookBlocks = (
   deps: AuthoringDependencies,
   context: CommandContext,

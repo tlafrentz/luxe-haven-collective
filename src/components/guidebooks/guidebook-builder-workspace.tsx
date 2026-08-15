@@ -714,11 +714,23 @@ export function GuidebookBuilderWorkspace({
                   block={block}
                   panel={panel}
                   sectionName={section?.name}
+                  sectionId={section?.id}
+                  sections={draft.sections}
                   workspaceId={draft.workspaceId}
                   guidebookId={draft.guidebookId}
                   canEdit={canEdit}
                   onDirty={() => setSave("unsaved")}
                   onMediaUploaded={refreshMediaDimensions}
+                  onMoveMedia={(assetId, targetSectionId) => {
+                    if (!section || !block) return Promise.resolve(false);
+                    return command({
+                      type: "move-media-to-section",
+                      sourceSectionId: section.id,
+                      sourceBlockId: block.id,
+                      assetId,
+                      targetSectionId,
+                    });
+                  }}
                   onUpdate={(value) =>
                     section &&
                     command({
@@ -1170,22 +1182,28 @@ function PropertyPanel({
   block,
   panel,
   sectionName,
+  sectionId,
+  sections,
   workspaceId,
   guidebookId,
   canEdit,
   onDirty,
   onUpdate,
   onMediaUploaded,
+  onMoveMedia,
 }: {
   block?: AuthoringBlock;
   panel: BuilderPanel;
   sectionName?: string;
+  sectionId?: string;
+  sections: GuidebookDraft["sections"];
   workspaceId: string;
   guidebookId: string;
   canEdit: boolean;
   onDirty: () => void;
   onUpdate: (block: AuthoringBlock) => void;
   onMediaUploaded: () => void;
+  onMoveMedia: (assetId: string, targetSectionId: string) => Promise<boolean>;
 }) {
   if (!block)
     return (
@@ -1240,6 +1258,9 @@ function PropertyPanel({
           canEdit={canEdit}
           onUpdate={update}
           onMediaUploaded={onMediaUploaded}
+          sectionId={sectionId}
+          sections={sections}
+          onMoveMedia={onMoveMedia}
         />
       );
     if (panel === "actions")
@@ -1477,6 +1498,9 @@ function MediaPanel({
   canEdit,
   onUpdate,
   onMediaUploaded,
+  sectionId,
+  sections,
+  onMoveMedia,
 }: {
   block: Extract<AuthoringBlock, { type: "component" }>;
   workspaceId: string;
@@ -1484,6 +1508,9 @@ function MediaPanel({
   canEdit: boolean;
   onUpdate: (content: typeof block.content) => void;
   onMediaUploaded: () => void;
+  sectionId?: string;
+  sections: GuidebookDraft["sections"];
+  onMoveMedia: (assetId: string, targetSectionId: string) => Promise<boolean>;
 }) {
   const [media, setMedia] = useState<{ id: string; mimeType: string; url: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1565,15 +1592,42 @@ function MediaPanel({
                   />
                 </label>
                 {canEdit ? (
-                  <button
-                    onClick={() => onUpdate({
-                      ...block.content,
-                      mediaRefs: block.content.mediaRefs.filter((item) => item.assetId !== reference.assetId),
-                    })}
-                    className="mt-2 min-h-11 text-xs font-semibold text-red-700"
-                  >
-                    Remove photo {index + 1}
-                  </button>
+                  <div className="mt-3 space-y-2">
+                    {allowsMultiple ? (
+                      <div className="flex gap-2">
+                        <button type="button" disabled={index === 0} onClick={() => {
+                          const refs = [...block.content.mediaRefs];
+                          [refs[index - 1], refs[index]] = [refs[index]!, refs[index - 1]!];
+                          onUpdate({ ...block.content, mediaRefs: refs });
+                        }} className="min-h-11 rounded-lg border px-3 text-xs font-semibold disabled:opacity-40">Move up</button>
+                        <button type="button" disabled={index === block.content.mediaRefs.length - 1} onClick={() => {
+                          const refs = [...block.content.mediaRefs];
+                          [refs[index], refs[index + 1]] = [refs[index + 1]!, refs[index]!];
+                          onUpdate({ ...block.content, mediaRefs: refs });
+                        }} className="min-h-11 rounded-lg border px-3 text-xs font-semibold disabled:opacity-40">Move down</button>
+                      </div>
+                    ) : null}
+                    <label className="block text-xs font-semibold">
+                      Place photo in another section
+                      <select defaultValue="" onChange={(event) => {
+                        if (event.target.value) void onMoveMedia(reference.assetId, event.target.value);
+                      }} className="mt-1 min-h-11 w-full rounded-lg border px-2">
+                        <option value="">Choose section…</option>
+                        {sections.filter((section) => section.id !== sectionId).map((section) => (
+                          <option key={section.id} value={section.id}>{section.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      onClick={() => onUpdate({
+                        ...block.content,
+                        mediaRefs: block.content.mediaRefs.filter((item) => item.assetId !== reference.assetId),
+                      })}
+                      className="min-h-11 text-xs font-semibold text-red-700"
+                    >
+                      Remove photo {index + 1}
+                    </button>
+                  </div>
                 ) : null}
               </div>
             );
