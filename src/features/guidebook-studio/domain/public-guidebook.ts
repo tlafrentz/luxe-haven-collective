@@ -10,6 +10,7 @@ export type PublicGuidebookBlock = Readonly<{
     | "contact"
     | "checklist"
     | "image"
+    | "gallery"
     | "callout"
     | "location"
     | "link"
@@ -23,6 +24,7 @@ export type PublicGuidebookBlock = Readonly<{
   name?: string;
   role?: string;
   phone?: string;
+  images?: readonly Readonly<{ url: string; alt: string }>[];
 }>;
 export type PublicGuidebookView = Readonly<{
   title: string;
@@ -204,6 +206,23 @@ function mapBlock(block: Record<string, unknown>,media:Record<string,{url?:unkno
       title = sanitizePublicText(fields.title ?? fields.name ?? fields.label, 500),
       body = sanitizePublicText(fields.body ?? fields.description ?? fields.instructions ?? fields.subtitle ?? fields.alternative, 4000),
       componentText = [title, body].filter(Boolean).join("\n");
+    if (["image", "gallery"].includes(key)) {
+      const images = (Array.isArray(content.mediaRefs) ? content.mediaRefs : [])
+        .map((reference) => {
+          const ref = reference as Record<string, unknown>,
+            asset = media[String(ref.assetId ?? "")],
+            mediaUrl = asset && ["image/jpeg", "image/png", "image/webp", "image/avif"].includes(String(asset.mimeType))
+              ? sanitizePublicUrl(asset.url)
+              : null;
+          return mediaUrl
+            ? { url: mediaUrl, alt: sanitizePublicText(ref.alt, 500) }
+            : null;
+        })
+        .filter((item): item is { url: string; alt: string } => Boolean(item));
+      if (key === "gallery") return { id, type: "gallery", images };
+      const image = images[0];
+      return image ? { id, type: "image", ...image } : { id, type: "image" };
+    }
     if (["callout", "rule_card", "safety_notice", "critical_action_panel", "thank_you_panel"].includes(key))
       return { id, type: "callout", text: componentText };
     if (["arrival_instructions", "parking_card", "access_instructions", "wifi_card", "appliance_card", "step_list", "timeline"].includes(key))

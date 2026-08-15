@@ -1504,7 +1504,6 @@ function MediaPanel({
   const selected = block.content.mediaRefs[0];
   const allowsMultiple = block.content.componentKey === "gallery";
   const selectedIds = new Set(block.content.mediaRefs.map((item) => item.assetId));
-  const selectedMedia = media.find((item) => item.id === selected?.assetId);
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -1537,38 +1536,48 @@ function MediaPanel({
   return (
     <div className="mt-5 space-y-4">
       {selected ? (
-        <div className="rounded-xl border p-3">
-          {allowsMultiple ? (
-            <p className="mb-2 text-xs font-semibold">
-              {block.content.mediaRefs.length} photo{block.content.mediaRefs.length === 1 ? "" : "s"} selected
-            </p>
-          ) : null}
-          {selectedMedia ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={selectedMedia.url} alt="" className="h-32 w-full rounded-lg object-cover" />
-          ) : null}
-          <label className="mt-3 block text-xs font-semibold">
-            Alt text
-            <input
-              defaultValue={selected.alt}
-              onBlur={(event) =>
-                onUpdate({
-                  ...block.content,
-                  mediaRefs: [{ ...selected, alt: event.target.value }],
-                })
-              }
-              placeholder="Describe this image for guests using a screen reader"
-              className="mt-1 min-h-9 w-full rounded-lg border px-2 text-sm"
-            />
-          </label>
-          {canEdit ? (
-            <button
-              onClick={() => onUpdate({ ...block.content, mediaRefs: [] })}
-              className="mt-2 text-xs font-semibold text-red-700"
-            >
-              Remove image
-            </button>
-          ) : null}
+        <div className="space-y-3">
+          <p className="text-xs font-semibold">
+            {block.content.mediaRefs.length} photo{block.content.mediaRefs.length === 1 ? "" : "s"} selected
+          </p>
+          {block.content.mediaRefs.map((reference, index) => {
+            const asset = media.find((item) => item.id === reference.assetId);
+            return (
+              <div key={reference.assetId} className="rounded-xl border p-3">
+                {asset ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={asset.url} alt="" className="h-28 w-full rounded-lg object-cover" />
+                ) : null}
+                <label className="mt-3 block text-xs font-semibold">
+                  Alternative text for photo {index + 1}
+                  <input
+                    defaultValue={reference.alt}
+                    onBlur={(event) =>
+                      onUpdate({
+                        ...block.content,
+                        mediaRefs: block.content.mediaRefs.map((item) =>
+                          item.assetId === reference.assetId ? { ...item, alt: event.target.value } : item,
+                        ),
+                      })
+                    }
+                    placeholder="Describe this image for guests using a screen reader"
+                    className="mt-1 min-h-11 w-full rounded-lg border px-2 text-sm"
+                  />
+                </label>
+                {canEdit ? (
+                  <button
+                    onClick={() => onUpdate({
+                      ...block.content,
+                      mediaRefs: block.content.mediaRefs.filter((item) => item.assetId !== reference.assetId),
+                    })}
+                    className="mt-2 min-h-11 text-xs font-semibold text-red-700"
+                  >
+                    Remove photo {index + 1}
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-xl border border-dashed p-6 text-center text-sm text-stone-500">

@@ -69,6 +69,40 @@ const artifact: PublishedArtifactEnvelope<GuidebookArtifactPayload> = {
 };
 
 describe("public guidebook renderer", () => {
+  it("renders every approved Gallery media reference through the shared renderer", () => {
+    const view = guidebookPublicRenderer.render({
+      ...artifact,
+      payload: {
+        ...artifact.payload,
+        media: {
+          one: { url: "https://cdn.example.com/one.webp", mimeType: "image/webp" },
+          two: { url: "https://cdn.example.com/two.webp", mimeType: "image/webp" },
+        },
+        sections: [{
+          id: "welcome",
+          title: "Welcome",
+          blocks: [{
+            id: "gallery",
+            type: "component",
+            content: {
+              componentKey: "gallery",
+              mediaRefs: [
+                { assetId: "one", alt: "Living room" },
+                { assetId: "two", alt: "Patio" },
+              ],
+            },
+          }],
+        }],
+      },
+    });
+    expect(view.sections[0]?.blocks[0]).toMatchObject({
+      type: "gallery",
+      images: [
+        { url: "https://cdn.example.com/one.webp", alt: "Living room" },
+        { url: "https://cdn.example.com/two.webp", alt: "Patio" },
+      ],
+    });
+  });
   it("renders a deterministic public view from the immutable artifact", () => {
     const view = guidebookPublicRenderer.render(artifact);
 

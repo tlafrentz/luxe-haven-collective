@@ -386,6 +386,18 @@ function PublicBlock({
         caption={block.caption}
       />
     );
+  if (block.type === "gallery" && block.images?.length)
+    return (
+      <div className="grid gap-4 sm:grid-cols-2" aria-label="Photo gallery">
+        {block.images.map((item, index) => (
+          <ZoomImage
+            key={`${item.url}:${index}`}
+            url={item.url}
+            alt={item.alt}
+          />
+        ))}
+      </div>
+    );
   if (block.type === "link" && block.url)
     return (
       <a
