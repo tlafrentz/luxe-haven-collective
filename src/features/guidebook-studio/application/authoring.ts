@@ -651,12 +651,21 @@ export async function publishGuidebookVersion(
             .filter((section) => section.visible)
             .flatMap((section) =>
               section.blocks
-                .filter((block) => block.visible && block.type === "image")
-                .map(
-                  (block) => (block.content as { mediaRef: string }).mediaRef,
-                ),
+                .filter((block) => block.visible)
+                .flatMap((block) => {
+                  if (block.type === "image")
+                    return [
+                      (block.content as { mediaRef?: string }).mediaRef,
+                    ];
+                  if (block.type !== "component") return [];
+                  return (
+                    (block.content as {
+                      mediaRefs?: readonly Readonly<{ assetId?: string }>[];
+                    }).mediaRefs ?? []
+                  ).map((reference) => reference.assetId);
+                }),
             )
-            .filter(Boolean),
+            .filter((id): id is string => Boolean(id)),
         ),
       ].sort();
       if (mediaIds.length) {

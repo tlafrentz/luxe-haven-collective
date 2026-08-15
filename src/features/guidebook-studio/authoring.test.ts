@@ -668,6 +668,76 @@ describe("GB-001B authoring application", () => {
     expect(result).toMatchObject({ ok: false, code: "PUBLICATION_FAILED" });
     expect(cleanup).toEqual([[mediaRef]]);
   });
+  it("promotes governed component media into the immutable publication manifest", async () => {
+    const x = setup(),
+      first = `gbm_${"a".repeat(26)}`,
+      second = `gbm_${"b".repeat(26)}`,
+      component = {
+        ...initialBlock("component", "gallery", 0, "gallery"),
+        content: {
+          componentKey: "gallery",
+          componentVersionId: "gallery-v1",
+          source: "inline",
+          fields: {},
+          variableBindings: {},
+          mediaRefs: [
+            { assetId: first, versionId: "v1", alt: "Pool", decorative: false },
+            { assetId: second, versionId: "v1", alt: "Patio", decorative: false },
+          ],
+          layout: { variant: "standard", width: "standard", alignment: "left" },
+        },
+      } as AuthoringBlock;
+    x.drafts.value = {
+      ...draft(),
+      sections: [
+        {
+          ...draft().sections[0],
+          blocks: [
+            {
+              ...initialBlock("heading", "heading", 0),
+              content: { text: "Welcome", level: 2 },
+            } as HeadingBlock,
+            { ...component, position: 1 },
+          ],
+        },
+      ],
+    };
+    let promoted: readonly string[] = [],
+      publishedSnapshot: Readonly<Record<string, unknown>> | undefined;
+    const result = await publishGuidebookVersion(
+      {
+        ...x.deps,
+        properties: { async load() { return { name: "Retreat" }; } },
+        media: {
+          async promote(input) {
+            promoted = input.mediaIds;
+            return {
+              manifest: Object.fromEntries(input.mediaIds.map((id) => [id, {
+                url: `https://cdn.example/${id}`,
+                mimeType: "image/webp",
+              }])),
+              newlyPromoted: input.mediaIds,
+            };
+          },
+          async cleanupPromotion() { return { cleaned: [], failed: [] }; },
+        },
+        versions: {
+          async publish(input) {
+            publishedSnapshot = input.snapshot;
+            return { versionId: "published", version: 1 };
+          },
+        },
+      },
+      context({ commandId: "component-media" }),
+    );
+
+    expect(result).toMatchObject({ ok: true });
+    expect(promoted).toEqual([first, second]);
+    expect(publishedSnapshot?.media).toEqual({
+      [first]: { url: `https://cdn.example/${first}`, mimeType: "image/webp" },
+      [second]: { url: `https://cdn.example/${second}`, mimeType: "image/webp" },
+    });
+  });
 });
 
 describe("low-resolution image readiness", () => {
