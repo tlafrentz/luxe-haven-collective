@@ -139,6 +139,113 @@ function legacyProperty(projection: CanonicalPropertyProjection) {
     updated_at: projection.updatedAt,
   };
 }
+async function loadGuidebookLibraryPageFromAuthorizedScope(
+  admin: ReturnType<typeof createAdminClient>,
+  input: Readonly<{
+    workspaceId: string;
+    ownerId: string;
+    accessiblePropertyIds: readonly string[] | null;
+    query: string;
+    status: string;
+    sort: string;
+    offset: number;
+    limit: number;
+  }>,
+) {
+  const { data: capabilityRows, error: capabilityError } = await admin
+    .from("property_capability_enrollments")
+    .select("property_id")
+    .eq("workspace_id", input.workspaceId)
+    .eq("capability", "guidebook")
+    .eq("status", "enabled");
+  if (capabilityError) throw capabilityError;
+  const capabilityIds = (capabilityRows ?? [])
+    .map((row) => String(row.property_id))
+    .filter(
+      (id) =>
+        input.accessiblePropertyIds === null ||
+        input.accessiblePropertyIds.includes(id),
+    );
+  if (!capabilityIds.length) return [];
+  const [{ data: properties, error: propertyError }, { data: guidebooks, error: guidebookError }] =
+    await Promise.all([
+      admin
+        .from("properties")
+        .select("id,name,updated_at")
+        .eq("owner_id", input.ownerId)
+        .in("id", capabilityIds),
+      admin
+        .from("guidebooks")
+        .select("property_id,status,title,updated_at,active_version_id")
+        .eq("workspace_id", input.workspaceId)
+        .in("property_id", capabilityIds),
+    ]);
+  if (propertyError || guidebookError)
+    throw propertyError ?? guidebookError;
+  const activeIds = (guidebooks ?? [])
+      .map((guidebook) => guidebook.active_version_id)
+      .filter((id): id is string => typeof id === "string"),
+    { data: versions, error: versionError } = activeIds.length
+      ? await admin
+          .from("guidebook_versions")
+          .select("id,published_at")
+          .in("id", activeIds)
+      : { data: [], error: null };
+  if (versionError) throw versionError;
+  const guidebookByProperty = new Map(
+      (guidebooks ?? []).map((guidebook) => [
+        String(guidebook.property_id),
+        guidebook,
+      ]),
+    ),
+    publishedAtByVersion = new Map(
+      (versions ?? []).map((version) => [
+        String(version.id),
+        String(version.published_at ?? ""),
+      ]),
+    ),
+    query = input.query.trim().toLocaleLowerCase(),
+    rows = (properties ?? [])
+      .map((property) => {
+        const guidebook = guidebookByProperty.get(String(property.id));
+        return {
+          propertyId: String(property.id),
+          propertyName: String(property.name),
+          propertyUpdatedAt: String(property.updated_at),
+          guidebookStatus: guidebook ? String(guidebook.status) : "missing",
+          guidebookTitle: guidebook ? String(guidebook.title) : "",
+          guidebookUpdatedAt: guidebook
+            ? String(guidebook.updated_at)
+            : String(property.updated_at),
+          publishedAt: guidebook?.active_version_id
+            ? publishedAtByVersion.get(String(guidebook.active_version_id)) ?? ""
+            : "",
+        };
+      })
+      .filter(
+        (row) =>
+          (!query ||
+            `${row.propertyName} ${row.guidebookTitle}`
+              .toLocaleLowerCase()
+              .includes(query)) &&
+          (!input.status ||
+            input.status === "all" ||
+            row.guidebookStatus === input.status),
+      );
+  rows.sort((a, b) => {
+    if (input.sort === "property")
+      return a.propertyName.localeCompare(b.propertyName);
+    if (input.sort === "published")
+      return b.publishedAt.localeCompare(a.publishedAt);
+    if (input.sort === "status")
+      return a.guidebookStatus.localeCompare(b.guidebookStatus);
+    return b.guidebookUpdatedAt.localeCompare(a.guidebookUpdatedAt);
+  });
+  const total = rows.length;
+  return rows
+    .slice(input.offset, input.offset + input.limit)
+    .map((row) => ({ property_id: row.propertyId, total_count: total }));
+}
 export async function getGuidebookStudioRequest(
   workspaceId?: string,
   options: {
@@ -169,7 +276,7 @@ export async function getGuidebookStudioRequest(
           : access.propertyAccess.type === "selected"
             ? [...access.propertyAccess.propertyIds]
             : [],
-      { data: pageRows, error: pageError } = await admin.rpc(
+      { data: rpcPageRows, error: pageError } = await admin.rpc(
         "list_guidebook_library_page",
         {
           p_workspace_id: access.workspaceId,
@@ -181,7 +288,20 @@ export async function getGuidebookStudioRequest(
           p_limit: pageSize,
           p_property_ids: accessiblePropertyIds,
         },
-      ),
+      );
+    const pageRows =
+        !pageError && (rpcPageRows ?? []).length
+          ? rpcPageRows
+          : await loadGuidebookLibraryPageFromAuthorizedScope(admin, {
+              workspaceId: access.workspaceId,
+              ownerId: access.ownerId,
+              accessiblePropertyIds,
+              query: (options.q ?? "").slice(0, 120),
+              status: options.status ?? "",
+              sort,
+              offset: from,
+              limit: pageSize,
+            }),
       propertyIds = (pageRows ?? []).map((row: { property_id: string }) =>
         String(row.property_id),
       ),
@@ -216,10 +336,10 @@ export async function getGuidebookStudioRequest(
               : undefined,
         ),
       ]);
-    if (pageError || guidebookError || propertyError)
+    if (guidebookError || propertyError)
       throw new Error(
         `guidebook_workspace_unavailable: ${
-          (pageError ?? guidebookError ?? propertyError)?.message ?? "unknown"
+          (guidebookError ?? propertyError)?.message ?? "unknown"
         }`,
       );
     const guidebooks = (guidebookRows ?? []).filter(
