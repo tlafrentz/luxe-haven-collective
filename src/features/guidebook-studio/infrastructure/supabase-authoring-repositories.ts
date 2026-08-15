@@ -284,7 +284,7 @@ export class SupabaseGuidebookPropertyProjectionRepository
     const { data, error } = await this.client
       .from("properties")
       .select(
-        "id,name,address,address_line_1,city,state,timezone,check_in_time,check_out_time,amenities,house_rules,featured_image,updated_at",
+        "id,name,address_line_1,city,state,timezone,check_in_time,check_out_time,amenities,house_rules,featured_image,updated_at",
       )
       .eq("id", scope.propertyId)
       .eq("owner_id", scope.workspaceId)
@@ -294,7 +294,7 @@ export class SupabaseGuidebookPropertyProjectionRepository
     return Object.freeze({
       propertyId: String(data.id),
       name: String(data.name),
-      address: String(data.address_line_1 ?? data.address ?? ""),
+      address: String(data.address_line_1 ?? ""),
       city: String(data.city ?? ""),
       state: String(data.state ?? ""),
       timezone: String(data.timezone ?? ""),
