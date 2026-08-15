@@ -145,9 +145,17 @@ export const guidebookPublicRenderer: ArtifactRenderer<
           .map((section) => ({
             id: String(section.id ?? section.section_key),
             key: slug(
-              String(section.section_key ?? section.key ?? section.title),
+              String(
+                section.section_key ??
+                  section.key ??
+                  section.title ??
+                  section.name,
+              ),
             ),
-            title: sanitizePublicText(section.title ?? "Guide", 200),
+            title: sanitizePublicText(
+              section.title ?? section.name ?? "Guide",
+              200,
+            ),
             blocks: Object.freeze(
               (
                 (section.guidebook_blocks as Record<string, unknown>[]) ??

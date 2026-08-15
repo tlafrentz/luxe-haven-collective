@@ -69,6 +69,24 @@ const artifact: PublishedArtifactEnvelope<GuidebookArtifactPayload> = {
 };
 
 describe("public guidebook renderer", () => {
+  it("preserves canonical authoring section names in published snapshots", () => {
+    const view = guidebookPublicRenderer.render({
+      ...artifact,
+      payload: {
+        ...artifact.payload,
+        sections: [
+          { id: "welcome", name: "Welcome", position: 0, blocks: [] },
+          { id: "arrival", name: "Arrival", position: 1, blocks: [] },
+        ],
+      },
+    });
+
+    expect(view.sections.map(({ key, title }) => ({ key, title }))).toEqual([
+      { key: "welcome", title: "Welcome" },
+      { key: "arrival", title: "Arrival" },
+    ]);
+  });
+
   it("renders every approved Gallery media reference through the shared renderer", () => {
     const view = guidebookPublicRenderer.render({
       ...artifact,
