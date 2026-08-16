@@ -19,6 +19,7 @@ Observed: 2026-08-15 (America/Chicago)
 - Provisioning deployment: `dpl_5N1Kcm4Xe9Ukkj7W8TwKEmYWgfy1`
 - Worker recovery deployment: `dpl_Fp8t5TJVB7wK5JKkXQuHuchRrVaJ`
 - Restored-safety deployment: `dpl_69fMGD5s3QBs8qUJVQszpyWFBbsR`
+- AI key authentication deployment: `dpl_5JDqdxkMQ4w3LEKUsbJoGniCHbEQ`
 - Canonical alias: `https://luxehavencollective.co` (HTTP 200)
 
 The corrective deployments were permitted only after deployed verification
@@ -146,6 +147,36 @@ The following production scenarios remain untested because extraction never
 completed: fact/source review, missing and conflicting fact resolution,
 high-risk confirmation, generation, section regeneration, stale rejection,
 revision restoration, and generated-draft renderer verification.
+
+### Production key re-verification
+
+On 2026-08-15, Vercel reported one encrypted `AI_GATEWAY_API_KEY` attached to
+Preview and Production in the same linked project. The unchanged verified
+candidate `f636fd071299dc61a67a22a9c18f5af656bca390` was redeployed afterward as
+`dpl_5JDqdxkMQ4w3LEKUsbJoGniCHbEQ`; its production build passed and the
+canonical alias was updated.
+
+The single sanitized Gateway probe still returned HTTP 401. Follow-up
+diagnostics showed that `vercel env run -e production` did not materialize the
+encrypted `AI_GATEWAY_API_KEY` into the verification process (`keyPresent` was
+false), while an OIDC token was present. The probe therefore could not prove
+the newly stored key itself. No second provider invocation was made, no worker
+gate was opened, and no controlled resource was created.
+
+Verified configuration facts:
+
+- The encrypted key is registered on the linked Vercel project for Production.
+- The deployment occurred after the key was added.
+- The adapter targets `https://ai-gateway.vercel.sh/v1/responses` with a Bearer
+  authorization header.
+- The locked model remains `openai/gpt-5.4-mini-2026-03-17`.
+- No second `AI_GATEWAY_API_KEY` entry is visible in project configuration.
+- Team Gateway entitlement/credits and the actual encrypted key value are not
+  observable through the available CLI boundary and remain to be confirmed.
+
+Per the authentication gate, controlled execution stopped here. The Creation
+Assistant remained disabled and kill-switched, cohorts remained empty, and no
+prompt or response content was written to application logs.
 
 ## Safety state and resource ledger
 
