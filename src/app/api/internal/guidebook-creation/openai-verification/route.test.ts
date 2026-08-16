@@ -86,14 +86,15 @@ describe("server-only OpenAI runtime verification", () => {
   it("allows one smoke execution even when catalog discovery already exists", async () => {
     enqueue("production_verification_attempts", { data: null, error: null });
     enqueue("production_verification_runs", { data: { id: "run" }, error: null });
-    enqueue("production_verification_instances", { data: { id: "instance", latest_attempt_number: 2 }, error: null });
+    enqueue("production_verification_instances", { data: { id: "instance" }, error: null });
+    enqueue("production_verification_attempts", { data: { attempt_number: 7 }, error: null });
     verifyNanoGeneration.mockResolvedValue({ httpStatus: 200, openaiRequestId: "req_safe", model: "gpt-5-nano", usage: { input_tokens: 20, output_tokens: 5, reasoning_tokens: 3, calculated_cost_usd: 0.000003, latency_ms: 125 } });
     const response = await POST(request("POST"));
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toEqual(expect.objectContaining({ ok: true, httpStatus: 200, openaiRequestId: "req_safe", model: "gpt-5-nano", inputTokens: 20, outputTokens: 5, reasoningTokens: 3, calculatedCostUsd: 0.000003, latencyMs: 125 }));
     expect(verifyNanoGeneration).toHaveBeenCalledOnce();
-    expect(inserts).toContainEqual(expect.objectContaining({ executor_code: "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V1", idempotency_key_hash: OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH }));
+    expect(inserts).toContainEqual(expect.objectContaining({ executor_code: "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V1", idempotency_key_hash: OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH, attempt_number: 8 }));
     expect(eqCalls).not.toContainEqual(["id", "catalog-attempt"]);
     expect(tables).not.toEqual(expect.arrayContaining(["guidebook_creation_jobs", "guidebook_creation_sources", "guidebooks", "properties"]));
   });

@@ -53,18 +53,26 @@ export async function POST(request: NextRequest) {
   if (run.error || !run.data) return failure("OPENAI_VERIFICATION_RUN_UNAVAILABLE", 503, correlationId);
   const instance = await db
     .from("production_verification_instances")
-    .select("id,latest_attempt_number")
+    .select("id")
     .eq("verification_run_id", run.data.id)
     .eq("scenario_code", "PV-009")
     .eq("scenario_version", 1)
     .maybeSingle();
   if (instance.error || !instance.data) return failure("OPENAI_VERIFICATION_CAPABILITY_UNAVAILABLE", 503, correlationId);
+  const latestAttempt = await db
+    .from("production_verification_attempts")
+    .select("attempt_number")
+    .eq("scenario_instance_id", instance.data.id)
+    .order("attempt_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latestAttempt.error) return failure("OPENAI_VERIFICATION_OPERATION_READ_FAILED", 503, correlationId);
 
   const attemptId = randomUUID();
   const claimed = await db.from("production_verification_attempts").insert({
     id: attemptId,
     scenario_instance_id: instance.data.id,
-    attempt_number: Number(instance.data.latest_attempt_number) + 1,
+    attempt_number: Number(latestAttempt.data?.attempt_number ?? 0) + 1,
     executor_code: EXECUTOR_CODE,
     initiated_by: authorization.actorId,
     correlation_id: correlationId,
@@ -72,7 +80,7 @@ export async function POST(request: NextRequest) {
     status: "running",
     started_at: new Date().toISOString(),
   });
-  if (claimed.error) return failure(claimed.error.code === "23505" ? "OPENAI_VERIFICATION_REPLAY_REJECTED" : "OPENAI_VERIFICATION_OPERATION_CLAIM_FAILED", claimed.error.code === "23505" ? 409 : 503, correlationId);
+  if (claimed.error) return failure("OPENAI_VERIFICATION_OPERATION_CLAIM_FAILED", 503, correlationId);
 
   const provider = new DirectOpenAiCreationProvider({ apiKey, projectId, extractionModel: OPENAI_EXTRACTION_MODEL, generationModel: OPENAI_GENERATION_MODEL, timeoutMs: 30_000, allowExplicitFallback: false });
   const controller = new AbortController();
