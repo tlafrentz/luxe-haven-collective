@@ -30,13 +30,23 @@ Required runtime configuration:
 - `GUIDEBOOK_CREATION_ENABLED=true`
 - `GUIDEBOOK_CREATION_KILL_SWITCH` is not `true`
 - `GUIDEBOOK_CREATION_INTERNAL_COHORT` contains the explicit actor or workspace ID
-- production: `GUIDEBOOK_CREATION_PROVIDER_URL` and `GUIDEBOOK_CREATION_PROVIDER_KEY`
+- production adapter: `GUIDEBOOK_CREATION_ADAPTER=vercel-ai-gateway`
+- locked model: `GUIDEBOOK_CREATION_PROVIDER_MODEL=openai/gpt-5.4-mini-2026-03-17`
+- bounded timeout: `GUIDEBOOK_CREATION_PROVIDER_TIMEOUT_MS` (5,000–120,000 ms; default 60,000)
+- authentication: Vercel-provided `VERCEL_OIDC_TOKEN`, with `AI_GATEWAY_API_KEY` only as an explicit non-Vercel fallback
 - controlled deterministic verification only: `GUIDEBOOK_CREATION_ADAPTER=deterministic`
 - processor: `GUIDEBOOK_CREATION_SCHEDULER_SECRET` or the established `CRON_SECRET`
 
 `GUIDEBOOK_CREATION_VERTICAL_SLICE_VERIFIED=true` is required before the
 capability projection can report customer visibility. No customer component
 currently consumes that projection, so Auto-create remains hidden regardless.
+
+Provider requests set `store: false`, read exact private source objects through
+the owning storage repository, and persist only request identifiers plus
+bounded token counts. Raw uploads, prompts, responses, credentials, and
+generated content are never written to provider telemetry or ordinary logs.
+The provider factory returns unavailable unless the exact adapter, locked
+model, credential, timeout, and kill-switch state all validate.
 
 ## Protected data limitation
 
