@@ -216,6 +216,11 @@ or generation. Changing the locked model identifier requires a separately
 reviewed candidate correction; it was not performed during this authentication-
 only verification.
 
+After reconciliation, the diagnostic's POST operation was removed to prevent a
+second provider invocation. Final deployment
+`dpl_EgvaqPoeS2trWeSXeXxhHyhx4P3W` retains only the administrator-protected
+presence check. Its focused tests, typecheck, and production build passed.
+
 ## Safety state and resource ledger
 
 Sanitized production configuration after verification:
@@ -254,6 +259,7 @@ upload-to-saved-draft journey remains incomplete solely at the production
 provider-authentication boundary. Auto-create remains hidden and kill-switched,
 the cohort is empty, and no release tag was created.
 
-The next bounded unblock is to provision a valid `AI_GATEWAY_API_KEY` through an
-approved credential-management path, then repeat the cleaned controlled journey
-on exactly one newly provisioned controlled property.
+The next bounded unblock is to review and lock the available
+`openai/gpt-5.4-mini` model identifier, update the provider candidate without
+changing the Creation Assistant architecture, and repeat one sanitized
+authentication request before provisioning any controlled resource.
