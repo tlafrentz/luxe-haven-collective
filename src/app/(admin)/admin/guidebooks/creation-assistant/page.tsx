@@ -226,8 +226,8 @@ function ControlledPropertyProvisioning({
                   value={`controlled-guidebook-property:${String(run.id)}:${String(entitlement.id)}`}
                 />
                 <p className="md:col-span-3 text-sm">
-                  <strong>{String(customer.display_name)}</strong> · grant{" "}
-                  {String(entitlement.id)} · run {String(run.id)}
+                  <strong>{String(customer.account_type)} customer</strong> ·
+                  grant {String(entitlement.id)} · run {String(run.id)}
                 </p>
                 <label className="text-sm font-semibold">
                   Internal name

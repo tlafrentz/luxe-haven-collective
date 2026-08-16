@@ -161,7 +161,7 @@ export async function getControlledProvisioningProjection() {
     ] = await Promise.all([
       db
         .from("customer_accounts")
-        .select("id,tenant_id,display_name,status")
+        .select("id,tenant_id,account_type,status")
         .eq("status", "active")
         .order("display_name"),
       db
