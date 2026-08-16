@@ -31,19 +31,17 @@ export class HttpCreationProvider implements ExtractionProvider,GenerationProvid
 }
 
 const GATEWAY_ENDPOINT="https://ai-gateway.vercel.sh/v1/responses";
-export const CREATION_PROVIDER_CANDIDATE="openai/gpt-5.4-mini";
+export const CREATION_PROVIDER_CANDIDATE="openai/gpt-5-mini";
 const OPENAI_ENDPOINT="https://api.openai.com/v1/responses";
-export const OPENAI_EXTRACTION_MODEL="gpt-5.4-nano";
-export const OPENAI_GENERATION_MODEL="gpt-5.4-mini";
-export const OPENAI_EXPLICIT_FALLBACK_MODEL="gpt-5.4";
+export const OPENAI_EXTRACTION_MODEL="gpt-5-nano";
+export const OPENAI_GENERATION_MODEL="gpt-5-mini";
 export const GUIDEBOOK_COST_CEILING_USD=1;
 
 type DirectOpenAiConfig=Readonly<{apiKey:string;extractionModel:string;generationModel:string;timeoutMs:number;allowExplicitFallback:boolean}>;
 type DirectStage="extraction"|"generation";
 const MODEL_PRICES:Readonly<Record<string,Readonly<{input:number;cachedInput:number;output:number}>>>={
-  [OPENAI_EXTRACTION_MODEL]:{input:.2,cachedInput:.02,output:1.25},
-  [OPENAI_GENERATION_MODEL]:{input:.75,cachedInput:.075,output:4.5},
-  [OPENAI_EXPLICIT_FALLBACK_MODEL]:{input:2.5,cachedInput:.25,output:15},
+  [OPENAI_EXTRACTION_MODEL]:{input:.05,cachedInput:.005,output:.4},
+  [OPENAI_GENERATION_MODEL]:{input:.25,cachedInput:.025,output:2},
 };
 
 export class DirectOpenAiCreationProvider implements ExtractionProvider,GenerationProvider{
@@ -63,8 +61,8 @@ export class DirectOpenAiCreationProvider implements ExtractionProvider,Generati
     const safeFacts=input.facts.map(f=>({id:f.id,category:f.category,field:f.field,value:f.correctedValue??f.normalizedValue,sourceId:f.sourceId}));
     const text=["Analyze unresolved conflicts conservatively, then create one guidebook draft proposal as JSON. Use only supplied confirmed facts. Never invent operational information.",`Template version: ${input.templateVersionId}`,`Allowed components: ${JSON.stringify(Object.fromEntries(input.allowedComponents))}`,`Presentation instructions: ${JSON.stringify(input.instructions)}`,`Confirmed facts: ${JSON.stringify(safeFacts)}`].join("\n");
     const requestedFallback=input.instructions.explicitModelFallback===true;
-    if(requestedFallback&&!this.config.allowExplicitFallback)throw new CreationProviderError("terminal","The requested model fallback policy is disabled.",false);
-    const model=requestedFallback?OPENAI_EXPLICIT_FALLBACK_MODEL:this.config.generationModel;
+    if(requestedFallback)throw new CreationProviderError("terminal","The requested model fallback policy is disabled.",false);
+    const model=this.config.generationModel;
     const output=await this.request("generation",model,[{type:"input_text",text}],input.correlationId,input.signal,12000);
     return{proposal:parseResponse(output.text,guidebookProposalSchema),requestId:output.requestId,usage:output.usage};
   }
@@ -111,7 +109,8 @@ export function productionProviderFromEnvironment(){
   if(process.env.GUIDEBOOK_CREATION_ADAPTER==="openai-direct"){
     const apiKey=process.env.OPENAI_API_KEY,extractionModel=process.env.GUIDEBOOK_CREATION_EXTRACTION_MODEL??OPENAI_EXTRACTION_MODEL,generationModel=process.env.GUIDEBOOK_CREATION_GENERATION_MODEL??OPENAI_GENERATION_MODEL;
     if(!apiKey||extractionModel!==OPENAI_EXTRACTION_MODEL||generationModel!==OPENAI_GENERATION_MODEL)return null;
-    return new DirectOpenAiCreationProvider({apiKey,extractionModel,generationModel,timeoutMs:timeout,allowExplicitFallback:process.env.GUIDEBOOK_CREATION_ALLOW_GPT54_FALLBACK==="true"});
+    if(process.env.GUIDEBOOK_CREATION_ALLOW_GPT54_FALLBACK==="true")return null;
+    return new DirectOpenAiCreationProvider({apiKey,extractionModel,generationModel,timeoutMs:timeout,allowExplicitFallback:false});
   }
   if(process.env.GUIDEBOOK_CREATION_ADAPTER==="vercel-ai-gateway"){
     const token=process.env.AI_GATEWAY_API_KEY??process.env.VERCEL_OIDC_TOKEN,model=process.env.GUIDEBOOK_CREATION_PROVIDER_MODEL;

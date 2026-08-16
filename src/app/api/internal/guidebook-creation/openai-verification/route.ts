@@ -9,17 +9,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PROVIDER = "openai";
-const METADATA_URL = `https://api.openai.com/v1/models/${OPENAI_EXTRACTION_MODEL}`;
-const CATALOG_URL = "https://api.openai.com/v1/models";
-const EXECUTOR_CODE = "VERIFY_OPENAI_MODEL_METADATA_GPT54_NANO";
+const RESPONSES_URL = "https://api.openai.com/v1/responses";
+const EXECUTOR_CODE = "VERIFY_OPENAI_RESPONSES_GPT5_NANO";
 const IDEMPOTENCY_HASH = createHash("sha256")
-  .update("guidebook:openai:model-metadata:gpt-5.4-nano:v1")
+  .update("guidebook:openai:responses:gpt-5-nano:v1")
   .digest("hex");
-const CATALOG_EXECUTOR_CODE = "VERIFY_OPENAI_APPROVED_MODEL_CATALOG";
-const CATALOG_IDEMPOTENCY_HASH = createHash("sha256")
-  .update("guidebook:openai:approved-model-catalog:v1")
-  .digest("hex");
-const APPROVED_MODEL_PATTERNS = ["gpt-5.4", "gpt-5", "nano", "mini"] as const;
 
 export async function GET(request: NextRequest) {
   const correlationId = randomUUID();
@@ -39,7 +33,8 @@ export async function POST(request: NextRequest) {
   const authorization = await authorize(request);
   if (!authorization.ok) return failure(authorization.code, authorization.status, correlationId);
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return failure("OPENAI_VERIFICATION_CREDENTIAL_MISSING", 503, correlationId);
+  const projectId = process.env.OPENAI_PROJECT_ID;
+  if (!apiKey || !projectId) return failure("OPENAI_VERIFICATION_CREDENTIAL_MISSING", 503, correlationId);
 
   const db = createAdminClient();
   const prior = await db
@@ -84,90 +79,36 @@ export async function POST(request: NextRequest) {
 
   const started = performance.now();
   try {
-    const response = await fetch(METADATA_URL, {
-      method: "GET",
-      headers: { authorization: `Bearer ${apiKey}` },
+    const response = await fetch(RESPONSES_URL, {
+      method: "POST",
+      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json", "OpenAI-Project": projectId, "x-client-request-id": correlationId },
+      body: JSON.stringify({ model: OPENAI_EXTRACTION_MODEL, store: false, input: "Return a JSON object with one boolean field named ok.", text: { format: { type: "json_object" } }, reasoning: { effort: "low" }, max_output_tokens: 40 }),
       signal: AbortSignal.timeout(30_000),
     });
     const latencyMs = Math.max(0, Math.round(performance.now() - started));
     const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    const usage = body.usage && typeof body.usage === "object" ? body.usage as Record<string, unknown> : {};
+    const inputTokens = finite(usage.input_tokens);
+    const outputTokens = finite(usage.output_tokens);
+    const calculatedCostUsd = Number(((inputTokens * 0.05 + outputTokens * 0.4) / 1_000_000).toFixed(8));
     const result = {
       httpStatus: response.status,
-      openaiRequestId: response.headers.get("x-request-id"),
-      model: typeof body.id === "string" ? body.id : null,
+      openaiRequestId: response.headers.get("x-request-id") ?? (typeof body.id === "string" ? body.id : null),
+      model: typeof body.model === "string" ? body.model : OPENAI_EXTRACTION_MODEL,
       latencyMs,
-      classification: response.ok ? "OPENAI_MODEL_METADATA_AVAILABLE" : safeHttpClassification(response.status),
+      inputTokens,
+      outputTokens,
+      calculatedCostUsd,
+      classification: response.ok ? "OPENAI_RESPONSES_AVAILABLE" : safeHttpClassification(response.status),
     };
     await complete(db, attemptId, response.ok ? "succeeded" : "failed", result);
-    if (!response.ok) return noStore({ ok: false, provider: PROVIDER, correlationId, ...result, inputTokens: 0, outputTokens: 0, calculatedCostUsd: 0 }, 502);
-    return noStore({ ok: true, provider: PROVIDER, correlationId, ...result, inputTokens: 0, outputTokens: 0, calculatedCostUsd: 0 });
+    if (!response.ok) return noStore({ ok: false, provider: PROVIDER, correlationId, ...result }, 502);
+    return noStore({ ok: true, provider: PROVIDER, correlationId, ...result });
   } catch (error) {
     const latencyMs = Math.max(0, Math.round(performance.now() - started));
     const result = { httpStatus: null, openaiRequestId: null, model: null, latencyMs, classification: safeTransportClassification(error) };
     await complete(db, attemptId, "failed", result);
     return noStore({ ok: false, provider: PROVIDER, correlationId, ...result, inputTokens: 0, outputTokens: 0, calculatedCostUsd: 0 }, 502);
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  const correlationId = randomUUID();
-  const authorization = await authorize(request);
-  if (!authorization.ok) return failure(authorization.code, authorization.status, correlationId);
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return failure("OPENAI_VERIFICATION_CREDENTIAL_MISSING", 503, correlationId);
-
-  const db = createAdminClient();
-  const prior = await db.from("production_verification_attempts").select("id,status").eq("idempotency_key_hash", CATALOG_IDEMPOTENCY_HASH).maybeSingle();
-  if (prior.error) return failure("OPENAI_VERIFICATION_OPERATION_READ_FAILED", 503, correlationId);
-  if (prior.data) return failure("OPENAI_VERIFICATION_REPLAY_REJECTED", 409, correlationId);
-
-  const run = await db.from("production_verification_runs").select("id").eq("environment_code", "production").in("status", ["draft", "ready", "running", "paused", "blocked", "awaiting_review"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (run.error || !run.data) return failure("OPENAI_VERIFICATION_RUN_UNAVAILABLE", 503, correlationId);
-  const instance = await db.from("production_verification_instances").select("id").eq("verification_run_id", run.data.id).eq("scenario_code", "PV-009").eq("scenario_version", 1).maybeSingle();
-  if (instance.error || !instance.data) return failure("OPENAI_VERIFICATION_CAPABILITY_UNAVAILABLE", 503, correlationId);
-  const latestAttempt = await db.from("production_verification_attempts").select("attempt_number").eq("scenario_instance_id", instance.data.id).order("attempt_number", { ascending: false }).limit(1).maybeSingle();
-  if (latestAttempt.error) return failure("OPENAI_VERIFICATION_OPERATION_READ_FAILED", 503, correlationId);
-
-  const attemptId = randomUUID();
-  const claimed = await db.from("production_verification_attempts").insert({
-    id: attemptId,
-    scenario_instance_id: instance.data.id,
-    attempt_number: Number(latestAttempt.data?.attempt_number ?? 0) + 1,
-    executor_code: CATALOG_EXECUTOR_CODE,
-    initiated_by: authorization.actorId,
-    correlation_id: correlationId,
-    idempotency_key_hash: CATALOG_IDEMPOTENCY_HASH,
-    status: "running",
-    started_at: new Date().toISOString(),
-  });
-  if (claimed.error) return failure(claimed.error.code === "23505" ? "OPENAI_VERIFICATION_REPLAY_REJECTED" : "OPENAI_VERIFICATION_OPERATION_CLAIM_FAILED", claimed.error.code === "23505" ? 409 : 503, correlationId);
-
-  const started = performance.now();
-  try {
-    const response = await fetch(CATALOG_URL, { method: "GET", headers: { authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(30_000) });
-    const latencyMs = Math.max(0, Math.round(performance.now() - started));
-    const body = (await response.json().catch(() => ({}))) as { data?: Array<{ id?: unknown }> };
-    const matchingModelIds = response.ok
-      ? [...new Set((Array.isArray(body.data) ? body.data : []).map(value => value?.id).filter((id): id is string => typeof id === "string").filter(id => APPROVED_MODEL_PATTERNS.some(pattern => id.toLowerCase().includes(pattern))))].sort()
-      : [];
-    const result = {
-      httpStatus: response.status,
-      openaiRequestId: response.headers.get("x-request-id"),
-      correlationId,
-      latencyMs,
-      matchingModelCount: matchingModelIds.length,
-      matchingModelIds,
-      classification: response.ok ? "OPENAI_MODEL_CATALOG_AVAILABLE" : safeHttpClassification(response.status),
-      inputTokens: 0,
-      outputTokens: 0,
-      calculatedCostUsd: 0,
-    };
-    await complete(db, attemptId, response.ok ? "succeeded" : "failed", result);
-    return noStore({ ok: response.ok, provider: PROVIDER, ...result }, response.ok ? 200 : 502);
-  } catch (error) {
-    const result = { httpStatus: null, openaiRequestId: null, correlationId, latencyMs: Math.max(0, Math.round(performance.now() - started)), matchingModelCount: 0, matchingModelIds: [], classification: safeTransportClassification(error), inputTokens: 0, outputTokens: 0, calculatedCostUsd: 0 };
-    await complete(db, attemptId, "failed", result);
-    return noStore({ ok: false, provider: PROVIDER, ...result }, 502);
   }
 }
 
@@ -218,10 +159,14 @@ function safeTransportClassification(error: unknown) {
   return "OPENAI_TRANSPORT_FAILED";
 }
 
+function finite(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
 function failure(code: string, status: number, correlationId: string) {
   return noStore({ ok: false, code, correlationId }, status);
 }
 
 function noStore(body: Record<string, unknown>, status = 200) {
-  return NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store, max-age=0", "X-Robots-Tag": "noindex, nofollow, noarchive", Allow: "GET, POST, PUT" } });
+  return NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store, max-age=0", "X-Robots-Tag": "noindex, nofollow, noarchive", Allow: "GET, POST" } });
 }

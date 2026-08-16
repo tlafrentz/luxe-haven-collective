@@ -4,7 +4,7 @@ async function main() {
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) throw new Error("OPENAI_API_KEY_REQUIRED");
 
-  const model = "gpt-5.4-nano";
+  const model = "gpt-5-nano";
   const started = performance.now();
   const response = await fetch("https://api.openai.com/v1/responses", {
   method: "POST",
@@ -29,7 +29,7 @@ async function main() {
   const inputTokens = finite(usage.input_tokens);
   const outputTokens = finite(usage.output_tokens);
   const totalTokens = finite(usage.total_tokens);
-  const calculatedCostUsd = Number(((inputTokens * 0.2 + outputTokens * 1.25) / 1_000_000).toFixed(8));
+  const calculatedCostUsd = Number(((inputTokens * 0.05 + outputTokens * 0.4) / 1_000_000).toFixed(8));
 
   process.stdout.write(JSON.stringify({
     ok: response.ok,
