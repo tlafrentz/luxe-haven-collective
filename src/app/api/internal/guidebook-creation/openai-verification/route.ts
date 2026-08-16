@@ -1,19 +1,16 @@
 import "server-only";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { OPENAI_EXTRACTION_MODEL } from "@/features/guidebook-creation-assistant/providers";
+import { CreationProviderError, DirectOpenAiCreationProvider, OPENAI_EXTRACTION_MODEL, OPENAI_GENERATION_MODEL } from "@/features/guidebook-creation-assistant/providers";
+import { OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH } from "./policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PROVIDER = "openai";
-const RESPONSES_URL = "https://api.openai.com/v1/responses";
-const EXECUTOR_CODE = "VERIFY_OPENAI_RESPONSES_GPT5_NANO";
-const IDEMPOTENCY_HASH = createHash("sha256")
-  .update("guidebook:openai:responses:gpt-5-nano:v1")
-  .digest("hex");
+const EXECUTOR_CODE = "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V1";
 
 export async function GET(request: NextRequest) {
   const correlationId = randomUUID();
@@ -40,7 +37,7 @@ export async function POST(request: NextRequest) {
   const prior = await db
     .from("production_verification_attempts")
     .select("id,status")
-    .eq("idempotency_key_hash", IDEMPOTENCY_HASH)
+    .eq("idempotency_key_hash", OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH)
     .maybeSingle();
   if (prior.error) return failure("OPENAI_VERIFICATION_OPERATION_READ_FAILED", 503, correlationId);
   if (prior.data) return failure("OPENAI_VERIFICATION_REPLAY_REJECTED", 409, correlationId);
@@ -71,44 +68,36 @@ export async function POST(request: NextRequest) {
     executor_code: EXECUTOR_CODE,
     initiated_by: authorization.actorId,
     correlation_id: correlationId,
-    idempotency_key_hash: IDEMPOTENCY_HASH,
+    idempotency_key_hash: OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH,
     status: "running",
     started_at: new Date().toISOString(),
   });
   if (claimed.error) return failure(claimed.error.code === "23505" ? "OPENAI_VERIFICATION_REPLAY_REJECTED" : "OPENAI_VERIFICATION_OPERATION_CLAIM_FAILED", claimed.error.code === "23505" ? 409 : 503, correlationId);
 
-  const started = performance.now();
+  const provider = new DirectOpenAiCreationProvider({ apiKey, projectId, extractionModel: OPENAI_EXTRACTION_MODEL, generationModel: OPENAI_GENERATION_MODEL, timeoutMs: 30_000, allowExplicitFallback: false });
+  const controller = new AbortController();
   try {
-    const response = await fetch(RESPONSES_URL, {
-      method: "POST",
-      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json", "OpenAI-Project": projectId, "x-client-request-id": correlationId },
-      body: JSON.stringify({ model: OPENAI_EXTRACTION_MODEL, store: false, input: "Return a JSON object with one boolean field named ok.", text: { format: { type: "json_object" } }, reasoning: { effort: "low" }, max_output_tokens: 40 }),
-      signal: AbortSignal.timeout(30_000),
-    });
-    const latencyMs = Math.max(0, Math.round(performance.now() - started));
-    const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-    const usage = body.usage && typeof body.usage === "object" ? body.usage as Record<string, unknown> : {};
-    const inputTokens = finite(usage.input_tokens);
-    const outputTokens = finite(usage.output_tokens);
-    const calculatedCostUsd = Number(((inputTokens * 0.05 + outputTokens * 0.4) / 1_000_000).toFixed(8));
+    const output = await provider.verifyNanoGeneration({ correlationId, signal: controller.signal });
+    const usage = output.usage as Record<string, string | number>;
     const result = {
-      httpStatus: response.status,
-      openaiRequestId: response.headers.get("x-request-id") ?? (typeof body.id === "string" ? body.id : null),
-      model: typeof body.model === "string" ? body.model : OPENAI_EXTRACTION_MODEL,
-      latencyMs,
-      inputTokens,
-      outputTokens,
-      calculatedCostUsd,
-      classification: response.ok ? "OPENAI_RESPONSES_AVAILABLE" : safeHttpClassification(response.status),
+      httpStatus: output.httpStatus,
+      openaiRequestId: output.openaiRequestId,
+      model: output.model,
+      inputTokens: Number(usage.input_tokens ?? 0),
+      outputTokens: Number(usage.output_tokens ?? 0),
+      reasoningTokens: Number(usage.reasoning_tokens ?? 0),
+      calculatedCostUsd: Number(usage.calculated_cost_usd ?? 0),
+      latencyMs: Number(usage.latency_ms ?? 0),
+      correlationId,
+      classification: "OPENAI_NANO_GENERATION_SMOKE_SUCCEEDED",
     };
-    await complete(db, attemptId, response.ok ? "succeeded" : "failed", result);
-    if (!response.ok) return noStore({ ok: false, provider: PROVIDER, correlationId, ...result }, 502);
-    return noStore({ ok: true, provider: PROVIDER, correlationId, ...result });
+    await complete(db, attemptId, "succeeded", result);
+    return noStore({ ok: true, provider: PROVIDER, ...result });
   } catch (error) {
-    const latencyMs = Math.max(0, Math.round(performance.now() - started));
-    const result = { httpStatus: null, openaiRequestId: null, model: null, latencyMs, classification: safeTransportClassification(error) };
+    const providerError = error instanceof CreationProviderError ? error : null;
+    const result = { httpStatus: providerError?.httpStatus ?? null, openaiRequestId: null, model: OPENAI_EXTRACTION_MODEL, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, calculatedCostUsd: 0, latencyMs: 0, correlationId, classification: providerError ? safeProviderClassification(providerError) : safeTransportClassification(error) };
     await complete(db, attemptId, "failed", result);
-    return noStore({ ok: false, provider: PROVIDER, correlationId, ...result, inputTokens: 0, outputTokens: 0, calculatedCostUsd: 0 }, 502);
+    return noStore({ ok: false, provider: PROVIDER, ...result }, 502);
   }
 }
 
@@ -141,11 +130,13 @@ async function complete(db: ReturnType<typeof createAdminClient>, attemptId: str
   await db.from("production_verification_attempts").update({ status, stable_result_code: JSON.stringify(result), completed_at: new Date().toISOString() }).eq("id", attemptId).eq("status", "running");
 }
 
-function safeHttpClassification(status: number) {
-  if (status === 401 || status === 403) return "OPENAI_AUTHORIZATION_FAILED";
-  if (status === 404) return "OPENAI_MODEL_UNAVAILABLE";
-  if (status === 429) return "OPENAI_RATE_LIMITED";
-  return status >= 500 ? "OPENAI_UNAVAILABLE" : "OPENAI_METADATA_FAILED";
+function safeProviderClassification(error: CreationProviderError) {
+  if (error.httpStatus === 401 || error.httpStatus === 403) return "OPENAI_AUTHORIZATION_FAILED";
+  if (error.httpStatus === 404) return "OPENAI_MODEL_UNAVAILABLE";
+  if (error.kind === "rate_limit") return "OPENAI_RATE_LIMITED";
+  if (error.kind === "timeout") return "OPENAI_CONNECT_TIMEOUT";
+  if (error.kind === "invalid_output") return "OPENAI_INVALID_OUTPUT";
+  return error.kind === "unavailable" ? "OPENAI_UNAVAILABLE" : "OPENAI_GENERATION_FAILED";
 }
 
 function safeTransportClassification(error: unknown) {
@@ -157,10 +148,6 @@ function safeTransportClassification(error: unknown) {
   if (code === "ECONNRESET") return "OPENAI_CONNECTION_RESET";
   if (/CERT|TLS|SSL/.test(code)) return "OPENAI_TLS_FAILED";
   return "OPENAI_TRANSPORT_FAILED";
-}
-
-function finite(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
 function failure(code: string, status: number, correlationId: string) {

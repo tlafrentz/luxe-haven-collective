@@ -1,16 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 
-const { getUser, rpc, createBrowserClient, createAdmin, queues } = vi.hoisted(() => ({
+const { getUser, rpc, createBrowserClient, createAdmin, queues, verifyNanoGeneration, tables, eqCalls, inserts } = vi.hoisted(() => ({
   getUser: vi.fn(),
   rpc: vi.fn(),
   createBrowserClient: vi.fn(),
   createAdmin: vi.fn(),
   queues: new Map<string, Array<{ data: unknown; error: unknown }>>(),
+  verifyNanoGeneration: vi.fn(),
+  tables: [] as string[],
+  eqCalls: [] as Array<[string, unknown]>,
+  inserts: [] as unknown[],
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@supabase/supabase-js", () => ({ createClient: createBrowserClient }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: createAdmin }));
-vi.mock("@/features/guidebook-creation-assistant/providers", () => ({ OPENAI_EXTRACTION_MODEL: "gpt-5-nano" }));
+vi.mock("@/features/guidebook-creation-assistant/providers", () => ({
+  OPENAI_EXTRACTION_MODEL: "gpt-5-nano",
+  OPENAI_GENERATION_MODEL: "gpt-5-mini",
+  CreationProviderError: class CreationProviderError extends Error {},
+  DirectOpenAiCreationProvider: class DirectOpenAiCreationProvider { verifyNanoGeneration = verifyNanoGeneration; },
+}));
+import { OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH, OPENAI_NANO_SMOKE_OPERATION } from "./policy";
 import { GET, POST } from "./route";
 
 describe("server-only OpenAI runtime verification", () => {
@@ -25,6 +36,10 @@ describe("server-only OpenAI runtime verification", () => {
     rpc.mockResolvedValue({ data: true });
     createBrowserClient.mockReturnValue({ auth: { getUser }, rpc });
     queues.clear();
+    tables.length = 0;
+    eqCalls.length = 0;
+    inserts.length = 0;
+    verifyNanoGeneration.mockReset();
     createAdmin.mockImplementation(() => adminClient());
     enqueue("controlled_verification_identities", { data: { id: "identity" }, error: null });
     vi.stubGlobal("fetch", vi.fn());
@@ -59,23 +74,28 @@ describe("server-only OpenAI runtime verification", () => {
     const response = await POST(request("POST"));
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual(expect.objectContaining({ code: "OPENAI_VERIFICATION_REPLAY_REJECTED" }));
-    expect(fetch).not.toHaveBeenCalled();
+    expect(verifyNanoGeneration).not.toHaveBeenCalled();
   });
 
-  it("claims once and records only safe priced Responses metadata", async () => {
+  it("keeps catalog history immutable and gives the smoke test a distinct namespace", () => {
+    const catalogHash = createHash("sha256").update("guidebook:openai:approved-model-catalog:v1").digest("hex");
+    expect(OPENAI_NANO_SMOKE_OPERATION).toBe("openai_nano_generation_smoke_v1");
+    expect(OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH).not.toBe(catalogHash);
+  });
+
+  it("allows one smoke execution even when catalog discovery already exists", async () => {
     enqueue("production_verification_attempts", { data: null, error: null });
     enqueue("production_verification_runs", { data: { id: "run" }, error: null });
     enqueue("production_verification_instances", { data: { id: "instance", latest_attempt_number: 2 }, error: null });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "resp_safe", model: "gpt-5-nano", usage: { input_tokens: 20, output_tokens: 5 }, secret: "not-returned" }), { status: 200, headers: { "x-request-id": "req_safe" } })));
+    verifyNanoGeneration.mockResolvedValue({ httpStatus: 200, openaiRequestId: "req_safe", model: "gpt-5-nano", usage: { input_tokens: 20, output_tokens: 5, reasoning_tokens: 3, calculated_cost_usd: 0.000003, latency_ms: 125 } });
     const response = await POST(request("POST"));
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body).toEqual(expect.objectContaining({ ok: true, httpStatus: 200, openaiRequestId: "req_safe", model: "gpt-5-nano", inputTokens: 20, outputTokens: 5, calculatedCostUsd: 0.000003 }));
-    expect(JSON.stringify(body)).not.toContain("not-returned");
-    expect(fetch).toHaveBeenCalledOnce();
-    expect(fetch).toHaveBeenCalledWith("https://api.openai.com/v1/responses", expect.objectContaining({ method: "POST", headers: expect.objectContaining({ "OpenAI-Project": "project-id", "x-client-request-id": expect.any(String) }) }));
-    const requestBody = JSON.parse(String((fetch as ReturnType<typeof vi.fn>).mock.calls[0]?.[1]?.body));
-    expect(requestBody).toMatchObject({ model: "gpt-5-nano", store: false, max_output_tokens: 40 });
+    expect(body).toEqual(expect.objectContaining({ ok: true, httpStatus: 200, openaiRequestId: "req_safe", model: "gpt-5-nano", inputTokens: 20, outputTokens: 5, reasoningTokens: 3, calculatedCostUsd: 0.000003, latencyMs: 125 }));
+    expect(verifyNanoGeneration).toHaveBeenCalledOnce();
+    expect(inserts).toContainEqual(expect.objectContaining({ executor_code: "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V1", idempotency_key_hash: OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH }));
+    expect(eqCalls).not.toContainEqual(["id", "catalog-attempt"]);
+    expect(tables).not.toEqual(expect.arrayContaining(["guidebook_creation_jobs", "guidebook_creation_sources", "guidebooks", "properties"]));
   });
 
 });
@@ -87,15 +107,16 @@ function enqueue(table: string, value: { data: unknown; error: unknown }) {
 }
 
 function adminClient() {
-  return { from(table: string) { return chain(table); } };
+  return { from(table: string) { tables.push(table); return chain(table); } };
 }
 
 function chain(table: string) {
   const value = () => queues.get(table)?.shift() ?? { data: null, error: null };
   const builder: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "in", "order", "limit", "contains", "or"]) builder[method] = vi.fn(() => builder);
+  for (const method of ["select", "in", "order", "limit", "contains", "or"]) builder[method] = vi.fn(() => builder);
+  builder.eq = vi.fn((key: string, value: unknown) => { eqCalls.push([key, value]); return builder; });
   builder.maybeSingle = vi.fn(async () => value());
-  builder.insert = vi.fn(async () => ({ error: null }));
+  builder.insert = vi.fn(async (value: unknown) => { inserts.push(value); return { error: null }; });
   builder.update = vi.fn(() => builder);
   builder.then = (resolve: (result: { error: null }) => unknown) => Promise.resolve(resolve({ error: null }));
   return builder;
