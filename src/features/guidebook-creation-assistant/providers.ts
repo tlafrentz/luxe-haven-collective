@@ -1,5 +1,6 @@
 import "server-only";
 import { extractionResultSchema,guidebookProposalSchema,type CreationSource,type ExtractedFact,type ExtractionResult,type GuidebookProposal } from "./domain";
+import { diagnoseNanoStructuredResponse, nanoSmokeJsonSchema } from "./openai-responses";
 
 export type ProviderFailureKind="timeout"|"rate_limit"|"unavailable"|"invalid_output"|"terminal";
 export class CreationProviderError extends Error{constructor(public readonly kind:ProviderFailureKind,message:string,public readonly retryable:boolean,public readonly httpStatus:number|null=null){super(message);this.name="CreationProviderError"}}
@@ -68,10 +69,8 @@ export class DirectOpenAiCreationProvider implements ExtractionProvider,Generati
   }
   async verifyNanoGeneration(input:Readonly<{correlationId:string;signal:AbortSignal}>){
     if(this.config.extractionModel!==OPENAI_EXTRACTION_MODEL)throw new CreationProviderError("terminal","The creation provider model is not approved.",false);
-    const output=await this.request("smoke",OPENAI_EXTRACTION_MODEL,[{type:"input_text",text:'Return exactly {"ok":true} as JSON.'}],input.correlationId,input.signal,40);
-    let parsed:unknown;try{parsed=JSON.parse(output.text)}catch{throw new CreationProviderError("invalid_output","The creation provider returned an invalid result.",false)}
-    if(!parsed||typeof parsed!=="object"||(parsed as Record<string,unknown>).ok!==true)throw new CreationProviderError("invalid_output","The creation provider returned an invalid result.",false);
-    return{httpStatus:output.httpStatus,openaiRequestId:output.openaiRequestId,model:output.model,usage:output.usage};
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),this.config.timeoutMs),abort=()=>controller.abort(),started=performance.now();input.signal.addEventListener("abort",abort,{once:true});
+    try{const response=await this.fetcher(OPENAI_ENDPOINT,{method:"POST",headers:{authorization:`Bearer ${this.config.apiKey}`,"content-type":"application/json","x-client-request-id":input.correlationId,...(this.config.projectId?{"OpenAI-Project":this.config.projectId}:{})},body:JSON.stringify({model:OPENAI_EXTRACTION_MODEL,store:false,input:"Return the requested minimal verification object.",text:{format:{type:"json_schema",name:"openai_nano_generation_smoke_v2",strict:true,schema:nanoSmokeJsonSchema}},reasoning:{effort:"low"},max_output_tokens:128}),signal:controller.signal});const body=await response.json().catch(()=>({})),diagnostic=diagnoseNanoStructuredResponse({body,httpStatus:response.status,openaiRequestId:response.headers.get("x-request-id"),latencyMs:performance.now()-started,correlationId:input.correlationId});return diagnostic}catch{if(controller.signal.aborted)throw new CreationProviderError("timeout","The creation provider timed out.",true);throw new CreationProviderError("unavailable","The creation provider is unavailable.",true)}finally{clearTimeout(timeout);input.signal.removeEventListener("abort",abort)}
   }
   private async request(stage:DirectStage,model:string,content:Record<string,unknown>[],correlationId:string,outerSignal:AbortSignal,maxOutputTokens:number){
     assertRequestWithinBudget(model,content,maxOutputTokens);

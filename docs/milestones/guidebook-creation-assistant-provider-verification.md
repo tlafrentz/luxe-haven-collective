@@ -302,3 +302,45 @@ The key's ownership, active status, model entitlement, and provider access must
 be corrected or confirmed before any further Creation Assistant production
 work. Auto-create remains hidden and disabled, the kill switch remains enabled,
 the cohort remains empty, and no release tag exists.
+
+## Direct OpenAI Nano smoke v1 diagnosis
+
+The immutable `openai_nano_generation_smoke_v1` attempt ran once on 2026-08-16
+with correlation `12f4e9c8-cf92-421f-893c-99de8477e48d` and finished as
+`OPENAI_INVALID_OUTPUT`. No retry or record reset occurred. Read-only inspection
+of its verification row and Vercel request log found only the application HTTP
+502 and the final safe classification. The v1 adapter discarded the upstream
+envelope before persistence, so unavailable fields cannot be reconstructed
+without making another provider request.
+
+Sanitized v1 diagnosis:
+
+- Upstream HTTP status: exact value unavailable; the adapter reached its
+  post-success output-validation path, proving only a 2xx response.
+- OpenAI request ID: unavailable.
+- Response status (`completed`, `incomplete`, or `failed`): unavailable.
+- Output item types: unavailable.
+- `output_text` existed: yes; the adapter returned from its non-empty text
+  extraction step before failing JSON/application validation.
+- Refusal: unavailable; v1 did not inspect or retain refusal metadata.
+- Incomplete reason: unavailable.
+- Usage object existence and input/cached-input/output/reasoning tokens:
+  unavailable; v1 calculated transient usage but discarded it on validation
+  failure.
+- JSON parse result: indeterminate between malformed JSON and application-schema
+  mismatch.
+- Schema-validation paths and expected types: unavailable.
+- Configured `max_output_tokens`: 40.
+- Configured reasoning effort: `low`.
+- Actual v1 usage and cost cannot be reconciled from the retained application or
+  Vercel evidence. The project key does not provide an organization-usage audit
+  surface, and no unsupported value is inferred.
+
+The bounded correction introduces a separate immutable
+`openai_nano_generation_smoke_v2` namespace. It sends a strict minimal JSON
+schema through `text.format`, uses explicit `required` and
+`additionalProperties: false`, allows 128 output tokens for low-effort reasoning
+plus the one-boolean result, distinguishes completed-valid, completed-invalid,
+incomplete, refusal, and provider-failure states, and calculates/persists usage
+before JSON or application-schema validation. The v1 and catalog records remain
+unchanged.

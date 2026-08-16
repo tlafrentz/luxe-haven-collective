@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 
-const { getUser, rpc, createBrowserClient, createAdmin, queues, verifyNanoGeneration, tables, eqCalls, inserts } = vi.hoisted(() => ({
+const { getUser, rpc, createBrowserClient, createAdmin, queues, verifyNanoGeneration, tables, eqCalls, inserts, updates } = vi.hoisted(() => ({
   getUser: vi.fn(),
   rpc: vi.fn(),
   createBrowserClient: vi.fn(),
@@ -11,6 +11,7 @@ const { getUser, rpc, createBrowserClient, createAdmin, queues, verifyNanoGenera
   tables: [] as string[],
   eqCalls: [] as Array<[string, unknown]>,
   inserts: [] as unknown[],
+  updates: [] as unknown[],
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@supabase/supabase-js", () => ({ createClient: createBrowserClient }));
@@ -21,7 +22,7 @@ vi.mock("@/features/guidebook-creation-assistant/providers", () => ({
   CreationProviderError: class CreationProviderError extends Error {},
   DirectOpenAiCreationProvider: class DirectOpenAiCreationProvider { verifyNanoGeneration = verifyNanoGeneration; },
 }));
-import { OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH, OPENAI_NANO_SMOKE_OPERATION } from "./policy";
+import { OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH, OPENAI_NANO_SMOKE_OPERATION, OPENAI_NANO_SMOKE_V1_IDEMPOTENCY_HASH } from "./policy";
 import { GET, POST } from "./route";
 
 describe("server-only OpenAI runtime verification", () => {
@@ -39,6 +40,7 @@ describe("server-only OpenAI runtime verification", () => {
     tables.length = 0;
     eqCalls.length = 0;
     inserts.length = 0;
+    updates.length = 0;
     verifyNanoGeneration.mockReset();
     createAdmin.mockImplementation(() => adminClient());
     enqueue("controlled_verification_identities", { data: { id: "identity" }, error: null });
@@ -79,8 +81,9 @@ describe("server-only OpenAI runtime verification", () => {
 
   it("keeps catalog history immutable and gives the smoke test a distinct namespace", () => {
     const catalogHash = createHash("sha256").update("guidebook:openai:approved-model-catalog:v1").digest("hex");
-    expect(OPENAI_NANO_SMOKE_OPERATION).toBe("openai_nano_generation_smoke_v1");
+    expect(OPENAI_NANO_SMOKE_OPERATION).toBe("openai_nano_generation_smoke_v2");
     expect(OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH).not.toBe(catalogHash);
+    expect(OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH).not.toBe(OPENAI_NANO_SMOKE_V1_IDEMPOTENCY_HASH);
   });
 
   it("allows one smoke execution even when catalog discovery already exists", async () => {
@@ -88,15 +91,21 @@ describe("server-only OpenAI runtime verification", () => {
     enqueue("production_verification_runs", { data: { id: "run" }, error: null });
     enqueue("production_verification_instances", { data: { id: "instance" }, error: null });
     enqueue("production_verification_attempts", { data: { attempt_number: 7 }, error: null });
-    verifyNanoGeneration.mockResolvedValue({ httpStatus: 200, openaiRequestId: "req_safe", model: "gpt-5-nano", usage: { input_tokens: 20, output_tokens: 5, reasoning_tokens: 3, calculated_cost_usd: 0.000003, latency_ms: 125 } });
+    verifyNanoGeneration.mockResolvedValue({ outcome:"completed_valid",httpStatus:200,openaiRequestId:"req_safe",responseStatus:"completed",returnedModel:"gpt-5-nano",outputItemTypes:["reasoning","message"],outputTextExisted:true,refusalExisted:false,incompleteReason:null,usageExisted:true,inputTokens:20,cachedInputTokens:0,outputTokens:5,reasoningTokens:3,calculatedCostUsd:0.000003,latencyMs:125,correlationId:"correlation",jsonParseResult:"valid",schemaValidationErrors:[],classification:"OPENAI_NANO_GENERATION_SMOKE_SUCCEEDED" });
     const response = await POST(request("POST"));
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toEqual(expect.objectContaining({ ok: true, httpStatus: 200, openaiRequestId: "req_safe", model: "gpt-5-nano", inputTokens: 20, outputTokens: 5, reasoningTokens: 3, calculatedCostUsd: 0.000003, latencyMs: 125 }));
     expect(verifyNanoGeneration).toHaveBeenCalledOnce();
-    expect(inserts).toContainEqual(expect.objectContaining({ executor_code: "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V1", idempotency_key_hash: OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH, attempt_number: 8 }));
+    expect(inserts).toContainEqual(expect.objectContaining({ executor_code: "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V2", idempotency_key_hash: OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH, attempt_number: 8 }));
     expect(eqCalls).not.toContainEqual(["id", "catalog-attempt"]);
     expect(tables).not.toEqual(expect.arrayContaining(["guidebook_creation_jobs", "guidebook_creation_sources", "guidebooks", "properties"]));
+  });
+
+  it("persists provider usage and cost before returning validation failure",async()=>{
+    enqueue("production_verification_attempts",{data:null,error:null});enqueue("production_verification_runs",{data:{id:"run"},error:null});enqueue("production_verification_instances",{data:{id:"instance"},error:null});enqueue("production_verification_attempts",{data:{attempt_number:8},error:null});
+    verifyNanoGeneration.mockResolvedValue({outcome:"completed_invalid",httpStatus:200,openaiRequestId:"req_invalid",responseStatus:"completed",returnedModel:"gpt-5-nano",outputItemTypes:["message"],outputTextExisted:true,refusalExisted:false,incompleteReason:null,usageExisted:true,inputTokens:22,cachedInputTokens:2,outputTokens:12,reasoningTokens:8,calculatedCostUsd:.00000581,latencyMs:140,correlationId:"correlation",jsonParseResult:"valid",schemaValidationErrors:[{path:"$.ok",expected:"boolean"}],classification:"OPENAI_SCHEMA_MISMATCH"});
+    const response=await POST(request("POST"));expect(response.status).toBe(502);const persisted=JSON.parse(String((updates[0] as Record<string,unknown>).stable_result_code));expect(persisted).toMatchObject({inputTokens:22,calculatedCostUsd:.00000581,classification:"OPENAI_SCHEMA_MISMATCH"});expect(JSON.stringify(persisted)).not.toMatch(/prompt|output text|raw response/i);
   });
 
 });
@@ -118,7 +127,7 @@ function chain(table: string) {
   builder.eq = vi.fn((key: string, value: unknown) => { eqCalls.push([key, value]); return builder; });
   builder.maybeSingle = vi.fn(async () => value());
   builder.insert = vi.fn(async (value: unknown) => { inserts.push(value); return { error: null }; });
-  builder.update = vi.fn(() => builder);
+  builder.update = vi.fn((value:unknown) => { updates.push(value); return builder; });
   builder.then = (resolve: (result: { error: null }) => unknown) => Promise.resolve(resolve({ error: null }));
   return builder;
 }

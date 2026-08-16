@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PROVIDER = "openai";
-const EXECUTOR_CODE = "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V1";
+const EXECUTOR_CODE = "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V2";
 
 export async function GET(request: NextRequest) {
   const correlationId = randomUUID();
@@ -86,21 +86,30 @@ export async function POST(request: NextRequest) {
   const controller = new AbortController();
   try {
     const output = await provider.verifyNanoGeneration({ correlationId, signal: controller.signal });
-    const usage = output.usage as Record<string, string | number>;
     const result = {
       httpStatus: output.httpStatus,
       openaiRequestId: output.openaiRequestId,
-      model: output.model,
-      inputTokens: Number(usage.input_tokens ?? 0),
-      outputTokens: Number(usage.output_tokens ?? 0),
-      reasoningTokens: Number(usage.reasoning_tokens ?? 0),
-      calculatedCostUsd: Number(usage.calculated_cost_usd ?? 0),
-      latencyMs: Number(usage.latency_ms ?? 0),
+      responseStatus: output.responseStatus,
+      model: output.returnedModel,
+      outputItemTypes: output.outputItemTypes,
+      outputTextExisted: output.outputTextExisted,
+      refusalExisted: output.refusalExisted,
+      incompleteReason: output.incompleteReason,
+      usageExisted: output.usageExisted,
+      inputTokens: output.inputTokens,
+      cachedInputTokens: output.cachedInputTokens,
+      outputTokens: output.outputTokens,
+      reasoningTokens: output.reasoningTokens,
+      calculatedCostUsd: output.calculatedCostUsd,
+      latencyMs: output.latencyMs,
       correlationId,
-      classification: "OPENAI_NANO_GENERATION_SMOKE_SUCCEEDED",
+      jsonParseResult: output.jsonParseResult,
+      schemaValidationErrors: output.schemaValidationErrors,
+      classification: output.classification,
     };
-    await complete(db, attemptId, "succeeded", result);
-    return noStore({ ok: true, provider: PROVIDER, ...result });
+    const succeeded=output.outcome==="completed_valid";
+    await complete(db, attemptId, succeeded?"succeeded":"failed", result);
+    return noStore({ ok: succeeded, provider: PROVIDER, ...result },succeeded?200:502);
   } catch (error) {
     const providerError = error instanceof CreationProviderError ? error : null;
     const result = { httpStatus: providerError?.httpStatus ?? null, openaiRequestId: null, model: OPENAI_EXTRACTION_MODEL, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, calculatedCostUsd: 0, latencyMs: 0, correlationId, classification: providerError ? safeProviderClassification(providerError) : safeTransportClassification(error) };
