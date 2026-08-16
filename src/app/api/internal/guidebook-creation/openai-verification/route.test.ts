@@ -11,7 +11,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@supabase/supabase-js", () => ({ createClient: createBrowserClient }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: createAdmin }));
 vi.mock("@/features/guidebook-creation-assistant/providers", () => ({ OPENAI_EXTRACTION_MODEL: "gpt-5.4-nano" }));
-import { GET, POST } from "./route";
+import { GET, POST, PUT } from "./route";
 
 describe("server-only OpenAI runtime verification", () => {
   beforeEach(() => {
@@ -74,6 +74,30 @@ describe("server-only OpenAI runtime verification", () => {
     expect(fetch).toHaveBeenCalledOnce();
     expect(fetch).toHaveBeenCalledWith("https://api.openai.com/v1/models/gpt-5.4-nano", expect.objectContaining({ method: "GET" }));
   });
+
+  it("filters the one-shot catalog before returning or recording it", async () => {
+    enqueue("production_verification_attempts", { data: null, error: null });
+    enqueue("production_verification_runs", { data: { id: "run" }, error: null });
+    enqueue("production_verification_instances", { data: { id: "instance" }, error: null });
+    enqueue("production_verification_attempts", { data: { attempt_number: 3 }, error: null });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
+      { id: "gpt-5.4-nano" }, { id: "gpt-5.4-mini" }, { id: "gpt-5" }, { id: "text-embedding-3-large" }, { id: "whisper-1" },
+    ] }), { status: 200, headers: { "x-request-id": "req_catalog" } })));
+    const response = await PUT(request("PUT"));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toEqual(expect.objectContaining({ matchingModelCount: 3, matchingModelIds: ["gpt-5", "gpt-5.4-mini", "gpt-5.4-nano"], inputTokens: 0, outputTokens: 0, calculatedCostUsd: 0 }));
+    expect(JSON.stringify(body)).not.toMatch(/embedding|whisper/);
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledWith("https://api.openai.com/v1/models", expect.objectContaining({ method: "GET" }));
+  });
+
+  it("rejects catalog replay without fetching", async () => {
+    enqueue("production_verification_attempts", { data: { id: "prior", status: "failed" }, error: null });
+    const response = await PUT(request("PUT"));
+    expect(response.status).toBe(409);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
 
 function enqueue(table: string, value: { data: unknown; error: unknown }) {
@@ -97,6 +121,6 @@ function chain(table: string) {
   return builder;
 }
 
-function request(method: "GET" | "POST") {
+function request(method: "GET" | "POST" | "PUT") {
   return new Request("https://luxe.test/api/internal/guidebook-creation/openai-verification", { method, headers: { authorization: "Bearer admin-session" } }) as never;
 }
