@@ -1,6 +1,6 @@
 # Guidebook Creation Assistant Provider Verification
 
-Status: **BLOCKED — foundation deployed; controlled execution not started**
+Status: **BLOCKED — controlled provisioning passed; provider authentication failed closed**
 
 Observed: 2026-08-15 (America/Chicago)
 
@@ -13,7 +13,12 @@ Observed: 2026-08-15 (America/Chicago)
 - Reconciliation commits: `1af4e57c514767082f10a1b91d93d4c80a7f258f`, `5c494307ace9e1b1ee5bee625525386d05be2435`
 - Cleanup defect fix: `97ffb353`
 - Capability wiring fix: `6c5d0ae8`
-- Corrective deployment: `dpl_2X8gMyRXX3JDTigRMRqzXQFGFW6n`
+- Controlled property provisioning: `a0aa1509`
+- Controlled customer projection fix: `dede01cb`
+- Worker lease recovery: `986cbad2`
+- Provisioning deployment: `dpl_5N1Kcm4Xe9Ukkj7W8TwKEmYWgfy1`
+- Worker recovery deployment: `dpl_Fp8t5TJVB7wK5JKkXQuHuchRrVaJ`
+- Restored-safety deployment: `dpl_69fMGD5s3QBs8qUJVQszpyWFBbsR`
 - Canonical alias: `https://luxehavencollective.co` (HTTP 200)
 
 The corrective deployments were permitted only after deployed verification
@@ -36,6 +41,15 @@ The final SQL was inspected before application.
 Both migrations were applied in chronological order through `supabase db
 push --linked`. The remote ledger records each version exactly once. The
 follow-up production dry-run is empty.
+
+The bounded provisioning correction added
+`20260815100000_controlled_guidebook_property_provisioning.sql`. During
+controlled execution, an interrupted work lease exposed a recovery defect;
+the forward-only
+`20260815101000_recover_guidebook_creation_work_leases.sql` now permits only
+expired `processing` leases to be reclaimed. Both versions were applied once.
+No legacy migration was replayed and no customer schema or data was modified
+outside the reviewed additions and the controlled resource lifecycle.
 
 A schema-only before/after comparison showed only the intended Creation
 Assistant objects. No unrelated public or storage object was added, removed,
@@ -65,6 +79,13 @@ Focused Creation Assistant tests passed (23), typecheck passed, lint passed,
 the corrective production builds passed, migration lint reported no findings,
 and the final production migration dry-run is empty.
 
+After the provisioning and lease-recovery changes, the full suite passed: 724
+files and 3,919 tests. Typecheck and production build passed. Lint completed
+with three unrelated existing warnings and no errors. Migration lint returned
+no findings. The canonical alias returned HTTP 200, the retired worker secret
+returned HTTP 401, and anonymous access to the unlinked Admin interface
+redirected to authentication (HTTP 307).
+
 ## Runtime defects found and corrected
 
 1. Completed generated jobs could not enter owning-domain cleanup. The cleanup
@@ -81,27 +102,50 @@ and the final production migration dry-run is empty.
    `commercial_entitlements` and evaluates customer-account, workspace, and
    property scope explicitly.
 
-## Controlled execution blocker
+## Controlled property provisioning result
 
-The canonical commerce boundary contains eight active administrative
-`guidebook.create` grants, but none has an owning production property context.
-The established administrative grant operation provisions an isolated tenant,
-customer account, membership, and expiring canonical entitlements. It does not
-provision a property. The normal onboarding product operation requires an
-already authorized property reference and therefore cannot close this gap.
+An ordinary authenticated administrator provisioned exactly one canonical,
+private Guidebook-only property for the controlled customer through
+`provision_guidebook_property_for_customer`. The administrator remained the
+actor and the customer remained the owner. The transaction created the normal
+property, Guidebook capability, entitlement allocation, audit event, and
+verification-ledger resource; it created no HPM capability.
 
-No service-role property insert was used. That would bypass the required
-owning-domain creation and cleanup boundaries. Controlled execution must remain
-blocked until a bounded, auditable controlled-property provisioning and cleanup
-operation exists or an already provisioned controlled property is supplied
-through the established product-context workflow.
+- Property: `4791ee05-80d7-4e97-9c4c-b23547a5f860`
+- Allocation: `5f3b9f62-ea35-483f-9534-83c68941438e`
+- Verification run: `1e392590-75b7-4b7b-b50e-1bef029944d0`
+- Replayed and concurrent identical commands returned the same property and
+  allocation and consumed capacity once.
+- Owning-customer ordinary-client reads returned the property; wrong-customer
+  and anonymous reads returned none.
+- No public listing, booking context, HPM workspace, or marketing projection
+  was created.
 
-Because the context gate failed before activation, these scenarios remain
-untested in production: upload format matrix, extraction, review statuses,
-high-risk confirmation, generation, resume, regeneration, stale rejection,
-restoration, provider timeout/retry, replay idempotency, signed-source tenant
-isolation with real objects, revoked access with real jobs, and completed-job
-cleanup.
+Two controlled jobs exercised failure and recovery. The first used intentionally
+minimal file signatures and proved unsupported provider input fails closed. The
+second used valid PDF, DOCX, text, JPEG, PNG, and WebP files. Duplicate upload
+completion returned the original source, unsupported executable content was
+rejected, and the durable job resumed after leaving the setup process.
+
+## Provider authentication blocker
+
+The production adapter and locked model are configured, but Vercel AI Gateway
+does not accept the available OIDC credential. A non-sensitive health request
+returned HTTP 401 and explicitly required `AI_GATEWAY_API_KEY`. The approved
+provider catalog check did not expose a Vercel AI Gateway credential resource
+that could safely close this gap. No alternate model or provider was substituted.
+
+Both extraction attempts therefore terminated safely before facts, confirmations,
+artifacts, guidebooks, revisions, blocks, or public content were created. The
+worker initially exposed a queue recovery defect when dependency construction
+failed after claim; the corrective migration and runtime change now reclaim an
+expired lease and transition configuration/provider failures through the durable
+retry/terminal path.
+
+The following production scenarios remain untested because extraction never
+completed: fact/source review, missing and conflicting fact resolution,
+high-risk confirmation, generation, section regeneration, stale rejection,
+revision restoration, and generated-draft renderer verification.
 
 ## Safety state and resource ledger
 
@@ -113,28 +157,34 @@ Sanitized production configuration after verification:
 - `GUIDEBOOK_CREATION_INTERNAL_COHORT` is empty
 - Locked model remains `openai/gpt-5.4-mini-2026-03-17`
 
-| Resource type                     | Created | Cleanup result     |
-| --------------------------------- | ------: | ------------------ |
-| Controlled property contexts      |       0 | Not applicable     |
-| Creation jobs and attempts        |       0 | Not applicable     |
-| Private source objects            |       0 | Not applicable     |
-| Facts and confirmations           |       0 | Not applicable     |
-| Artifacts and queue records       |       0 | Not applicable     |
-| Provider calls or charges         |       0 | Reconciled to zero |
-| Guidebooks, revisions, or blocks  |       0 | Not applicable     |
-| Published or scheduled guidebooks |       0 | Confirmed zero     |
+| Resource type                     | Created | Cleanup result              |
+| --------------------------------- | ------: | --------------------------- |
+| Controlled property contexts      |       1 | Deleted canonically         |
+| Creation jobs and attempts        |       2 | Deleted canonically         |
+| Private source objects            |      12 | Exact paths removed         |
+| Facts and confirmations           |       0 | Not applicable              |
+| Artifacts and queue records       |       2 | Deleted with owning jobs    |
+| Provider attempts                 |       2 | Terminal; no usage recorded |
+| Guidebooks, revisions, or blocks  |       0 | Not applicable              |
+| Published or scheduled guidebooks |       0 | Confirmed zero              |
 
-No temporary gate change was made, so no restoration mutation was required.
-No controlled source or guidebook is publicly accessible.
+Creation resources were cleaned through `cleanupCreationResources` before the
+property cleanup. An ordinary authenticated administrator then invoked
+`cleanup_controlled_guidebook_property`. The allocation is `released` at
+revision 2, the property/jobs/sources/storage-object counts are zero, and the
+verification-ledger resource is `completed`. The temporary scheduler secret,
+OIDC credential, and cohorts were removed. Enablement is false, both kill
+switches are enabled, customer visibility remains false, and no controlled
+source or guidebook is publicly accessible.
 
 ## Release decision
 
-**NO-GO for controlled internal activation.** The deployed foundation and
-migration state pass, but the upload-to-saved-draft journey did not achieve
-production coverage. Auto-create remains hidden and kill-switched, the cohort
-remains empty, and no release tag was created.
+**NO-GO for controlled internal activation.** Controlled owning-domain property
+provisioning, idempotency, isolation, and exact cleanup passed. The
+upload-to-saved-draft journey remains incomplete solely at the production
+provider-authentication boundary. Auto-create remains hidden and kill-switched,
+the cohort is empty, and no release tag was created.
 
-The next bounded unblock is an owning-domain controlled-property context
-provisioning and cleanup boundary. After that boundary is reviewed and
-deployed, this controlled verification can resume without direct database
-inserts or customer data.
+The next bounded unblock is to provision a valid `AI_GATEWAY_API_KEY` through an
+approved credential-management path, then repeat the cleaned controlled journey
+on exactly one newly provisioned controlled property.
