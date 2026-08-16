@@ -1,6 +1,6 @@
 import { GUIDEBOOK_BLOCK_SCHEMA,GUIDEBOOK_DRAFT_SCHEMA,type AuthoringBlock,type AuthoringSection,type GuidebookDraft } from "@/features/guidebook-studio";
 import { assertProposalSafe,generationReadiness,inspectSource,sanitizeFilename,sensitivityFor,SOURCE_LIMITS,type CreationJob,type CreationSource,type ExtractedFact,type GuidebookProposal } from "./domain";
-import {CreationProviderError,type ExtractionProvider,type GenerationProvider} from "./providers";
+import {CreationProviderError,type ExtractionProvider,type GenerationProvider,type ProviderUsage} from "./providers";
 
 export type CreationContext=Readonly<{actorId:string;actorRole:string;workspaceId:string;propertyId:string;permissions:ReadonlySet<string>;entitled:boolean;correlationId:string}>;
 export interface CreationRepository{
@@ -15,7 +15,7 @@ export interface CreationRepository{
   replaceFacts(jobId:string,workspaceId:string,facts:readonly ExtractedFact[]):Promise<void>;
   reviewFact(input:Readonly<{workspaceId:string;jobId:string;factId:string;status:ExtractedFact["reviewStatus"];correctedValue?:unknown;actorId:string;confirmHighRisk:boolean}>):Promise<void>;
   beginAttempt(input:Readonly<{jobId:string;workspaceId:string;stage:"extraction"|"generation"|"section_regeneration";idempotencyKey:string;providerKey:string}>):Promise<Readonly<{id:string;duplicate:boolean}>>;
-  completeAttempt(id:string,input:Readonly<{status:"completed"|"retryable_failure"|"terminal_failure";requestId?:string;usage?:Readonly<Record<string,number>>;failureCode?:string}>):Promise<void>;
+  completeAttempt(id:string,input:Readonly<{status:"completed"|"retryable_failure"|"terminal_failure";requestId?:string;usage?:ProviderUsage;failureCode?:string}>):Promise<void>;
   recordArtifact(input:Readonly<{jobId:string;workspaceId:string;attemptId:string;guidebookId:string;draftRevision:number;type:"initial_draft"|"section_regeneration";sectionId?:string;basedOnRevision?:number;templateVersionId:string;componentLineage:unknown;factLineage:unknown;draftSnapshot:GuidebookDraft}>):Promise<void>;
   findArtifact(workspaceId:string,jobId:string,draftRevision:number):Promise<Readonly<{id:string;draftSnapshot:GuidebookDraft}>|null>;
   audit(input:Readonly<{jobId:string;workspaceId:string;actorId?:string;event:string;correlationId:string;metadata?:Readonly<Record<string,string|number|boolean|null>>}>):Promise<void>;
