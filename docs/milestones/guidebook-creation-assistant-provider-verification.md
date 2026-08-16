@@ -178,6 +178,44 @@ Per the authentication gate, controlled execution stopped here. The Creation
 Assistant remained disabled and kill-switched, cohorts remained empty, and no
 prompt or response content was written to application logs.
 
+### Deployed-runtime presence and single-request verification
+
+On 2026-08-16, the CLI identity was confirmed against Vercel project
+`prj_YTGVIQ11lGz57hEz4UJFX4hCnXPX`, owned by the Luxe Haven Collective team.
+That same project owns the Production environment entry and canonical
+deployment. An unlinked, server-only diagnostic protected by an ordinary
+authenticated administrator session was deployed in
+`dpl_FPA8x8rTG8U4aXV4V21jew7piozT`. It reported only
+`{"keyPresent":true}`; it never returned or logged any characteristic of the
+key.
+
+Exactly one sanitized Gateway request was then sent from the deployed runtime:
+
+- Gateway status: HTTP 403
+- Configured model: `openai/gpt-5.4-mini-2026-03-17`
+- Route: Vercel AI Gateway Responses API
+- Correlation: `e3b71ed4-5fb5-448c-b23f-7224f4f45093`
+- Provider request identifier: not returned
+- Input/output/total tokens: none recorded
+- Cost: none recorded; key budget remained $5 with $0 spend
+
+The request contained only a request for a one-boolean JSON object. Neither its
+prompt nor response content was emitted by the diagnostic or present in
+application logs; logs contained only the authenticated GET and POST route
+entries.
+
+Gateway catalog reconciliation found the blocker: the configured dated model
+identifier is absent from the team model catalog. The available low-cost model
+is `openai/gpt-5.4-mini`. No routing rules exist. The key exists in the owning
+team, has an active budget, and the deployed runtime can read it, but the
+configured model route is not authorized/available. No second Gateway request
+was sent.
+
+Controlled execution stopped before workers, provisioning, uploads, extraction,
+or generation. Changing the locked model identifier requires a separately
+reviewed candidate correction; it was not performed during this authentication-
+only verification.
+
 ## Safety state and resource ledger
 
 Sanitized production configuration after verification:
