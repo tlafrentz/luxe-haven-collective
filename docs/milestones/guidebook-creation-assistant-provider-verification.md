@@ -263,3 +263,42 @@ The next bounded unblock is to review and lock the available
 `openai/gpt-5.4-mini` model identifier, update the provider candidate without
 changing the Creation Assistant architecture, and repeat one sanitized
 authentication request before provisioning any controlled resource.
+
+## Canonical Gateway model correction and verification
+
+On 2026-08-16, commit `20f41cbc` replaced the unavailable dated model policy
+with the approved Gateway catalog identifier `openai/gpt-5.4-mini`. Extraction
+and generation continue to share the same server-side model policy. No prompt,
+provider boundary, routing, fallback, feature gate, cohort, worker, pricing, or
+customer-enablement behavior changed. Focused provider-policy tests passed
+6/6, typecheck passed, lint completed with three unrelated pre-existing
+warnings, and the Production build passed.
+
+The Production model configuration was changed to the same canonical
+identifier and deployed as `dpl_C7RwNUh6c9FWvY1oPkWcyxWwpbP8`. Auto-create
+remained disabled and hidden, the kill switch remained enabled, and the cohort
+remained empty. An administrator-protected, server-only diagnostic then sent
+exactly one sanitized minimal request from the deployed runtime:
+
+- Gateway status: HTTP 403
+- Configured model: `openai/gpt-5.4-mini`
+- Resolved provider/model: not returned
+- Provider request identifier: not returned
+- Input/output/total tokens: not returned
+- Cost: none recorded; budget remained $5 with $0 spend
+- Correlation: `ebf85f15-f806-4455-aecb-71fbd0175261`
+
+No prompt or response content was returned by the diagnostic or recorded in
+the artifact. Because the authentication request failed, verification stopped
+before enabling workers, cohorts, provisioning, uploads, extraction,
+generation, or any controlled resource. The diagnostic POST operation was
+removed immediately afterward. Deployment
+`dpl_2UbxhUxm57DSSVfnjbqHBSRqGuLc` restored the route to presence-only at the
+canonical alias.
+
+**Current decision: NO-GO for controlled internal activation.** The canonical
+model correction is deployed, but the Gateway continues to deny the request.
+The key's ownership, active status, model entitlement, and provider access must
+be corrected or confirmed before any further Creation Assistant production
+work. Auto-create remains hidden and disabled, the kill switch remains enabled,
+the cohort remains empty, and no release tag exists.
