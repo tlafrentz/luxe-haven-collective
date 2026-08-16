@@ -56,9 +56,11 @@ production no-op and was recorded as applied in migration history. The dry-run
 still failed on the six older legacy identifiers. Their applied history was not
 rewritten, and no SQL was applied outside the migration mechanism.
 
-Safe continuation requires a separately reviewed migration-history
-reconciliation that preserves the applied legacy migrations and lets a dry-run
-identify only `20260815090000` and `20260815091000` as pending.
+This blocker was subsequently resolved by the evidence-backed reconciliation
+recorded in `production-migration-history-reconciliation.md`. Guidebook
+verification was not resumed as part of that ledger-only milestone. The
+post-repair dry-run identifies only `20260815090000` and `20260815091000` as
+pending.
 
 ## Controlled resource ledger
 
