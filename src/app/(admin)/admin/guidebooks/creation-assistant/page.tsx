@@ -7,11 +7,14 @@ import {
 } from "@/app/actions/guidebook-admin-creation";
 import {
   cancelAssistantJobAction,
+  cleanupControlledGuidebookPropertyAction,
   createAssistantJobAction,
   enqueueAssistantExtractionAction,
   enqueueAssistantGenerationAction,
   enqueueAssistantRegenerationAction,
   getAssistantInternalProjection,
+  getControlledProvisioningProjection,
+  provisionControlledGuidebookPropertyAction,
   restoreAssistantRevisionAction,
   reviewAssistantFactAction,
   uploadAssistantSourceAction,
@@ -29,6 +32,7 @@ export default async function Page({
 }) {
   const q = await searchParams,
     { user } = await requireRole(["admin"]),
+    provisioning = await getControlledProvisioningProjection(),
     customers = await listCustomerWorkspacesAction(),
     properties = q.workspace
       ? await listWorkspacePropertiesAction(q.workspace)
@@ -65,6 +69,9 @@ export default async function Page({
           draft; humans review; nothing auto-publishes.
         </p>
       </header>
+      {provisioning.available ? (
+        <ControlledPropertyProvisioning projection={provisioning} />
+      ) : null}
       <section className="rounded-2xl border bg-white p-6">
         <h2 className="font-semibold">1. Authorized context</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -153,6 +160,202 @@ export default async function Page({
       ) : null}
       {projection ? <Workspace projection={projection} /> : null}
     </main>
+  );
+}
+function ControlledPropertyProvisioning({
+  projection,
+}: {
+  projection: Extract<
+    Awaited<ReturnType<typeof getControlledProvisioningProjection>>,
+    { available: true }
+  >;
+}) {
+  const run = projection.runs[0];
+  return (
+    <section className="rounded-2xl border border-amber-300 bg-amber-50 p-6">
+      <h2 className="font-semibold">
+        Controlled Guidebook property provisioning
+      </h2>
+      <p className="mt-2 text-sm text-stone-700">
+        Canonical private property creation for the selected customer and active
+        Guidebook grant. This does not create HPM enrollment or public listing
+        state.
+      </p>
+      {run ? (
+        <div className="mt-5 space-y-5">
+          {projection.customers.flatMap((customer) =>
+            customer.entitlements.map((entitlement) => (
+              <form
+                action={provisionControlledGuidebookPropertyAction}
+                key={String(entitlement.id)}
+                className="grid gap-3 rounded-xl border bg-white p-4 md:grid-cols-3"
+              >
+                <input
+                  type="hidden"
+                  name="customerAccountId"
+                  value={String(customer.id)}
+                />
+                <input
+                  type="hidden"
+                  name="workspaceId"
+                  value={String(customer.tenant_id)}
+                />
+                <input
+                  type="hidden"
+                  name="entitlementId"
+                  value={String(entitlement.id)}
+                />
+                <input
+                  type="hidden"
+                  name="expectedCustomerStatus"
+                  value="active"
+                />
+                <input
+                  type="hidden"
+                  name="expectedEntitlementRevision"
+                  value={String(entitlement.revision)}
+                />
+                <input
+                  type="hidden"
+                  name="verificationRunId"
+                  value={String(run.id)}
+                />
+                <input
+                  type="hidden"
+                  name="idempotencyKey"
+                  value={`controlled-guidebook-property:${String(run.id)}:${String(entitlement.id)}`}
+                />
+                <p className="md:col-span-3 text-sm">
+                  <strong>{String(customer.display_name)}</strong> · grant{" "}
+                  {String(entitlement.id)} · run {String(run.id)}
+                </p>
+                <label className="text-sm font-semibold">
+                  Internal name
+                  <input
+                    name="internalName"
+                    required
+                    defaultValue="Creation Assistant Controlled Property"
+                    className="mt-1 min-h-11 w-full rounded-lg border px-3"
+                  />
+                </label>
+                <label className="text-sm font-semibold">
+                  Public display name
+                  <input
+                    name="publicDisplayName"
+                    required
+                    defaultValue="Controlled Guidebook Property"
+                    className="mt-1 min-h-11 w-full rounded-lg border px-3"
+                  />
+                </label>
+                <label className="text-sm font-semibold">
+                  Property type
+                  <input
+                    name="propertyType"
+                    required
+                    defaultValue="vacation_rental"
+                    className="mt-1 min-h-11 w-full rounded-lg border px-3"
+                  />
+                </label>
+                <label className="text-sm font-semibold">
+                  City
+                  <input
+                    name="city"
+                    required
+                    defaultValue="Verification City"
+                    className="mt-1 min-h-11 w-full rounded-lg border px-3"
+                  />
+                </label>
+                <label className="text-sm font-semibold">
+                  Region
+                  <input
+                    name="region"
+                    required
+                    defaultValue="TX"
+                    className="mt-1 min-h-11 w-full rounded-lg border px-3"
+                  />
+                </label>
+                <label className="text-sm font-semibold">
+                  Time zone
+                  <input
+                    name="timeZone"
+                    required
+                    defaultValue="America/Chicago"
+                    className="mt-1 min-h-11 w-full rounded-lg border px-3"
+                  />
+                </label>
+                <label className="text-sm font-semibold md:col-span-2">
+                  Reason
+                  <input
+                    name="reason"
+                    required
+                    defaultValue="Controlled Creation Assistant production verification"
+                    className="mt-1 min-h-11 w-full rounded-lg border px-3"
+                  />
+                </label>
+                <button className="min-h-11 self-end rounded-lg bg-stone-950 px-4 font-semibold text-white">
+                  Provision controlled property
+                </button>
+              </form>
+            )),
+          )}
+          {projection.properties.map((property) => {
+            const allocation = Array.isArray(
+              property.property_entitlement_allocations,
+            )
+              ? property.property_entitlement_allocations.find(
+                  (value) => value.status === "reserved",
+                )
+              : null;
+            return (
+              <form
+                action={cleanupControlledGuidebookPropertyAction}
+                key={String(property.id)}
+                className="grid gap-3 rounded-xl border bg-white p-4 md:grid-cols-[1fr_2fr_auto]"
+              >
+                <input
+                  type="hidden"
+                  name="propertyId"
+                  value={String(property.id)}
+                />
+                <input
+                  type="hidden"
+                  name="workspaceId"
+                  value={String(property.owner_id)}
+                />
+                <input
+                  type="hidden"
+                  name="expectedAllocationRevision"
+                  value={String(allocation?.revision ?? 0)}
+                />
+                <p className="text-sm">
+                  <strong>{String(property.name)}</strong>
+                  <br />
+                  <span className="font-mono text-xs">
+                    {String(property.id)}
+                  </span>
+                </p>
+                <input
+                  name="reason"
+                  required
+                  defaultValue="Controlled production verification cleanup complete"
+                  className="min-h-11 rounded-lg border px-3"
+                />
+                <button
+                  disabled={!allocation}
+                  className="min-h-11 rounded-lg border px-4 font-semibold disabled:opacity-50"
+                >
+                  Clean up exactly
+                </button>
+              </form>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-4 text-amber-800">
+          No active controlled production-verification run is available.
+        </p>
+      )}
+    </section>
   );
 }
 function Workspace({
