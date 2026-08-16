@@ -163,11 +163,11 @@ export async function processOneCreationWork(workerId: string) {
   if (error) throw error;
   const item = Array.isArray(data) ? data[0] : data;
   if (!item) return { processed: false };
-  const context = await creationContextFromJob(String(item.job_id)),
-    deps = creationDependencies(),
-    payload = (item.payload ?? {}) as Record<string, unknown>;
   const attemptKey = `${String(item.idempotency_key)}:attempt:${Number(item.attempts)}`;
   try {
+    const context = await creationContextFromJob(String(item.job_id)),
+      deps = creationDependencies(),
+      payload = (item.payload ?? {}) as Record<string, unknown>;
     if (item.stage === "extraction")
       await extractCreationSources(deps, context, {
         jobId: String(item.job_id),
