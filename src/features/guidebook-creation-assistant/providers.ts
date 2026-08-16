@@ -29,7 +29,7 @@ export class HttpCreationProvider implements ExtractionProvider,GenerationProvid
 }
 
 const GATEWAY_ENDPOINT="https://ai-gateway.vercel.sh/v1/responses";
-export const CREATION_PROVIDER_CANDIDATE="openai/gpt-5.4-mini-2026-03-17";
+export const CREATION_PROVIDER_CANDIDATE="openai/gpt-5.4-mini";
 
 type GatewayConfig=Readonly<{token:string;model:string;timeoutMs:number}>;
 export class VercelAiGatewayCreationProvider implements ExtractionProvider,GenerationProvider{
