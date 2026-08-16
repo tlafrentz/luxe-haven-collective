@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 describe("Guidebook durable draft preview boundary", () => {
   const action = readFileSync("src/app/actions/guidebook-studio.ts", "utf8");
   const preview = readFileSync(
-    "src/app/(dashboard)/dashboard/guidebooks/[guidebookId]/preview/page.tsx",
+    "src/app/(public)/dashboard/guidebooks/[guidebookId]/preview/page.tsx",
     "utf8",
   );
   const draftArtifact = readFileSync(
@@ -26,6 +26,11 @@ describe("Guidebook durable draft preview boundary", () => {
   it("renders draft preview through the real guest experience component, not a bespoke approximation", () => {
     expect(preview).toContain("PublicGuidebookExperience");
     expect(preview).toContain("guidebookPublicRenderer");
+    expect(preview).toContain("getGuidebookEditorRequest");
+    expect(preview).toContain("index: false");
+    expect(preview).toContain("result.draft?.revision");
+    expect(action).toContain("resolveWorkspaceAccessContext");
+    expect(action).toContain("evaluatePropertyAccess");
     expect(preview).not.toContain("function GuidebookBody");
     expect(preview).not.toContain("function PreviewBlock");
   });

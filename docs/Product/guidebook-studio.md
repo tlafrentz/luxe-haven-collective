@@ -36,6 +36,15 @@ Canonical routes:
 - `/dashboard/guidebooks/[guidebookId]/analytics`
 - `/g/[publicId]`
 
+The authenticated draft-preview URL is implemented in the `(public)` route
+group so it can render without the Dashboard shell; `(public)` does not make
+the route anonymous. The page resolves the current session, workspace, and
+property scope through `getGuidebookEditorRequest`, is non-indexable, displays
+the persisted draft revision, and uses `guidebookPublicRenderer` with
+`PublicGuidebookExperience`, the same governed renderer used for publication.
+Published guest delivery remains a separate public boundary and never exposes
+an unpublished draft.
+
 The v1 content model supports Heading, Rich Text, Image, Instruction, Contact,
 Location, Link, Callout, and Checklist blocks. The seeded section structure is
 Welcome, Arrival, Parking, Property Access, Wi-Fi, House Rules, Amenities, Local
