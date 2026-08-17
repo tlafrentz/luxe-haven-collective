@@ -344,3 +344,21 @@ plus the one-boolean result, distinguishes completed-valid, completed-invalid,
 incomplete, refusal, and provider-failure states, and calculates/persists usage
 before JSON or application-schema validation. The v1 and catalog records remain
 unchanged.
+
+The immutable v2 attempt ran once with correlation
+`c760efc8-ef7e-4211-8c02-714a4fcabe6a`. OpenAI returned HTTP 200 and request ID
+`req_02516426f90c48058deea983acfffec2`, but the response was `incomplete` with
+reason `max_output_tokens`. Its only output item type was `reasoning`; no output
+text or refusal existed. Usage was 42 input, 0 cached-input, 128 output, and 128
+reasoning tokens, calculated at $0.00005330 with 2,252 ms latency. The operation
+was not replayed or reset.
+
+The next bounded correction uses the new immutable
+`openai_nano_generation_smoke_v3` namespace. It preserves the one-boolean strict
+schema, uses Nano's lowest supported `minimal` reasoning effort, and allows 512
+output tokens. Production Nano extraction also uses `minimal` reasoning and a
+deterministic 4,096–65,536-token allowance derived from controlled source size
+and the extraction schema's 500-fact limit. The independent server-authoritative
+$1 per-job ceiling remains enforced. An incomplete extraction caused by the
+output-token limit is retryable only by an explicitly claimed new attempt; the
+adapter never replays it automatically.

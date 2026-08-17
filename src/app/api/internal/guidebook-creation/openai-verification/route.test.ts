@@ -22,7 +22,7 @@ vi.mock("@/features/guidebook-creation-assistant/providers", () => ({
   CreationProviderError: class CreationProviderError extends Error {},
   DirectOpenAiCreationProvider: class DirectOpenAiCreationProvider { verifyNanoGeneration = verifyNanoGeneration; },
 }));
-import { OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH, OPENAI_NANO_SMOKE_OPERATION, OPENAI_NANO_SMOKE_V1_IDEMPOTENCY_HASH } from "./policy";
+import { OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH, OPENAI_NANO_SMOKE_OPERATION, OPENAI_NANO_SMOKE_V1_IDEMPOTENCY_HASH, OPENAI_NANO_SMOKE_V2_IDEMPOTENCY_HASH } from "./policy";
 import { GET, POST } from "./route";
 
 describe("server-only OpenAI runtime verification", () => {
@@ -81,9 +81,10 @@ describe("server-only OpenAI runtime verification", () => {
 
   it("keeps catalog history immutable and gives the smoke test a distinct namespace", () => {
     const catalogHash = createHash("sha256").update("guidebook:openai:approved-model-catalog:v1").digest("hex");
-    expect(OPENAI_NANO_SMOKE_OPERATION).toBe("openai_nano_generation_smoke_v2");
+    expect(OPENAI_NANO_SMOKE_OPERATION).toBe("openai_nano_generation_smoke_v3");
     expect(OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH).not.toBe(catalogHash);
     expect(OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH).not.toBe(OPENAI_NANO_SMOKE_V1_IDEMPOTENCY_HASH);
+    expect(OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH).not.toBe(OPENAI_NANO_SMOKE_V2_IDEMPOTENCY_HASH);
   });
 
   it("allows one smoke execution even when catalog discovery already exists", async () => {
@@ -97,7 +98,7 @@ describe("server-only OpenAI runtime verification", () => {
     const body = await response.json();
     expect(body).toEqual(expect.objectContaining({ ok: true, httpStatus: 200, openaiRequestId: "req_safe", model: "gpt-5-nano", inputTokens: 20, outputTokens: 5, reasoningTokens: 3, calculatedCostUsd: 0.000003, latencyMs: 125 }));
     expect(verifyNanoGeneration).toHaveBeenCalledOnce();
-    expect(inserts).toContainEqual(expect.objectContaining({ executor_code: "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V2", idempotency_key_hash: OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH, attempt_number: 8 }));
+    expect(inserts).toContainEqual(expect.objectContaining({ executor_code: "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V3", idempotency_key_hash: OPENAI_NANO_SMOKE_IDEMPOTENCY_HASH, attempt_number: 8 }));
     expect(eqCalls).not.toContainEqual(["id", "catalog-attempt"]);
     expect(tables).not.toEqual(expect.arrayContaining(["guidebook_creation_jobs", "guidebook_creation_sources", "guidebooks", "properties"]));
   });

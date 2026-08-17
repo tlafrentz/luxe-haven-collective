@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PROVIDER = "openai";
-const EXECUTOR_CODE = "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V2";
+const EXECUTOR_CODE = "VERIFY_OPENAI_NANO_GENERATION_SMOKE_V3";
 
 export async function GET(request: NextRequest) {
   const correlationId = randomUUID();
@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
       openaiRequestId: output.openaiRequestId,
       responseStatus: output.responseStatus,
       model: output.returnedModel,
+      resolvedSnapshot: output.returnedModel,
       outputItemTypes: output.outputItemTypes,
       outputTextExisted: output.outputTextExisted,
       refusalExisted: output.refusalExisted,
