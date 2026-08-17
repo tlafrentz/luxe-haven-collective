@@ -387,8 +387,10 @@ verification resource ledger remain the authoritative boundaries.
 
 The operation is unlinked and requires PV-009 release-verifier capability, a
 registered controlled Guidebook customer, its matching explicit entitlement,
-operation enablement, disabled normal customer enablement, an empty public
-cohort, and an organization Admin key for project Usage/Costs reconciliation.
+operation enablement, disabled normal customer enablement, and an empty public
+cohort. Automated reconciliation is request-scoped and requires complete usage,
+unique request IDs, exact stage mapping, locked-price cost calculation, and a
+summed job cost below $1.
 Repeated or stale stage commands return 409 before provider or provisioning
 contact. A separate cleanup command is available only for the claimed actor and
 uses owning-domain cleanup after a failed stage.
@@ -404,3 +406,11 @@ project-scoped Responses key is intentionally not promoted or proxied for that
 purpose. Therefore no property, allocation, upload, queue item, Creation job,
 or OpenAI request was created. Normal Creation Assistant enablement remains
 off, its public cohort remains empty, and no release tag was created.
+
+The subsequent policy correction removes the Admin-key dependency from the
+Creation Assistant runtime. `OPENAI_API_KEY` remains its only inference
+credential. Organization-level Usage/Costs access is neither requested nor
+available to the application or worker. Project-dashboard confirmation is a
+required manual evidence step after the controlled run; any future automated
+billing reconciliation belongs to a separate read-only finance/operations
+process and cannot gate Guidebook execution.

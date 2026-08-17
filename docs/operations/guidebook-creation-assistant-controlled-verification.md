@@ -65,8 +65,12 @@ Creation Assistant worker. The operation stores only sanitized identifiers,
 stage names, revision numbers, hashes, usage, and audit outcomes in the existing
 verification attempt and append-only resource ledger.
 
-Provider usage reconciliation requires `OPENAI_ADMIN_KEY` in the deployed
-runtime because the organization Usage and Costs endpoints do not accept the
-project Responses key for that purpose. The mutation-free `dry_run` command
-fails closed if reconciliation authority or any controlled prerequisite is
-missing. No provider request is allowed before that dry run succeeds.
+The automated reconciliation gate uses the request-level usage returned by the
+Responses API. It requires one unique request ID and complete token, model,
+latency, correlation, and locked-price cost metadata for exactly extraction,
+initial generation, and section regeneration. Their sum must remain below $1.
+Only the project-scoped `OPENAI_API_KEY` is used for inference; no organization
+Admin credential is accepted by this runtime. The mutation-free `dry_run`
+command fails closed if the project inference configuration or any controlled
+prerequisite is missing. After cleanup, an organization owner separately
+records manual evidence from the project-filtered OpenAI Usage Dashboard.
