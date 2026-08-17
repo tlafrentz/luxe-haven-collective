@@ -137,8 +137,8 @@ export function productionProviderFromEnvironment(){
   return null;
 }
 
-export function controlledVerificationProviderFromEnvironment(){
-  if(process.env.CONTROLLED_GUIDEBOOK_JOURNEY_ENABLED!=="true"||process.env.CONTROLLED_GUIDEBOOK_JOURNEY_KILL_SWITCH==="true")return null;
+export function controlledVerificationProviderFromEnvironment(runScopedAuthorization=false){
+  if(!runScopedAuthorization&&(process.env.CONTROLLED_GUIDEBOOK_JOURNEY_ENABLED!=="true"||process.env.CONTROLLED_GUIDEBOOK_JOURNEY_KILL_SWITCH==="true"))return null;
   const timeout=Number(process.env.GUIDEBOOK_CREATION_PROVIDER_TIMEOUT_MS??"60000"),apiKey=process.env.OPENAI_API_KEY,projectId=process.env.OPENAI_PROJECT_ID,extractionModel=process.env.GUIDEBOOK_CREATION_EXTRACTION_MODEL??OPENAI_EXTRACTION_MODEL,generationModel=process.env.GUIDEBOOK_CREATION_GENERATION_MODEL??OPENAI_GENERATION_MODEL;
   if(!Number.isInteger(timeout)||timeout<5000||timeout>120000||!apiKey||!projectId||extractionModel!==OPENAI_EXTRACTION_MODEL||generationModel!==OPENAI_GENERATION_MODEL||process.env.GUIDEBOOK_CREATION_ALLOW_GPT54_FALLBACK==="true")return null;
   return new DirectOpenAiCreationProvider({apiKey,projectId,extractionModel,generationModel,timeoutMs:timeout,allowExplicitFallback:false});

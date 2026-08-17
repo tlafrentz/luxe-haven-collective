@@ -64,8 +64,8 @@ export function creationProvider() {
   }
   return productionProviderFromEnvironment();
 }
-export function creationDependencies(options:Readonly<{controlledVerification?:boolean}>={}): CreationDependencies {
-  const provider = options.controlledVerification?controlledVerificationProviderFromEnvironment():creationProvider();
+export function creationDependencies(options:Readonly<{controlledVerification?:boolean;runScopedAuthorization?:boolean}>={}): CreationDependencies {
+  const provider = options.controlledVerification?controlledVerificationProviderFromEnvironment(options.runScopedAuthorization):creationProvider();
   if (!provider) throw new Error("CREATION_PROVIDER_NOT_CONFIGURED");
   return {
     repository: new SupabaseCreationRepository(),
@@ -155,7 +155,7 @@ export async function enqueueCreationWork(
   if (error) throw error;
   return data;
 }
-export async function processOneCreationWork(workerId: string,options:Readonly<{controlledVerification?:boolean;expectedJobId?:string}>={}) {
+export async function processOneCreationWork(workerId: string,options:Readonly<{controlledVerification?:boolean;runScopedAuthorization?:boolean;expectedJobId?:string}>={}) {
   const db = createAdminClient(),
     { data, error } = await db.rpc("claim_guidebook_creation_work", {
       p_worker_id: workerId,
