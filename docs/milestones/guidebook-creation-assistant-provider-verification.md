@@ -362,3 +362,14 @@ and the extraction schema's 500-fact limit. The independent server-authoritative
 $1 per-job ceiling remains enforced. An incomplete extraction caused by the
 output-token limit is retryable only by an explicitly claimed new attempt; the
 adapter never replays it automatically.
+
+The immutable v3 attempt completed successfully on its sole invocation with
+correlation `a8ec22fa-ec16-451b-8598-10b921b69e54`. OpenAI returned HTTP 200,
+request ID `req_fceb3a321e01451ab2f165afe44cdc12`, and resolved snapshot
+`gpt-5-nano-2025-08-07`. The response was completed and schema-valid, with
+reasoning and message output item types, output text present, no refusal, and no
+incomplete reason. Provider usage was 41 input, 0 cached-input, 34 output, and 0
+reasoning tokens; calculated cost was $0.00001565 and latency was 2,521 ms. No
+prompt or response content was persisted. The POST operation was then closed
+with an unconditional HTTP 410 before controlled journey work began; v1, v2,
+and v3 audit records remain immutable.
