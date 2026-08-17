@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { creationCleanupEligibility } from "./cleanup";
 
@@ -20,6 +21,12 @@ describe("Creation Assistant cleanup eligibility", () => {
       }),
     ).toEqual({ allowed: true, archiveGuidebook: true });
   });
+
+  it("blocks cleanup while provider evidence requires reconciliation", () => {
+    expect(creationCleanupEligibility({id:"job",state:"failed",guidebook_id:null,failure_class:"reconciliation_required"})).toEqual({allowed:false,archiveGuidebook:false});
+  });
+
+  it("never deletes append-only provider evidence during full resource cleanup",()=>{const source=readFileSync("src/features/guidebook-creation-assistant/cleanup.ts","utf8");expect(source).not.toContain("guidebook_creation_provider_evidence");expect(source).not.toContain("guidebook_creation_provider_evidence_outcomes")});
 
   it.each(["draft", "uploading", "extracting", "generating"])(
     "rejects non-terminal %s jobs",

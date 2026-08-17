@@ -4,10 +4,11 @@ type CleanupJob = Readonly<{
   id: string;
   state: string;
   guidebook_id: string | null;
+  failure_class?: string | null;
 }>;
 
 export function creationCleanupEligibility(job: CleanupJob | null) {
-  if (!job || !["failed", "cancelled", "completed"].includes(job.state)) {
+  if (!job || job.failure_class === "reconciliation_required" || !["failed", "cancelled", "completed"].includes(job.state)) {
     return { allowed: false as const, archiveGuidebook: false };
   }
   return {
@@ -27,7 +28,7 @@ export async function cleanupCreationResources(
   const db = createAdminClient();
   const { data: job, error: jobError } = await db
     .from("guidebook_creation_jobs")
-    .select("id,state,guidebook_id")
+    .select("id,state,guidebook_id,failure_class")
     .eq("id", input.jobId)
     .eq("workspace_id", input.workspaceId)
     .maybeSingle();

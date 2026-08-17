@@ -437,3 +437,33 @@ true in Production deployment `dpl_A7aUgk4JjhTyT37HjdJHz14xhrCx`. Normal
 Auto-create remained disabled, the customer cohort remained empty, and no
 release tag was created. Manual Usage Dashboard confirmation remains pending
 for an organization owner because the controlled journey did not complete.
+
+## Extraction failure reconciliation
+
+For correlation `1aa2a7b8-9c46-43ef-ac45-0b8bdfa86bf8`, the surviving
+Production evidence proves only that the protected journey request returned
+HTTP 502 with `CONTROLLED_EXTRACTION_NOT_COMPLETED`. Historical Vercel logs
+retain that sanitized 502 request envelope but no application log payload. The
+operational attempt row was removed by owning-domain cleanup. Whether OpenAI
+received the request, upstream HTTP status, OpenAI request ID, resolved model,
+response status, incomplete reason, tokens, cost, latency, transport/timeout
+classification, and schema paths are therefore unavailable. Cost is not
+inferred as zero. The failure remains classified `unknown` until external
+project usage evidence is supplied.
+
+The OpenAI Usage Dashboard review could not be performed from this development
+environment because it has no authenticated organization-owner Dashboard
+session or connector. An organization owner must filter the Luxe Haven project
+to the controlled-run window and record Nano activity, approximate request
+count, visible token totals, approximate cost, and the exact time filter before
+another Production attempt is authorized.
+
+Migration `20260816213000_guidebook_provider_evidence.sql` adds immutable,
+Admin-readable provider evidence with no destructive foreign key to jobs,
+properties, sources, facts, artifacts, queues, or drafts. Direct Responses
+requests now persist a scalar-only evidence allowlist before structured-output
+validation. Validation outcomes are separate append-only records. A failure to
+persist post-request evidence moves the attempt and job to
+`reconciliation_required`, which makes owning-domain cleanup ineligible until
+reconciliation is complete. No prompt, response text, source content,
+credential, or authorization header is retained.

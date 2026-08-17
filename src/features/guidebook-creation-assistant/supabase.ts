@@ -313,6 +313,14 @@ export class SupabaseCreationRepository implements CreationRepository {
       .eq("id", id);
     if (error) throw error;
   }
+  async recordProviderEvidence(input: Parameters<CreationRepository["recordProviderEvidence"]>[0]) {
+    const property = await this.client.from("guidebook_creation_jobs").select("property:properties!guidebook_creation_jobs_property_id_fkey(controlled_verification_run_id)").eq("id",input.jobId).eq("workspace_id",input.workspaceId).single();
+    if(property.error)throw property.error;const controlled=(property.data?.property as unknown as {controlled_verification_run_id?:string|null}|null)?.controlled_verification_run_id??null,e=input.evidence;
+    const {data,error}=await this.client.from("guidebook_creation_provider_evidence").insert({verification_run_id:controlled,job_id:input.jobId,attempt_id:input.attemptId,workspace_id:input.workspaceId,stage:input.stage,provider_key:input.providerKey,provider_request_id:e.providerRequestId,configured_model:e.configuredModel,resolved_snapshot:e.resolvedSnapshot,upstream_http_status:e.upstreamHttpStatus,response_status:e.responseStatus,incomplete_reason:e.incompleteReason,input_tokens:e.inputTokens,cached_input_tokens:e.cachedInputTokens,output_tokens:e.outputTokens,reasoning_tokens:e.reasoningTokens,calculated_cost_usd:e.calculatedCostUsd,latency_ms:e.latencyMs,safe_classification:e.safeClassification,correlation_id:e.correlationId,recorded_at:e.recordedAt}).select("id").single();if(error)throw error;return String(data.id)
+  }
+  async recordProviderEvidenceOutcome(input: Parameters<CreationRepository["recordProviderEvidenceOutcome"]>[0]) {
+    const {error}=await this.client.from("guidebook_creation_provider_evidence_outcomes").insert({evidence_id:input.evidenceId,safe_classification:input.classification,schema_validation_paths:input.schemaValidationPaths,correlation_id:input.correlationId});if(error)throw error
+  }
   async recordArtifact(
     input: Parameters<CreationRepository["recordArtifact"]>[0],
   ) {
