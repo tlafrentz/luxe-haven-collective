@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   CreationProviderError,
+  controlledVerificationProviderFromEnvironment,
   DeterministicCreationProvider,
   productionProviderFromEnvironment,
 } from "./providers";
@@ -63,8 +64,8 @@ export function creationProvider() {
   }
   return productionProviderFromEnvironment();
 }
-export function creationDependencies(): CreationDependencies {
-  const provider = creationProvider();
+export function creationDependencies(options:Readonly<{controlledVerification?:boolean}>={}): CreationDependencies {
+  const provider = options.controlledVerification?controlledVerificationProviderFromEnvironment():creationProvider();
   if (!provider) throw new Error("CREATION_PROVIDER_NOT_CONFIGURED");
   return {
     repository: new SupabaseCreationRepository(),
@@ -154,7 +155,7 @@ export async function enqueueCreationWork(
   if (error) throw error;
   return data;
 }
-export async function processOneCreationWork(workerId: string) {
+export async function processOneCreationWork(workerId: string,options:Readonly<{controlledVerification?:boolean;expectedJobId?:string}>={}) {
   const db = createAdminClient(),
     { data, error } = await db.rpc("claim_guidebook_creation_work", {
       p_worker_id: workerId,
@@ -163,10 +164,11 @@ export async function processOneCreationWork(workerId: string) {
   if (error) throw error;
   const item = Array.isArray(data) ? data[0] : data;
   if (!item) return { processed: false };
+  if(options.expectedJobId&&String(item.job_id)!==options.expectedJobId){await db.from("guidebook_creation_work_items").update({status:"queued",lease_owner:null,lease_expires_at:null}).eq("id",item.id).eq("lease_owner",workerId);throw new Error("CONTROLLED_WORK_ITEM_SCOPE_MISMATCH")}
   const attemptKey = `${String(item.idempotency_key)}:attempt:${Number(item.attempts)}`;
   try {
     const context = await creationContextFromJob(String(item.job_id)),
-      deps = creationDependencies(),
+      deps = creationDependencies(options),
       payload = (item.payload ?? {}) as Record<string, unknown>;
     if (item.stage === "extraction")
       await extractCreationSources(deps, context, {

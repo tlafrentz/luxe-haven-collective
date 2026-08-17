@@ -373,3 +373,22 @@ reasoning tokens; calculated cost was $0.00001565 and latency was 2,521 ms. No
 prompt or response content was persisted. The POST operation was then closed
 with an unconditional HTTP 410 before controlled journey work began; v1, v2,
 and v3 audit records remain immutable.
+
+## Controlled production journey operation
+
+The separate `controlled_guidebook_creation_journey_v1` operation orchestrates
+the existing Creation Assistant rather than introducing another workflow. It
+runs only in the deployed Node.js runtime, keeps the Responses credential
+inside that runtime, and advances one resumable stage per authenticated Admin
+command. Canonical controlled-property provisioning, private source storage,
+the persistent work queue, Nano extraction, Mini generation/regeneration,
+Builder draft validation/revisions, owning-domain cleanup, and the production
+verification resource ledger remain the authoritative boundaries.
+
+The operation is unlinked and requires PV-009 release-verifier capability, a
+registered controlled Guidebook customer, its matching explicit entitlement,
+operation enablement, disabled normal customer enablement, an empty public
+cohort, and an organization Admin key for project Usage/Costs reconciliation.
+Repeated or stale stage commands return 409 before provider or provisioning
+contact. A separate cleanup command is available only for the claimed actor and
+uses owning-domain cleanup after a failed stage.

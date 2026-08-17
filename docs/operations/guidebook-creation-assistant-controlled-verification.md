@@ -6,10 +6,11 @@ normal navigation throughout this verification.
 
 ## Locked provider candidate
 
-- Boundary: Vercel AI Gateway Responses API
-- Model: `openai/gpt-5.4-mini-2026-03-17`
+- Boundary: direct OpenAI Responses API inside the deployed Node.js runtime
+- Extraction model: `gpt-5-nano`
+- Conflict analysis, generation, and regeneration model: `gpt-5-mini`
 - Storage: provider response storage disabled
-- Authentication: Vercel OIDC
+- Authentication: runtime-only `OPENAI_API_KEY` plus `OPENAI_PROJECT_ID`
 - Source delivery: exact private objects are read through the owning storage
   repository and attached directly; no public or reusable signed URL is issued
 - Telemetry: provider request ID and input/output/total token counts only
@@ -45,3 +46,27 @@ prompts, responses, access details, credentials, or generated customer content.
 
 No release tag or customer exposure is permitted until this artifact is
 complete and reviewed.
+
+## Resumable production operation
+
+`/api/internal/guidebook-creation/controlled-journey` is deliberately unlinked.
+It requires an authenticated administrator, the active `release_verifier`
+identity with PV-009 capability, an active `guidebook_customer` controlled
+identity, a matching customer-scoped standalone-property entitlement, and the
+operation-specific runtime gates. Normal customer enablement, vertical-slice
+enablement, and the public cohort must remain closed.
+
+The initial command supplies only the verification run, controlled customer,
+and controlled entitlement identifiers. Every later command supplies the exact
+expected stage. A stale or repeated stage returns 409 before mutation. Each
+invocation advances one durable stage; extraction, initial generation, and
+section regeneration are separately queued and leased through the existing
+Creation Assistant worker. The operation stores only sanitized identifiers,
+stage names, revision numbers, hashes, usage, and audit outcomes in the existing
+verification attempt and append-only resource ledger.
+
+Provider usage reconciliation requires `OPENAI_ADMIN_KEY` in the deployed
+runtime because the organization Usage and Costs endpoints do not accept the
+project Responses key for that purpose. The mutation-free `dry_run` command
+fails closed if reconciliation authority or any controlled prerequisite is
+missing. No provider request is allowed before that dry run succeeds.

@@ -1,4 +1,5 @@
-import {describe,expect,it} from "vitest";
+import {describe,expect,it,vi} from "vitest";
+vi.mock("server-only",()=>({}));
 import {createCreationJob,extractCreationSources,generateCreationDraft,regenerateCreationSection,restoreCreationRevision,reviewCreationFact,uploadCreationSource,type AccessPort,type CanonicalDraftPort,type CompatibilityPort,type CreationContext,type CreationRepository,type SourceStorage} from "./application";
 import {GUIDEBOOK_DRAFT_SCHEMA,type GuidebookDraft} from "@/features/guidebook-studio";
 import {DeterministicCreationProvider} from "./providers";
