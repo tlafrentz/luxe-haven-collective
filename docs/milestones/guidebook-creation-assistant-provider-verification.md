@@ -467,3 +467,22 @@ persist post-request evidence moves the attempt and job to
 `reconciliation_required`, which makes owning-domain cleanup ineligible until
 reconciliation is complete. No prompt, response text, source content,
 credential, or authorization header is retained.
+
+Manual project-usage reconciliation was completed for August 17, 2026 UTC
+against the Luxe Haven Production project filter. The Dashboard showed one
+`gpt-5-nano-2025-08-07` request, with both input and output cost displayed as
+less than $0.01. That view did not expose an exact request ID or token counts,
+so the activity cannot be conclusively joined to correlation
+`1aa2a7b8-9c46-43ef-ac45-0b8bdfa86bf8`. The historical attempt's exact token
+usage and cost remain unknown; the evidence establishes one sub-cent Nano
+request in the relevant project-day window.
+
+The separately keyed `controlled_guidebook_extraction_v2` operation is the
+only authorized next attempt. It can provision one controlled property, create
+one job, upload the small synthetic source, enqueue and execute exactly one
+Nano extraction, validate retained provider evidence and extracted
+fact/lineage/confidence/conflict persistence, and clean up through owning
+domains. Its state machine routes successful extraction directly to usage
+validation and cleanup; Mini generation is unreachable. Replay is permanently
+rejected under a new operation hash, while the failed v1 record remains
+immutable.
