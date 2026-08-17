@@ -392,3 +392,15 @@ cohort, and an organization Admin key for project Usage/Costs reconciliation.
 Repeated or stale stage commands return 409 before provider or provisioning
 contact. A separate cleanup command is available only for the claimed actor and
 uses owning-domain cleanup after a failed stage.
+
+Commit `1024389f` deployed this bounded operation to Production as deployment
+`dpl_9UvMzRpndbiCd38JYvhJaiHqHmfY`. The complete gate suite passed: 3,952 tests,
+focused authorization/idempotency/lease/cost/cleanup/tenant tests, typecheck,
+lint with three unchanged warnings, migration coverage, and the 273-page
+production build. The operation remained disabled and was not invoked because
+the Production runtime does not contain `OPENAI_ADMIN_KEY`. OpenAI's
+organization Usage and Costs endpoints require an Admin API key; the existing
+project-scoped Responses key is intentionally not promoted or proxied for that
+purpose. Therefore no property, allocation, upload, queue item, Creation job,
+or OpenAI request was created. Normal Creation Assistant enablement remains
+off, its public cohort remains empty, and no release tag was created.
