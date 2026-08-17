@@ -414,3 +414,26 @@ available to the application or worker. Project-dashboard confirmation is a
 required manual evidence step after the controlled run; any future automated
 billing reconciliation belongs to a separate read-only finance/operations
 process and cannot gate Guidebook execution.
+
+The decoupled policy shipped in commit `421dc60e`; sanitized request-evidence
+retention shipped in `15e3308e`. The controlled-only gates were enabled for one
+Production execution. Its mutation-free dry run passed, the property, job, and
+private source were created through their owning domains, and the persistent
+worker claimed the single extraction item. Nano extraction then returned the
+safe runtime classification `CONTROLLED_EXTRACTION_NOT_COMPLETED`; the journey
+stopped before generation or regeneration. Correlation ID:
+`1aa2a7b8-9c46-43ef-ac45-0b8bdfa86bf8`.
+
+Failure cleanup completed through the owning domains. The sanitized audit
+proved zero controlled properties, Creation jobs, active leases, reserved
+allocations, and published/scheduled Guidebooks. The resource ledger retains
+completed cleanup entries for the controlled job and source. Because cleanup
+policy removed the failed provider-attempt row before it was copied into the
+verification envelope, request ID, token usage, and calculated cost are not
+available for this failed extraction and no unsupported values are inferred.
+The operation record is permanently failed at `cleanup_completed`; it was not
+replayed. Controlled enablement was restored to false and its kill switch to
+true in Production deployment `dpl_A7aUgk4JjhTyT37HjdJHz14xhrCx`. Normal
+Auto-create remained disabled, the customer cohort remained empty, and no
+release tag was created. Manual Usage Dashboard confirmation remains pending
+for an organization owner because the controlled journey did not complete.
