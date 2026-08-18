@@ -1,0 +1,41 @@
+{
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Bash(npx vitest run:*) in /Users/toddl/Documents/GitHub/luxe-haven-collective",
+      "Bash(npm run typecheck) in /Users/toddl/Documents/GitHub/luxe-haven-collective"
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Bash(vercel --prod:*) in /Users/toddl/Documents/GitHub/luxe-haven-collective",
+      "Bash(supabase db push:*) in /Users/toddl/Documents/GitHub/luxe-haven-collective"
+    ],
+    "environment": [
+      "$defaults",
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: Vercel (deploy target — see Hosts contacted: luxe-haven-collective-*.vercel.app); Supabase (per README and .env.local)",
+      "**Repository visibility**: not queryable here — assuming private per shipped default (no evidence of public visibility)",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured",
+      "**Default / protected branches**: main (default branch); protection status not queryable here",
+      "**CI/CD deploy targets**: Vercel (production: https://luxehavencollective.co, per README); CI secret VERCEL_TOKEN referenced in workflow config",
+      "**Network posture**: None configured",
+      "**Source control**: The trusted repo (tlafrentz/luxe-haven-collective) and its origin remote only (github.com/tlafrentz/luxe-haven-collective.git)",
+      "**Trusted internal domains**: luxehavencollective.co (production domain per README)",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: Supabase (backend/auth/data per README and run skill), Hospitable (PMS sync integration per README), Resend (inquiry/lead notifications per README), Stripe (seen in shell history CLI usage)",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: .env.local (real Supabase + integration credentials, per repo docs); docs/Operations/cash-classification-policy.md; docs/Operations/report-retention-policy.md; share only with audiences cleared at the [named+specifics] bar",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment; production URL https://luxehavencollective.co per README",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development (Next.js hospitality platform — Luxe Haven Collective)",
+      "**Trusted repo**: /Users/toddl/Documents/GitHub/luxe-haven-collective and its origin remote (github.com/tlafrentz/luxe-haven-collective.git)",
+      "**Org-specific CLIs**: None configured",
+      "routine under this repo's working directory (npm, npx, vitest, vercel, supabase CLI usage observed routinely in this project)"
+    ]
+  }
+}
