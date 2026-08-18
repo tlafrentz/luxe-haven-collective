@@ -35,6 +35,25 @@ const mockTemplates = [
 
 vi.mock("@/app/actions/guidebook-templates", () => ({
   getPublishedGuidebookTemplates: vi.fn(async () => mockTemplates),
+  getPublishedGuidebookTemplateVersions: vi.fn(async () => [
+    { versionId: "template-version-1", name: "Mesa Modern", versionNumber: 1 },
+  ]),
+}));
+
+vi.mock("@/app/actions/guidebook-ai-creation", () => ({
+  getCustomerCreationCapabilityAction: vi.fn(async () => ({ available: true, reasons: [] })),
+  createCustomerCreationJobAction: vi.fn(async () => ({ jobId: "job-1" })),
+  uploadCustomerCreationSourceAction: vi.fn(async () => ({ sourceId: "source-1", duplicate: false })),
+  prepareCustomerSourceUploadAction: vi.fn(async () => ({ path: "path", token: "token" })),
+  completeCustomerSourceUploadAction: vi.fn(async () => ({ sourceId: "source-1", duplicate: false })),
+  enqueueCustomerExtractionAction: vi.fn(async () => {}),
+  enqueueCustomerGenerationAction: vi.fn(async () => {}),
+  reviewCustomerCreationFactAction: vi.fn(async () => ({ ready: false })),
+  getCustomerCreationProjectionAction: vi.fn(async () => null),
+}));
+
+vi.mock("@/app/actions/guidebook-brand-defaults", () => ({
+  getGuidebookWorkspaceBrandDefaultsAction: vi.fn(async () => null),
 }));
 
 const properties = [
@@ -91,6 +110,13 @@ describe("GuidebookPublishingWizard", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Desert Retreat/ }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(
+      screen.getByRole("heading", { name: "How do you want to create it?" }),
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Start from a template/ }),
+    );
 
     expect(
       screen.getByRole("heading", { name: "Let's match your style." }),
@@ -158,5 +184,55 @@ describe("GuidebookPublishingWizard", () => {
     expect(
       screen.queryByRole("button", { name: /already has an active guidebook/ }),
     ).toBeNull();
+  });
+
+  it("skips style, template, and brand steps for the blank path", async () => {
+    render(
+      <GuidebookPublishingWizard
+        workspaceId="workspace-1"
+        properties={properties}
+        createAction={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Let's Get Started" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Select Existing Property/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Desert Retreat/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: /Start blank/ }));
+
+    expect(
+      screen.getByRole("heading", { name: "Guidebook details" }),
+    ).toBeTruthy();
+  });
+
+  it("shows the AI auto-create trust banner and starts a creation job when chosen", async () => {
+    render(
+      <GuidebookPublishingWizard
+        workspaceId="workspace-1"
+        properties={properties}
+        createAction={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Let's Get Started" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Select Existing Property/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Desert Retreat/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(
+      screen.getByText("AI creates a draft. Humans review. Nothing auto-publishes."),
+    ).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Auto-create with AI/ }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "Upload your content" }),
+    ).toBeTruthy();
   });
 });

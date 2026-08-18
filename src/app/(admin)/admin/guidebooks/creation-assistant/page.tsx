@@ -17,9 +17,9 @@ import {
   provisionControlledGuidebookPropertyAction,
   restoreAssistantRevisionAction,
   reviewAssistantFactAction,
-  uploadAssistantSourceAction,
 } from "@/app/actions/guidebook-creation-assistant";
 import { readCreationCapability } from "@/features/guidebook-creation-assistant/runtime";
+import { SourceUpload } from "./source-upload";
 export const dynamic = "force-dynamic";
 export default async function Page({
   searchParams,
@@ -381,18 +381,7 @@ function Workspace({
           Correlation: {String(job.correlation_id)}
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <form action={uploadAssistantSourceAction}>
-            <input type="hidden" name="jobId" value={jobId} />
-            <input
-              name="file"
-              type="file"
-              required
-              accept=".pdf,.docx,.txt,image/jpeg,image/png,image/webp"
-            />
-            <button className="rounded-lg border px-4 py-2">
-              Upload source
-            </button>
-          </form>
+          <SourceUpload jobId={jobId} />
           <form action={enqueueAssistantExtractionAction}>
             <input type="hidden" name="jobId" value={jobId} />
             <input

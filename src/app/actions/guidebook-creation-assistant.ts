@@ -37,7 +37,7 @@ async function context(workspaceId: string, propertyId: string) {
     workspaceId,
     propertyId,
     permissions: new Set(["guidebooks.manage"]),
-    entitled: await hasCreationEntitlement(workspaceId, propertyId),
+    entitled: await hasCreationEntitlement(workspaceId, propertyId, user.id),
     correlationId: crypto.randomUUID(),
   };
 }
@@ -239,10 +239,76 @@ export async function uploadAssistantSourceAction(form: FormData) {
   await uploadCreationSource(creationDependencies(), ctx, {
     jobId,
     filename: file.name,
-    mediaType: file.type,
+    mediaType: /\.(md|markdown)$/i.test(file.name) ? "text/plain" : file.type,
     bytes,
     integritySha256: hash,
   });
+  revalidatePath(base);
+}
+export async function prepareAssistantSourceUploadAction(input: {
+  jobId: string;
+  filename: string;
+  mediaType: string;
+  byteSize: number;
+}) {
+  const parsed = z
+    .object({
+      jobId: z.string().uuid(),
+      filename: z.string().trim().min(1).max(255),
+      mediaType: z.string().trim().min(1).max(120),
+      byteSize: z.number().int().positive().max(25 * 1024 * 1024),
+    })
+    .parse(input);
+  const ctx = await creationContextFromJob(parsed.jobId);
+  const { user } = await admin();
+  if (ctx.actorId !== user.id) throw new Error("CREATION_JOB_ACCESS_DENIED");
+  await assertInternal(ctx.workspaceId, ctx.propertyId, user.id);
+  const path = `direct-uploads/${parsed.jobId}/${crypto.randomUUID()}`;
+  const { data, error } = await createAdminClient().storage
+    .from("guidebook-creation-sources")
+    .createSignedUploadUrl(path);
+  if (error || !data) throw new Error("CREATION_SOURCE_UPLOAD_PREPARE_FAILED");
+  return { path, token: data.token };
+}
+export async function completeAssistantSourceUploadAction(input: {
+  jobId: string;
+  path: string;
+  filename: string;
+  mediaType: string;
+}) {
+  const parsed = z
+    .object({
+      jobId: z.string().uuid(),
+      path: z.string().trim().min(1).max(500),
+      filename: z.string().trim().min(1).max(255),
+      mediaType: z.string().trim().min(1).max(120),
+    })
+    .parse(input);
+  if (!parsed.path.startsWith(`direct-uploads/${parsed.jobId}/`))
+    throw new Error("CREATION_SOURCE_UPLOAD_PATH_INVALID");
+  const ctx = await creationContextFromJob(parsed.jobId);
+  const { user } = await admin();
+  if (ctx.actorId !== user.id) throw new Error("CREATION_JOB_ACCESS_DENIED");
+  await assertInternal(ctx.workspaceId, ctx.propertyId, user.id);
+  const storage = createAdminClient().storage.from("guidebook-creation-sources");
+  const { data, error } = await storage.download(parsed.path);
+  if (error || !data) throw new Error("CREATION_SOURCE_UPLOAD_MISSING");
+  try {
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const hash = Array.from(new Uint8Array(digest), (value) =>
+      value.toString(16).padStart(2, "0"),
+    ).join("");
+    await uploadCreationSource(creationDependencies(), ctx, {
+      jobId: parsed.jobId,
+      filename: parsed.filename,
+      mediaType: parsed.mediaType,
+      bytes,
+      integritySha256: hash,
+    });
+  } finally {
+    await storage.remove([parsed.path]);
+  }
   revalidatePath(base);
 }
 export async function enqueueAssistantExtractionAction(form: FormData) {

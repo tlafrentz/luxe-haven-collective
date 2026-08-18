@@ -62,6 +62,7 @@ type ShellProps = Readonly<{
   experience: PlatformExperience;
   role?: string | null;
   enabledFeatureFlags?: readonly string[];
+  entitlements?: readonly string[];
 }>;
 const groupLabels: Record<string, string> = {
   home: "Home",
@@ -93,7 +94,6 @@ const operationsIcons: Record<string, ComponentType<LucideProps>> = {
 const clientIcons: Record<string, ComponentType<LucideProps>> = {
   home: House,
   "workspace-overview": BriefcaseBusiness,
-  "hpm-workspace": CircleGauge,
   observe: Eye,
   understand: LineChart,
   decide: Crosshair,
@@ -104,15 +104,17 @@ const clientIcons: Record<string, ComponentType<LucideProps>> = {
   messages: MessageCircle,
   reports: PieChart,
   "guidebook-studio": BookOpen,
+  "furnishing-studio": Boxes,
 };
 
 export function ClientWorkspaceShell({
   children,
   role,
   enabledFeatureFlags,
+  entitlements,
 }: Omit<ShellProps, "experience">) {
   return (
-    <PlatformShell experience="client-workspace" role={role} enabledFeatureFlags={enabledFeatureFlags}>
+    <PlatformShell experience="client-workspace" role={role} enabledFeatureFlags={enabledFeatureFlags} entitlements={entitlements}>
       {children}
     </PlatformShell>
   );
@@ -128,17 +130,17 @@ export function OperationsConsoleShell({
   );
 }
 
-export function PlatformShell({ children, experience, role, enabledFeatureFlags }: ShellProps) {
+export function PlatformShell({ children, experience, role, enabledFeatureFlags, entitlements }: ShellProps) {
   return (
     <WorkspaceContextProvider>
-      <PlatformShellFrame experience={experience} role={role} enabledFeatureFlags={enabledFeatureFlags}>
+      <PlatformShellFrame experience={experience} role={role} enabledFeatureFlags={enabledFeatureFlags} entitlements={entitlements}>
         {children}
       </PlatformShellFrame>
     </WorkspaceContextProvider>
   );
 }
 
-function PlatformShellFrame({ children, experience, role, enabledFeatureFlags }: ShellProps) {
+function PlatformShellFrame({ children, experience, role, enabledFeatureFlags, entitlements }: ShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -152,6 +154,7 @@ function PlatformShellFrame({ children, experience, role, enabledFeatureFlags }:
     source,
     resolveUserCapabilities({ authenticated: true, role }),
     new Set(enabledFeatureFlags),
+    new Set(entitlements),
   );
   const details = pageDetails(pathname, experience);
   const contextKind = workspaceContextKind(pathname);

@@ -27,6 +27,8 @@ describe("Creation Assistant cleanup eligibility", () => {
   });
 
   it("never deletes append-only provider evidence during full resource cleanup",()=>{const source=readFileSync("src/features/guidebook-creation-assistant/cleanup.ts","utf8");expect(source).not.toContain("guidebook_creation_provider_evidence");expect(source).not.toContain("guidebook_creation_provider_evidence_outcomes")});
+  it("removes controlled command receipts before the owning domain deletes its Guidebook",()=>{const source=readFileSync("src/features/guidebook-creation-assistant/cleanup.ts","utf8");expect(source).toContain('from("guidebook_command_receipts")');expect(source).toContain("controlledOwningDomainCleanup")});
+  it("resolves durable work before canonical property cleanup",()=>{const source=readFileSync("src/features/guidebook-creation-assistant/cleanup.ts","utf8");expect(source).toContain('from("guidebook_creation_work_items")');expect(source).toContain('status: "cancelled"');expect(source).toContain('["queued", "processing", "retryable_failure"]')});
 
   it.each(["draft", "uploading", "extracting", "generating"])(
     "rejects non-terminal %s jobs",

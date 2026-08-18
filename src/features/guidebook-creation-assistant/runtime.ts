@@ -80,18 +80,34 @@ export function creationDependencies(options:Readonly<{controlledVerification?:b
 export async function hasCreationEntitlement(
   workspaceId: string,
   propertyId: string,
+  actorId?: string,
 ) {
   const db = createAdminClient(),
     now = new Date().toISOString(),
-    { data, error } = await db
-      .from("commercial_entitlements")
-      .select("resource_scope_type,resource_scope_id")
-      .eq("tenant_id", workspaceId)
-      .eq("capability_code", "guidebook.create")
-      .eq("status", "active")
-      .lte("effective_from", now)
-      .or(`effective_until.is.null,effective_until.gt.${now}`);
+    [{ data, error }, { data: internalIdentity, error: identityError }] =
+      await Promise.all([
+        db
+          .from("commercial_entitlements")
+          .select("resource_scope_type,resource_scope_id")
+          .eq("tenant_id", workspaceId)
+          .eq("capability_code", "guidebook.create")
+          .eq("status", "active")
+          .lte("effective_from", now)
+          .or(`effective_until.is.null,effective_until.gt.${now}`),
+        actorId
+          ? db
+              .from("controlled_verification_identities")
+              .select("id,allowed_scenario_codes")
+              .eq("environment_code", "production")
+              .eq("identity_type_code", "release_verifier")
+              .eq("opaque_auth_subject_reference", actorId)
+              .eq("status", "active")
+              .or(`expires_at.is.null,expires_at.gt.${now}`)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
   if (error) throw new Error("CREATION_ENTITLEMENT_READ_FAILED");
+  if (identityError) throw new Error("CREATION_INTERNAL_ACCESS_READ_FAILED");
   return Boolean(
     data?.some(
       (grant) =>
@@ -101,7 +117,7 @@ export async function hasCreationEntitlement(
         (grant.resource_scope_type === "property" &&
           grant.resource_scope_id === propertyId),
     ),
-  );
+  ) || Boolean(internalIdentity?.allowed_scenario_codes?.includes("PV-009"));
 }
 export async function creationContextFromJob(
   jobId: string,
@@ -124,6 +140,7 @@ export async function creationContextFromJob(
     entitled: await hasCreationEntitlement(
       String(job.workspace_id),
       String(job.property_id),
+      String(job.requested_by_profile_id),
     ),
     correlationId: String(job.correlation_id),
   };
@@ -155,7 +172,7 @@ export async function enqueueCreationWork(
   if (error) throw error;
   return data;
 }
-export async function processOneCreationWork(workerId: string,options:Readonly<{controlledVerification?:boolean;runScopedAuthorization?:boolean;expectedJobId?:string}>={}) {
+export async function processOneCreationWork(workerId: string,options:Readonly<{controlledVerification?:boolean;runScopedAuthorization?:boolean;expectedJobId?:string;retryImmediately?:boolean}>={}) {
   const db = createAdminClient(),
     { data, error } = await db.rpc("claim_guidebook_creation_work", {
       p_worker_id: workerId,
@@ -174,6 +191,9 @@ export async function processOneCreationWork(workerId: string,options:Readonly<{
       await extractCreationSources(deps, context, {
         jobId: String(item.job_id),
         idempotencyKey: attemptKey,
+        ...(Array.isArray(payload.sourceIds)
+          ? { sourceIds: payload.sourceIds.map(String) }
+          : {}),
       });
     else if (item.stage === "generation")
       await generateCreationDraft(deps, context, {
@@ -212,7 +232,9 @@ export async function processOneCreationWork(workerId: string,options:Readonly<{
         item.attempts < 3,
       status = retryable ? "retryable_failure" : "terminal_failure",
       delay = new Date(
-        Date.now() + Math.min(60_000, 1000 * 2 ** Number(item.attempts)),
+        options.retryImmediately
+          ? Date.now()
+          : Date.now() + Math.min(60_000, 1000 * 2 ** Number(item.attempts)),
       ).toISOString();
     await db
       .from("guidebook_creation_work_items")
@@ -224,10 +246,22 @@ export async function processOneCreationWork(workerId: string,options:Readonly<{
       })
       .eq("id", item.id)
       .eq("lease_owner", workerId);
-    return { processed: true, status, jobId: String(item.job_id) };
+    return {
+      processed: true,
+      status,
+      jobId: String(item.job_id),
+      failureCode: safeCode(error),
+    };
   }
 }
 function safeCode(error: unknown) {
+  if (error instanceof CreationProviderError)
+    return `PROVIDER_${error.kind.toUpperCase()}`;
+  const structured =
+    error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code ?? "")
+      : "";
+  if (/^[A-Z][A-Z0-9_]{2,100}$/.test(structured)) return structured;
   const value = error instanceof Error ? error.message : "CREATION_WORK_FAILED";
   return /^[A-Z][A-Z0-9_]{2,100}$/.test(value) ? value : "CREATION_WORK_FAILED";
 }
@@ -249,14 +283,10 @@ export async function readCreationCapability(
       { data: property },
       { data: template },
       { data: work },
+      { data: controlledIdentity },
     ] = await Promise.all([
       db.from("guidebook_creation_jobs").select("id").limit(1),
-      db
-        .schema("storage")
-        .from("buckets")
-        .select("id,public")
-        .eq("id", "guidebook-creation-sources")
-        .maybeSingle(),
+      db.storage.getBucket("guidebook-creation-sources"),
       db
         .from("properties")
         .select("id")
@@ -271,6 +301,15 @@ export async function readCreationCapability(
         .eq("artifact.status", "published")
         .limit(1),
       db.from("guidebook_creation_work_items").select("id").limit(1),
+      db
+        .from("controlled_verification_identities")
+        .select("id,allowed_scenario_codes")
+        .eq("environment_code", "production")
+        .eq("identity_type_code", "release_verifier")
+        .eq("opaque_auth_subject_reference", input.actorId)
+        .eq("status", "active")
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+        .maybeSingle(),
     ]),
     compatibility = new SupabaseCreationCompatibility(),
     templateId = template?.[0]?.id ? String(template[0].id) : "",
@@ -278,6 +317,7 @@ export async function readCreationCapability(
     entitled = await hasCreationEntitlement(
       input.workspaceId,
       input.propertyId,
+      input.actorId,
     );
   return creationAssistantCapability({
     migrationApplied: Array.isArray(migration),
@@ -292,8 +332,30 @@ export async function readCreationCapability(
     globalEnabled: process.env.GUIDEBOOK_CREATION_ENABLED === "true",
     workspaceEnabled: process.env.GUIDEBOOK_CREATION_KILL_SWITCH !== "true",
     controlledCohort:
-      cohort.includes(input.actorId) || cohort.includes(input.workspaceId),
+      cohort.includes(input.actorId) ||
+      cohort.includes(input.workspaceId) ||
+      Boolean(
+        controlledIdentity?.allowed_scenario_codes?.includes("PV-009"),
+      ),
     verticalSliceVerified:
       process.env.GUIDEBOOK_CREATION_VERTICAL_SLICE_VERIFIED === "true",
   });
+}
+
+/**
+ * Customer-facing readiness gate. Unlike readCreationCapability()/customerVisible
+ * (which additionally requires an internal env cohort allow-list — a staged
+ * canary mechanism for the admin/PV-009 harness), this drops that allow-list
+ * requirement and gates purely on real per-tenant entitlement plus infra
+ * health plus the global enable/kill-switch flags, so it works for any
+ * entitled customer without ops hand-adding workspace IDs to an env var.
+ */
+export async function readCustomerCreationCapability(
+  input: Readonly<{ workspaceId: string; propertyId: string; actorId: string }>,
+) {
+  const capability = await readCreationCapability(input);
+  return {
+    available: capability.reasons.length === 0 && process.env.GUIDEBOOK_CREATION_ENABLED === "true",
+    reasons: capability.reasons,
+  };
 }

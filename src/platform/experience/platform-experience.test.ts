@@ -66,13 +66,36 @@ describe("workspace-driven platform experience", () => {
     expect(resolveNavigation(flagged, resolveUserCapabilities({ authenticated: true, role: "owner" }), new Set(["beta-product"]))).toHaveLength(1);
   });
 
-  it("shows the unified HPM workspace only when its server-provided flag is enabled", () => {
+  it("never shows a standalone HPM navigation destination, under any flags or entitlements", () => {
+    expect(clientWorkspaceNavigation.some(item => item.id === "hpm-workspace" || item.label === "HPM")).toBe(false);
+    const capabilities = resolveUserCapabilities({ authenticated: true, role: "admin" });
+    const withEverything = resolveNavigation(
+      clientWorkspaceNavigation,
+      capabilities,
+      new Set(["hpm-unified-workspace", "hpm-workspace"]),
+      new Set(["hpm.workspace.access"]),
+    );
+    expect(withEverything.some(item => item.id === "hpm-workspace" || item.label === "HPM")).toBe(false);
+    const lifecycle = withEverything.filter(item => "lifecycleStage" in item);
+    expect(lifecycle.map(item => item.label)).toEqual(["Observe", "Understand", "Decide", "Execute", "Learn"]);
+  });
+
+  it.each([
+    "/dashboard/guidebooks",
+    "/dashboard/guidebooks/templates",
+    "/dashboard/guidebooks/brand",
+    "/dashboard/guidebooks/abc-123/edit",
+  ])("activates Guidebook Studio for %s (local Guidebooks/Templates/Brand Kit tabs share one active state)", (path) => {
+    const item = clientWorkspaceNavigation.find((entry) => entry.id === "guidebook-studio");
+    expect(item?.activeMatch && matchesNavigationRoute(path, item.activeMatch)).toBe(true);
+  });
+
+  it("shows entitlement-gated services only when the workspace holds the matching entitlement", () => {
     const capabilities = resolveUserCapabilities({ authenticated: true, role: "owner" });
-    expect(resolveNavigation(clientWorkspaceNavigation, capabilities).some(item => item.id === "hpm-workspace")).toBe(false);
-    const enabled = resolveNavigation(clientWorkspaceNavigation, capabilities, new Set(["hpm-unified-workspace"]));
-    expect(enabled.find(item => item.id === "hpm-workspace")).toMatchObject({ label: "HPM", href: "/dashboard/hpm", description: "Hospitality Performance Management" });
-    const item = enabled.find(entry => entry.id === "hpm-workspace");
-    expect(item?.activeMatch && matchesNavigationRoute("/dashboard/hpm/lifecycle/thread-1", item.activeMatch)).toBe(true);
+    expect(resolveNavigation(clientWorkspaceNavigation, capabilities).some(item => item.id === "furnishing-studio")).toBe(false);
+    const entitled = resolveNavigation(clientWorkspaceNavigation, capabilities, new Set(), new Set(["furnishing.project.access"]));
+    expect(entitled.find(item => item.id === "furnishing-studio")).toMatchObject({ group: "services", label: "Furnishing Studio", href: "/dashboard/furnishing" });
+    expect(entitled.some(item => item.id === "guidebook-studio")).toBe(true);
   });
 
   it("owns canonical and legacy investment routes from Decide", () => {

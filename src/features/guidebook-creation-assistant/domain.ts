@@ -29,7 +29,7 @@ export type ExtractedFact = Readonly<{
 }>;
 
 const factSchema = z.object({
-  category:z.string().min(1).max(80), field:z.string().min(1).max(120), normalizedValue:z.unknown().nullable(),
+  category:z.string().min(1).max(80), field:z.string().min(1).max(120), normalizedValue:z.union([z.string(),z.number(),z.boolean(),z.null()]),
   displayValue:z.string().max(2000).optional(), sourceId:z.string().min(1).optional(), sourceLocation:z.string().max(300).optional(),
   confidence:z.number().min(0).max(1).optional(), reviewStatus:z.enum(REVIEW_STATUSES), conflictGroup:z.string().optional(),
   sensitivity:z.enum(["public","internal","sensitive","secret"]), highRisk:z.boolean(),

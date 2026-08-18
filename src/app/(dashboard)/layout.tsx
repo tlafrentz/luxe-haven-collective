@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 
 import { AppShell } from "@/components/application-layout"
+import { getCommerceAccessWorkspace } from "@/app/actions/commerce-access"
 import { SupabaseTeamAccessRepository } from "@/features/workspace"
 import { requireUser } from "@/lib/auth/session"
 
@@ -14,7 +15,14 @@ export default async function DashboardLayout({
   const { user, profile } = await requireUser()
   const access = await new SupabaseTeamAccessRepository().resolve(user.id)
 
-  const hpmInternalEligible = process.env.HPM_COHORT_ENABLED === "true" && (process.env.HPM_ROLLOUT_COHORT ?? "verification") === "internal" && profile?.role === "admin"
-  const enabledFeatureFlags = process.env.HPM_UNIFIED_WORKSPACE_ENABLED === "true" && process.env.HPM_WORKSPACE_KILL_SWITCH !== "true" && hpmInternalEligible ? ["hpm-unified-workspace"] : []
-  return <AppShell role={access?.role ?? profile?.role} enabledFeatureFlags={enabledFeatureFlags}>{children}</AppShell>
+  const commerceAccess = await getCommerceAccessWorkspace({ workspaceId: access?.workspaceId })
+  const entitlements = (commerceAccess?.entitlements ?? [])
+    .filter((entitlement) => entitlement.status === "available")
+    .map((entitlement) => entitlement.key)
+
+  return (
+    <AppShell role={access?.role ?? profile?.role} entitlements={entitlements}>
+      {children}
+    </AppShell>
+  )
 }

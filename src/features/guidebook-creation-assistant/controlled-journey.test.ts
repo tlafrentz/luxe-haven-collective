@@ -1,12 +1,214 @@
-import{createHash}from"node:crypto";import{readFileSync}from"node:fs";import{describe,expect,it}from"vitest";import{CONTROLLED_EXTRACTION_HASH,CONTROLLED_EXTRACTION_OPERATION,CONTROLLED_JOURNEY_HASH,CONTROLLED_JOURNEY_OPERATION,CONTROLLED_SOURCE_TEXT,CONTROLLED_STAGES,validateControlledAttemptUsage}from"./controlled-journey";import{GUIDEBOOK_COST_CEILING_USD}from"./providers";
-vi.mock("server-only",()=>({}));
-import{vi}from"vitest";
-describe("controlled Creation Assistant journey policy",()=>{
- it("uses a stable namespace distinct from every provider diagnostic",()=>{expect(CONTROLLED_JOURNEY_OPERATION).toBe("controlled_guidebook_creation_journey_v1");for(const operation of["openai_nano_generation_smoke_v1","openai_nano_generation_smoke_v2","openai_nano_generation_smoke_v3"])expect(CONTROLLED_JOURNEY_HASH).not.toBe(createHash("sha256").update(`guidebook:openai:verification:${operation}`).digest("hex"))});
- it("keeps extraction v2 separate and makes generation unreachable from extraction success",()=>{expect(CONTROLLED_EXTRACTION_OPERATION).toBe("controlled_guidebook_extraction_v2");expect(CONTROLLED_EXTRACTION_HASH).not.toBe(CONTROLLED_JOURNEY_HASH);const source=readFileSync("src/features/guidebook-creation-assistant/controlled-journey.ts","utf8");expect(source).toContain('if(extractionOnly){const usage=await validateExtractionEvidence');expect(source).toContain('return stage(state,"usage_validated"')});
- it("contains no customer, credential, security, file, or guest data",()=>{expect(CONTROLLED_SOURCE_TEXT).not.toMatch(/address|code|wi-?fi|guest|emergency|customer document|security|password|credential/i);expect(new TextEncoder().encode(CONTROLLED_SOURCE_TEXT).byteLength).toBeLessThan(1024)});
- it("bounds the durable sequence and cost",()=>{expect(CONTROLLED_STAGES).toEqual(expect.arrayContaining(["extraction_queued","generation_queued","regeneration_queued","stale_revision_rejected","revision_restored","creation_cleaned","completed"]));expect(new Set(CONTROLLED_STAGES).size).toBe(CONTROLLED_STAGES.length);expect(GUIDEBOOK_COST_CEILING_USD).toBe(1)});
- it("fails closed on replay and enforces controlled tenant linkage before provisioning",()=>{const source=readFileSync("src/features/guidebook-creation-assistant/controlled-journey.ts","utf8");for(const value of["CONTROLLED_JOURNEY_STAGE_REPLAY_REJECTED","CONTROLLED_JOURNEY_ALREADY_CLAIMED","entitlement.tenant_id!==customer.tenant_id","entitlement.customer_account_id!==customer.id","identity_type_code\",\"guidebook_customer","identity_type_code\",\"release_verifier"])expect(source).toContain(value);expect(source.indexOf("CONTROLLED_JOURNEY_ENTITLEMENT_INVALID")).toBeLessThan(source.indexOf("service.provision"))});
- it("requires unique request-level usage for exactly three stages and enforces the one-dollar total",()=>{const row=(stage:string,id:string,cost:number)=>({stage,status:"completed",request_id:id,usage_metadata:{stage,configured_model:stage==="extraction"?"gpt-5-nano":"gpt-5-mini",resolved_snapshot:"snapshot",openai_request_id:id,input_tokens:10,cached_input_tokens:0,output_tokens:5,reasoning_tokens:1,calculated_cost_usd:cost,latency_ms:20,correlation_id:"correlation"}}),valid=[row("extraction","req-1",.1),row("generation","req-2",.2),row("section_regeneration","req-3",.3)];expect(validateControlledAttemptUsage(valid)).toEqual(expect.objectContaining({totals:expect.objectContaining({requests:3,calculatedCostUsd:.6}),evidence:expect.arrayContaining([expect.objectContaining({stage:"extraction",requestId:"req-1"})])}));expect(()=>validateControlledAttemptUsage(valid.map((value,index)=>index===2?{...value,request_id:"req-2",usage_metadata:{...value.usage_metadata,openai_request_id:"req-2"}}:value))).toThrow("CONTROLLED_JOURNEY_REQUEST_ID_INVALID");expect(()=>validateControlledAttemptUsage(valid.map((value,index)=>index===0?{...value,usage_metadata:{...value.usage_metadata,input_tokens:undefined}}:value))).toThrow("CONTROLLED_JOURNEY_USAGE_MISSING");expect(()=>validateControlledAttemptUsage(valid.map(value=>({...value,usage_metadata:{...value.usage_metadata,calculated_cost_usd:.4}})))).toThrow("CONTROLLED_JOURNEY_COST_CEILING_EXCEEDED")});
- it("has no organization Admin credential or Usage API dependency",()=>{const source=readFileSync("src/features/guidebook-creation-assistant/controlled-journey.ts","utf8");expect(source).not.toContain("OPENAI_ADMIN_KEY");expect(source).not.toContain("/v1/organization/")});
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import {
+  CONTROLLED_EXTRACTION_HASH,
+  CONTROLLED_EXTRACTION_OPERATION,
+  CONTROLLED_JOURNEY_HASH,
+  CONTROLLED_JOURNEY_OPERATION,
+  CONTROLLED_SOURCE_TEXT,
+  CONTROLLED_STAGES,
+  validateControlledAttemptUsage,
+} from "./controlled-journey";
+import { GUIDEBOOK_COST_CEILING_USD } from "./providers";
+vi.mock("server-only", () => ({}));
+import { vi } from "vitest";
+describe("controlled Creation Assistant journey policy", () => {
+  it("uses a stable namespace distinct from every provider diagnostic", () => {
+    expect(CONTROLLED_JOURNEY_OPERATION).toBe(
+      "controlled_guidebook_creation_journey_v1",
+    );
+    for (const operation of [
+      "openai_nano_generation_smoke_v1",
+      "openai_nano_generation_smoke_v2",
+      "openai_nano_generation_smoke_v3",
+    ])
+      expect(CONTROLLED_JOURNEY_HASH).not.toBe(
+        createHash("sha256")
+          .update(`guidebook:openai:verification:${operation}`)
+          .digest("hex"),
+      );
+  });
+  it("keeps extraction v2 separate and makes generation unreachable from extraction success", () => {
+    expect(CONTROLLED_EXTRACTION_OPERATION).toBe(
+      "controlled_guidebook_extraction_v2",
+    );
+    expect(CONTROLLED_EXTRACTION_HASH).not.toBe(CONTROLLED_JOURNEY_HASH);
+    const source = readFileSync(
+      "src/features/guidebook-creation-assistant/controlled-journey.ts",
+      "utf8",
+    );
+    expect(source).toMatch(
+      /if \(extractionOnly\)[\s\S]*validateExtractionEvidence/,
+    );
+    expect(source).toContain('return stage(state, "usage_validated"');
+  });
+  it("contains no customer, credential, security, file, or guest data", () => {
+    expect(CONTROLLED_SOURCE_TEXT).not.toMatch(
+      /address|code|wi-?fi|guest|emergency|customer document|security|password|credential/i,
+    );
+    expect(
+      new TextEncoder().encode(CONTROLLED_SOURCE_TEXT).byteLength,
+    ).toBeLessThan(1024);
+  });
+  it("bounds the durable sequence and cost", () => {
+    expect(CONTROLLED_STAGES).toEqual(
+      expect.arrayContaining([
+        "extraction_queued",
+        "generation_queued",
+        "regeneration_queued",
+        "stale_revision_rejected",
+        "revision_restored",
+        "creation_cleaned",
+        "completed",
+      ]),
+    );
+    expect(new Set(CONTROLLED_STAGES).size).toBe(CONTROLLED_STAGES.length);
+    expect(GUIDEBOOK_COST_CEILING_USD).toBe(1);
+  });
+  it("gates extraction on persisted review-safe facts instead of probabilistic wording", () => {
+    const source = readFileSync(
+      "src/features/guidebook-creation-assistant/controlled-journey.ts",
+      "utf8",
+    );
+    expect(source).toContain("CONTROLLED_EXTRACTION_PERSISTENCE_INVALID");
+    expect(source).not.toContain("CONTROLLED_FINDINGS_INCOMPLETE");
+  });
+  it("cancels the successful extraction-only job before controlled cleanup", () => {
+    const source = readFileSync(
+      "src/features/guidebook-creation-assistant/controlled-journey.ts",
+      "utf8",
+    );
+    expect(source).toMatch(
+      /case "usage_validated":[\s\S]*if \(extractionOnly\)/,
+    );
+    expect(source).toContain(
+      "await cancelCreationJob(deps, ctx(state), job.id)",
+    );
+  });
+  it("fails closed on replay and enforces controlled tenant linkage before provisioning", () => {
+    const source = readFileSync(
+      "src/features/guidebook-creation-assistant/controlled-journey.ts",
+      "utf8",
+    );
+    for (const value of [
+      "CONTROLLED_JOURNEY_STAGE_REPLAY_REJECTED",
+      "CONTROLLED_JOURNEY_ALREADY_CLAIMED",
+      "entitlement.tenant_id !== customer.tenant_id",
+      "entitlement.customer_account_id !== customer.id",
+      'eq("identity_type_code", "guidebook_customer")',
+      'eq("identity_type_code", "release_verifier")',
+    ])
+      expect(source).toContain(value);
+    expect(
+      source.indexOf("CONTROLLED_JOURNEY_ENTITLEMENT_INVALID"),
+    ).toBeLessThan(source.indexOf("service.provision"));
+  });
+  it("requires unique request-level usage for exactly three stages and enforces the one-dollar total", () => {
+    const row = (stage: string, id: string, cost: number) => ({
+        stage,
+        status: "completed",
+        request_id: id,
+        usage_metadata: {
+          stage,
+          configured_model:
+            stage === "extraction" ? "gpt-5-nano" : "gpt-5-mini",
+          resolved_snapshot: "snapshot",
+          openai_request_id: id,
+          input_tokens: 10,
+          cached_input_tokens: 0,
+          output_tokens: 5,
+          reasoning_tokens: 1,
+          calculated_cost_usd: cost,
+          latency_ms: 20,
+          correlation_id: "correlation",
+        },
+      }),
+      valid = [
+        row("extraction", "req-1", 0.1),
+        row("generation", "req-2", 0.2),
+        row("section_regeneration", "req-3", 0.3),
+      ];
+    expect(validateControlledAttemptUsage(valid)).toEqual(
+      expect.objectContaining({
+        totals: expect.objectContaining({
+          requests: 3,
+          calculatedCostUsd: 0.6,
+        }),
+        evidence: expect.arrayContaining([
+          expect.objectContaining({ stage: "extraction", requestId: "req-1" }),
+        ]),
+      }),
+    );
+    expect(() =>
+      validateControlledAttemptUsage(
+        valid.map((value, index) =>
+          index === 2
+            ? {
+                ...value,
+                request_id: "req-2",
+                usage_metadata: {
+                  ...value.usage_metadata,
+                  openai_request_id: "req-2",
+                },
+              }
+            : value,
+        ),
+      ),
+    ).toThrow("CONTROLLED_JOURNEY_REQUEST_ID_INVALID");
+    expect(() =>
+      validateControlledAttemptUsage(
+        valid.map((value, index) =>
+          index === 0
+            ? {
+                ...value,
+                usage_metadata: {
+                  ...value.usage_metadata,
+                  input_tokens: undefined,
+                },
+              }
+            : value,
+        ),
+      ),
+    ).toThrow("CONTROLLED_JOURNEY_USAGE_MISSING");
+    expect(() =>
+      validateControlledAttemptUsage(
+        valid.map((value) => ({
+          ...value,
+          usage_metadata: { ...value.usage_metadata, calculated_cost_usd: 0.4 },
+        })),
+      ),
+    ).toThrow("CONTROLLED_JOURNEY_COST_CEILING_EXCEEDED");
+  });
+  it("has no organization Admin credential or Usage API dependency", () => {
+    const source = readFileSync(
+      "src/features/guidebook-creation-assistant/controlled-journey.ts",
+      "utf8",
+    );
+    expect(source).not.toContain("OPENAI_ADMIN_KEY");
+    expect(source).not.toContain("/v1/organization/");
+  });
+  it("propagates the immutable launcher authorization through the full journey", () => {
+    const source = readFileSync(
+      "src/features/guidebook-creation-assistant/controlled-journey.ts",
+      "utf8",
+    );
+    expect(source).toContain("runScopedAuthorization: true");
+    expect(source).toContain("assertRuntimeGates(extractionOnly, true)");
+  });
+  it("scopes immutable extraction retries to the retained launcher claim", () => {
+    const source = readFileSync(
+      "src/features/guidebook-creation-assistant/controlled-journey.ts",
+      "utf8",
+    );
+    expect(source).toContain(
+      'select("id,verification_run_id,actor_id,status")',
+    );
+    expect(source).toContain(
+      "hash: `${basePolicy.hash}:${String(launch.data.id)}`",
+    );
+    expect(source).toMatch(
+      /\.order\("created_at", \{ ascending: false \}\)[\s\S]*\.limit\(1\)[\s\S]*\.maybeSingle\(\)/,
+    );
+  });
 });

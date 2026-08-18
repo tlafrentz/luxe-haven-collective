@@ -4,6 +4,7 @@ import {
   GuidebookMetricCard,
   GuidebookStatusBadge,
 } from "@/components/guidebooks/guidebook-ui";
+import { GuidebookStudioNav, GuidebookAiTrustBanner } from "@/components/guidebooks/guidebook-studio-nav";
 import { getGuidebookStudioRequest } from "@/app/actions/guidebook-studio";
 import { filterGuidebookLibrary } from "@/features/guidebook-studio";
 import { GuidebookEmptyState } from "@/components/guidebooks/guidebook-empty-state";
@@ -95,6 +96,8 @@ export default async function GuidebookWorkspacePage({
       result.projection.entitlements.create;
   return (
     <main className="mx-auto max-w-7xl space-y-7 py-8">
+      <GuidebookStudioNav current="guidebooks" />
+      <GuidebookAiTrustBanner />
       <GuidebookPageHeader
         eyebrow="Guest experience operations"
         title="Guidebook Operations"

@@ -376,6 +376,26 @@ export class SupabaseCreationRepository implements CreationRepository {
       });
     if (error) throw error;
   }
+  async notify(input: NonNullable<Parameters<NonNullable<CreationRepository["notify"]>>[0]>) {
+    const { error } = await this.client.from("notifications").upsert(
+      {
+        workspace_id: input.workspaceId,
+        recipient_profile_id: input.recipientProfileId,
+        category: "properties-systems",
+        event_type: "guidebook_creation.draft_ready",
+        urgency: "informational",
+        subject_type: "guidebook_creation_job",
+        subject_id: input.subjectId,
+        property_id: input.propertyId,
+        title: input.title,
+        body: input.body,
+        action_url: input.actionUrl,
+        deduplication_key: input.deduplicationKey,
+      },
+      { onConflict: "workspace_id,recipient_profile_id,deduplication_key", ignoreDuplicates: true },
+    );
+    if (error) throw error;
+  }
 }
 
 export class SupabaseCreationSourceStorage implements SourceStorage {

@@ -13,8 +13,19 @@ import {
 } from "lucide-react";
 import {
   getPublishedGuidebookTemplates,
+  getPublishedGuidebookTemplateVersions,
   type PublishedGuidebookTemplate,
 } from "@/app/actions/guidebook-templates";
+import { createCustomerCreationJobAction, getCustomerCreationCapabilityAction } from "@/app/actions/guidebook-ai-creation";
+import {
+  AiGeneratingStep,
+  AiReviewStep,
+  AiStyleStep,
+  AiTrustBanner,
+  AiUploadStep,
+  beginAiExtraction,
+  beginAiGeneration,
+} from "./ai-creation-steps";
 import { usStates, usTimeZones } from "./property-options";
 
 type PropertyOption = Readonly<{
@@ -26,15 +37,45 @@ type PropertyOption = Readonly<{
   hasActiveGuidebook: boolean;
   existingGuidebookId?: string | null;
 }>;
-const steps = [
-  "Welcome",
-  "Property",
-  "Style",
-  "Template",
-  "Brand",
-  "Details",
-  "Create",
-] as const;
+type StepId =
+  | "welcome"
+  | "property"
+  | "method"
+  | "style"
+  | "template"
+  | "brand"
+  | "details"
+  | "create"
+  | "ai-upload"
+  | "ai-review"
+  | "ai-style"
+  | "ai-generating";
+type StepDef = Readonly<{ id: StepId; label: string }>;
+const baseSteps: readonly StepDef[] = [
+  { id: "welcome", label: "Welcome" },
+  { id: "property", label: "Property" },
+  { id: "method", label: "Method" },
+];
+const templateSteps: readonly StepDef[] = [
+  ...baseSteps,
+  { id: "style", label: "Style" },
+  { id: "template", label: "Template" },
+  { id: "brand", label: "Brand" },
+  { id: "details", label: "Details" },
+  { id: "create", label: "Create" },
+];
+const blankSteps: readonly StepDef[] = [
+  ...baseSteps,
+  { id: "details", label: "Details" },
+  { id: "create", label: "Create" },
+];
+const aiSteps: readonly StepDef[] = [
+  ...baseSteps,
+  { id: "ai-upload", label: "Upload" },
+  { id: "ai-review", label: "Review" },
+  { id: "ai-style", label: "Style & Preferences" },
+  { id: "ai-generating", label: "Generating" },
+];
 const styleOptions = [
   "Luxury",
   "Beach",
@@ -100,6 +141,7 @@ export function GuidebookPublishingWizard({
       initialProperties.length ? "choice" : "new",
     ),
     [propertyId, setPropertyId] = useState(initialPropertyId ?? "");
+  const [creationMode, setCreationMode] = useState<"template" | "ai" | "blank">("template");
   const [fields, setFields] = useState({
       ...emptyProperty,
       ...initialPropertyFields,
@@ -117,14 +159,32 @@ export function GuidebookPublishingWizard({
   const [error, setError] = useState(""),
     [duplicateId, setDuplicateId] = useState(""),
     [pending, startTransition] = useTransition();
+
+  // Auto-create with AI state.
+  const [aiCapabilityAvailable, setAiCapabilityAvailable] = useState<boolean | null>(null);
+  const [aiStarting, setAiStarting] = useState(false);
+  const [aiJobId, setAiJobId] = useState("");
+  const [aiTemplateName, setAiTemplateName] = useState("");
+  const [aiSourceCount, setAiSourceCount] = useState(0);
+  const [aiUploadError, setAiUploadError] = useState("");
+  const [aiReady, setAiReady] = useState(false);
+  const [aiToneOfVoice, setAiToneOfVoice] = useState("");
+  const [aiLanguage, setAiLanguage] = useState("");
+  const [aiPrimaryColor, setAiPrimaryColor] = useState("");
+  const [aiAccentColor, setAiAccentColor] = useState("");
+  const [aiQueuing, setAiQueuing] = useState(false);
+
   const property = properties.find((item) => item.id === propertyId);
   const suggestedTitle = property
     ? `${property.name} Guest Guide`
     : "Guest Guide";
   const selectedTemplate = templates.find((item) => item.id === templateId);
 
+  const activeSteps = creationMode === "ai" ? aiSteps : creationMode === "blank" ? blankSteps : templateSteps;
+  const stepId: StepId = activeSteps[step]?.id ?? "welcome";
+
   useEffect(() => {
-    if (step !== 3) return;
+    if (stepId !== "template") return;
     let cancelled = false;
     Promise.resolve().then(() => {
       if (!cancelled) setTemplatesLoading(true);
@@ -142,22 +202,45 @@ export function GuidebookPublishingWizard({
     return () => {
       cancelled = true;
     };
-  }, [step, styleFilter]);
+  }, [stepId, styleFilter]);
+
+  useEffect(() => {
+    if (stepId !== "method" || !propertyId) return;
+    let cancelled = false;
+    getCustomerCreationCapabilityAction(workspaceId, propertyId)
+      .then((result) => {
+        if (!cancelled) setAiCapabilityAvailable(result.available);
+      })
+      .catch(() => {
+        if (!cancelled) setAiCapabilityAvailable(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [stepId, propertyId, workspaceId]);
 
   const canContinue =
-    step === 0
+    stepId === "welcome"
       ? true
-      : step === 1
+      : stepId === "property"
         ? Boolean(propertyId)
-        : step === 2
-          ? true
-          : step === 3
-            ? Boolean(templateId)
-            : step === 4
-              ? true
-              : step === 5
-                ? Boolean((title || suggestedTitle).trim())
-                : true;
+        : stepId === "method"
+          ? false
+          : stepId === "style"
+            ? true
+            : stepId === "template"
+              ? Boolean(templateId)
+              : stepId === "brand"
+                ? true
+                : stepId === "details"
+                  ? Boolean((title || suggestedTitle).trim())
+                  : stepId === "ai-upload"
+                    ? aiSourceCount > 0
+                    : stepId === "ai-review"
+                      ? aiReady
+                      : stepId === "ai-style"
+                        ? true
+                        : true;
   function chooseProperty(id: string) {
     setPropertyId(id);
     setError("");
@@ -190,12 +273,66 @@ export function GuidebookPublishingWizard({
     });
   }
   function next() {
-    if (step === 1 && !propertyId) return;
-    if (step === 5 && !title) {
+    if (stepId === "property" && !propertyId) return;
+    if (stepId === "details" && !title) {
       setTitle(suggestedTitle);
       setSlug(slugify(suggestedTitle));
     }
-    setStep((value) => Math.min(steps.length - 1, value + 1));
+    setStep((value) => Math.min(activeSteps.length - 1, value + 1));
+  }
+  function back() {
+    setStep((value) => Math.max(0, value - 1));
+  }
+  async function chooseMode(selected: "template" | "ai" | "blank") {
+    setCreationMode(selected);
+    if (selected !== "ai") {
+      setStep((value) => value + 1);
+      return;
+    }
+    if (aiStarting) return;
+    setAiStarting(true);
+    setAiUploadError("");
+    try {
+      const versions = await getPublishedGuidebookTemplateVersions();
+      const chosen = versions[0];
+      if (!chosen) throw new Error("No approved template is available yet.");
+      const created = await createCustomerCreationJobAction({
+        workspaceId,
+        propertyId,
+        templateVersionId: chosen.versionId,
+        idempotencyKey: `ai-create:${propertyId}:${crypto.randomUUID()}`,
+      });
+      setAiJobId(created.jobId);
+      setAiTemplateName(chosen.name);
+      setStep((value) => value + 1);
+    } catch (startError) {
+      setAiUploadError(startError instanceof Error ? startError.message : "Could not start AI auto-create.");
+    } finally {
+      setAiStarting(false);
+    }
+  }
+  async function continueFromAiUpload() {
+    if (!canContinue || aiQueuing) return;
+    setAiQueuing(true);
+    try {
+      await beginAiExtraction(workspaceId, propertyId, aiJobId);
+      next();
+    } finally {
+      setAiQueuing(false);
+    }
+  }
+  async function continueFromAiStyle() {
+    if (aiQueuing) return;
+    setAiQueuing(true);
+    try {
+      await beginAiGeneration(workspaceId, propertyId, aiJobId, title || suggestedTitle, {
+        toneOfVoice: aiToneOfVoice || undefined,
+        language: aiLanguage || undefined,
+      });
+      next();
+    } finally {
+      setAiQueuing(false);
+    }
   }
   return (
     <main className="mx-auto max-w-6xl space-y-6 py-8">
@@ -207,23 +344,23 @@ export function GuidebookPublishingWizard({
       </header>
       <ol
         aria-label="Guidebook creation progress"
-        className="grid grid-cols-7 border-b pb-5"
+        className="grid auto-cols-fr grid-flow-col border-b pb-5"
       >
-        {steps.map((label, index) => (
+        {activeSteps.map((definition, index) => (
           <li
-            key={label}
+            key={definition.id}
             aria-current={step === index ? "step" : undefined}
             className={`flex items-center gap-2 text-sm ${index <= step ? "font-semibold text-blue-700" : "text-stone-400"}`}
           >
             <span className="grid size-7 shrink-0 place-items-center rounded-full border">
               {index < step ? <Check className="size-4" /> : index + 1}
             </span>
-            {label}
+            {definition.label}
           </li>
         ))}
       </ol>
       <section className="min-h-[32rem] rounded-2xl border bg-white p-7">
-        {step === 0 ? (
+        {stepId === "welcome" ? (
           <div className="mx-auto max-w-xl text-center">
             <span className="mx-auto grid size-14 place-items-center rounded-full bg-blue-50 text-blue-700">
               <Sparkles className="size-6" />
@@ -252,7 +389,7 @@ export function GuidebookPublishingWizard({
             </p>
           </div>
         ) : null}
-        {step === 1 ? (
+        {stepId === "property" ? (
           <>
             <h2 className="text-2xl font-semibold">
               Which property is this guidebook for?
@@ -394,7 +531,44 @@ export function GuidebookPublishingWizard({
             )}
           </>
         ) : null}
-        {step === 2 ? (
+        {stepId === "method" ? (
+          <>
+            <h2 className="text-2xl font-semibold">How do you want to create it?</h2>
+            <p className="mt-2 text-sm text-stone-500">You can always add or change content later in the Builder.</p>
+            <AiTrustBanner />
+            <div className="mt-6 grid gap-5 md:grid-cols-3">
+              <ModeChoice
+                icon={<Sparkles />}
+                title="Auto-create with AI"
+                body="Upload your content and let AI build a first draft."
+                recommended
+                disabled={aiStarting || aiCapabilityAvailable === false}
+                busy={aiStarting}
+                unavailable={aiCapabilityAvailable === false}
+                onClick={() => chooseMode("ai")}
+              />
+              <ModeChoice
+                icon={<Palette />}
+                title="Start from a template"
+                body="Choose a template and customize it."
+                onClick={() => chooseMode("template")}
+              />
+              <ModeChoice
+                icon={<Plus />}
+                title="Start blank"
+                body="Build your guidebook from scratch."
+                onClick={() => chooseMode("blank")}
+              />
+            </div>
+            {aiUploadError ? (
+              <p role="alert" className="mt-4 text-sm text-amber-800">
+                <TriangleAlert className="mr-1 inline size-4" />
+                {aiUploadError}
+              </p>
+            ) : null}
+          </>
+        ) : null}
+        {stepId === "style" ? (
           <>
             <h2 className="text-2xl font-semibold">
               Let&apos;s match your style.
@@ -425,7 +599,7 @@ export function GuidebookPublishingWizard({
             </div>
           </>
         ) : null}
-        {step === 3 ? (
+        {stepId === "template" ? (
           <>
             <h2 className="text-2xl font-semibold">
               Choose a template to get started.
@@ -503,7 +677,7 @@ export function GuidebookPublishingWizard({
             ) : null}
           </>
         ) : null}
-        {step === 4 ? (
+        {stepId === "brand" ? (
           <>
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-semibold">
@@ -625,7 +799,7 @@ export function GuidebookPublishingWizard({
             </button>
           </>
         ) : null}
-        {step === 5 ? (
+        {stepId === "details" ? (
           <>
             <h2 className="text-2xl font-semibold">Guidebook details</h2>
             <div className="mt-6 grid max-w-2xl gap-5">
@@ -665,47 +839,82 @@ export function GuidebookPublishingWizard({
             </div>
           </>
         ) : null}
-        {step === 6 ? (
+        {stepId === "create" ? (
           <>
             <h2 className="text-2xl font-semibold">Create your draft?</h2>
             <dl className="mt-6 grid max-w-2xl grid-cols-[10rem_1fr] gap-3 rounded-xl bg-stone-50 p-5 text-sm">
               <dt>Property</dt>
               <dd className="font-semibold">{property?.name}</dd>
-              <dt>Template</dt>
-              <dd className="font-semibold">{selectedTemplate?.name ?? "—"}</dd>
-              <dt>Brand identity</dt>
-              <dd className="font-semibold">
-                {brandSkipped ? "Skipped" : "Configured"}
-              </dd>
+              {creationMode === "template" ? (
+                <>
+                  <dt>Template</dt>
+                  <dd className="font-semibold">{selectedTemplate?.name ?? "—"}</dd>
+                  <dt>Brand identity</dt>
+                  <dd className="font-semibold">
+                    {brandSkipped ? "Skipped" : "Configured"}
+                  </dd>
+                </>
+              ) : null}
               <dt>Name</dt>
               <dd className="font-semibold">{title || suggestedTitle}</dd>
               <dt>Locale</dt>
               <dd>{locale}</dd>
             </dl>
             <p className="mt-5 text-sm text-stone-600">
-              The Builder will open with your selected template&apos;s starter
+              The Builder will open with your selected {creationMode === "blank" ? "" : "template's "}starter
               section structure. Preview and publishing come next.
             </p>
           </>
         ) : null}
+        {stepId === "ai-upload" ? (
+          <AiUploadStep
+            workspaceId={workspaceId}
+            propertyId={propertyId}
+            jobId={aiJobId}
+            sourceCount={aiSourceCount}
+            onUploaded={() => setAiSourceCount((value) => value + 1)}
+            error={aiUploadError}
+            setError={setAiUploadError}
+          />
+        ) : null}
+        {stepId === "ai-review" ? (
+          <AiReviewStep
+            workspaceId={workspaceId}
+            propertyId={propertyId}
+            jobId={aiJobId}
+            onReadyChange={setAiReady}
+          />
+        ) : null}
+        {stepId === "ai-style" ? (
+          <AiStyleStep
+            workspaceId={workspaceId}
+            title={title || suggestedTitle}
+            setTitle={setTitle}
+            toneOfVoice={aiToneOfVoice}
+            setToneOfVoice={setAiToneOfVoice}
+            language={aiLanguage}
+            setLanguage={setAiLanguage}
+            primaryColor={aiPrimaryColor}
+            setPrimaryColor={setAiPrimaryColor}
+            accentColor={aiAccentColor}
+            setAccentColor={setAiAccentColor}
+            templateName={aiTemplateName}
+          />
+        ) : null}
+        {stepId === "ai-generating" ? (
+          <AiGeneratingStep workspaceId={workspaceId} propertyId={propertyId} jobId={aiJobId} basePath={basePath} />
+        ) : null}
       </section>
       <footer className="flex justify-between">
         <button
-          onClick={() => (step ? setStep(step - 1) : null)}
-          disabled={!step}
+          onClick={back}
+          disabled={!step || stepId === "ai-generating"}
           className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:invisible"
         >
           Back
         </button>
-        {step < steps.length - 1 ? (
-          <button
-            onClick={next}
-            disabled={!canContinue || pending}
-            className="rounded-lg bg-blue-700 px-5 py-2 text-sm font-semibold text-white disabled:opacity-40"
-          >
-            {step === 0 ? "Let's Get Started" : "Continue"}
-          </button>
-        ) : (
+        {stepId === "method" || stepId === "ai-generating" ? null : stepId ===
+          "create" ? (
           <form action={createAction}>
             <input type="hidden" name="workspaceId" value={workspaceId} />
             <input type="hidden" name="propertyId" value={propertyId} />
@@ -718,7 +927,7 @@ export function GuidebookPublishingWizard({
             <input type="hidden" name="locale" value={locale} />
             <input type="hidden" name="description" value={description} />
             <input type="hidden" name="templateId" value={templateId} />
-            {brandSkipped ? null : (
+            {creationMode === "template" && !brandSkipped ? (
               <>
                 <input
                   type="hidden"
@@ -736,7 +945,7 @@ export function GuidebookPublishingWizard({
                   value={brand.accentColor}
                 />
               </>
-            )}
+            ) : null}
             <input
               type="hidden"
               name="commandId"
@@ -746,6 +955,20 @@ export function GuidebookPublishingWizard({
               Create Guidebook
             </button>
           </form>
+        ) : (
+          <button
+            onClick={
+              stepId === "ai-upload"
+                ? continueFromAiUpload
+                : stepId === "ai-style"
+                  ? continueFromAiStyle
+                  : next
+            }
+            disabled={!canContinue || pending || aiQueuing}
+            className="rounded-lg bg-blue-700 px-5 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {stepId === "welcome" ? "Let's Get Started" : aiQueuing ? "Please wait…" : "Continue"}
+          </button>
         )}
       </footer>
     </main>
@@ -772,6 +995,44 @@ function Choice({
       </span>
       <strong className="mt-6 block">{title}</strong>
       <span className="mt-2 block text-sm text-stone-500">{body}</span>
+    </button>
+  );
+}
+function ModeChoice({
+  icon,
+  title,
+  body,
+  onClick,
+  recommended,
+  disabled,
+  busy,
+  unavailable,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  onClick: () => void;
+  recommended?: boolean;
+  disabled?: boolean;
+  busy?: boolean;
+  unavailable?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="min-h-56 rounded-xl border p-8 text-left hover:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {recommended ? (
+        <span className="mb-3 inline-block rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">Recommended</span>
+      ) : null}
+      <span className="grid size-12 place-items-center rounded-full border text-blue-700">
+        {icon}
+      </span>
+      <strong className="mt-6 block">{title}</strong>
+      <span className="mt-2 block text-sm text-stone-500">{body}</span>
+      {busy ? <span className="mt-3 block text-xs font-semibold text-blue-700">Starting…</span> : null}
+      {unavailable ? <span className="mt-3 block text-xs font-semibold text-stone-400">Coming soon for this workspace</span> : null}
     </button>
   );
 }
