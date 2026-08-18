@@ -1,0 +1,3 @@
+import { ApplicationForm } from "./application-form";
+import { FoundingPartnerApplicationStarted } from "../analytics";
+export default function ApplyPage(){return <main className="min-h-screen bg-[#f7f3ec] px-5 py-16"><FoundingPartnerApplicationStarted/><div className="mx-auto max-w-4xl"><p className="text-xs font-bold uppercase tracking-[.2em] text-amber-700">Founding HPM Partner Program</p><h1 className="mt-4 font-serif text-5xl">Start the Conversation</h1><p className="mt-4 max-w-2xl text-stone-600">Tell us about your business, your ambition, and what a valuable partnership would look like. No account is required.</p><div className="mt-10"><ApplicationForm/></div></div></main>}
