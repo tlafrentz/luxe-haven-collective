@@ -14,6 +14,7 @@ import {
   cancelCreationJob,
   createCreationJob,
   reviewCreationFact,
+  reviewCreationNarrativeSection,
   restoreCreationRevision,
   uploadCreationSource,
 } from "@/features/guidebook-creation-assistant/application";
@@ -339,6 +340,20 @@ export async function reviewAssistantFactAction(form: FormData) {
   });
   revalidatePath(base);
 }
+export async function reviewAssistantNarrativeSectionAction(form: FormData) {
+  const jobId = String(form.get("jobId") ?? ""),
+    ctx = await creationContextFromJob(jobId);
+  await admin();
+  await assertInternal(ctx.workspaceId, ctx.propertyId, ctx.actorId);
+  await reviewCreationNarrativeSection(creationDependencies(), ctx, {
+    jobId,
+    sectionId: String(form.get("sectionId") ?? ""),
+    status:
+      String(form.get("decision")) === "rejected" ? "rejected" : "confirmed",
+    correctedBody: String(form.get("correctedBody") ?? "") || undefined,
+  });
+  revalidatePath(base);
+}
 export async function enqueueAssistantGenerationAction(form: FormData) {
   const jobId = String(form.get("jobId") ?? ""),
     ctx = await creationContextFromJob(jobId);
@@ -401,6 +416,7 @@ export async function getAssistantInternalProjection(jobId: string) {
   const [
     { data: sources },
     { data: facts },
+    { data: narrativeSections },
     { data: work },
     { data: artifacts },
   ] = await Promise.all([
@@ -413,6 +429,10 @@ export async function getAssistantInternalProjection(jobId: string) {
       .select(
         "id,category,field_key,display_value,source_location,confidence,review_status,high_risk",
       )
+      .eq("job_id", jobId),
+    db
+      .from("guidebook_creation_narrative_sections")
+      .select("id,title,body,edited_body,source_location,review_status")
       .eq("job_id", jobId),
     db
       .from("guidebook_creation_work_items")
@@ -429,6 +449,7 @@ export async function getAssistantInternalProjection(jobId: string) {
     job,
     sources: sources ?? [],
     facts: facts ?? [],
+    narrativeSections: narrativeSections ?? [],
     work: work ?? [],
     artifacts: artifacts ?? [],
   };

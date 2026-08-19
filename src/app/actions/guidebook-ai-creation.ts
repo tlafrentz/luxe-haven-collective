@@ -13,6 +13,7 @@ import {
   cancelCreationJob,
   createCreationJob,
   reviewCreationFact,
+  reviewCreationNarrativeSection,
   uploadCreationSource,
   type CreationContext,
 } from "@/features/guidebook-creation-assistant/application";
@@ -224,6 +225,25 @@ export async function reviewCustomerCreationFactAction(input: z.infer<typeof rev
   });
 }
 
+const reviewSectionSchema = z.object({
+  workspaceId: z.string().uuid(),
+  propertyId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  sectionId: z.string().uuid(),
+  status: z.enum(["confirmed", "rejected"]),
+  correctedBody: z.string().optional(),
+});
+export async function reviewCustomerCreationSectionAction(input: z.infer<typeof reviewSectionSchema>) {
+  const parsed = reviewSectionSchema.parse(input);
+  const ctx = await buildContext(parsed.workspaceId, parsed.propertyId, "guidebooks.manage");
+  return reviewCreationNarrativeSection(creationDependencies(), ctx, {
+    jobId: parsed.jobId,
+    sectionId: parsed.sectionId,
+    status: parsed.status,
+    correctedBody: parsed.correctedBody,
+  });
+}
+
 const generateSchema = z.object({
   workspaceId: z.string().uuid(),
   propertyId: z.string().uuid(),
@@ -269,7 +289,7 @@ export async function getCustomerCreationProjectionAction(input: { workspaceId: 
       .eq("property_id", input.propertyId)
       .maybeSingle();
   if (!job) return null;
-  const [{ data: sources }, { data: facts }, { data: work }] = await Promise.all([
+  const [{ data: sources }, { data: facts }, { data: narrativeSections }, { data: work }] = await Promise.all([
     db
       .from("guidebook_creation_sources")
       .select("id,original_filename,source_type,extraction_status,byte_size")
@@ -281,11 +301,16 @@ export async function getCustomerCreationProjectionAction(input: { workspaceId: 
       .eq("job_id", input.jobId)
       .eq("workspace_id", input.workspaceId),
     db
+      .from("guidebook_creation_narrative_sections")
+      .select("id,title,body,edited_body,source_location,review_status")
+      .eq("job_id", input.jobId)
+      .eq("workspace_id", input.workspaceId),
+    db
       .from("guidebook_creation_work_items")
       .select("id,stage,status,attempts,safe_failure_code")
       .eq("job_id", input.jobId)
       .eq("workspace_id", input.workspaceId)
       .order("created_at", { ascending: false }),
   ]);
-  return { job, sources: sources ?? [], facts: facts ?? [], work: work ?? [] };
+  return { job, sources: sources ?? [], facts: facts ?? [], narrativeSections: narrativeSections ?? [], work: work ?? [] };
 }

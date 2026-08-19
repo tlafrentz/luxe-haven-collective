@@ -31,6 +31,7 @@ const deterministicExtraction = {
   warnings: [],
   mediaCandidates: [],
   unsupported: [],
+  narrativeSections: [],
 };
 const deterministicProposal = {
   title: "Generated Guest Guide",
@@ -50,6 +51,7 @@ const deterministicProposal = {
     },
   ],
   factIds: [],
+  narrativeSectionIds: [],
   componentVersions: [],
 };
 export function creationProvider() {

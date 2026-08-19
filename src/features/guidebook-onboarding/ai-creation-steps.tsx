@@ -10,6 +10,7 @@ import {
   getCustomerCreationProjectionAction,
   prepareCustomerSourceUploadAction,
   reviewCustomerCreationFactAction,
+  reviewCustomerCreationSectionAction,
   uploadCustomerCreationSourceAction,
 } from "@/app/actions/guidebook-ai-creation";
 import { getGuidebookWorkspaceBrandDefaultsAction } from "@/app/actions/guidebook-brand-defaults";
@@ -146,11 +147,21 @@ export function AiReviewStep({
     review_status: "confirmed" | "needs_review" | "missing" | "conflicting" | "rejected";
     high_risk: boolean;
   };
+  type NarrativeSection = {
+    id: string;
+    title: string;
+    body: string;
+    edited_body: string | null;
+    review_status: "confirmed" | "needs_review" | "missing" | "conflicting" | "rejected";
+  };
   const [facts, setFacts] = useState<Fact[]>([]);
+  const [sections, setSections] = useState<NarrativeSection[]>([]);
   const [jobState, setJobState] = useState("");
   const [correction, setCorrection] = useState<Record<string, string>>({});
+  const [sectionEdit, setSectionEdit] = useState<Record<string, string>>({});
   const [highRiskAck, setHighRiskAck] = useState<Record<string, boolean>>({});
   const [busyFactId, setBusyFactId] = useState("");
+  const [busySectionId, setBusySectionId] = useState("");
   const readyRef = useRef(false);
 
   useEffect(() => {
@@ -160,6 +171,7 @@ export function AiReviewStep({
       if (cancelled || !projection) return;
       setJobState(String(projection.job.state));
       setFacts(projection.facts as Fact[]);
+      setSections(projection.narrativeSections as NarrativeSection[]);
       const ready = projection.job.state === "ready_to_generate";
       if (ready !== readyRef.current) {
         readyRef.current = ready;
@@ -190,6 +202,7 @@ export function AiReviewStep({
       const projection = await getCustomerCreationProjectionAction({ workspaceId, propertyId, jobId });
       if (projection) {
         setFacts(projection.facts as Fact[]);
+        setSections(projection.narrativeSections as NarrativeSection[]);
         setJobState(String(projection.job.state));
         const ready = projection.job.state === "ready_to_generate";
         readyRef.current = ready;
@@ -197,6 +210,31 @@ export function AiReviewStep({
       }
     } finally {
       setBusyFactId("");
+    }
+  }
+
+  async function reviewSection(sectionId: string, status: "confirmed" | "rejected") {
+    setBusySectionId(sectionId);
+    try {
+      await reviewCustomerCreationSectionAction({
+        workspaceId,
+        propertyId,
+        jobId,
+        sectionId,
+        status,
+        correctedBody: sectionEdit[sectionId],
+      });
+      const projection = await getCustomerCreationProjectionAction({ workspaceId, propertyId, jobId });
+      if (projection) {
+        setFacts(projection.facts as Fact[]);
+        setSections(projection.narrativeSections as NarrativeSection[]);
+        setJobState(String(projection.job.state));
+        const ready = projection.job.state === "ready_to_generate";
+        readyRef.current = ready;
+        onReadyChange(ready);
+      }
+    } finally {
+      setBusySectionId("");
     }
   }
 
@@ -273,6 +311,50 @@ export function AiReviewStep({
           ))}
         </ul>
       )}
+      {sections.length ? (
+        <>
+          <h3 className="mt-8 text-lg font-semibold">Review narrative sections</h3>
+          <p className="mt-1 text-sm text-stone-500">Whole descriptive content — welcome letters, recommendations, FAQ, safety tips — that doesn&apos;t reduce to a single fact.</p>
+          <ul className="mt-4 space-y-3">
+            {sections.map((section) => (
+              <li key={section.id} className="rounded-xl border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">{section.title}</p>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusTone[section.review_status]}`}>{statusLabel[section.review_status]}</span>
+                </div>
+                {section.review_status !== "confirmed" && section.review_status !== "rejected" ? (
+                  <div className="mt-3 space-y-2">
+                    <textarea
+                      value={sectionEdit[section.id] ?? section.edited_body ?? section.body}
+                      onChange={(event) => setSectionEdit((current) => ({ ...current, [section.id]: event.target.value }))}
+                      rows={4}
+                      className="w-full rounded-lg border p-2 text-sm"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={busySectionId === section.id}
+                        onClick={() => reviewSection(section.id, "confirmed")}
+                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        <CircleCheck className="size-3.5" /> Confirm
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busySectionId === section.id}
+                        onClick={() => reviewSection(section.id, "rejected")}
+                        className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                      >
+                        <CircleX className="size-3.5" /> Exclude
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
     </>
   );
 }

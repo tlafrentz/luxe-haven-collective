@@ -27,6 +27,10 @@ export type ExtractedFact = Readonly<{
   sourceId?:string; sourceLocation?:string; confidence?:number; reviewStatus:ReviewStatus; conflictGroup?:string;
   sensitivity:"public"|"internal"|"sensitive"|"secret"; highRisk:boolean; correctedValue?:unknown; confirmed:boolean;
 }>;
+export type ExtractedNarrativeSection = Readonly<{
+  id:string; jobId:string; title:string; body:string; sourceId?:string; sourceLocation?:string;
+  reviewStatus:ReviewStatus; correctedBody?:string; confirmed:boolean;
+}>;
 
 const factSchema = z.object({
   category:z.string().min(1).max(80), field:z.string().min(1).max(120), normalizedValue:z.union([z.string(),z.number(),z.boolean(),z.null()]),
@@ -40,11 +44,18 @@ const factSchema = z.object({
   if(expected&&!value.highRisk) context.addIssue({code:"custom",message:"Known operational fields must be classified high risk."});
 });
 
+const narrativeSectionSchema = z.object({
+  title:z.string().min(1).max(200), body:z.string().min(1).max(8000),
+  sourceId:z.string().min(1).optional(), sourceLocation:z.string().max(300).optional(),
+  reviewStatus:z.enum(REVIEW_STATUSES),
+});
+
 export const extractionResultSchema = z.object({
   facts:z.array(factSchema).max(500), missing:z.array(z.object({category:z.string(),field:z.string(),highRisk:z.boolean()})).max(100),
   warnings:z.array(z.object({code:z.string().max(80),message:z.string().max(300)})).max(100),
   mediaCandidates:z.array(z.object({sourceId:z.string(),suggestedSection:z.string().max(100),confidence:z.number().min(0).max(1)})).max(100),
   unsupported:z.array(z.object({sourceId:z.string(),reason:z.string().max(300)})).max(100),
+  narrativeSections:z.array(narrativeSectionSchema).max(50),
 });
 export type ExtractionResult = z.infer<typeof extractionResultSchema>;
 
@@ -58,14 +69,15 @@ const blockSchema=z.discriminatedUnion("type",[
 ]);
 export const guidebookProposalSchema=z.object({
   title:z.string().min(1).max(200), description:z.string().max(2000), sections:z.array(z.object({stableKey:z.string().min(1).max(80),name:z.string().min(1).max(120),blocks:z.array(blockSchema).max(100)})).min(1).max(40),
-  factIds:z.array(z.string()).max(500), componentVersions:z.array(z.object({key:z.string(),versionId:z.string()})).max(100),
+  factIds:z.array(z.string()).max(500), narrativeSectionIds:z.array(z.string()).max(50), componentVersions:z.array(z.object({key:z.string(),versionId:z.string()})).max(100),
 }).strict();
 export type GuidebookProposal=z.infer<typeof guidebookProposalSchema>;
 
-export function generationReadiness(facts:readonly ExtractedFact[]){
+export function generationReadiness(facts:readonly ExtractedFact[],narrativeSections:readonly ExtractedNarrativeSection[]=[]){
   const unresolved=facts.filter(f=>f.reviewStatus==="missing"||f.reviewStatus==="conflicting"||f.reviewStatus==="needs_review");
   const unconfirmedHighRisk=facts.filter(f=>f.highRisk&&f.reviewStatus==="confirmed"&&!f.confirmed);
-  return {ready:unresolved.length===0&&unconfirmedHighRisk.length===0,unresolved,unconfirmedHighRisk};
+  const unresolvedSections=narrativeSections.filter(s=>s.reviewStatus==="missing"||s.reviewStatus==="conflicting"||s.reviewStatus==="needs_review");
+  return {ready:unresolved.length===0&&unconfirmedHighRisk.length===0&&unresolvedSections.length===0,unresolved,unconfirmedHighRisk,unresolvedSections};
 }
 export function sensitivityFor(category:string,field:string){return SECRET_FIELDS.has(`${category}.${field}`)?"secret" as const:"internal" as const}
 

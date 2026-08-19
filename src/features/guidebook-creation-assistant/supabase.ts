@@ -11,7 +11,7 @@ import {
   SupabaseGuidebookCreationRepository,
   SupabaseGuidebookDraftRepository,
 } from "@/features/guidebook-studio/infrastructure/supabase-authoring-repositories";
-import type { CreationJob, CreationSource, ExtractedFact } from "./domain";
+import type { CreationJob, CreationSource, ExtractedFact, ExtractedNarrativeSection } from "./domain";
 import type {
   AccessPort,
   CanonicalDraftPort,
@@ -245,6 +245,62 @@ export class SupabaseCreationRepository implements CreationRepository {
       if (confirmError && !confirmError.message.includes("duplicate"))
         throw confirmError;
     }
+  }
+  async listNarrativeSections(workspaceId: string, jobId: string) {
+    const { data, error } = await this.client
+      .from("guidebook_creation_narrative_sections")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .eq("job_id", jobId)
+      .order("created_at");
+    if (error) throw error;
+    return (data ?? []).map(narrativeSection);
+  }
+  async replaceNarrativeSections(
+    jobId: string,
+    workspaceId: string,
+    sections: readonly ExtractedNarrativeSection[],
+  ) {
+    const { error: deleteError } = await this.client
+      .from("guidebook_creation_narrative_sections")
+      .delete()
+      .eq("workspace_id", workspaceId)
+      .eq("job_id", jobId);
+    if (deleteError) throw deleteError;
+    if (!sections.length) return;
+    const { error } = await this.client
+      .from("guidebook_creation_narrative_sections")
+      .insert(
+        sections.map((v) => ({
+          id: v.id,
+          job_id: jobId,
+          workspace_id: workspaceId,
+          title: v.title,
+          body: v.body,
+          source_id: v.sourceId,
+          source_location: v.sourceLocation,
+          review_status: v.reviewStatus,
+        })),
+      );
+    if (error) throw error;
+  }
+  async reviewNarrativeSection(
+    input: Parameters<CreationRepository["reviewNarrativeSection"]>[0],
+  ) {
+    const now = new Date().toISOString(),
+      { error } = await this.client
+        .from("guidebook_creation_narrative_sections")
+        .update({
+          review_status: input.status,
+          edited_body: input.correctedBody,
+          reviewed_by_profile_id: input.actorId,
+          reviewed_at: now,
+          updated_at: now,
+        })
+        .eq("workspace_id", input.workspaceId)
+        .eq("job_id", input.jobId)
+        .eq("id", input.sectionId);
+    if (error) throw error;
   }
   async beginAttempt(input: Parameters<CreationRepository["beginAttempt"]>[0]) {
     const existing = await this.client
@@ -536,6 +592,19 @@ function source(v: Record<string, unknown>): CreationSource {
     byteSize: Number(v.byte_size),
     integritySha256: String(v.integrity_sha256),
     extractionStatus: v.extraction_status as CreationSource["extractionStatus"],
+  };
+}
+function narrativeSection(v: Record<string, unknown>): ExtractedNarrativeSection {
+  return {
+    id: String(v.id),
+    jobId: String(v.job_id),
+    title: String(v.title),
+    body: String(v.body),
+    sourceId: v.source_id ? String(v.source_id) : undefined,
+    sourceLocation: v.source_location ? String(v.source_location) : undefined,
+    reviewStatus: v.review_status as ExtractedNarrativeSection["reviewStatus"],
+    correctedBody: v.edited_body ? String(v.edited_body) : undefined,
+    confirmed: v.review_status === "confirmed",
   };
 }
 function fact(v: Record<string, unknown>, confirmed: boolean): ExtractedFact {

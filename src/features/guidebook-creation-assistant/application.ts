@@ -15,6 +15,7 @@ import {
   type CreationJob,
   type CreationSource,
   type ExtractedFact,
+  type ExtractedNarrativeSection,
   type GuidebookProposal,
 } from "./domain";
 import {
@@ -71,6 +72,25 @@ export interface CreationRepository {
       correctedValue?: unknown;
       actorId: string;
       confirmHighRisk: boolean;
+    }>,
+  ): Promise<void>;
+  listNarrativeSections(
+    workspaceId: string,
+    jobId: string,
+  ): Promise<readonly ExtractedNarrativeSection[]>;
+  replaceNarrativeSections(
+    jobId: string,
+    workspaceId: string,
+    sections: readonly ExtractedNarrativeSection[],
+  ): Promise<void>;
+  reviewNarrativeSection(
+    input: Readonly<{
+      workspaceId: string;
+      jobId: string;
+      sectionId: string;
+      status: ExtractedNarrativeSection["reviewStatus"];
+      correctedBody?: string;
+      actorId: string;
     }>,
   ): Promise<void>;
   beginAttempt(
@@ -451,7 +471,18 @@ export async function extractCreationSources(
         confirmed: false,
       })),
     ];
+    const narrativeSections: ExtractedNarrativeSection[] = output.result.narrativeSections.map((s) => ({
+      id: clock.id(),
+      jobId: job.id,
+      title: s.title,
+      body: s.body,
+      sourceId: s.sourceId,
+      sourceLocation: s.sourceLocation,
+      reviewStatus: s.reviewStatus === "confirmed" ? ("needs_review" as const) : s.reviewStatus,
+      confirmed: false,
+    }));
     await deps.repository.replaceFacts(job.id, job.workspaceId, facts);
+    await deps.repository.replaceNarrativeSections(job.id, job.workspaceId, narrativeSections);
     await Promise.all(
       sources.map((s) =>
         deps.repository.updateSource(s.id, { extractionStatus: "completed" }),
@@ -474,10 +505,11 @@ export async function extractCreationSources(
       correlationId: context.correlationId,
       metadata: {
         factCount: facts.length,
+        narrativeSectionCount: narrativeSections.length,
         warningCount: output.result.warnings.length,
       },
     });
-    return { duplicate: false, facts };
+    return { duplicate: false, facts, narrativeSections };
   } catch (error) {
     await deps.repository.completeAttempt(attempt.id, {
       status:
@@ -542,8 +574,11 @@ export async function reviewCreationFact(
     actorId: context.actorId,
     confirmHighRisk: input.confirmHighRisk,
   });
-  const facts = await deps.repository.listFacts(job.workspaceId, job.id),
-    readiness = generationReadiness(facts);
+  const [facts, narrativeSections] = await Promise.all([
+      deps.repository.listFacts(job.workspaceId, job.id),
+      deps.repository.listNarrativeSections(job.workspaceId, job.id),
+    ]),
+    readiness = generationReadiness(facts, narrativeSections);
   await deps.repository.transition(job.id, job.state, {
     state: readiness.ready ? "ready_to_generate" : "awaiting_review",
     currentStage: "review",
@@ -555,6 +590,50 @@ export async function reviewCreationFact(
     event: input.confirmHighRisk ? "high_risk.confirmed" : "review.updated",
     correlationId: context.correlationId,
     metadata: { factId: input.factId, status: input.status },
+  });
+  return readiness;
+}
+
+export async function reviewCreationNarrativeSection(
+  deps: CreationDependencies,
+  context: CreationContext,
+  input: Readonly<{
+    jobId: string;
+    sectionId: string;
+    status: "confirmed" | "rejected";
+    correctedBody?: string;
+  }>,
+) {
+  const job = await scoped(deps, context, input.jobId);
+  if (job.state !== "awaiting_review" && job.state !== "ready_to_generate")
+    throw new Error("CREATION_REVIEW_CLOSED");
+  const currentSections = await deps.repository.listNarrativeSections(job.workspaceId, job.id),
+    current = currentSections.find((s) => s.id === input.sectionId);
+  if (!current) throw new Error("CREATION_NARRATIVE_SECTION_NOT_FOUND");
+  await deps.repository.reviewNarrativeSection({
+    workspaceId: job.workspaceId,
+    jobId: job.id,
+    sectionId: input.sectionId,
+    status: input.status,
+    correctedBody: input.correctedBody,
+    actorId: context.actorId,
+  });
+  const [facts, narrativeSections] = await Promise.all([
+      deps.repository.listFacts(job.workspaceId, job.id),
+      deps.repository.listNarrativeSections(job.workspaceId, job.id),
+    ]),
+    readiness = generationReadiness(facts, narrativeSections);
+  await deps.repository.transition(job.id, job.state, {
+    state: readiness.ready ? "ready_to_generate" : "awaiting_review",
+    currentStage: "review",
+  });
+  await deps.repository.audit({
+    jobId: job.id,
+    workspaceId: job.workspaceId,
+    actorId: context.actorId,
+    event: "review.updated",
+    correlationId: context.correlationId,
+    metadata: { narrativeSectionId: input.sectionId, status: input.status },
   });
   return readiness;
 }
@@ -579,8 +658,11 @@ export async function generateCreationDraft(
   const retrying = job.state === "failed" && job.currentStage === "generation";
   if (job.state !== "ready_to_generate" && !retrying)
     throw new Error("CREATION_NOT_READY");
-  const facts = await deps.repository.listFacts(job.workspaceId, job.id),
-    readiness = generationReadiness(facts);
+  const [facts, narrativeSections] = await Promise.all([
+      deps.repository.listFacts(job.workspaceId, job.id),
+      deps.repository.listNarrativeSections(job.workspaceId, job.id),
+    ]),
+    readiness = generationReadiness(facts, narrativeSections);
   if (!readiness.ready) throw new Error("CREATION_CONFIRMATION_REQUIRED");
   if (
     !job.templateVersionId ||
@@ -614,6 +696,7 @@ export async function generateCreationDraft(
   try {
     const output = await deps.generation.generate({
         facts: facts.filter((f) => f.reviewStatus === "confirmed"),
+        narrativeSections: narrativeSections.filter((s) => s.reviewStatus === "confirmed"),
         templateVersionId: job.templateVersionId,
         allowedComponents: allowed,
         instructions: input.instructions ?? {},
@@ -788,12 +871,16 @@ export async function regenerateCreationSection(
   });
   if (attempt.duplicate) throw new Error("CREATION_ATTEMPT_ALREADY_APPLIED");
   try {
-    const facts = await deps.repository.listFacts(job.workspaceId, job.id),
+    const [facts, narrativeSections] = await Promise.all([
+        deps.repository.listFacts(job.workspaceId, job.id),
+        deps.repository.listNarrativeSections(job.workspaceId, job.id),
+      ]),
       allowed = await deps.compatibility.allowedComponents(
         job.templateVersionId,
       ),
       output = await deps.generation.generate({
         facts: facts.filter((f) => f.reviewStatus === "confirmed"),
+        narrativeSections: narrativeSections.filter((s) => s.reviewStatus === "confirmed"),
         templateVersionId: job.templateVersionId,
         allowedComponents: allowed,
         instructions: {

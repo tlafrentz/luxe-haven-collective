@@ -17,6 +17,7 @@ import {
   provisionControlledGuidebookPropertyAction,
   restoreAssistantRevisionAction,
   reviewAssistantFactAction,
+  reviewAssistantNarrativeSectionAction,
 } from "@/app/actions/guidebook-creation-assistant";
 import { readCreationCapability } from "@/features/guidebook-creation-assistant/runtime";
 import { SourceUpload } from "./source-upload";
@@ -440,6 +441,46 @@ function Workspace({
                 name="decision"
                 value="confirmed"
                 className="ml-3 rounded-lg border px-3 py-2"
+              >
+                Accept
+              </button>
+              <button
+                name="decision"
+                value="rejected"
+                className="ml-2 rounded-lg border px-3 py-2"
+              >
+                Reject
+              </button>
+            </form>
+          ))}
+        </div>
+      </section>
+      <section className="rounded-2xl border bg-white p-6">
+        <h2 className="font-semibold">2b. Review narrative sections</h2>
+        <div className="mt-4 space-y-3">
+          {projection.narrativeSections.map((s) => (
+            <form
+              action={reviewAssistantNarrativeSectionAction}
+              key={String(s.id)}
+              className="rounded-lg border p-4"
+            >
+              <input type="hidden" name="jobId" value={jobId} />
+              <input type="hidden" name="sectionId" value={String(s.id)} />
+              <p className="font-semibold">{String(s.title)}</p>
+              <p className="text-xs text-stone-500">
+                {String(s.review_status)} · source{" "}
+                {String(s.source_location ?? "—")}
+              </p>
+              <textarea
+                name="correctedBody"
+                defaultValue={String(s.edited_body ?? s.body)}
+                rows={4}
+                className="mt-2 w-full rounded-lg border p-3 text-sm"
+              />
+              <button
+                name="decision"
+                value="confirmed"
+                className="mt-2 rounded-lg border px-3 py-2"
               >
                 Accept
               </button>
