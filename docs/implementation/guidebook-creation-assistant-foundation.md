@@ -30,10 +30,10 @@ Required runtime configuration:
 - `GUIDEBOOK_CREATION_ENABLED=true`
 - `GUIDEBOOK_CREATION_KILL_SWITCH` is not `true`
 - `GUIDEBOOK_CREATION_INTERNAL_COHORT` contains the explicit actor or workspace ID
-- production adapter: `GUIDEBOOK_CREATION_ADAPTER=vercel-ai-gateway`
-- locked model: `GUIDEBOOK_CREATION_PROVIDER_MODEL=openai/gpt-5.4-mini-2026-03-17`
+- production adapter: `GUIDEBOOK_CREATION_ADAPTER=openai-direct`
+- locked models: extraction `gpt-5-nano`, generation `gpt-5-mini` (hardcoded; `GUIDEBOOK_CREATION_EXTRACTION_MODEL`/`GUIDEBOOK_CREATION_GENERATION_MODEL` may only override to those exact values or must be unset)
 - bounded timeout: `GUIDEBOOK_CREATION_PROVIDER_TIMEOUT_MS` (5,000–120,000 ms; default 60,000)
-- authentication: Vercel-provided `VERCEL_OIDC_TOKEN`, with `AI_GATEWAY_API_KEY` only as an explicit non-Vercel fallback
+- authentication: `OPENAI_API_KEY` (the Vercel AI Gateway adapter was removed — OpenAI is called directly)
 - controlled deterministic verification only: `GUIDEBOOK_CREATION_ADAPTER=deterministic`
 - processor: `GUIDEBOOK_CREATION_SCHEDULER_SECRET` or the established `CRON_SECRET`
 
