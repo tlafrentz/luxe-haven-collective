@@ -3,6 +3,11 @@ import { createGuidebookAction, createGuidebookPropertyAction, listGuidebookProp
 import { getGuidebookStudioRequest } from "@/app/actions/guidebook-studio";
 import { GuidebookPublishingWizard } from "@/features/guidebook-onboarding/guidebook-publishing-wizard";
 
+// Auto-create's extraction/generation server actions trigger AI provider
+// work inline (Hobby-plan crons only run daily, so cron-driven draining
+// isn't viable) — allow up to the provider's own timeout budget.
+export const maxDuration = 60;
+
 export default async function NewGuidebookPage({
   searchParams,
 }: {

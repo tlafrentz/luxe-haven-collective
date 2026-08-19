@@ -20,6 +20,7 @@ import {
   creationDependencies,
   enqueueCreationWork,
   hasCreationEntitlement,
+  processOneCreationWork,
   readCustomerCreationCapability,
 } from "@/features/guidebook-creation-assistant/runtime";
 
@@ -65,6 +66,20 @@ async function buildContext(workspaceId: string, propertyId: string, permission:
 async function assertAvailable(workspaceId: string, propertyId: string, actorId: string) {
   const capability = await readCustomerCreationCapability({ workspaceId, propertyId, actorId });
   if (!capability.available) throw new Error("CREATION_ASSISTANT_NOT_AVAILABLE");
+}
+
+/**
+ * Vercel Hobby plan caps cron jobs at once/day, so the customer-facing path
+ * cannot rely on cron-driven queue draining the way the admin/PV-009 path
+ * assumed. Trigger the work item inline right after enqueueing it instead —
+ * best-effort: on failure the once-daily safety-net cron will retry it.
+ */
+async function triggerInlineProcessing() {
+  try {
+    await processOneCreationWork(`inline:${crypto.randomUUID()}`);
+  } catch {
+    // Swallowed: the item stays queued for the safety-net cron to retry.
+  }
 }
 
 async function assertRateLimit(workspaceId: string, table: "guidebook_creation_jobs" | "guidebook_creation_work_items", ceiling: number, stage?: "extraction" | "generation") {
@@ -185,6 +200,7 @@ export async function enqueueCustomerExtractionAction(input: z.infer<typeof extr
     stage: "extraction",
     idempotencyKey: parsed.idempotencyKey,
   });
+  await triggerInlineProcessing();
 }
 
 const reviewSchema = z.object({
@@ -234,6 +250,7 @@ export async function enqueueCustomerGenerationAction(input: z.infer<typeof gene
       },
     },
   });
+  await triggerInlineProcessing();
 }
 
 export async function cancelCustomerCreationJobAction(input: { workspaceId: string; propertyId: string; jobId: string }) {
