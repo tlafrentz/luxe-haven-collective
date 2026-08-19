@@ -455,9 +455,14 @@ export function GuidebookPublishingWizard({
                                 </small>
                               ) : null}
                               {item.existingGuidebookId ? (
-                                <small className="mt-3 block font-semibold text-blue-700">
-                                  Open guidebook →
-                                </small>
+                                <>
+                                  <small className="mt-3 block w-full text-stone-500">
+                                    Already has a guidebook — selecting it opens the existing one instead of starting a new one.
+                                  </small>
+                                  <small className="mt-1 block font-semibold text-blue-700">
+                                    Open guidebook →
+                                  </small>
+                                </>
                               ) : null}
                             </span>
                           </span>
