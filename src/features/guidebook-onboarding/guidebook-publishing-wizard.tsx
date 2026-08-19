@@ -314,9 +314,12 @@ export function GuidebookPublishingWizard({
   async function continueFromAiUpload() {
     if (!canContinue || aiQueuing) return;
     setAiQueuing(true);
+    setAiUploadError("");
     try {
       await beginAiExtraction(workspaceId, propertyId, aiJobId);
       next();
+    } catch (extractionError) {
+      setAiUploadError(extractionError instanceof Error ? extractionError.message : "Could not start extraction.");
     } finally {
       setAiQueuing(false);
     }
@@ -324,12 +327,15 @@ export function GuidebookPublishingWizard({
   async function continueFromAiStyle() {
     if (aiQueuing) return;
     setAiQueuing(true);
+    setAiUploadError("");
     try {
       await beginAiGeneration(workspaceId, propertyId, aiJobId, title || suggestedTitle, {
         toneOfVoice: aiToneOfVoice || undefined,
         language: aiLanguage || undefined,
       });
       next();
+    } catch (generationError) {
+      setAiUploadError(generationError instanceof Error ? generationError.message : "Could not start generation.");
     } finally {
       setAiQueuing(false);
     }
@@ -905,6 +911,12 @@ export function GuidebookPublishingWizard({
             setAccentColor={setAiAccentColor}
             templateName={aiTemplateName}
           />
+        ) : null}
+        {stepId === "ai-style" && aiUploadError ? (
+          <p role="alert" className="mt-4 text-sm text-amber-800">
+            <TriangleAlert className="mr-1 inline size-4" />
+            {aiUploadError}
+          </p>
         ) : null}
         {stepId === "ai-generating" ? (
           <AiGeneratingStep workspaceId={workspaceId} propertyId={propertyId} jobId={aiJobId} basePath={basePath} />
