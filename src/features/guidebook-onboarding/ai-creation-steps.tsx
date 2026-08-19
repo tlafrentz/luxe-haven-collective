@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CircleCheck, CircleX, Sparkles, TriangleAlert, UploadCloud } from "lucide-react";
+import { CircleCheck, CircleX, Download, Sparkles, TriangleAlert, UploadCloud } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   completeCustomerSourceUploadAction,
@@ -96,6 +96,14 @@ export function AiUploadStep({
     <>
       <h2 className="text-2xl font-semibold">Upload your content</h2>
       <p className="mt-2 text-sm text-stone-500">Add any documents, text, and photos you have. PDF, DOCX, TXT, or images — up to 25 MB each.</p>
+      <a
+        href="/templates/guidebook-content-template.docx"
+        download
+        className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-900"
+      >
+        <Download className="size-4" aria-hidden="true" />
+        Don&apos;t have a document yet? Download a content template to fill in
+      </a>
       <AiTrustBanner />
       <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-dashed p-6">
         <UploadCloud className="size-6 text-blue-700" aria-hidden="true" />
