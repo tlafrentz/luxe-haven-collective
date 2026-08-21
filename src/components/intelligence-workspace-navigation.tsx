@@ -18,8 +18,11 @@ const lenses = {
   ],
 } satisfies Record<"observe" | "understand", readonly Lens[]>;
 
+const ROUTES_WITH_PAGE_EXPORT = ["/dashboard/observe/financial", "/dashboard/financial"];
+
 export function IntelligenceWorkspaceHeader({ stage }: { stage: "observe" | "understand" }) {
   const pathname = usePathname();
+  const hasPageOwnExport = ROUTES_WITH_PAGE_EXPORT.includes(pathname);
   const title = stage === "observe" ? "Observe" : "Understand";
   const description = stage === "observe" ? "Understand what is happening across your business." : "Gain clarity on why performance is happening and what matters most.";
   return <header className="mx-auto max-w-[1500px] px-4 pb-3 pt-6 sm:px-6 lg:px-8">
@@ -34,7 +37,7 @@ export function IntelligenceWorkspaceHeader({ stage }: { stage: "observe" | "und
         return <ContextLink key={lens.href} href={lens.href} aria-current={active ? "page" : undefined} onClick={() => recordPlatformNavigationEvent(`${stage}_lens_selected`, { lens: lens.capability, destinationRoute: lens.href })} className={["inline-flex min-h-10 min-w-44 shrink-0 items-center justify-center gap-2 rounded-md border px-4 text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-offset-2", active ? stage === "observe" ? "border-emerald-700 bg-emerald-50 text-emerald-950 shadow-sm" : "border-violet-600 bg-violet-50 text-violet-950 shadow-sm" : "border-stone-200 bg-white text-stone-600 hover:border-stone-400 hover:text-stone-950"].join(" ")}><Icon aria-hidden="true" className="h-4 w-4" />{lens.label}</ContextLink>;
       })}
     </nav>
-    <div className="hidden shrink-0 gap-2 sm:flex"><ContextLink href="/dashboard/reports" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-stone-200 bg-white px-4 text-xs font-semibold text-stone-800"><Download className="h-3.5 w-3.5" />Export</ContextLink><button type="button" aria-label="More options" className="grid h-10 w-10 place-items-center rounded-md border border-stone-200 bg-white"><MoreHorizontal className="h-4 w-4" /></button></div>
+    <div className="hidden shrink-0 gap-2 sm:flex">{hasPageOwnExport ? null : <ContextLink href="/dashboard/reports" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-stone-200 bg-white px-4 text-xs font-semibold text-stone-800"><Download className="h-3.5 w-3.5" />Export</ContextLink>}<button type="button" aria-label="More options" className="grid h-10 w-10 place-items-center rounded-md border border-stone-200 bg-white"><MoreHorizontal className="h-4 w-4" /></button></div>
     </div>
     <p className="sr-only" role="status" aria-live="polite">{lenses[stage].find(lens => pathname.startsWith(lens.href))?.label} selected</p>
   </header>;
