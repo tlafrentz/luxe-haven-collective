@@ -69,8 +69,41 @@ describe("Financial Overview policies", () => {
     expect(fromSmall.kind).toBe("absolute-only");
     expect(fromSmall).not.toHaveProperty("percentageChange");
   });
+  it("builds a daily cumulative performance trend that excludes capital expenditure and matches the period totals", async () => {
+    const overview = buildFinancialOverview(await input({ comparison: undefined, comparisonType: undefined }));
+    expect(overview.performanceTrend).toHaveLength(31);
+    expect(overview.performanceTrend[0]).toMatchObject({ date: "2026-07-01", revenue: 0, expenses: 0, noi: 0 });
+    const last = overview.performanceTrend.at(-1)!;
+    expect(last.date).toBe("2026-07-31");
+    expect(last.revenue).toBe(10_000);
+    expect(last.expenses).toBe(4_000);
+    expect(last.noi).toBe(6_000);
+  });
   it("prioritizes no more than five material changes", async () => {
     expect(identifyMaterialFinancialChanges(await input()).length).toBeLessThanOrEqual(5);
+  });
+  it("expresses the operating-margin comparison as a percentage-point change, not a relative percent-of-percent", async () => {
+    const metrics = buildFinancialMetricSummaries(await input());
+    const margin = metrics.find(item => item.metric === "operating-margin")!;
+    expect(margin.current.percentage).toBe(.6);
+    expect(margin.change?.percentagePointChange).toBeCloseTo(.0375, 4);
+    expect(margin.change).not.toHaveProperty("percentageChange");
+  });
+  it("explains operating margin is unavailable because revenue is zero, distinct from unreliable-coverage cases", async () => {
+    const current = await model({ revenue: 0, expense: 4_000, capex: 0 });
+    const overview = buildFinancialOverview(await input({ current, comparison: undefined, comparisonType: undefined }));
+    const margin = overview.metrics.find(item => item.metric === "operating-margin")!;
+    expect(margin.current.percentage).toBeUndefined();
+    expect(margin.current.limitation).toBe("Revenue is required to calculate operating margin.");
+  });
+  it("attaches a comparison-period change to matching expense-category drivers, without inventing one for new categories", async () => {
+    const overview = buildFinancialOverview(await input());
+    const maintenance = overview.drivers.expenses.find(item => item.label === "Maintenance");
+    expect(maintenance?.change?.amount).toBe(500);
+  });
+  it("counts uncategorized transactions in the evidence summary", async () => {
+    const fullyCategorized = buildFinancialOverview(await input({ comparison: undefined, comparisonType: undefined }));
+    expect(fullyCategorized.evidence.uncategorizedTransactionCount).toBe(0);
   });
   it("uses account-type favorable variance and rejects accounting-basis mismatch", async () => {
     const compatible = await input({ plan: { kind: "budget", accountingBasis: "accrual", values: { revenue: Money.usd(9_000), expenses: Money.usd(3_000) } } });

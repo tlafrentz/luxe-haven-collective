@@ -14,7 +14,7 @@ export type FinancialValueQualification = "measured" | "estimated" | "projected"
 export type MetricAvailability = "available" | "partial" | "restricted" | "unavailable";
 export type FinancialMetric = "revenue" | "operating-expenses" | "noi" | "operating-margin" | "cash-balance" | "net-cash-movement";
 export type FinancialValueState = Readonly<{ money?: Money; percentage?: number; qualification: FinancialValueQualification; asOf?: string; limitation?: string }>;
-export type FinancialMetricChange = Readonly<{ amount?: Money; percentageChange?: number; kind: "absolute-and-percentage" | "absolute-only" | "new" | "unavailable"; direction: "improved" | "declined" | "stable" | "uncertain" }>;
+export type FinancialMetricChange = Readonly<{ amount?: Money; percentageChange?: number; percentagePointChange?: number; kind: "absolute-and-percentage" | "absolute-only" | "new" | "unavailable"; direction: "improved" | "declined" | "stable" | "uncertain" }>;
 export type FinancialMetricSummary = Readonly<{
   metric: FinancialMetric; current: FinancialValueState; comparison?: FinancialValueState;
   change?: FinancialMetricChange; availability: MetricAvailability; confidence: FinancialConfidence;
@@ -43,7 +43,8 @@ export type FinancialObligation = Readonly<{ id: string; description: string; am
 export type FinancialPlanVariancePreview = Readonly<{ available: boolean; kind?: "budget" | "forecast"; status: "available" | "unavailable" | "incompatible-basis"; lines: readonly Readonly<{ metric: "revenue" | "expenses" | "noi" | "cash"; actual: Money; plan: Money; variance: Money; favorable: boolean }>[]; explanation: string }>;
 export type FinancialAttentionItem = Readonly<{ id: string; type: "profitability-decline" | "expense-increase" | "cash-pressure" | "reserve-pressure" | "budget-variance" | "upcoming-obligation" | "uncategorized-transactions" | "data-limitation" | "stale-source" | "currency-mismatch" | "accounting-basis-mismatch"; title: string; description: string; whyItMatters: string; impact?: Money; confidence: FinancialConfidence; evidenceIds: readonly string[]; destination?: string }>;
 export type FinancialExecutionSummary = Readonly<{ activeDecisions: number; openActions: number; committedCapital?: Money; spentCapital?: Money; items: readonly Readonly<{ id: string; title: string; kind: "decision" | "action"; status: string; destination: string }>[] }>;
-export type FinancialEvidenceSummary = Readonly<{ revenueCoverage: number; expenseCoverage: number; cashCoverage: number; propertyCoverage: number; accountCoverage: number; categorizationCoverage: number; reconciliation: "reconciled" | "partially-reconciled" | "unreconciled" | "not-applicable" | "unknown"; historyMonths: number; gaps: readonly string[]; oldestSourceUpdate?: string }>;
+export type FinancialEvidenceSummary = Readonly<{ revenueCoverage: number; expenseCoverage: number; cashCoverage: number; propertyCoverage: number; accountCoverage: number; categorizationCoverage: number; uncategorizedTransactionCount: number; reconciliation: "reconciled" | "partially-reconciled" | "unreconciled" | "not-applicable" | "unknown"; historyMonths: number; gaps: readonly string[]; oldestSourceUpdate?: string }>;
+export type FinancialPerformanceTrendPoint = Readonly<{ date: string; revenue: number; expenses: number; noi: number }>;
 export type FinancialOverviewState = "ready" | "empty" | "partial" | "degraded" | "permission-limited";
 
 export type FinancialOverview = Readonly<{
@@ -55,6 +56,7 @@ export type FinancialOverview = Readonly<{
   propertyContribution: readonly FinancialPropertyContribution[]; obligations: Readonly<{ sourceAvailable: boolean; items: readonly FinancialObligation[] }>;
   planning: FinancialPlanVariancePreview; attention: readonly FinancialAttentionItem[];
   execution: FinancialExecutionSummary; evidence: FinancialEvidenceSummary;
+  performanceTrend: readonly FinancialPerformanceTrendPoint[];
   confidence: FinancialConfidence; freshness: FinancialFreshness; evaluatedAt: string;
   projectionVersion: string; state: FinancialOverviewState; permissionLimited: boolean;
 }>;

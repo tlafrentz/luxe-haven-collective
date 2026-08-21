@@ -3,7 +3,7 @@ import type { FinancialAccount, FinancialReadModel } from "../../domain";
 import type {
   FinancialAttentionItem, FinancialChangeSummary, FinancialDriver, FinancialEvidenceSummary,
   FinancialExecutionSummary, FinancialMetricSummary, FinancialOverview, FinancialOverviewBuildInput,
-  FinancialPlanVariancePreview, FinancialPropertyContribution,
+  FinancialPerformanceTrendPoint, FinancialPlanVariancePreview, FinancialPropertyContribution,
 } from "./contracts";
 import {
   condition, FINANCIAL_OVERVIEW_POLICY_VERSION, FINANCIAL_OVERVIEW_THRESHOLDS,
@@ -18,7 +18,12 @@ function operating(model: FinancialReadModel) {
   const revenueReliable = revenue!==null&&model.evidence.revenueCoverage > 0;
   const noi = expenseReliable && revenueReliable ? revenue.subtract(expenses) : null;
   const margin = noi && revenue && revenue.amount !== 0 ? noi.amount / revenue.amount : null;
-  return {revenue,expenses,noi,margin,expenseReliable,revenueReliable,qualification:revenue?qualification(revenue,values.estimated.revenue,values.projected.revenue,values.forecast.revenue):"unavailable" as const};
+  const marginUnavailableReason = margin !== null ? undefined
+    : !revenueReliable ? "Reliable revenue is required to calculate operating margin."
+    : revenue && revenue.amount === 0 ? "Revenue is required to calculate operating margin."
+    : !expenseReliable ? "Reliable operating expenses are required to calculate operating margin."
+    : "Operating margin requires reliable non-zero revenue and expenses.";
+  return {revenue,expenses,noi,margin,marginUnavailableReason,expenseReliable,revenueReliable,qualification:revenue?qualification(revenue,values.estimated.revenue,values.projected.revenue,values.forecast.revenue):"unavailable" as const};
 }
 
 function valueMetric(metric: FinancialMetricSummary["metric"], current: Money | null, previous: Money | null, input: FinancialOverviewBuildInput, favorable: boolean, limitation?: string): FinancialMetricSummary {
@@ -42,9 +47,9 @@ export function buildFinancialMetricSummaries(input: FinancialOverviewBuildInput
     valueMetric("noi", current.noi, previous?.noi ?? null, input, true, "NOI requires reliable recognized revenue and operating expenses."),
     {
       metric: "operating-margin",
-      current: current.margin === null ? { qualification: "unavailable", limitation: "Operating margin requires reliable non-zero revenue and expenses." } : { percentage: current.margin, qualification: "measured" },
+      current: current.margin === null ? { qualification: "unavailable", limitation: current.marginUnavailableReason } : { percentage: current.margin, qualification: "measured" },
       ...(previous?.margin !== null && previous?.margin !== undefined ? { comparison: { percentage: previous.margin, qualification: "measured" as const } } : {}),
-      ...(current.margin !== null && previous?.margin !== null && previous?.margin !== undefined ? { change: { kind: "absolute-only" as const, direction: current.margin === previous.margin ? "stable" as const : current.margin > previous.margin ? "improved" as const : "declined" as const } } : {}),
+      ...(current.margin !== null && previous?.margin !== null && previous?.margin !== undefined ? { change: { kind: "absolute-only" as const, direction: current.margin === previous.margin ? "stable" as const : current.margin > previous.margin ? "improved" as const : "declined" as const, percentagePointChange: current.margin - previous.margin } } : {}),
       availability: current.margin === null ? "unavailable" : "available", confidence: current.margin === null ? "insufficient-evidence" : input.current.confidence,
       freshness: input.current.freshness, evidenceIds: input.current.evidence.sourceIds,
     },
@@ -64,7 +69,7 @@ export function buildFinancialMetricSummaries(input: FinancialOverviewBuildInput
   return Object.freeze(metrics);
 }
 
-function groupedDrivers(model: FinancialReadModel, categories: readonly FinancialAccount["category"][]): readonly FinancialDriver[] {
+function groupedDrivers(model: FinancialReadModel, categories: readonly FinancialAccount["category"][], limit = 4): readonly FinancialDriver[] {
   const accounts = new Map(model.accounts.map(account => [account.id, account]));
   const totals = new Map<string, Money>();
   for (const transaction of model.ledger.transactions) {
@@ -78,7 +83,35 @@ function groupedDrivers(model: FinancialReadModel, categories: readonly Financia
     id: label.toLowerCase().replace(/[^a-z0-9]+/g, "-"), label, amount,
     share: total ? amount.amount / total : undefined, qualification: "measured" as const,
     confidence: model.confidence,
-  })).sort((a, b) => b.amount.amount - a.amount.amount).slice(0, 4));
+  })).sort((a, b) => b.amount.amount - a.amount.amount).slice(0, limit));
+}
+
+function buildFinancialPerformanceTrend(model: FinancialReadModel): readonly FinancialPerformanceTrendPoint[] {
+  const accounts = new Map(model.accounts.map(account => [account.id, account]));
+  const byDay = new Map<string, { revenue: number; expenses: number }>();
+  for (let cursor = new Date(`${model.period.from}T00:00:00Z`), end = new Date(`${model.period.to}T00:00:00Z`); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    byDay.set(cursor.toISOString().slice(0, 10), { revenue: 0, expenses: 0 });
+  }
+  for (const transaction of model.ledger.transactions) {
+    const account = accounts.get(transaction.props.accountId);
+    const bucket = byDay.get(transaction.props.effectiveDate.slice(0, 10));
+    if (transaction.props.status !== "posted" || !["actual", "measured"].includes(transaction.props.measurement) || !account || !bucket) continue;
+    if (account.category === "revenue") bucket.revenue += transaction.props.amount.amount;
+    else if (account.category === "cost-of-revenue" || account.category === "operating-expense") bucket.expenses += transaction.props.amount.amount;
+  }
+  let revenue = 0, expenses = 0;
+  return Object.freeze([...byDay.entries()].map(([date, bucket]) => {
+    revenue += bucket.revenue; expenses += bucket.expenses;
+    return { date, revenue, expenses, noi: revenue - expenses };
+  }));
+}
+
+function withDriverChange(current: readonly FinancialDriver[], previous: readonly FinancialDriver[]): readonly FinancialDriver[] {
+  const previousByLabel = new Map(previous.map(item => [item.label, item.amount]));
+  return current.map(item => {
+    const prior = previousByLabel.get(item.label);
+    return prior ? { ...item, change: item.amount.subtract(prior) } : item;
+  });
 }
 
 export function buildFinancialPropertyContributionPreview(input: FinancialOverviewBuildInput): readonly FinancialPropertyContribution[] {
@@ -149,6 +182,7 @@ export function buildFinancialEvidenceSummary(input: FinancialOverviewBuildInput
     propertyCoverage: input.scope.propertyCount ? (input.propertySnapshots?.length ?? input.scope.propertyCount) / input.scope.propertyCount : 0,
     accountCoverage: model.accounts.length ? model.ledger.transactions.filter(({ props }) => model.accounts.some(account => account.id === props.accountId)).length / Math.max(1, model.ledger.transactions.length) : 0,
     categorizationCoverage: model.ledger.transactions.length ? categorized / model.ledger.transactions.length : 0,
+    uncategorizedTransactionCount: model.ledger.transactions.length - categorized,
     reconciliation: "unknown", historyMonths: model.evidence.historyMonths, gaps: model.evidence.gaps,
     oldestSourceUpdate: input.cash?.asOf,
   };
@@ -179,10 +213,17 @@ export function buildFinancialOverview(input: FinancialOverviewBuildInput): Fina
     ...(input.comparisonType && input.comparisonType !== "budget" && input.comparisonType !== "forecast" ? { comparison: { type: input.comparisonType, available: Boolean(input.comparison), ...(!input.comparison ? { limitation: "Compatible comparison evidence is unavailable." } : {}) } } : {}),
     accountingBasis: input.current.identity.accountingMethod, reportingCurrency: input.current.identity.reportingCurrency,
     condition: financialCondition, metrics, profitability: profitabilitySummary, liquidity: liquiditySummary,
-    changes, drivers: { revenue: groupedDrivers(input.current, ["revenue"]), expenses: groupedDrivers(input.current, ["cost-of-revenue", "operating-expense"]) },
+    changes, drivers: {
+      revenue: groupedDrivers(input.current, ["revenue"]),
+      expenses: withDriverChange(
+        groupedDrivers(input.current, ["cost-of-revenue", "operating-expense"], 8),
+        input.comparison ? groupedDrivers(input.comparison, ["cost-of-revenue", "operating-expense"], 8) : [],
+      ),
+    },
     propertyContribution: buildFinancialPropertyContributionPreview(input),
     obligations: input.obligations ?? { sourceAvailable: false, items: [] }, planning, attention,
     execution: input.execution ?? emptyExecution(input.current.identity.reportingCurrency),
+    performanceTrend: buildFinancialPerformanceTrend(input.current),
     evidence, confidence: input.current.confidence, freshness: input.current.freshness,
     evaluatedAt: input.current.evaluatedAt, projectionVersion: input.projectionVersion ?? FINANCIAL_OVERVIEW_POLICY_VERSION,
     state, permissionLimited: Boolean(input.permissionLimited),

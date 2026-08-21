@@ -1,4 +1,7 @@
 export * from "./financial-overview";
+export * from "./financial-performance-chart";
+export * from "./financial-kpi-drawer";
+export * from "./financial-export-menu";
 export * from "./financial-expense-form";
 export * from "./financial-snapshot-form";
 export * from "./income-statement";
