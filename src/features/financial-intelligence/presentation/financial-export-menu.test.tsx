@@ -52,4 +52,17 @@ describe("FinancialExportMenu", () => {
     await user.click(screen.getByRole("button", { name: "Outside" }));
     expect(screen.queryByRole("menu")).toBeNull();
   });
+  it("renders inside the shared header's page-actions slot when present, instead of inline on the page", () => {
+    const slot = document.createElement("div");
+    slot.id = "workspace-header-page-actions";
+    document.body.appendChild(slot);
+    try {
+      const { container } = render(<div id="page-body"><FinancialExportMenu csvSummary="a,b\r\n" csvExpenses="c,d\r\n" filePrefix="financial-intelligence-2026-07" /></div>);
+      expect(container.querySelector("#page-body button")).toBeNull();
+      expect(slot.querySelector("button")).not.toBeNull();
+      expect(slot.textContent).toContain("Export");
+    } finally {
+      slot.remove();
+    }
+  });
 });

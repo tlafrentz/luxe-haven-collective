@@ -6,18 +6,12 @@ import { FinancialPerformanceChart } from "./financial-performance-chart";
 import { FinancialKpiRow, type FinancialKpiCard, type FinancialKpiDrawerContent } from "./financial-kpi-drawer";
 import { FinancialExportMenu } from "./financial-export-menu";
 
-export type FinancialOverviewControlState = Readonly<{ scopeType: string; periodPreset: string; comparisonType: string }>;
-const DEFAULT_CONTROLS: FinancialOverviewControlState = { scopeType: "workspace", periodPreset: "last-month", comparisonType: "previous-period" };
-
-export function FinancialOverviewView({ overview, controls = DEFAULT_CONTROLS }: { overview: FinancialOverview; controls?: FinancialOverviewControlState }) {
+export function FinancialOverviewView({ overview }: { overview: FinancialOverview }) {
   if (overview.state === "empty") return <FinancialOverviewEmpty />;
   return <main className="mx-auto max-w-[1500px] space-y-4 px-4 pb-8 pt-3 sm:px-6 lg:px-8">
     <div className="sr-only"><h1>Financial Overview</h1><Link href={`/dashboard/reports/new?type=financial-performance&workspace=${overview.identity.workspaceId}`}>Generate financial report</Link><span>{overview.scope.label} · {range(overview.period.from,overview.period.to)}</span></div>
     <PrintDisclosure overview={overview}/>
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-      <div className="flex-1"><FinancialOverviewControls overview={overview} controls={controls}/></div>
-      <FinancialExportMenu csvSummary={buildFinancialSummaryCsv(overview)} csvExpenses={buildExpenseDetailCsv(overview)} filePrefix={exportFilePrefix(overview)}/>
-    </div>
+    <FinancialExportMenu csvSummary={buildFinancialSummaryCsv(overview)} csvExpenses={buildExpenseDetailCsv(overview)} filePrefix={exportFilePrefix(overview)}/>
     {overview.permissionLimited ? <Notice title="Financial Summary">You can view authorized property profitability, but workspace cash balances and sensitive owner-level financial details may be restricted.</Notice> : null}
     <FinancialKpiRow cards={buildKpiCards(overview)} drawers={buildKpiDrawerContent(overview)}/>
     <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
@@ -35,24 +29,6 @@ export function FinancialOverviewView({ overview, controls = DEFAULT_CONTROLS }:
     <Attention overview={overview}/>
     <aside className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-xs text-blue-900">&#9432; All expenses are recorded as actuals and tied to source evidence. Projections, scenarios, and budgets are kept separate.</aside>
   </main>;
-}
-
-function FinancialOverviewControls({ overview, controls }: { overview: FinancialOverview; controls: FinancialOverviewControlState }) {
-  const comparisonOptions: (readonly [string, string])[] = [
-    ["previous-period", "Previous Period"], ["previous-year", "Previous Year"],
-    ...(overview.planning.available && overview.planning.kind === "budget" ? [["budget", "Budget"] as const] : []),
-    ["none", "No Comparison"],
-  ];
-  return <form aria-label="Financial Intelligence reporting context" className="grid gap-3 rounded-2xl border border-stone-200 bg-white p-4 print:hidden sm:grid-cols-2 lg:grid-cols-4">
-    <input type="hidden" name="workspace" value={overview.identity.workspaceId}/>
-    <Control label="Scope" name="scope" defaultValue={controls.scopeType} options={[["workspace","All Properties"],["selected-properties","Selected Properties"],["single-property","Single Property"]]}/>
-    <Control label="Period" name="period" defaultValue={controls.periodPreset} options={[["this-month","This Month"],["last-month","Last Month"],["qtd","Quarter to Date"],["ytd","Year to Date"],["12m","Trailing 12 Months"]]}/>
-    <Control label="Comparison" name="comparison" defaultValue={controls.comparisonType} options={comparisonOptions}/>
-    <div className="flex items-end"><button className="min-h-11 w-full rounded-lg bg-stone-950 px-4 text-xs font-semibold text-white">Update view</button></div>
-  </form>;
-}
-function Control({ label, name, defaultValue, options }: { label: string; name: string; defaultValue: string; options: readonly (readonly [string, string])[] }) {
-  return <label className="text-xs font-semibold text-stone-600">{label}<select aria-label={label} name={name} defaultValue={defaultValue} className="mt-2 min-h-11 w-full rounded-lg border border-stone-300 bg-white px-3 text-sm text-stone-900">{options.map(([value,text])=><option value={value} key={value}>{text}</option>)}</select></label>;
 }
 
 function PrintDisclosure({ overview }: { overview: FinancialOverview }) {

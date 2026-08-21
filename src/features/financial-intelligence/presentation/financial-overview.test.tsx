@@ -101,20 +101,6 @@ describe("Financial Overview presentation states", () => {
     expect(html).toContain("No comparison available");
     expect(html).toContain("View expense details");
   });
-  it("renders a reporting-context form with the current scope, period, and comparison preselected", () => {
-    const html = renderToStaticMarkup(<FinancialOverviewView overview={overview} controls={{ scopeType: "single-property", periodPreset: "ytd", comparisonType: "previous-year" }} />);
-    expect(html).toContain('aria-label="Financial Intelligence reporting context"');
-    expect(html).toContain('name="workspace" value="w"');
-    expect(html).toMatch(/<option value="single-property"[^>]*selected/);
-    expect(html).toMatch(/<option value="ytd"[^>]*selected/);
-    expect(html).toMatch(/<option value="previous-year"[^>]*selected/);
-  });
-  it("only offers a Budget comparison option when an approved budget plan actually exists", () => {
-    const withoutBudget = renderToStaticMarkup(<FinancialOverviewView overview={overview} />);
-    expect(withoutBudget).not.toContain(">Budget<");
-    const withBudget = renderToStaticMarkup(<FinancialOverviewView overview={{ ...overview, planning: { ...overview.planning, available: true, kind: "budget" } }} />);
-    expect(withBudget).toContain(">Budget<");
-  });
   it("renders a financial-performance section with a comparison-period label, completeness, and last-refreshed timestamp", () => {
     const withComparisonPeriod: FinancialOverview = { ...overview, period: { ...overview.period, comparison: { from: "2026-06-01", to: "2026-06-30" } } };
     const html = renderToStaticMarkup(<FinancialOverviewView overview={withComparisonPeriod} />);
