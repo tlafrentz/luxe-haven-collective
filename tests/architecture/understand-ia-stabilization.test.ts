@@ -13,6 +13,6 @@ describe("UI-003 Understand IA",()=>{
   it("routes legacy Executive workspace pages into the canonical lifecycle",()=>{
     expect(read("src/app/(dashboard)/dashboard/understand/actions/page.tsx")).toContain("/dashboard/execute/actions");
     expect(read("src/app/(dashboard)/dashboard/understand/outcomes/page.tsx")).toContain("/dashboard/learn/outcomes");
-    expect(read("src/app/(dashboard)/dashboard/understand/risks/page.tsx")).toContain("/dashboard/understand/attention");
+    expect(read("src/app/(dashboard)/dashboard/understand/risks/page.tsx")).toContain("understandRoutes.attention");
   });
 });

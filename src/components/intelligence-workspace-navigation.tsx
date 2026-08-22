@@ -1,7 +1,7 @@
 "use client";
 
 import { BriefcaseBusiness, LineChart } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { ContextLink } from "@/platform/workspace-context";
 import { recordPlatformNavigationEvent } from "@/platform/experience";
 import { IntelligencePageActions } from "@/features/financial-intelligence/presentation/financial-shell-actions";
@@ -41,8 +41,13 @@ export function IntelligenceWorkspaceHeader({
   stage: "observe" | "understand";
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const observeCapability = pathname.startsWith("/dashboard/observe/financial") ? "financial" : "revenue";
   const understandCapability = pathname.startsWith("/dashboard/understand/portfolio") ? "portfolio" : "executive";
+  const activeLens = lenses[stage].find((lens) => stage === "understand"
+    ? lens.capability === understandCapability
+    : pathname.startsWith(lens.href));
+  const diagnostic = stage === "understand" ? pathname.endsWith("/attention") ? "Attention" : pathname.endsWith("/data-quality") ? "Data Quality" : searchParams?.has("property") ? "Property Intelligence" : null : null;
   const title = stage === "observe" ? "Observe" : "Understand";
   const description =
     stage === "observe"
@@ -58,7 +63,7 @@ export function IntelligenceWorkspaceHeader({
       >
         {title} <span className="px-2 text-stone-400">›</span>{" "}
         <span className="text-stone-950">
-          {lenses[stage].find((lens) => pathname.startsWith(lens.href))?.label}
+          {activeLens?.label}{diagnostic ? <><span className="px-2 text-stone-400">›</span>{diagnostic}</> : null}
         </span>
       </p>
       <h1 className="mt-5 text-3xl font-semibold tracking-tight text-stone-950">
@@ -71,7 +76,7 @@ export function IntelligenceWorkspaceHeader({
           className="flex max-w-full gap-2 overflow-x-auto pb-1"
         >
           {lenses[stage].map((lens, index) => {
-            const active = pathname.startsWith(lens.href);
+            const active = stage === "understand" ? lens.capability === understandCapability : pathname.startsWith(lens.href);
             const Icon = index === 0 ? LineChart : BriefcaseBusiness;
             return (
               <ContextLink
@@ -102,7 +107,7 @@ export function IntelligenceWorkspaceHeader({
         <div className="flex shrink-0 gap-2"><IntelligencePageActions capability={stage === "observe" ? observeCapability : understandCapability}/></div>
       </div>
       <p className="sr-only" role="status" aria-live="polite">
-        {lenses[stage].find((lens) => pathname.startsWith(lens.href))?.label}{" "}
+        {activeLens?.label}{" "}
         selected
       </p>
     </header>

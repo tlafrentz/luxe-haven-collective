@@ -1,2 +1,3 @@
 import { redirect } from "next/navigation";
-export default function Page(){redirect("/dashboard/understand/attention")}
+import { understandRoutes } from "@/platform/experience";
+export default function Page(){redirect(understandRoutes.attention)}

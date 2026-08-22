@@ -27,9 +27,25 @@ describe("UI-003C Understand route and action closure",()=>{
   });
 
   it("renders canonical Attention and Data Quality pages without the legacy ExecutiveWorkspace",()=>{
-    expect(read("src/app/(dashboard)/dashboard/understand/attention/page.tsx")).not.toContain("ExecutivePageView");
-    expect(read("src/app/(dashboard)/dashboard/understand/data-quality/page.tsx")).not.toContain("ExecutivePageView");
+    expect(read("src/app/(dashboard)/dashboard/understand/executive/attention/page.tsx")).not.toContain("ExecutivePageView");
+    expect(read("src/app/(dashboard)/dashboard/understand/portfolio/data-quality/page.tsx")).not.toContain("ExecutivePageView");
     expect(read("src/features/portfolio-intelligence/presentation/portfolio-overview.tsx")).toContain("SupportingSignalsDrawer");
+  });
+
+  it("keeps contextual drill-downs inside their parent intelligence capability",()=>{
+    expect(understandRoutes.attention).toBe("/dashboard/understand/executive/attention");
+    expect(understandRoutes.portfolioDataQuality).toBe("/dashboard/understand/portfolio/data-quality");
+    const header=read("src/components/intelligence-workspace-navigation.tsx");
+    expect(header).toContain("understandCapability");
+    expect(header).toContain("diagnostic");
+    expect(read("src/features/portfolio-intelligence/presentation/portfolio-property-comparison.tsx")).not.toContain('href="/dashboard/execute/actions"');
+  });
+
+  it("preserves the originating intelligence route through diagnostic returns",()=>{
+    const actions=read("src/features/financial-intelligence/presentation/financial-shell-actions.tsx");
+    const signals=read("src/features/portfolio-intelligence/presentation/supporting-signals-drawer.tsx");
+    expect(actions).toContain("returnTo=${encodeURIComponent(returnTarget)}");
+    expect(signals).toContain("returnTo=${encodeURIComponent(returnTo)}");
   });
 
   it("keeps export actions on the single reporting command boundary",()=>{

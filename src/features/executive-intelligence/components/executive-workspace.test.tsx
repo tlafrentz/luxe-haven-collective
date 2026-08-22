@@ -10,7 +10,7 @@ describe("ExecutiveWorkspace",()=>{
     const view=createExecutiveIntelligenceView({scope:{properties:[{id:"property-1",name:"Retreat"}],selectedProperty:{id:"property-1",name:"Retreat"},propertyCount:1,startDate:"2026-07-01",endDate:"2026-08-01",scopeKnown:true}});
     render(<ExecutiveWorkspace view={view} tab="overview"/>);
     expect(screen.queryByRole("navigation",{name:"Executive Intelligence views"})).toBeNull();
-    expect(screen.getByRole("link",{name:"Review Attention"}).getAttribute("href")).toBe("/dashboard/understand/attention");
+    expect(screen.getByRole("link",{name:"Review Attention"}).getAttribute("href")).toBe("/dashboard/understand/executive/attention");
     expect(screen.queryByRole("link",{name:"Business Health"})).toBeNull();
   });
   it("distinguishes percentage-point occupancy changes",()=>{

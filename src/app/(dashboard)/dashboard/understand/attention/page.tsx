@@ -1,22 +1,3 @@
-import Link from "next/link";
-import { getExecutiveIntelligenceView, ExecutiveAttentionList } from "@/features/executive-intelligence";
-import { resolveAnalyticsDateRange } from "@/features/analytics";
+import { redirect } from "next/navigation";
 import { understandRoutes } from "@/platform/experience";
-
-type SearchParams = Promise<{property?:string;start?:string;end?:string;from?:string;to?:string}>;
-
-export default async function AttentionPage({searchParams}:Readonly<{searchParams:SearchParams}>) {
-  const params=await searchParams;
-  const range=resolveAnalyticsDateRange({startDate:params.from??params.start,endDate:params.to??params.end});
-  const {view}=await getExecutiveIntelligenceView({propertyId:params.property??null,startDate:range.startDate,endDate:range.endDate});
-  return <main className="mx-auto max-w-[1200px] space-y-6 px-4 pb-10 pt-3 sm:px-6 lg:px-8">
-    <header className="rounded-[2rem] border border-stone-200 bg-white p-6 sm:p-8">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-700">Understand · Attention</p>
-      <h1 className="mt-3 text-3xl font-semibold text-stone-950">Attention</h1>
-      <p className="mt-2 text-sm text-stone-600">What requires deeper understanding across your business?</p>
-      <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold"><span className="rounded-full bg-stone-950 px-3 py-2 text-white">All</span><span className="rounded-full border px-3 py-2">Performance</span><span className="rounded-full border px-3 py-2">Risk</span><span className="rounded-full border px-3 py-2">Data Quality</span></div>
-    </header>
-    <ExecutiveAttentionList attention={view.attention}/>
-    <Link href={understandRoutes.executive} className="inline-flex text-sm font-semibold text-teal-800 underline-offset-4 hover:underline">Return to Executive Intelligence</Link>
-  </main>;
-}
+export default function Page(){redirect(understandRoutes.attention)}
