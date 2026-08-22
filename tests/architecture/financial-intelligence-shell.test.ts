@@ -14,4 +14,9 @@ describe("FI-002 canonical Financial Intelligence shell", () => {
     const header=fs.readFileSync(path.join(process.cwd(),"src/components/intelligence-workspace-navigation.tsx"),"utf8");
     expect(header).toContain('pathname.startsWith(`${route}/`)');
   });
+  it("does not render the legacy overflow beside canonical Financial actions",()=>{
+    const header=fs.readFileSync(path.join(process.cwd(),"src/components/intelligence-workspace-navigation.tsx"),"utf8");
+    const financialBranch=header.slice(header.indexOf("hasPageOwnExport ?"),header.indexOf("</div>\n    </div>",header.indexOf("hasPageOwnExport ?")));
+    expect(financialBranch.indexOf("More options")).toBeGreaterThan(financialBranch.indexOf(": <>"));
+  });
 });

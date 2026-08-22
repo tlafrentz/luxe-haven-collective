@@ -2,7 +2,7 @@ import { describe,expect,it,vi } from "vitest";
 import { Money } from "@/platform/kernel";
 import { permissionsForRole,type WorkspaceAccessContext } from "@/features/workspace";
 import { buildFinancialReadModel,type FinancialSource } from "../..";
-import { buildFinancialPlanning,buildVariance,reviseApprovedBudget,type BuildFinancialPlanningInput,type FinancialBudgetPlan,type FinancialForecastPlan } from ".";
+import { buildFinancialPlanning,buildVariance,evaluateForecastReadiness,reviseApprovedBudget,type BuildFinancialPlanningInput,type FinancialBudgetPlan,type FinancialForecastPlan } from ".";
 const access:WorkspaceAccessContext={profileId:"p",workspaceId:"w",ownerId:"w",ownerProfileId:"p",membershipId:"m",role:"owner",status:"active",propertyAccess:{type:"all"},permissions:permissionsForRole("owner")};
 const period={kind:"year" as const,from:"2026-01-01",to:"2026-12-31",reportingCalendar:"fiscal" as const};
 const assumption={id:"a",type:"occupancy" as const,label:"Occupancy",value:"72%",status:"confirmed" as const,effectiveFrom:"2026-01-01",evidenceIds:["a"]};
@@ -15,5 +15,7 @@ describe("Financial Planning",()=>{
  it("builds budget, forecast, scenario, evidence and health separately",async()=>{const result=buildFinancialPlanning(await fixture());expect(result.actuals.revenue?.amount).toBe(110);expect(result.budget?.values.revenue?.amount).toBe(100);expect(result.forecast?.version).toBe(3);expect(result.scenarios).toHaveLength(2);expect(result.health).toBe("off-plan");expect(result.evidence.assumptionCoverage).toBe(1)});
  it("suppresses percentage variance for zero baselines",()=>{expect(buildVariance({revenue:Money.usd(10)},{revenue:Money.zero("USD")},"high",[])[0]?.percentage).toBeNull()});
  it("reports unavailable planning health without an approved budget",async()=>{const result=buildFinancialPlanning(await fixture({budget:null}));expect(result.health).toBe("unavailable");expect(result.evidence.gaps).toContain("No approved budget exists.")});
+ it("returns typed incomplete readiness before forecast projection when cash and obligations are missing",async()=>{const base=await fixture(),input={...base,actuals:{...base.actuals,evidence:{...base.actuals.evidence,historyMonths:12,expenseCoverage:1}}},readiness=evaluateForecastReadiness(input),result=buildFinancialPlanning(input);expect(readiness).toMatchObject({ready:false,missing:["cash_position","recurring_obligations"],percentage:50});expect(result.state).toBe("incomplete")});
+ it("does not crash when a property has no NOI row",async()=>{const input=await fixture(),propertyActuals={...input.actuals,snapshot:{...input.actuals.snapshot,expenses:null}};expect(()=>buildFinancialPlanning({...input,propertyPlans:[{propertyId:"one",label:"One",actuals:propertyActuals,budget:null,forecast:null}]})).not.toThrow();expect(buildFinancialPlanning({...input,propertyPlans:[{propertyId:"one",label:"One",actuals:propertyActuals}]}).properties[0]?.noiContribution).toBeNull()});
  it("rejects silent multi-currency plans",async()=>{const input=await fixture({budget:{...budget,values:{revenue:Money.of(1,"EUR")}}});expect(()=>buildFinancialPlanning(input)).toThrow("PLANNING_CURRENCY_MISMATCH")});
 });
