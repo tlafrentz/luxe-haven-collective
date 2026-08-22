@@ -5,3 +5,4 @@ export { financialOverviewExecutivePillar } from "./financial-overview-executive
 export type { ExecutiveHealthProjectionWriter } from "./executive-health-projection-writer";
 export { buildExecutiveAttentionItems } from "./build-executive-attention-items";
 export { getExecutiveIntelligenceView, type ExecutiveIntelligenceViewResult } from "./get-executive-intelligence-view";
+export { filterExecutiveAttention,parseExecutiveAttentionFilter,executiveAttentionFilters,type ExecutiveAttentionFilter } from "./filter-executive-attention";

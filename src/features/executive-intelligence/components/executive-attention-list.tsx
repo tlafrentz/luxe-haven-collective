@@ -3,9 +3,9 @@ import type { ExecutiveAttentionItem, ExecutiveAttentionSummary } from "../domai
 import { ExecutiveAttentionCard } from "./executive-attention-card";
 import { SectionHeading } from "./section-heading";
 
-type ExecutiveAttentionListProps = Readonly<{ attention: ExecutiveAttentionSummary }>;
+type ExecutiveAttentionListProps = Readonly<{ attention: ExecutiveAttentionSummary; emptyTitle?:string; emptyDescription?:string }>;
 
-export function ExecutiveAttentionList({ attention }: ExecutiveAttentionListProps) {
+export function ExecutiveAttentionList({ attention,emptyTitle="No current attention items",emptyDescription="Nothing in the selected scope and period currently requires deeper review." }: ExecutiveAttentionListProps) {
   const categorized = new Set([...attention.risks, ...attention.opportunities].map((item) => item.id));
   const other = attention.priorities.filter((item) => !categorized.has(item.id));
   const groups: readonly Readonly<{ label: string; items: readonly ExecutiveAttentionItem[] }>[] = [
@@ -19,8 +19,8 @@ export function ExecutiveAttentionList({ attention }: ExecutiveAttentionListProp
       {attention.priorities.length === 0 ? (
         <div className="mt-5 rounded-3xl border border-emerald-200 bg-emerald-50 p-8 text-center">
           <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" />
-          <h3 className="mt-4 text-base font-semibold text-emerald-950">No current attention items</h3>
-          <p className="mt-2 text-sm text-emerald-700">Connected providers returned no recommendations, actions, intelligence alerts, or failed outcomes requiring attention.</p>
+          <h3 className="mt-4 text-base font-semibold text-emerald-950">{emptyTitle}</h3>
+          <p className="mt-2 text-sm text-emerald-700">{emptyDescription}</p>
         </div>
       ) : (
         <div className="mt-5 space-y-7">

@@ -25,6 +25,9 @@ export {
   financialOverviewExecutivePillar,
   getExecutiveIntelligenceView,
   ExecutiveAttentionPolicy,
+  filterExecutiveAttention,
+  parseExecutiveAttentionFilter,
+  executiveAttentionFilters,
 } from "./application";
 
 export type {
@@ -44,3 +47,4 @@ export type {
   ExecutiveBusinessHealthProjection,
 } from "./domain";
 export type { ExecutiveAttentionCandidate, ExecutiveAttentionWeights } from "./application";
+export type { ExecutiveAttentionFilter } from "./application";
