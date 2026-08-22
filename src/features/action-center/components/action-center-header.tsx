@@ -1,13 +1,22 @@
 import Link from "next/link";
 import { CheckCircle2, Sparkles } from "lucide-react";
 
-import type { ActionCenterSummary } from "../domain";
+import type { ActionCenterSummary, ActionCenterViewSelection } from "../domain";
 
 type ActionCenterHeaderProps = {
   summary: ActionCenterSummary;
+  selectedView: ActionCenterViewSelection;
 };
 
-export function ActionCenterHeader({ summary }: ActionCenterHeaderProps) {
+const destinations: readonly Readonly<{ label: string; view: ActionCenterViewSelection }>[] = [
+  { label: "Overview", view: "overview" },
+  { label: "My Work", view: "my-work" },
+  { label: "All Actions", view: "all" },
+  { label: "Action Plans", view: "plans" },
+  { label: "Completed", view: "completed" },
+];
+
+export function ActionCenterHeader({ summary, selectedView }: ActionCenterHeaderProps) {
   const activeCount = summary.ready + summary.inProgress + summary.blocked;
 
   return (
@@ -42,7 +51,10 @@ export function ActionCenterHeader({ summary }: ActionCenterHeaderProps) {
       </div>
 
       <nav aria-label="Execute workspace" className="flex gap-2 overflow-x-auto pb-1 text-sm">
-        {[["Overview", "/dashboard/execute"], ["My Work", "/dashboard/execute?view=my-work"], ["All Actions", "/dashboard/execute?view=all"], ["Action Plans", "/dashboard/execute?view=plans"], ["Recurring", "/dashboard/execute?view=recurring"], ["Completed", "/dashboard/execute?view=completed"]].map(([label, href], index) => <Link key={label} className={`shrink-0 rounded-full px-4 py-2 font-semibold ${index === 0 ? "bg-stone-950 text-white" : "border bg-white text-stone-600"}`} href={href} aria-current={index === 0 ? "page" : undefined}>{label}</Link>)}
+        {destinations.map(({ label, view }) => {
+          const selected = selectedView === view;
+          return <Link key={view} className={`shrink-0 rounded-full px-4 py-2 font-semibold ${selected ? "bg-stone-950 text-white" : "border bg-white text-stone-600"}`} href={`/dashboard/execute?view=${view}`} aria-current={selected ? "page" : undefined}>{label}</Link>;
+        })}
       </nav>
     </header>
   );

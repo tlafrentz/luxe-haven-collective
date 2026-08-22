@@ -27,6 +27,7 @@ export type ActionCenterAction = Readonly<{
 export type ActionCenterSummary = Readonly<{ total: number; ready: number; inProgress: number; blocked: number; awaitingReview: number; failed: number; overdue: number; unassigned: number; completed: number }>;
 export type ActionCenterQueue = Readonly<{
   summary: ActionCenterSummary;
+  allActions: readonly ActionCenterAction[];
   activeActions: readonly ActionCenterAction[];
   completedActions: readonly ActionCenterAction[];
   isEmpty: boolean;

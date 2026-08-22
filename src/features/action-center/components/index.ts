@@ -18,6 +18,8 @@ export {
   ActionQueue,
 } from "./action-queue";
 
+export { ActionPlanQueue } from "./action-plan-queue";
+
 export {
   ActionStatusBadge,
 } from "./action-status-badge";
