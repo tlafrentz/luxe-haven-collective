@@ -7,6 +7,7 @@ import type {
   ExecutiveAttentionItem,
   ExecutiveIntelligenceView,
 } from "../domain";
+import { understandRoutes } from "@/platform/experience";
 
 export type ExecutiveTab =
   | "overview"
@@ -22,41 +23,34 @@ export type ExecutiveFinancialMetric = Readonly<{
   comparison: string;
   confidence: string;
 }>;
-const tabs: readonly { id: ExecutiveTab; label: string; href: string }[] = [
+const tabs: readonly { id: ExecutiveTab; label: string }[] = [
   {
     id: "overview",
     label: "Overview",
-    href: "/dashboard/understand/executive",
   },
   {
     id: "health",
     label: "Business Health",
-    href: "/dashboard/understand/executive/health",
   },
   {
     id: "performance",
     label: "Performance",
-    href: "/dashboard/understand/executive/performance",
   },
   {
     id: "risks",
     label: "Risks & Attention",
-    href: "/dashboard/understand/executive/risks",
   },
   {
     id: "actions",
     label: "Decisions & Actions",
-    href: "/dashboard/understand/actions",
   },
   {
     id: "outcomes",
     label: "Outcomes & Learning",
-    href: "/dashboard/understand/outcomes",
   },
   {
     id: "data-quality",
     label: "Data Quality",
-    href: "/dashboard/understand/data-quality",
   },
 ];
 const descriptions: Record<ExecutiveTab, string> = {
@@ -258,7 +252,7 @@ function Priority({ item }: Readonly<{ item: ExecutiveAttentionItem | null }>) {
           </dl>
           <Link
             className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border bg-white px-4 text-sm font-semibold"
-            href="/dashboard/understand/attention"
+            href={understandRoutes.attention}
           >
             Review priority <ArrowRight className="h-4 w-4" />
           </Link>
@@ -284,7 +278,7 @@ function Queue({
       )}
       <Link
         className="mt-4 inline-flex items-center gap-2 text-xs font-semibold"
-        href="/dashboard/understand/attention"
+        href={understandRoutes.attention}
       >
         Review Attention <ArrowRight className="h-3 w-3" />
       </Link>

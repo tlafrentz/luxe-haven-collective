@@ -1,1 +1,2 @@
-export { default } from "../../performance/page";
+import { redirect } from "next/navigation";
+export default function Page(){redirect("/dashboard/observe/revenue")}

@@ -5,6 +5,7 @@ import type {
   PortfolioMetricSummary,
   PortfolioOverview,
 } from "../application/overview";
+import { SupportingSignalsDrawer } from "./supporting-signals-drawer";
 
 export function PortfolioOverviewView({ overview }: { overview: PortfolioOverview }) {
   if (overview.scope.propertyCount === 0) return <PortfolioOverviewEmpty />;
@@ -48,7 +49,7 @@ export function PortfolioOverviewHeader({ overview }: { overview: PortfolioOverv
 function PortfolioConditionView({ overview }: { overview: PortfolioOverview }) {
   return <section aria-labelledby="condition-heading" className="grid gap-5 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm lg:grid-cols-[0.7fr_1.3fr] sm:p-8">
     <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Portfolio condition</p><h2 id="condition-heading" className="mt-3 text-3xl font-semibold text-stone-950">{condition(overview.condition.status)}</h2></div>
-    <div><p className="text-lg leading-8 text-stone-800">{overview.condition.explanation}</p><dl className="mt-5 grid gap-4 sm:grid-cols-2"><Fact label="Primary driver" value={overview.condition.primaryDriver} /><Fact label="Primary limitation" value={overview.condition.primaryLimitation ?? "No material limitation"} /></dl>{overview.condition.destination ? <Link href={overview.condition.destination} className="mt-5 inline-flex text-sm font-semibold text-teal-800 underline-offset-4 hover:underline">Inspect supporting signals</Link> : null}</div>
+    <div><p className="text-lg leading-8 text-stone-800">{overview.condition.explanation}</p><dl className="mt-5 grid gap-4 sm:grid-cols-2"><Fact label="Primary driver" value={overview.condition.primaryDriver} /><Fact label="Primary limitation" value={overview.condition.primaryLimitation ?? "No material limitation"} /></dl>{overview.condition.destination ? <SupportingSignalsDrawer condition={overview.condition} metrics={overview.metrics}/> : null}</div>
   </section>;
 }
 

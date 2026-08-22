@@ -4,7 +4,7 @@ import { Download, ExternalLink, HelpCircle, MoreHorizontal, RefreshCw, Settings
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { getIntelligenceReportRequestHref } from "@/platform/experience";
+import { getIntelligenceReportRequestHref, understandRoutes } from "@/platform/experience";
 
 type Capability = "revenue" | "financial" | "executive" | "portfolio";
 
@@ -23,7 +23,7 @@ export function IntelligencePageActions({ capability }: { capability: Capability
     <div ref={ref} className="relative"><button type="button" aria-label={`${title} actions`} aria-haspopup="menu" aria-expanded={menu} onClick={()=>setMenu(v=>!v)} className="grid h-10 w-10 place-items-center rounded-md border border-stone-200 bg-white"><MoreHorizontal className="h-4 w-4"/></button>{menu?<div role="menu" aria-label={`${title} actions`} className="absolute right-0 z-30 mt-1 w-60 rounded-lg border bg-white py-1 text-sm shadow-xl">
       <MenuButton icon={<RefreshCw/>} onClick={refresh}>{refreshing?"Refreshing…":"Refresh data"}</MenuButton>
       <MenuButton icon={<ExternalLink/>} onClick={()=>{setMenu(false);setDrawer("sources")}}>View data sources</MenuButton>
-      {understand ? <Link role="menuitem" href={capability === "executive" ? "/dashboard/understand/attention" : "/dashboard/understand/data-quality"} className="flex min-h-10 items-center gap-3 px-4 hover:bg-stone-50"><Settings2 className="h-4 w-4"/>{capability === "executive" ? "Review attention" : "Review data quality"}</Link> : <Link role="menuitem" href={connectedSystemsHref} className="flex min-h-10 items-center gap-3 px-4 hover:bg-stone-50"><Settings2 className="h-4 w-4"/>Manage {capability === "financial" ? "financial" : "revenue"} data</Link>}
+      {understand ? <Link role="menuitem" href={capability === "executive" ? understandRoutes.attention : understandRoutes.portfolioDataQuality} className="flex min-h-10 items-center gap-3 px-4 hover:bg-stone-50"><Settings2 className="h-4 w-4"/>{capability === "executive" ? "Review attention" : "Review data quality"}</Link> : <Link role="menuitem" href={connectedSystemsHref} className="flex min-h-10 items-center gap-3 px-4 hover:bg-stone-50"><Settings2 className="h-4 w-4"/>Manage {capability === "financial" ? "financial" : "revenue"} data</Link>}
       <MenuButton icon={<Download/>} onClick={()=>{setMenu(false);setDrawer("export")}}>Export options</MenuButton>
       <div className="my-1 border-t"/><MenuButton icon={<HelpCircle/>} onClick={()=>{setMenu(false);setDrawer("help")}}>{title} help</MenuButton>
     </div>:null}</div>
