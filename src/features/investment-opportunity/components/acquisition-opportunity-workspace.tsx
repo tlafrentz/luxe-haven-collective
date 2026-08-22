@@ -2,15 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight, LockKeyhole } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import type {
-  AcquisitionPipelineTerminalWorkspaceSummary,
-  AcquisitionPipelineWorkspaceSummary,
-  AcquisitionWorkspace,
-  AcquisitionWorkspaceCapabilities,
-  AcquisitionWorkspaceNextAction,
-  InvestmentAnalysisWorkspaceSummary,
-  InvestmentOpportunityWorkspaceSummary,
-} from "../acquisition-workspace";
+import type { AcquisitionPipelineTerminalWorkspaceSummary, AcquisitionPipelineWorkspaceSummary, AcquisitionWorkspace, AcquisitionWorkspaceCapabilities, AcquisitionWorkspaceNextAction, InvestmentAnalysisWorkspaceSummary, InvestmentOpportunityWorkspaceSummary } from "../acquisition-workspace";
 import { AcquisitionLifecycleExperience } from "./acquisition-lifecycle-experience";
 import { AcquisitionCommercialWorkspace, isCommercialActionType } from "./acquisition-commercial-workspace";
 import { AcquisitionDueDiligenceWorkspace, isDiligenceActionType } from "./acquisition-due-diligence-workspace";
@@ -22,129 +14,357 @@ type InvestmentReportView = ReturnType<typeof buildInvestmentReportView>;
 
 export function AcquisitionOpportunityWorkspace({ workspace, reports = [] }: { workspace: AcquisitionWorkspace; reports?: readonly InvestmentReportView[] }) {
   const acquisition = workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? workspace.acquisition : null;
-  return <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-    <WorkspaceBreadcrumb opportunityName={workspace.opportunity.name} />
-    <OpportunityWorkspaceHeader opportunity={workspace.opportunity} acquisition={acquisition} />
-    <ReportDecisionWorkspace reports={reports} opportunityId={workspace.opportunity.id} />
-    {workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal"
-      ? <AcquisitionLifecycleExperience workspace={workspace} />
-      : null}
-    <section aria-label="Opportunity and decision context" className="grid gap-5 lg:grid-cols-2">
-      <OpportunitySummaryCard opportunity={workspace.opportunity} />
-      <DecisionContextCard analysis={workspace.analysis} opportunityId={workspace.opportunity.id} />
-    </section>
-    {workspace.status === "opportunity-only" ? <OpportunityOnlyState workspace={workspace} /> : null}
-    {workspace.status === "acquisition-unavailable" ? <WorkspaceUnavailableCard message={workspace.reason.message} /> : null}
-    {workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? <>
-      <AcquisitionCommercialWorkspace
-        commercial={workspace.acquisition.commercial}
-        opportunity={workspace.opportunity}
-        analysis={workspace.analysis}
-        primaryAction={workspace.nextActions.find(action => action.priority === "primary" && isCommercialActionType(action.type)) ?? null}
-      />
-      <AcquisitionDueDiligenceWorkspace
-        requirements={workspace.acquisition.requirements}
-        readiness={workspace.acquisition.readiness}
-        primaryAction={workspace.nextActions.find(action => action.priority === "primary" && isDiligenceActionType(action.type)) ?? null}
-        opportunity={workspace.opportunity}
-        analysis={workspace.analysis}
-      />
-      <AcquisitionClosingWorkspace
-        workspace={workspace}
-        primaryAction={workspace.nextActions.find(action => action.priority === "primary" && isClosingActionType(action.type)) ?? null}
-      />
-      <AcquisitionActivityWorkspace workspace={workspace} />
-      <NextActionsCard actions={workspace.status === "pipeline-active" ? workspace.nextActions.filter(action => action.priority !== "primary") : workspace.nextActions} capabilities={workspace.capabilities} />
-    </> : null}
-  </main>;
+  return (
+    <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+      <WorkspaceBreadcrumb opportunityName={workspace.opportunity.name} />
+      <OpportunityWorkspaceHeader opportunity={workspace.opportunity} acquisition={acquisition} />
+      <ReportDecisionWorkspace reports={reports} opportunityId={workspace.opportunity.id} />
+      {workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? <AcquisitionLifecycleExperience workspace={workspace} /> : null}
+      <section aria-label="Opportunity and decision context" className="grid gap-5 lg:grid-cols-2">
+        <OpportunitySummaryCard opportunity={workspace.opportunity} />
+        <DecisionContextCard analysis={workspace.analysis} opportunityId={workspace.opportunity.id} />
+      </section>
+      {workspace.status === "opportunity-only" ? <OpportunityOnlyState workspace={workspace} /> : null}
+      {workspace.status === "acquisition-unavailable" ? <WorkspaceUnavailableCard message={workspace.reason.message} /> : null}
+      {workspace.status === "pipeline-active" || workspace.status === "pipeline-terminal" ? (
+        <>
+          <AcquisitionCommercialWorkspace commercial={workspace.acquisition.commercial} opportunity={workspace.opportunity} analysis={workspace.analysis} primaryAction={workspace.nextActions.find((action) => action.priority === "primary" && isCommercialActionType(action.type)) ?? null} />
+          <AcquisitionDueDiligenceWorkspace requirements={workspace.acquisition.requirements} readiness={workspace.acquisition.readiness} primaryAction={workspace.nextActions.find((action) => action.priority === "primary" && isDiligenceActionType(action.type)) ?? null} opportunity={workspace.opportunity} analysis={workspace.analysis} />
+          <AcquisitionClosingWorkspace workspace={workspace} primaryAction={workspace.nextActions.find((action) => action.priority === "primary" && isClosingActionType(action.type)) ?? null} />
+          <AcquisitionActivityWorkspace workspace={workspace} />
+          <NextActionsCard actions={workspace.status === "pipeline-active" ? workspace.nextActions.filter((action) => action.priority !== "primary") : workspace.nextActions} capabilities={workspace.capabilities} />
+        </>
+      ) : null}
+    </main>
+  );
 }
 
 function ReportDecisionWorkspace({ reports, opportunityId }: { reports: readonly InvestmentReportView[]; opportunityId: string }) {
   const latest = reports[0];
-  return <section aria-labelledby="report-decision-heading" className="space-y-4">
-    <div><h2 id="report-decision-heading" className="text-xl font-semibold text-stone-950">Immutable decision reports</h2><p className="mt-1 text-sm text-stone-500">The latest decision is prominent; every earlier report remains directly accessible and unchanged.</p></div>
-    {latest ? <Card className="border-stone-300 p-6">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"><div><div className="flex flex-wrap gap-2"><Badge tone="success">Latest report</Badge><Badge>{latest.status === "archived" ? "Archived report" : "Active report"}</Badge><Badge>{routeLabel(latest.strategy)}</Badge></div><h3 className="mt-4 text-2xl font-semibold text-stone-950">{latest.title}</h3><p className="mt-2 text-sm text-stone-500">Analysis {latest.snapshot.lineage.analysisVersion} · Generated {dateTime(new Date(latest.generatedAt))}</p></div><Link href={`/dashboard/investments/reports/${latest.id}`} className="inline-flex min-h-11 items-center justify-center rounded-full bg-stone-950 px-5 text-sm font-semibold text-white">Open latest report</Link></div>
-      <dl className="mt-6 grid gap-5 border-t border-stone-100 pt-5 sm:grid-cols-4"><Fact term="Recommendation" value={label(latest.recommendation)} /><Fact term="Score" value={`${latest.score}/${latest.scoreMaximum}`} /><Fact term="Confidence" value={label(latest.confidence)} /><Fact term="Readiness" value={latest.decisionReadiness} /></dl>
-      {reports.length > 1 ? <div className="mt-6 border-t border-stone-100 pt-5"><h3 className="text-sm font-semibold text-stone-900">Historical reports</h3><ul className="mt-3 divide-y divide-stone-100">{reports.slice(1).map(report => <li key={report.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span><span className="block text-sm font-semibold text-stone-800">Analysis {report.snapshot.lineage.analysisVersion} · {label(report.recommendation)}</span><span className="mt-1 block text-xs text-stone-500">{dateTime(new Date(report.generatedAt))} · {label(report.status)}</span></span><Link href={`/dashboard/investments/reports/${report.id}`} className="text-sm font-semibold text-stone-900 underline">Open report</Link></li>)}</ul></div> : null}
-    </Card> : <Card className="border-dashed p-6"><p className="font-semibold text-stone-900">No immutable report yet</p><p className="mt-2 text-sm leading-6 text-stone-600">Complete and save an analysis, then generate its report to preserve the decision at that exact analysis version.</p><Link href={`/dashboard/investments/new?opportunity=${opportunityId}&mode=reanalyze`} className="mt-4 inline-flex text-sm font-semibold text-stone-950 underline">Analyze opportunity</Link></Card>}
-  </section>;
+  return (
+    <section aria-labelledby="report-decision-heading" className="space-y-4">
+      <div>
+        <h2 id="report-decision-heading" className="text-xl font-semibold text-stone-950">
+          Immutable decision reports
+        </h2>
+        <p className="mt-1 text-sm text-stone-500">The latest decision is prominent; every earlier report remains directly accessible and unchanged.</p>
+      </div>
+      {latest ? (
+        <Card className="border-stone-300 p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="success">Latest report</Badge>
+                <Badge>{latest.status === "archived" ? "Archived report" : "Active report"}</Badge>
+                <Badge>{routeLabel(latest.strategy)}</Badge>
+              </div>
+              <h3 className="mt-4 text-2xl font-semibold text-stone-950">{latest.title}</h3>
+              <p className="mt-2 text-sm text-stone-500">
+                Analysis {latest.snapshot.lineage.analysisVersion} · Generated {dateTime(new Date(latest.generatedAt))}
+              </p>
+            </div>
+            <Link href={`/dashboard/reports/${latest.id}`} className="inline-flex min-h-11 items-center justify-center rounded-full bg-stone-950 px-5 text-sm font-semibold text-white">
+              Open latest report
+            </Link>
+          </div>
+          <dl className="mt-6 grid gap-5 border-t border-stone-100 pt-5 sm:grid-cols-4">
+            <Fact term="Recommendation" value={label(latest.recommendation)} />
+            <Fact term="Score" value={`${latest.score}/${latest.scoreMaximum}`} />
+            <Fact term="Confidence" value={label(latest.confidence)} />
+            <Fact term="Readiness" value={latest.decisionReadiness} />
+          </dl>
+          {reports.length > 1 ? (
+            <div className="mt-6 border-t border-stone-100 pt-5">
+              <h3 className="text-sm font-semibold text-stone-900">Historical reports</h3>
+              <ul className="mt-3 divide-y divide-stone-100">
+                {reports.slice(1).map((report) => (
+                  <li key={report.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <span>
+                      <span className="block text-sm font-semibold text-stone-800">
+                        Analysis {report.snapshot.lineage.analysisVersion} · {label(report.recommendation)}
+                      </span>
+                      <span className="mt-1 block text-xs text-stone-500">
+                        {dateTime(new Date(report.generatedAt))} · {label(report.status)}
+                      </span>
+                    </span>
+                    <Link href={`/dashboard/reports/${report.id}`} className="text-sm font-semibold text-stone-900 underline">
+                      Open report
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </Card>
+      ) : (
+        <Card className="border-dashed p-6">
+          <p className="font-semibold text-stone-900">No immutable report yet</p>
+          <p className="mt-2 text-sm leading-6 text-stone-600">Complete and save an analysis, then generate its report to preserve the decision at that exact analysis version.</p>
+          <Link href={`/dashboard/investments/new?opportunity=${opportunityId}&mode=reanalyze`} className="mt-4 inline-flex text-sm font-semibold text-stone-950 underline">
+            Analyze opportunity
+          </Link>
+        </Card>
+      )}
+    </section>
+  );
 }
 
 function WorkspaceBreadcrumb({ opportunityName }: { opportunityName: string }) {
-  return <nav aria-label="Breadcrumb"><ol className="flex flex-wrap items-center gap-2 text-sm text-stone-500">
-    <li><Link className="rounded-sm hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href="/dashboard">Home</Link></li><li aria-hidden="true">/</li>
-    <li><Link className="rounded-sm hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href="/dashboard/investments">Investment Intelligence</Link></li><li aria-hidden="true">/</li>
-    <li><Link className="rounded-sm hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href="/dashboard/investments/opportunities">Opportunities</Link></li><li aria-hidden="true">/</li>
-    <li aria-current="page" className="max-w-52 truncate font-medium text-stone-800">{opportunityName}</li>
-  </ol></nav>;
+  return (
+    <nav aria-label="Breadcrumb">
+      <ol className="flex flex-wrap items-center gap-2 text-sm text-stone-500">
+        <li>
+          <Link className="rounded-sm hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href="/dashboard">
+            Home
+          </Link>
+        </li>
+        <li aria-hidden="true">/</li>
+        <li>
+          <Link className="rounded-sm hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href="/dashboard/investments">
+            Investment Intelligence
+          </Link>
+        </li>
+        <li aria-hidden="true">/</li>
+        <li>
+          <Link className="rounded-sm hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600" href="/dashboard/investments/opportunities">
+            Opportunities
+          </Link>
+        </li>
+        <li aria-hidden="true">/</li>
+        <li aria-current="page" className="max-w-52 truncate font-medium text-stone-800">
+          {opportunityName}
+        </li>
+      </ol>
+    </nav>
+  );
 }
 
 export function OpportunityWorkspaceHeader({ opportunity, acquisition }: { opportunity: InvestmentOpportunityWorkspaceSummary; acquisition: AcquisitionPipelineWorkspaceSummary | AcquisitionPipelineTerminalWorkspaceSummary | null }) {
-  return <header className="border-b border-stone-200 pb-8">
-    <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-      <div className="min-w-0"><div className="flex flex-wrap gap-2"><Badge tone="dark">{label(opportunity.status)}</Badge><Badge>{routeLabel(opportunity.route)}</Badge>{acquisition ? <Badge tone={acquisition.terminal ? "neutral" : "success"}>{acquisition.stageLabel}</Badge> : null}{opportunity.archived ? <Badge tone="warning">Archived</Badge> : null}</div>
-        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Investment opportunity</p>
-        <h1 className="mt-2 font-serif text-4xl tracking-tight text-stone-950 sm:text-5xl">{opportunity.name}</h1>
-        <p className="mt-3 text-base text-stone-600">{opportunity.location.display}</p>
+  return (
+    <header className="border-b border-stone-200 pb-8">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="dark">{label(opportunity.status)}</Badge>
+            <Badge>{routeLabel(opportunity.route)}</Badge>
+            {acquisition ? <Badge tone={acquisition.terminal ? "neutral" : "success"}>{acquisition.stageLabel}</Badge> : null}
+            {opportunity.archived ? <Badge tone="warning">Archived</Badge> : null}
+          </div>
+          <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Investment opportunity</p>
+          <h1 className="mt-2 font-serif text-4xl tracking-tight text-stone-950 sm:text-5xl">{opportunity.name}</h1>
+          <p className="mt-3 text-base text-stone-600">{opportunity.location.display}</p>
+        </div>
+        <div className="text-left lg:text-right">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-400">Last updated</p>
+          <time dateTime={opportunity.updatedAt.toISOString()} className="mt-1 block text-sm font-medium text-stone-700">
+            {dateTime(opportunity.updatedAt)}
+          </time>
+          <Link href={`/dashboard/investments/opportunities/${opportunity.id}/scenarios`} className="mt-4 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-900">
+            Compare scenarios
+          </Link>
+        </div>
       </div>
-      <div className="text-left lg:text-right"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-400">Last updated</p><time dateTime={opportunity.updatedAt.toISOString()} className="mt-1 block text-sm font-medium text-stone-700">{dateTime(opportunity.updatedAt)}</time><Link href={`/dashboard/investments/opportunities/${opportunity.id}/scenarios`} className="mt-4 inline-flex rounded-full border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-900">Compare scenarios</Link></div>
-    </div>
-  </header>;
+    </header>
+  );
 }
 
 export function OpportunitySummaryCard({ opportunity }: { opportunity: InvestmentOpportunityWorkspaceSummary }) {
-  return <SectionCard title="Opportunity summary" description="The current identity and portfolio state for this opportunity.">
-    <dl className="grid grid-cols-2 gap-5 sm:grid-cols-3">
-      <Fact term="Route" value={routeLabel(opportunity.route)} /><Fact term="Status" value={label(opportunity.status)} /><Fact term="Created" value={date(opportunity.createdAt)} />
-      {opportunity.headlineValue ? <Fact term={headlineLabel(opportunity.headlineValue.type)} value={currency(opportunity.headlineValue.amount.amount)} /> : null}
-      <div className="col-span-2 sm:col-span-3"><dt className="eyebrow">Tags</dt><dd className="mt-2 flex flex-wrap gap-2">{opportunity.tags.length ? opportunity.tags.map(tag => <Badge key={tag}>{tag}</Badge>) : <span className="text-sm text-stone-500">No tags added.</span>}</dd></div>
-    </dl>
-  </SectionCard>;
+  return (
+    <SectionCard title="Opportunity summary" description="The current identity and portfolio state for this opportunity.">
+      <dl className="grid grid-cols-2 gap-5 sm:grid-cols-3">
+        <Fact term="Route" value={routeLabel(opportunity.route)} />
+        <Fact term="Status" value={label(opportunity.status)} />
+        <Fact term="Created" value={date(opportunity.createdAt)} />
+        {opportunity.headlineValue ? <Fact term={headlineLabel(opportunity.headlineValue.type)} value={currency(opportunity.headlineValue.amount.amount)} /> : null}
+        <div className="col-span-2 sm:col-span-3">
+          <dt className="eyebrow">Tags</dt>
+          <dd className="mt-2 flex flex-wrap gap-2">{opportunity.tags.length ? opportunity.tags.map((tag) => <Badge key={tag}>{tag}</Badge>) : <span className="text-sm text-stone-500">No tags added.</span>}</dd>
+        </div>
+      </dl>
+    </SectionCard>
+  );
 }
 
 export function DecisionContextCard({ analysis, opportunityId }: { analysis: InvestmentAnalysisWorkspaceSummary | null; opportunityId: string }) {
-  return <SectionCard title="Decision context" description="The latest completed analysis informing this opportunity.">
-    {analysis ? <><div className="flex flex-wrap items-center gap-2"><Badge tone={recommendationTone(analysis.recommendation)}>{label(analysis.recommendation)}</Badge>{analysis.stale ? <Badge tone="warning">Analysis stale</Badge> : <Badge tone="success">Analysis {analysis.age.classification}</Badge>}</div>
-      <dl className="mt-5 grid grid-cols-2 gap-5 sm:grid-cols-3"><Fact term="Score" value={analysis.score === undefined ? "Not scored" : String(analysis.score)} /><Fact term="Confidence" value={analysis.confidence ? label(analysis.confidence.level) : "Not available"} /><Fact term="Analysis age" value={`${analysis.age.days} day${analysis.age.days === 1 ? "" : "s"}`} /></dl>
-      <Link href={analysis.historicalAnalysisHref} className="mt-6 inline-flex items-center gap-2 rounded-md text-sm font-semibold text-stone-900 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">View historical analysis <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
-    </> : <div className="rounded-xl bg-stone-50 p-5"><p className="font-medium text-stone-800">No completed analysis</p><p className="mt-1 text-sm text-stone-600">Run an investment analysis to establish decision context.</p><Link href={`/dashboard/investments/new?opportunity=${opportunityId}&mode=reanalyze`} className="mt-4 inline-flex text-sm font-semibold text-stone-950 underline">Analyze opportunity</Link></div>}
-  </SectionCard>;
+  return (
+    <SectionCard title="Decision context" description="The latest completed analysis informing this opportunity.">
+      {analysis ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={recommendationTone(analysis.recommendation)}>{label(analysis.recommendation)}</Badge>
+            {analysis.stale ? <Badge tone="warning">Analysis stale</Badge> : <Badge tone="success">Analysis {analysis.age.classification}</Badge>}
+          </div>
+          <dl className="mt-5 grid grid-cols-2 gap-5 sm:grid-cols-3">
+            <Fact term="Score" value={analysis.score === undefined ? "Not scored" : String(analysis.score)} />
+            <Fact term="Confidence" value={analysis.confidence ? label(analysis.confidence.level) : "Not available"} />
+            <Fact term="Analysis age" value={`${analysis.age.days} day${analysis.age.days === 1 ? "" : "s"}`} />
+          </dl>
+          <Link href={analysis.historicalAnalysisHref} className="mt-6 inline-flex items-center gap-2 rounded-md text-sm font-semibold text-stone-900 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+            View historical analysis <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </>
+      ) : (
+        <div className="rounded-xl bg-stone-50 p-5">
+          <p className="font-medium text-stone-800">No completed analysis</p>
+          <p className="mt-1 text-sm text-stone-600">Run an investment analysis to establish decision context.</p>
+          <Link href={`/dashboard/investments/new?opportunity=${opportunityId}&mode=reanalyze`} className="mt-4 inline-flex text-sm font-semibold text-stone-950 underline">
+            Analyze opportunity
+          </Link>
+        </div>
+      )}
+    </SectionCard>
+  );
 }
 
 function OpportunityOnlyState({ workspace }: { workspace: Extract<AcquisitionWorkspace, { status: "opportunity-only" }> }) {
-  return <section aria-labelledby="acquisition-start-heading"><Card className="border-dashed p-6 sm:p-8"><div className="max-w-2xl"><p className="eyebrow">Acquisition lifecycle</p><h2 id="acquisition-start-heading" className="mt-2 text-2xl font-semibold text-stone-950">No acquisition pursuit yet</h2><p className="mt-2 text-sm leading-6 text-stone-600">This opportunity remains available for evaluation. The acquisition timeline begins after an eligible analysis is selected and pursuit is activated.</p>
-    <div className="mt-5 rounded-xl bg-stone-50 p-4"><p className="text-sm font-semibold text-stone-800">{workspace.activation.eligible ? "Ready for activation" : "Activation unavailable"}</p><ul className="mt-2 space-y-1 text-sm text-stone-600">{workspace.activation.blockers.map(blocker => <li key={blocker.code}>• {blocker.message}</li>)}{workspace.activation.limitations.map(limitation => <li key={limitation.code}>• {limitation.operatorMessage}</li>)}</ul></div>
-  </div></Card></section>;
+  return (
+    <section aria-labelledby="acquisition-start-heading">
+      <Card className="border-dashed p-6 sm:p-8">
+        <div className="max-w-2xl">
+          <p className="eyebrow">Acquisition lifecycle</p>
+          <h2 id="acquisition-start-heading" className="mt-2 text-2xl font-semibold text-stone-950">
+            No acquisition pursuit yet
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-stone-600">This opportunity remains available for evaluation. The acquisition timeline begins after an eligible analysis is selected and pursuit is activated.</p>
+          <div className="mt-5 rounded-xl bg-stone-50 p-4">
+            <p className="text-sm font-semibold text-stone-800">{workspace.activation.eligible ? "Ready for activation" : "Activation unavailable"}</p>
+            <ul className="mt-2 space-y-1 text-sm text-stone-600">
+              {workspace.activation.blockers.map((blocker) => (
+                <li key={blocker.code}>• {blocker.message}</li>
+              ))}
+              {workspace.activation.limitations.map((limitation) => (
+                <li key={limitation.code}>• {limitation.operatorMessage}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </Card>
+    </section>
+  );
 }
 
 export function NextActionsCard({ actions, capabilities }: { actions: readonly AcquisitionWorkspaceNextAction[]; capabilities: AcquisitionWorkspaceCapabilities }) {
-  return <SectionCard title="Next actions" description="Actions are supplied by the workspace projection and remain capability gated.">
-    <div className="grid gap-3 lg:grid-cols-2">{actions.length ? actions.map(action => <ActionItem key={action.id} action={action} />) : <EmptyMessage title="No acquisition actions available." body="This workspace has no next action in its current state." />}</div>
-    {capabilities.read.status !== "available" ? <p className="mt-4 text-sm text-amber-700">Workspace command capability is limited.</p> : null}
-  </SectionCard>;
+  return (
+    <SectionCard title="Next actions" description="Actions are supplied by the workspace projection and remain capability gated.">
+      <div className="grid gap-3 lg:grid-cols-2">{actions.length ? actions.map((action) => <ActionItem key={action.id} action={action} />) : <EmptyMessage title="No acquisition actions available." body="This workspace has no next action in its current state." />}</div>
+      {capabilities.read.status !== "available" ? <p className="mt-4 text-sm text-amber-700">Workspace command capability is limited.</p> : null}
+    </SectionCard>
+  );
 }
 
 function ActionItem({ action }: { action: AcquisitionWorkspaceNextAction }) {
-  const content = <><span className="font-semibold">{action.label}</span><span className="mt-1 block text-sm opacity-75">{action.description}</span>{action.blockers.length ? <span className="mt-2 block text-xs">{action.blockers.map(blocker => blocker.message).join(" ")}</span> : null}</>;
-  if (action.enabled && action.href) return <Link href={action.href} className="rounded-xl bg-stone-950 p-4 text-white outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">{content}</Link>;
-  return <div aria-disabled={!action.enabled || Boolean(action.command)} className={["rounded-xl border p-4", action.enabled && !action.command ? "border-stone-300 bg-white text-stone-900" : "border-stone-200 bg-stone-50 text-stone-500"].join(" ")}>{content}{action.command ? <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold"><LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" /> Command controls are deferred</span> : null}</div>;
+  const content = (
+    <>
+      <span className="font-semibold">{action.label}</span>
+      <span className="mt-1 block text-sm opacity-75">{action.description}</span>
+      {action.blockers.length ? <span className="mt-2 block text-xs">{action.blockers.map((blocker) => blocker.message).join(" ")}</span> : null}
+    </>
+  );
+  if (action.enabled && action.href)
+    return (
+      <Link href={action.href} className="rounded-xl bg-stone-950 p-4 text-white outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">
+        {content}
+      </Link>
+    );
+  return (
+    <div aria-disabled={!action.enabled || Boolean(action.command)} className={["rounded-xl border p-4", action.enabled && !action.command ? "border-stone-300 bg-white text-stone-900" : "border-stone-200 bg-stone-50 text-stone-500"].join(" ")}>
+      {content}
+      {action.command ? (
+        <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold">
+          <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" /> Command controls are deferred
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 export function WorkspaceUnavailableCard({ message }: { message: string }) {
-  return <section aria-labelledby="acquisition-unavailable-heading"><Card className="border-amber-200 bg-amber-50 p-6"><div className="flex gap-4"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" /><div><h2 id="acquisition-unavailable-heading" className="font-semibold text-amber-950">Acquisition state unavailable</h2><p className="mt-1 text-sm text-amber-900">{message} The opportunity and analysis remain available.</p></div></div></Card></section>;
+  return (
+    <section aria-labelledby="acquisition-unavailable-heading">
+      <Card className="border-amber-200 bg-amber-50 p-6">
+        <div className="flex gap-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+          <div>
+            <h2 id="acquisition-unavailable-heading" className="font-semibold text-amber-950">
+              Acquisition state unavailable
+            </h2>
+            <p className="mt-1 text-sm text-amber-900">{message} The opportunity and analysis remain available.</p>
+          </div>
+        </div>
+      </Card>
+    </section>
+  );
 }
 
 function SectionCard({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   const id = `section-${title.toLowerCase().replaceAll(" ", "-")}`;
-  return <section aria-labelledby={id}><Card className="h-full p-5 sm:p-6"><div className="mb-5"><h2 id={id} className="text-lg font-semibold text-stone-950">{title}</h2><p className="mt-1 text-sm text-stone-500">{description}</p></div>{children}</Card></section>;
+  return (
+    <section aria-labelledby={id}>
+      <Card className="h-full p-5 sm:p-6">
+        <div className="mb-5">
+          <h2 id={id} className="text-lg font-semibold text-stone-950">
+            {title}
+          </h2>
+          <p className="mt-1 text-sm text-stone-500">{description}</p>
+        </div>
+        {children}
+      </Card>
+    </section>
+  );
 }
-function EmptyMessage({ title, body }: { title: string; body: string }) { return <div className="rounded-xl bg-stone-50 p-5"><p className="text-sm font-semibold text-stone-800">{title}</p><p className="mt-1 text-sm leading-6 text-stone-600">{body}</p></div>; }
-function Fact({ term, value }: { term: string; value: string }) { return <div><dt className="eyebrow">{term}</dt><dd className="mt-1.5 text-sm font-semibold text-stone-800">{value}</dd></div>; }
-function routeLabel(route: string) { return route === "purchase" ? "Purchase" : "Rental Arbitrage"; }
-function label(value: string) { return value.split("-").map(part => part ? part[0]!.toUpperCase() + part.slice(1) : part).join(" "); }
-function headlineLabel(type: string) { return type === "monthly-rent" ? "Monthly rent" : type === "purchase-price" ? "Purchase price" : "Target value"; }
-function recommendationTone(value: string): "success" | "warning" | "danger" { return value === "pass" ? "danger" : value === "wait" || value === "buy-with-conditions" ? "warning" : "success"; }
-function date(value: Date) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(value); }
-function dateTime(value: Date) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(value); }
-function currency(value: number) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }
+function EmptyMessage({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-xl bg-stone-50 p-5">
+      <p className="text-sm font-semibold text-stone-800">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-stone-600">{body}</p>
+    </div>
+  );
+}
+function Fact({ term, value }: { term: string; value: string }) {
+  return (
+    <div>
+      <dt className="eyebrow">{term}</dt>
+      <dd className="mt-1.5 text-sm font-semibold text-stone-800">{value}</dd>
+    </div>
+  );
+}
+function routeLabel(route: string) {
+  return route === "purchase" ? "Purchase" : "Rental Arbitrage";
+}
+function label(value: string) {
+  return value
+    .split("-")
+    .map((part) => (part ? part[0]!.toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
+function headlineLabel(type: string) {
+  return type === "monthly-rent" ? "Monthly rent" : type === "purchase-price" ? "Purchase price" : "Target value";
+}
+function recommendationTone(value: string): "success" | "warning" | "danger" {
+  return value === "pass" ? "danger" : value === "wait" || value === "buy-with-conditions" ? "warning" : "success";
+}
+function date(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(value);
+}
+function dateTime(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(value);
+}
+function currency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}

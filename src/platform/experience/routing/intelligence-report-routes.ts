@@ -1,4 +1,4 @@
-export type IntelligenceReportCapability = "revenue" | "financial" | "executive" | "portfolio";
+export type IntelligenceReportCapability = "revenue" | "financial" | "executive" | "portfolio" | "investment";
 
 /**
  * Intelligence pages request report generation through the canonical Reports

@@ -26,10 +26,10 @@ export async function generateInvestmentReportAction(formData: FormData) {
   const context = await getInvestmentOpportunityRequestContext();
   if (!context.ok || !await context.authorizeOpportunity(opportunityId, "report.generate", analysisId)) {
     console.warn("investment_report_generation_failed", { correlationId, opportunityId, analysisVersion: analysisId, failureClass: "unauthorized" });
-    redirect("/dashboard/investments/reports?error=unavailable");
+    redirect("/dashboard/reports?error=unavailable");
   }
   const analysis = await readImmutableAnalysis(context.repository, { ownerId: context.ownerId, opportunityId, analysisVersionId: analysisId });
-  if (!analysis) redirect("/dashboard/investments/reports?error=analysis-not-found");
+  if (!analysis) redirect("/dashboard/reports?error=analysis-not-found");
   console.info("investment_report_source_loaded", { correlationId, opportunityId, analysisVersion: analysisId, strategy: analysis.snapshot.route });
   let snapshot: InvestmentReportSnapshot;
   try {
@@ -38,7 +38,7 @@ export async function generateInvestmentReportAction(formData: FormData) {
   } catch (error) {
     const code = error instanceof Error && "code" in error ? String((error as { code: unknown }).code).toLowerCase().replaceAll("_", "-") : "unexpected";
     console.warn("investment_report_generation_failed", { correlationId, opportunityId, analysisVersion: analysisId, failureClass: code });
-    redirect(`/dashboard/investments/reports?error=${code}`);
+    redirect(`/dashboard/reports?error=${code}`);
   }
   const client = await createClient(), encoded = new TextEncoder().encode(JSON.stringify(snapshot));
   const { data, error } = await client.rpc("generate_investment_report_v1", {
@@ -50,12 +50,12 @@ export async function generateInvestmentReportAction(formData: FormData) {
   const result = data as unknown as { reportId?: string; existing?: boolean } | null;
   if (error || !result?.reportId) {
     console.warn("investment_report_generation_failed", { correlationId, opportunityId, analysisVersion: analysisId, failureClass: "persistence" });
-    redirect("/dashboard/investments/reports?error=persistence-failed");
+    redirect("/dashboard/reports?error=persistence-failed");
   }
   console.info(result.existing ? "investment_report_existing_returned" : "investment_report_persisted", { correlationId, reportId: result.reportId, opportunityId, analysisVersion: analysisId, strategy: snapshot.lineage.strategy });
   console.info("investment_report_generation_completed", { correlationId, reportId: result.reportId, opportunityId, analysisVersion: analysisId, outcome: result.existing ? "existing" : "created" });
-  revalidatePath("/dashboard/investments/reports");
-  redirect(`/dashboard/investments/reports/${result.reportId}${result.existing ? "?existing=1" : ""}`);
+  revalidatePath("/dashboard/reports");
+  redirect(`/dashboard/reports/${result.reportId}${result.existing ? "?existing=1" : ""}`);
 }
 
 export async function getInvestmentReport(reportId: string) {
@@ -95,13 +95,13 @@ export async function listInvestmentReportsForOpportunity(opportunityId: string)
 
 export async function transitionInvestmentReportAction(formData: FormData) {
   const reportId = String(formData.get("reportId") ?? ""), operation = String(formData.get("operation") ?? "");
-  if (operation !== "archive" && operation !== "restore") redirect("/dashboard/investments/reports?error=invalid-transition");
+  if (operation !== "archive" && operation !== "restore") redirect("/dashboard/reports?error=invalid-transition");
   const client = await createClient();
   const { error } = await client.rpc("transition_investment_report_v1", { p_report_id: reportId, p_operation: operation });
-  if (error) redirect(`/dashboard/investments/reports?error=${operation}-conflict`);
+  if (error) redirect(`/dashboard/reports?error=${operation}-conflict`);
   console.info(operation === "archive" ? "investment_report_archived" : "investment_report_restored", { reportId, outcome: "completed" });
-  revalidatePath("/dashboard/investments/reports"); revalidatePath(`/dashboard/investments/reports/${reportId}`);
-  redirect(`/dashboard/investments/reports?status=${operation === "archive" ? "active" : "archived"}`);
+  revalidatePath("/dashboard/reports"); revalidatePath(`/dashboard/reports/${reportId}`);
+  redirect("/dashboard/reports");
 }
 
 function toRecord(row: Record<string, unknown>): InvestmentReportRecord {

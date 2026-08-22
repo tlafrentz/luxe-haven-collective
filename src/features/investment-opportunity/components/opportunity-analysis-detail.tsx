@@ -6,19 +6,131 @@ import { buildOpportunityAnalysisDetailView } from "../application";
 
 type View = NonNullable<Awaited<ReturnType<typeof buildOpportunityAnalysisDetailView>>>;
 export function OpportunityAnalysisDetail({ view, reportId, generateReportAction }: { view: View; reportId?: string | null; generateReportAction?: (formData: FormData) => void | Promise<void> }) {
-  return <main className="mx-auto max-w-5xl space-y-7 px-4 py-10 sm:px-6 lg:px-8">
-    <Link href={`/dashboard/investments/portfolio/${view.opportunityId}`} className="text-sm font-semibold text-stone-600 hover:text-stone-950">← Back to opportunity</Link>
-    <header className="flex flex-wrap items-end justify-between gap-5"><div><div className="flex gap-2"><Badge>Analysis {view.sequence}</Badge><Badge>{view.route === "purchase" ? "Purchase" : "Rental Arbitrage"}</Badge></div><h1 className="mt-4 text-3xl font-semibold text-stone-950">Historical investment analysis</h1><p className="mt-2 text-sm text-stone-500">Immutable result saved {dateTime(view.analyzedAt)}. Opening this page does not rerun analysis.</p></div><div className="flex flex-wrap gap-3"><Link className="rounded-full border px-4 py-2 text-sm font-semibold" href={`/dashboard/investments/new?mode=reanalyze&opportunity=${view.opportunityId}&analysis=${view.id}`}>Reanalyze</Link><Link className="rounded-full border px-4 py-2 text-sm font-semibold" href={`/dashboard/investments/opportunities/${view.opportunityId}/scenarios?analysis=${view.id}`}>Create Scenario</Link>{reportId ? <Link className="rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white" href={`/dashboard/investments/reports/${reportId}`}>View Report</Link> : generateReportAction ? <form action={generateReportAction}><input type="hidden" name="opportunityId" value={view.opportunityId} /><input type="hidden" name="analysisId" value={view.id} /><ReportSubmitButton label="Generate Investment Report" pendingLabel="Generating report…" /></form> : null}</div></header>
-    <section className="grid gap-4 sm:grid-cols-3"><Metric label="Recommendation" value={label(view.recommendation.recommendation)} /><Metric label="Investment score" value={`${view.score.value}/${view.score.scaleMaximum}`} /><Metric label="Confidence" value={label(view.confidence.level)} /></section>
-    <Card className="p-6"><Heading title="Financial conclusions" /><dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(view.financials).map(([key, value]) => value && typeof value === "object" && "amount" in value ? <Fact key={key} label={label(key)} value={currency(Number(value.amount))} /> : value && typeof value === "object" && "value" in value ? <Fact key={key} label={label(key)} value={`${value.value}%`} /> : null)}</dl></Card>
-    <Card className="p-6"><Heading title="Market snapshot" /><dl className="mt-5 grid gap-4 sm:grid-cols-3"><Fact label="Market" value={view.market.name} /><Fact label="Median ADR" value={currency(view.market.medianAdr.amount)} /><Fact label="Median occupancy" value={`${view.market.medianOccupancy.value}%`} /></dl></Card>
-    <section className="grid gap-5 lg:grid-cols-2"><Card className="p-6"><Heading title="Risks" /><div className="mt-4 space-y-3">{view.risks.length ? view.risks.map(risk => <article key={risk.id} className="rounded-xl bg-stone-50 p-4"><p className="font-semibold text-stone-900">{risk.title}</p><p className="mt-1 text-sm text-stone-600">{risk.description}</p></article>) : <p className="mt-4 text-sm text-stone-500">No risks recorded.</p>}</div></Card><Card className="p-6"><Heading title="Data gaps and evidence" /><p className="mt-4 text-sm text-stone-600">{view.dataGaps.length ? `${view.dataGaps.length} data gaps were explicitly preserved.` : "No market data gaps were reported."}</p><p className="mt-2 text-sm text-stone-600">{view.evidence.length} evidence references preserved.</p></Card></section>
-    <Card className="p-6"><Heading title="Source and lineage" /><dl className="mt-5 grid gap-4 sm:grid-cols-4"><Fact label="User supplied" value={String(view.sourceSummary.userSuppliedCount)} /><Fact label="Market supplied" value={String(view.sourceSummary.marketSuppliedCount)} /><Fact label="Learning supplied" value={String(view.sourceSummary.learningSuppliedCount)} /><Fact label="Defaults" value={String(view.sourceSummary.defaultSuppliedCount)} /></dl><p className="mt-5 break-all text-xs text-stone-400">Lifecycle: {view.lineage.investmentLifecycleResultId} · Snapshot schema: {view.policyVersions.opportunitySnapshotSchema}</p></Card>
-  </main>;
+  return (
+    <main className="mx-auto max-w-5xl space-y-7 px-4 py-10 sm:px-6 lg:px-8">
+      <Link href={`/dashboard/investments/portfolio/${view.opportunityId}`} className="text-sm font-semibold text-stone-600 hover:text-stone-950">
+        ← Back to opportunity
+      </Link>
+      <header className="flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <div className="flex gap-2">
+            <Badge>Analysis {view.sequence}</Badge>
+            <Badge>{view.route === "purchase" ? "Purchase" : "Rental Arbitrage"}</Badge>
+          </div>
+          <h1 className="mt-4 text-3xl font-semibold text-stone-950">Historical investment analysis</h1>
+          <p className="mt-2 text-sm text-stone-500">Immutable result saved {dateTime(view.analyzedAt)}. Opening this page does not rerun analysis.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Link className="rounded-full border px-4 py-2 text-sm font-semibold" href={`/dashboard/investments/new?mode=reanalyze&opportunity=${view.opportunityId}&analysis=${view.id}`}>
+            Reanalyze
+          </Link>
+          <Link className="rounded-full border px-4 py-2 text-sm font-semibold" href={`/dashboard/investments/opportunities/${view.opportunityId}/scenarios?analysis=${view.id}`}>
+            Create Scenario
+          </Link>
+          {reportId ? (
+            <Link className="rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white" href={`/dashboard/reports/${reportId}`}>
+              View Report
+            </Link>
+          ) : generateReportAction ? (
+            <form action={generateReportAction}>
+              <input type="hidden" name="opportunityId" value={view.opportunityId} />
+              <input type="hidden" name="analysisId" value={view.id} />
+              <ReportSubmitButton label="Generate Investment Report" pendingLabel="Generating report…" />
+            </form>
+          ) : null}
+        </div>
+      </header>
+      <section className="grid gap-4 sm:grid-cols-3">
+        <Metric label="Recommendation" value={label(view.recommendation.recommendation)} />
+        <Metric label="Investment score" value={`${view.score.value}/${view.score.scaleMaximum}`} />
+        <Metric label="Confidence" value={label(view.confidence.level)} />
+      </section>
+      <Card className="p-6">
+        <Heading title="Financial conclusions" />
+        <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(view.financials).map(([key, value]) => (value && typeof value === "object" && "amount" in value ? <Fact key={key} label={label(key)} value={currency(Number(value.amount))} /> : value && typeof value === "object" && "value" in value ? <Fact key={key} label={label(key)} value={`${value.value}%`} /> : null))}</dl>
+      </Card>
+      <Card className="p-6">
+        <Heading title="Market snapshot" />
+        <dl className="mt-5 grid gap-4 sm:grid-cols-3">
+          <Fact label="Market" value={view.market.name} />
+          <Fact label="Median ADR" value={currency(view.market.medianAdr.amount)} />
+          <Fact label="Median occupancy" value={`${view.market.medianOccupancy.value}%`} />
+        </dl>
+      </Card>
+      <section className="grid gap-5 lg:grid-cols-2">
+        <Card className="p-6">
+          <Heading title="Risks" />
+          <div className="mt-4 space-y-3">
+            {view.risks.length ? (
+              view.risks.map((risk) => (
+                <article key={risk.id} className="rounded-xl bg-stone-50 p-4">
+                  <p className="font-semibold text-stone-900">{risk.title}</p>
+                  <p className="mt-1 text-sm text-stone-600">{risk.description}</p>
+                </article>
+              ))
+            ) : (
+              <p className="mt-4 text-sm text-stone-500">No risks recorded.</p>
+            )}
+          </div>
+        </Card>
+        <Card className="p-6">
+          <Heading title="Data gaps and evidence" />
+          <p className="mt-4 text-sm text-stone-600">{view.dataGaps.length ? `${view.dataGaps.length} data gaps were explicitly preserved.` : "No market data gaps were reported."}</p>
+          <p className="mt-2 text-sm text-stone-600">{view.evidence.length} evidence references preserved.</p>
+        </Card>
+      </section>
+      <Card className="p-6">
+        <Heading title="Source and lineage" />
+        <dl className="mt-5 grid gap-4 sm:grid-cols-4">
+          <Fact label="User supplied" value={String(view.sourceSummary.userSuppliedCount)} />
+          <Fact label="Market supplied" value={String(view.sourceSummary.marketSuppliedCount)} />
+          <Fact label="Learning supplied" value={String(view.sourceSummary.learningSuppliedCount)} />
+          <Fact label="Defaults" value={String(view.sourceSummary.defaultSuppliedCount)} />
+        </dl>
+        <p className="mt-5 break-all text-xs text-stone-400">
+          Lifecycle: {view.lineage.investmentLifecycleResultId} · Snapshot schema: {view.policyVersions.opportunitySnapshotSchema}
+        </p>
+      </Card>
+    </main>
+  );
 }
-function Metric({ label: metricLabel, value }: { label: string; value: string }) { return <Card className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-stone-400">{metricLabel}</p><p className="mt-2 text-lg font-semibold text-stone-950">{value}</p></Card>; }
-function Fact({ label: factLabel, value }: { label: string; value: string }) { return <div><dt className="text-xs text-stone-400">{factLabel}</dt><dd className="mt-1 text-sm font-semibold text-stone-800">{value}</dd></div>; }
-function Heading({ title }: { title: string }) { return <h2 className="text-lg font-semibold text-stone-950">{title}</h2>; }
-function label(value: string) { return value.replace(/([a-z])([A-Z])/g, "$1 $2").split("-").join(" ").replace(/\b\w/g, character => character.toUpperCase()); }
-function currency(value: number) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }
-function dateTime(value: Date) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(value); }
+function Metric({ label: metricLabel, value }: { label: string; value: string }) {
+  return (
+    <Card className="p-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">{metricLabel}</p>
+      <p className="mt-2 text-lg font-semibold text-stone-950">{value}</p>
+    </Card>
+  );
+}
+function Fact({ label: factLabel, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-stone-400">{factLabel}</dt>
+      <dd className="mt-1 text-sm font-semibold text-stone-800">{value}</dd>
+    </div>
+  );
+}
+function Heading({ title }: { title: string }) {
+  return <h2 className="text-lg font-semibold text-stone-950">{title}</h2>;
+}
+function label(value: string) {
+  return value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .split("-")
+    .join(" ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+function currency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+function dateTime(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(value);
+}
