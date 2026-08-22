@@ -6,7 +6,7 @@ import { createManualPropertyAction } from "@/app/actions/workspace-setup";
 
 const initialState: { ok?: boolean; message?: string } = {};
 
-export function ManualPropertyForm() {
+export function ManualPropertyForm({successHref}:{successHref?:string} = {}) {
   const [state, action] = useActionState(createManualPropertyAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
@@ -14,9 +14,9 @@ export function ManualPropertyForm() {
   useEffect(() => {
     if (state.ok) {
       formRef.current?.reset();
-      router.refresh();
+      if(successHref) router.push(successHref); else router.refresh();
     }
-  }, [state.ok, router]);
+  }, [state.ok, router, successHref]);
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-6">

@@ -16,6 +16,8 @@ export function IntelligencePageActions({ capability }: { capability: Capability
   const understand = capability === "executive" || capability === "portfolio";
   const returnTarget = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
   const connectedSystemsHref = `/dashboard/workspace/connected-systems?returnTo=${encodeURIComponent(returnTarget)}`;
+  const onAttention = pathname === understandRoutes.attention;
+  const onDataQuality = pathname === understandRoutes.portfolioDataQuality;
   useEffect(() => { if (!menu) return; const close=(event:MouseEvent)=>{if(ref.current&&!ref.current.contains(event.target as Node))setMenu(false)}; document.addEventListener("mousedown",close); return()=>document.removeEventListener("mousedown",close); }, [menu]);
   function refresh() { setMenu(false); setRefreshing(true); setFeedback(""); router.refresh(); window.setTimeout(()=>{setRefreshing(false);setFeedback(`Data refreshed ${new Intl.DateTimeFormat("en-US",{hour:"numeric",minute:"2-digit"}).format(new Date())}`)},500); }
   return <>
@@ -23,7 +25,7 @@ export function IntelligencePageActions({ capability }: { capability: Capability
     <div ref={ref} className="relative"><button type="button" aria-label={`${title} actions`} aria-haspopup="menu" aria-expanded={menu} onClick={()=>setMenu(v=>!v)} className="grid h-10 w-10 place-items-center rounded-md border border-stone-200 bg-white"><MoreHorizontal className="h-4 w-4"/></button>{menu?<div role="menu" aria-label={`${title} actions`} className="absolute right-0 z-30 mt-1 w-60 rounded-lg border bg-white py-1 text-sm shadow-xl">
       <MenuButton icon={<RefreshCw/>} onClick={refresh}>{refreshing?"Refreshing…":"Refresh data"}</MenuButton>
       <MenuButton icon={<ExternalLink/>} onClick={()=>{setMenu(false);setDrawer("sources")}}>View data sources</MenuButton>
-      {understand ? <Link role="menuitem" href={`${capability === "executive" ? understandRoutes.attention : understandRoutes.portfolioDataQuality}?returnTo=${encodeURIComponent(returnTarget)}`} className="flex min-h-10 items-center gap-3 px-4 hover:bg-stone-50"><Settings2 className="h-4 w-4"/>{capability === "executive" ? "Review attention" : "Review data quality"}</Link> : <Link role="menuitem" href={connectedSystemsHref} className="flex min-h-10 items-center gap-3 px-4 hover:bg-stone-50"><Settings2 className="h-4 w-4"/>Manage {capability === "financial" ? "financial" : "revenue"} data</Link>}
+      {understand && !onAttention && !onDataQuality ? <Link role="menuitem" href={`${capability === "executive" ? understandRoutes.attention : understandRoutes.portfolioDataQuality}?returnTo=${encodeURIComponent(returnTarget)}`} className="flex min-h-10 items-center gap-3 px-4 hover:bg-stone-50"><Settings2 className="h-4 w-4"/>{capability === "executive" ? "Review attention" : "Review data quality"}</Link> : !understand ? <Link role="menuitem" href={connectedSystemsHref} className="flex min-h-10 items-center gap-3 px-4 hover:bg-stone-50"><Settings2 className="h-4 w-4"/>Manage {capability === "financial" ? "financial" : "revenue"} data</Link> : null}
       <MenuButton icon={<Download/>} onClick={()=>{setMenu(false);setDrawer("export")}}>Export options</MenuButton>
       <div className="my-1 border-t"/><MenuButton icon={<HelpCircle/>} onClick={()=>{setMenu(false);setDrawer("help")}}>{title} help</MenuButton>
     </div>:null}</div>

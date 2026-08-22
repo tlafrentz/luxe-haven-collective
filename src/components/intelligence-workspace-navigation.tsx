@@ -117,11 +117,15 @@ export function IntelligenceWorkspaceHeader({
 export function WorkspaceLocalNavigation({
   label,
   items,
+  hideOnDiagnostics = false,
 }: {
   label: string;
   items: readonly Readonly<{ label: string; href: string; exact?: boolean }>[];
+  hideOnDiagnostics?: boolean;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  if (hideOnDiagnostics && (pathname.endsWith("/data-quality") || searchParams?.has("property"))) return null;
   return (
     <div className="bg-transparent">
       <nav

@@ -4,4 +4,4 @@ const items = [
   { label: "Properties", href: "/dashboard/understand/portfolio/properties" },
   { label: "Concentration", href: "/dashboard/understand/portfolio/concentration" },
 ] as const;
-export default function PortfolioLensLayout({ children }: { children: React.ReactNode }) { return <><WorkspaceLocalNavigation label="Portfolio Intelligence views" items={items} />{children}</>; }
+export default function PortfolioLensLayout({ children }: { children: React.ReactNode }) { return <><WorkspaceLocalNavigation label="Portfolio Intelligence views" items={items} hideOnDiagnostics />{children}</>; }

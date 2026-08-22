@@ -68,7 +68,7 @@ export default async function PropertiesPage({
         eyebrow="Properties"
         title="Properties"
         description="Operate the hospitality assets you own."
-        actions={<div className="flex gap-2">{params.property?<Link href={`/dashboard/reports/new?type=property-performance&source=${params.property}`} className="inline-flex min-h-10 items-center rounded-full border px-4 text-xs font-semibold">Generate property report</Link>:null}<Link href="/dashboard/workspace/connected-systems" className="inline-flex min-h-10 items-center rounded-full bg-stone-950 px-5 text-xs font-semibold text-white">+ Add property</Link></div>}
+        actions={<div className="flex gap-2">{params.property?<Link href={`/dashboard/reports/new?type=property-performance&source=${params.property}`} className="inline-flex min-h-10 items-center rounded-full border px-4 text-xs font-semibold">Generate property report</Link>:null}<Link href="/properties/new" className="inline-flex min-h-10 items-center rounded-full bg-stone-950 px-5 text-xs font-semibold text-white">+ Add property</Link></div>}
       />
       <OperationalDegradedState synchronization={projection.synchronization} />
       <WorkspaceOverview className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -99,10 +99,10 @@ export default async function PropertiesPage({
             description="Import properties from your connected hospitality platform to begin operating your portfolio."
             action={
               <Link
-                href="/dashboard/workspace/connected-systems"
+                href="/properties/new"
                 className="inline-flex min-h-11 items-center rounded-full bg-stone-950 px-5 text-sm font-semibold text-white"
               >
-                Import properties
+                Add property
               </Link>
             }
           />
