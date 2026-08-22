@@ -71,13 +71,14 @@ export function WorkspacePropertiesPage({ overview, canManage, title = "Properti
   );
 }
 
-export function WorkspaceConnectedSystemsPage({ overview, canManage }: Readonly<{
-  overview: PropertiesAndSystemsOverview; canManage: boolean;
+export function WorkspaceConnectedSystemsPage({ overview, canManage, returnTo }: Readonly<{
+  overview: PropertiesAndSystemsOverview; canManage: boolean; returnTo?: string;
 }>) {
   return (
     <WorkspacePage width="wide">
       <WorkspaceHeader eyebrow="Workspace configuration" title="Connected Systems"
         description="Review external platform connectivity, property linkage, synchronization freshness, and recovery actions without exposing provider secrets." />
+      {returnTo ? <Link href={returnTo} className="inline-flex min-h-10 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold">← Back to intelligence</Link> : null}
       <WorkspaceContent>
         {!overview.systems.length ? (
           <WorkspaceCard level={2} className="p-8">

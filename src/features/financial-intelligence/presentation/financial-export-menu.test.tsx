@@ -7,25 +7,22 @@ import { FinancialExportMenu } from "./financial-export-menu";
 afterEach(cleanup);
 
 describe("FinancialExportMenu", () => {
-  let printSpy: ReturnType<typeof vi.spyOn>;
   let clickSpy: ReturnType<typeof vi.spyOn>;
   let createUrlSpy: ReturnType<typeof vi.spyOn>;
   let revokeUrlSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    printSpy = vi.spyOn(window, "print").mockImplementation(() => {});
     clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     createUrlSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
     revokeUrlSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
   });
 
-  it("triggers the browser print dialog for Overview PDF", async () => {
+  it("routes overview generation through Reports", async () => {
     const user = userEvent.setup();
     render(<FinancialExportMenu csvSummary="a,b\r\n" csvExpenses="c,d\r\n" filePrefix="financial-intelligence-2026-07" />);
     await user.click(screen.getByRole("button", { name: "Export" }));
-    await user.click(screen.getByRole("menuitem", { name: "Overview PDF" }));
-    expect(printSpy).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("menu")).toBeNull();
+    const link=screen.getByRole("menuitem", { name: "Generate overview report" });
+    expect(link.getAttribute("href")).toContain("/dashboard/reports/new/custom.report.v1");
   });
   it("downloads the financial summary CSV with the expected filename", async () => {
     const user = userEvent.setup();
@@ -52,17 +49,8 @@ describe("FinancialExportMenu", () => {
     await user.click(screen.getByRole("button", { name: "Outside" }));
     expect(screen.queryByRole("menu")).toBeNull();
   });
-  it("renders inside the shared header's page-actions slot when present, instead of inline on the page", () => {
-    const slot = document.createElement("div");
-    slot.id = "workspace-header-page-actions";
-    document.body.appendChild(slot);
-    try {
-      const { container } = render(<div id="page-body"><FinancialExportMenu csvSummary="a,b\r\n" csvExpenses="c,d\r\n" filePrefix="financial-intelligence-2026-07" /></div>);
-      expect(container.querySelector("#page-body button")).toBeNull();
-      expect(slot.querySelector("button")).not.toBeNull();
-      expect(slot.textContent).toContain("Export");
-    } finally {
-      slot.remove();
-    }
+  it("renders inline only when explicitly used", () => {
+    render(<FinancialExportMenu csvSummary="a,b\r\n" csvExpenses="c,d\r\n" filePrefix="financial-intelligence-2026-07" />);
+    expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
   });
 });

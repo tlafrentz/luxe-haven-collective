@@ -4,19 +4,23 @@ import path from "node:path";
 
 describe("FI-002 canonical Financial Intelligence shell", () => {
   it("owns page actions and tabs above route-specific content", () => {
+    const observeLayout=fs.readFileSync(path.join(process.cwd(),"src/app/(dashboard)/dashboard/observe/layout.tsx"),"utf8");
     const layout=fs.readFileSync(path.join(process.cwd(),"src/app/(dashboard)/dashboard/observe/financial/layout.tsx"),"utf8");
     const overview=fs.readFileSync(path.join(process.cwd(),"src/features/financial-intelligence/presentation/financial-overview.tsx"),"utf8");
-    expect(layout).toContain("<FinancialShellActions/>");
-    expect(layout.indexOf("<FinancialShellActions/>")).toBeLessThan(layout.indexOf("{children}"));
+    expect(observeLayout).toContain("<IntelligenceWorkspaceHeader");
+    expect(layout).not.toContain("FinancialShellActions");
     expect(overview).not.toContain("<FinancialExportMenu");
   });
-  it("keeps the action slot active for every nested Financial route", () => {
+  it("shares functional page actions across Revenue and Financial Intelligence", () => {
     const header=fs.readFileSync(path.join(process.cwd(),"src/components/intelligence-workspace-navigation.tsx"),"utf8");
-    expect(header).toContain('pathname.startsWith(`${route}/`)');
+    expect(header).toContain("<IntelligencePageActions capability={observeCapability}/>");
+    expect(header).not.toContain('aria-label="More options"');
   });
-  it("does not render the legacy overflow beside canonical Financial actions",()=>{
-    const header=fs.readFileSync(path.join(process.cwd(),"src/components/intelligence-workspace-navigation.tsx"),"utf8");
-    const financialBranch=header.slice(header.indexOf("hasPageOwnExport ?"),header.indexOf("</div>\n    </div>",header.indexOf("hasPageOwnExport ?")));
-    expect(financialBranch.indexOf("More options")).toBeGreaterThan(financialBranch.indexOf(": <>"));
+  it("routes exports through Reports and never browser print",()=>{
+    const actions=fs.readFileSync(path.join(process.cwd(),"src/features/financial-intelligence/presentation/financial-shell-actions.tsx"),"utf8");
+    const legacy=fs.readFileSync(path.join(process.cwd(),"src/features/financial-intelligence/presentation/financial-export-menu.tsx"),"utf8");
+    expect(actions).toContain("/dashboard/reports/new/");
+    expect(actions).not.toContain("window.print");
+    expect(legacy).not.toContain("window.print");
   });
 });

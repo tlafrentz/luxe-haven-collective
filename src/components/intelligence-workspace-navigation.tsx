@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  BriefcaseBusiness,
-  Download,
-  LineChart,
-  MoreHorizontal,
-} from "lucide-react";
+import { BriefcaseBusiness, LineChart } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { ContextLink } from "@/platform/workspace-context";
 import { recordPlatformNavigationEvent } from "@/platform/experience";
+import { IntelligencePageActions } from "@/features/financial-intelligence/presentation/financial-shell-actions";
 
 type Lens = Readonly<{ label: string; href: string; capability: string }>;
 
@@ -39,21 +35,13 @@ const lenses = {
   ],
 } satisfies Record<"observe" | "understand", readonly Lens[]>;
 
-const ROUTES_WITH_PAGE_EXPORT = [
-  "/dashboard/observe/financial",
-  "/dashboard/financial",
-];
-export const PAGE_HEADER_ACTIONS_SLOT_ID = "workspace-header-page-actions";
-
 export function IntelligenceWorkspaceHeader({
   stage,
 }: {
   stage: "observe" | "understand";
 }) {
   const pathname = usePathname();
-  const hasPageOwnExport = ROUTES_WITH_PAGE_EXPORT.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
+  const observeCapability = pathname.startsWith("/dashboard/observe/financial") ? "financial" : "revenue";
   const title = stage === "observe" ? "Observe" : "Understand";
   const description =
     stage === "observe"
@@ -110,28 +98,7 @@ export function IntelligenceWorkspaceHeader({
             );
           })}
         </nav>
-        <div className="hidden shrink-0 gap-2 sm:flex">
-          {hasPageOwnExport ? (
-            <div id={PAGE_HEADER_ACTIONS_SLOT_ID} className="contents" />
-          ) : (
-            <>
-              <ContextLink
-                href="/dashboard/reports"
-                className="inline-flex min-h-10 items-center gap-2 rounded-md border border-stone-200 bg-white px-4 text-xs font-semibold text-stone-800"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Export
-              </ContextLink>
-              <button
-                type="button"
-                aria-label="More options"
-                className="grid h-10 w-10 place-items-center rounded-md border border-stone-200 bg-white"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-            </>
-          )}
-        </div>
+        <div className="hidden shrink-0 gap-2 sm:flex">{stage === "observe" ? <IntelligencePageActions capability={observeCapability}/> : null}</div>
       </div>
       <p className="sr-only" role="status" aria-live="polite">
         {lenses[stage].find((lens) => pathname.startsWith(lens.href))?.label}{" "}
