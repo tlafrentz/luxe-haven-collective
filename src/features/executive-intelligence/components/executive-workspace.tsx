@@ -1,13 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BarChart3,
-  BookOpenCheck,
-  CircleAlert,
   CircleCheck,
-  ClipboardCheck,
-  Database,
-  HeartPulse,
 } from "lucide-react";
 import type {
   ExecutiveAttentionItem,
@@ -86,19 +80,8 @@ export function ExecutiveWorkspace({
   financial?: readonly ExecutiveFinancialMetric[];
 }>) {
   const active = tabs.find((item) => item.id === tab)!;
-  const params = new URLSearchParams({
-    start: view.scope.startDate,
-    end: view.scope.endDate,
-  });
-  if (view.scope.selectedProperty)
-    params.set("property", view.scope.selectedProperty.id);
   return (
     <main className="mx-auto max-w-[1500px] px-4 pb-8 pt-1 sm:px-6 lg:px-8">
-      {tab === "overview" ? (
-        <nav aria-label="Executive Intelligence views" className="sr-only">
-          <ul>{tabs.map((item) => <li key={item.id}><Link href={`${item.href}?${params}`}>{item.label}</Link></li>)}</ul>
-        </nav>
-      ) : null}
       {tab !== "overview" ? (
         <header>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -108,24 +91,6 @@ export function ExecutiveWorkspace({
             </div>
             <Context view={view} tab={tab} />
           </div>
-          <nav
-            aria-label="Executive Intelligence views"
-            className="mt-5 overflow-x-auto border-b"
-          >
-            <ul className="flex min-w-max">
-              {tabs.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    aria-current={item.id === tab ? "page" : undefined}
-                    className={`inline-flex min-h-11 items-center border-b-2 px-4 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-violet-600 ${item.id === tab ? "border-violet-700 text-violet-950" : "border-transparent text-stone-500"}`}
-                    href={`${item.href}?${params}`}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
         </header>
       ) : null}
       <div className={tab === "overview" ? "" : "mt-6"}>
@@ -224,7 +189,6 @@ function Overview({
           />
         </Panel>
       </div>
-      <Focus view={view} />
     </div>
   );
 }
@@ -294,7 +258,7 @@ function Priority({ item }: Readonly<{ item: ExecutiveAttentionItem | null }>) {
           </dl>
           <Link
             className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border bg-white px-4 text-sm font-semibold"
-            href="/dashboard/understand/risks"
+            href="/dashboard/understand/attention"
           >
             Review priority <ArrowRight className="h-4 w-4" />
           </Link>
@@ -320,9 +284,9 @@ function Queue({
       )}
       <Link
         className="mt-4 inline-flex items-center gap-2 text-xs font-semibold"
-        href="/dashboard/understand/risks"
+        href="/dashboard/understand/attention"
       >
-        View all attention items <ArrowRight className="h-3 w-3" />
+        Review Attention <ArrowRight className="h-3 w-3" />
       </Link>
     </Panel>
   );
@@ -391,75 +355,6 @@ function BriefPart({
     </div>
   );
 }
-function Focus({ view }: Readonly<{ view: ExecutiveIntelligenceView }>) {
-  const values = [
-    [
-      "health",
-      "Business Health",
-      "See how each pillar is performing.",
-      `${view.health.availablePillars} of 7 pillars measured`,
-      HeartPulse,
-    ],
-    [
-      "performance",
-      "Performance",
-      "Review revenue, occupancy, ADR, and RevPAR.",
-      view.performance.available ? "Metrics available" : "Insufficient data",
-      BarChart3,
-    ],
-    [
-      "risks",
-      "Risks & Attention",
-      "Understand items requiring attention.",
-      `${view.attention.risks.length} current risks`,
-      CircleAlert,
-    ],
-    [
-      "actions",
-      "Decisions & Actions",
-      "Track decisions, actions, and execution.",
-      `${view.execution.overdueActions} overdue`,
-      ClipboardCheck,
-    ],
-    [
-      "outcomes",
-      "Outcomes & Learning",
-      "Measure results and key learnings.",
-      `${view.outcomes.measuredOutcomes} measured`,
-      BookOpenCheck,
-    ],
-    [
-      "data-quality",
-      "Data Quality",
-      "Review coverage and limitations.",
-      quality(view),
-      Database,
-    ],
-  ] as const;
-  return (
-    <Panel title="What to focus on next">
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {values.map(([id, label, desc, indicator, Icon]) => (
-          <Link
-            className="rounded-xl border p-4 focus-visible:ring-2 focus-visible:ring-amber-600"
-            href={
-              id === "health" || id === "performance" || id === "risks"
-                ? `/dashboard/understand/executive/${id}`
-                : `/dashboard/understand/${id}`
-            }
-            key={id}
-          >
-            <Icon className="h-5 w-5" />
-            <h3 className="mt-4 text-sm font-semibold">{label}</h3>
-            <p className="mt-2 text-xs leading-5 text-stone-500">{desc}</p>
-            <p className="mt-3 text-xs font-semibold">{indicator}</p>
-          </Link>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
 function Health({ view }: Readonly<{ view: ExecutiveIntelligenceView }>) {
   return (
     <div className="space-y-5">

@@ -9,7 +9,9 @@ describe("Property comparison presentation", () => {
     const prior = overviewProjectionFixture([overviewPropertyFixture("a",100),overviewPropertyFixture("b",60)]);
     const html = renderToStaticMarkup(<PortfolioPropertyComparisonView comparison={buildPortfolioPropertyComparison({projection:current,comparison:prior,capabilities:comparisonCapabilitiesForRole("owner")})} />);
     expect(html).toContain("<h1");
-    expect(html).toContain('aria-label="Property comparison controls"');
+    expect(html).toContain('aria-label="Property analysis controls"');
+    expect(html).not.toContain('name="period"');
+    expect(html).not.toContain('name="comparison"');
     expect(html).toContain("<table");
     expect(html).toContain("<caption");
     expect(html).toContain('scope="col"');
@@ -19,6 +21,11 @@ describe("Property comparison presentation", () => {
     expect(html).toContain("Momentum &amp; efficiency");
     expect(html).toContain("Evidence quality");
     expect(html).not.toMatch(/Best Property|Worst Property/);
+  });
+  it("preserves canonical context when drilling into a property",()=>{
+    const model=buildPortfolioPropertyComparison({projection:overviewProjectionFixture([overviewPropertyFixture("a",100)]),capabilities:comparisonCapabilitiesForRole("owner")});
+    const html=renderToStaticMarkup(<PortfolioPropertyComparisonView comparison={model} contextSearchParams={{workspace:"w",scope:"portfolio",period:"ytd",comparison:"previous-year",basis:"actual"}}/>);
+    expect(html).toContain("workspace=w");expect(html).toContain("period=ytd");expect(html).toContain("comparison=previous-year");expect(html).toContain("basis=actual");expect(html).toContain("property=a");
   });
   it("omits financial columns for restricted roles", () => {
     const model = buildPortfolioPropertyComparison({projection:overviewProjectionFixture([overviewPropertyFixture("a",100)]),capabilities:comparisonCapabilitiesForRole("contributor")});

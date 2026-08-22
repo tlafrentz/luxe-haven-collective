@@ -1,2 +1,2 @@
-import { ExecutivePageView, type ExecutiveSearchParams } from "../executive-page";
-export default function Page({searchParams}:Readonly<{searchParams:ExecutiveSearchParams}>){return <ExecutivePageView searchParams={searchParams} tab="outcomes"/>}
+import { redirect } from "next/navigation";
+export default function Page(){redirect("/dashboard/learn/outcomes")}

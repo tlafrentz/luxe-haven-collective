@@ -13,7 +13,7 @@ export default async function PortfolioPropertiesPage({ searchParams }: { search
     selectedPropertyId: single(params.property), sortBy: sort(single(params.sort)),
     sortDirection: single(params.direction) === "ascending" ? "ascending" : "descending",
   });
-  return result.ok ? <PortfolioPropertyComparisonView comparison={result.comparison} /> : <PortfolioPropertyComparisonError message={result.message} />;
+  return result.ok ? <PortfolioPropertyComparisonView comparison={result.comparison} contextSearchParams={params} /> : <PortfolioPropertyComparisonError message={result.message} />;
 }
 function single(value: string | string[] | undefined) { return Array.isArray(value) ? value[0] : value; }
 function values(value: string | string[]) { return Array.isArray(value) ? value : [value]; }

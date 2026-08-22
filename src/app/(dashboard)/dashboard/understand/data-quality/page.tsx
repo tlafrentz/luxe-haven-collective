@@ -1,2 +1,2 @@
-import { ExecutivePageView, type ExecutiveSearchParams } from "../executive-page";
-export default function Page({searchParams}:Readonly<{searchParams:ExecutiveSearchParams}>){return <ExecutivePageView searchParams={searchParams} tab="data-quality"/>}
+import { redirect } from "next/navigation";
+export default function Page(){redirect("/dashboard/understand/attention?filter=data-quality")}
