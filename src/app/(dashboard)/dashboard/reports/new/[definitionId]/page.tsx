@@ -9,10 +9,13 @@ import {
 } from "@/platform/reporting";
 export default async function ConfigureReportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ definitionId: string }>;
+  searchParams: Promise<{ sourceCapability?: string }>;
 }) {
   const { definitionId } = await params,
+    sourceCapability = (await searchParams).sourceCapability,
     options = await getGenerationOptions();
   if (!options) redirect("/login");
   const item = options.definitions.find(
@@ -36,6 +39,7 @@ export default async function ConfigureReportPage({
         className="space-y-6 rounded-3xl border bg-white p-6"
       >
         <input name="definitionId" type="hidden" value={d.definitionId} />
+        {sourceCapability ? <input name="returnToReports" type="hidden" value="true" /> : null}
         <input
           name="idempotencyKey"
           type="hidden"

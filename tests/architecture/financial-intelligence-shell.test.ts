@@ -19,7 +19,7 @@ describe("FI-002 canonical Financial Intelligence shell", () => {
   it("routes exports through Reports and never browser print",()=>{
     const actions=fs.readFileSync(path.join(process.cwd(),"src/features/financial-intelligence/presentation/financial-shell-actions.tsx"),"utf8");
     const legacy=fs.readFileSync(path.join(process.cwd(),"src/features/financial-intelligence/presentation/financial-export-menu.tsx"),"utf8");
-    expect(actions).toContain("/dashboard/reports/new/");
+    expect(actions).toContain("getIntelligenceReportRequestHref");
     expect(actions).not.toContain("window.print");
     expect(legacy).not.toContain("window.print");
   });

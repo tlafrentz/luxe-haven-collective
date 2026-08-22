@@ -452,7 +452,7 @@ export function FinancialPlanningEmpty({
             <span className="text-rose-700">{readiness?.percentage ?? 50}%</span>
           </div>
           <ul className="mt-3 divide-y rounded-xl border text-sm">
-            {rows.map(([key,label])=>{const ready=requirements[key]==="ready";return <li className="flex justify-between p-3" key={key}><span>{ready?"✓":"○"} {label}</span><span className={ready?"text-emerald-700":"text-rose-700"}>{ready?"Ready":"Required"}</span></li>})}
+            {rows.map(([key,label])=>{const ready=requirements[key]==="ready",href=readinessHref(key);return <li className="p-3" key={key}>{ready?<div className="flex justify-between"><span>✓ {label}</span><span className="text-emerald-700">Ready</span></div>:<Link href={href} className="flex justify-between rounded outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"><span>○ {label}</span><span className="font-semibold text-rose-700">Required →</span></Link>}</li>})}
           </ul>
           <Link
             href="/dashboard/settings#financial-data"
@@ -460,11 +460,7 @@ export function FinancialPlanningEmpty({
           >
             Complete financial setup
           </Link>
-          {canApprove ? (
-            <button className="mt-3 min-h-10 w-full text-sm font-semibold underline">
-              Create budget revision
-            </button>
-          ) : null}
+          {canApprove ? <p className="mt-3 text-center text-xs text-stone-500">Budget revisions will appear here when versioned financial-plan storage is enabled.</p> : null}
           <Link
             href="/dashboard/workspace/connected-systems"
             className="mt-4 block text-center text-sm font-semibold text-emerald-800"
@@ -476,6 +472,7 @@ export function FinancialPlanningEmpty({
     </main>
   );
 }
+function readinessHref(requirement:"revenue_history"|"operating_expenses"|"cash_position"|"recurring_obligations"){return requirement==="revenue_history"?"/dashboard/observe/revenue":requirement==="operating_expenses"?"/dashboard/observe/financial/expenses":requirement==="cash_position"?"/dashboard/observe/financial/cash-flow":"/dashboard/financial/planning";}
 export function FinancialPlanningErrorView({
   code,
 }: {

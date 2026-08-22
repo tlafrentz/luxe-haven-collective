@@ -12,7 +12,7 @@ describe("UI-003B Understand Intelligence stabilization", () => {
     expect(header).toContain("<IntelligencePageActions");
     expect(actions).toContain("Review attention");
     expect(actions).toContain("Review data quality");
-    expect(actions).toContain("/dashboard/reports/new/");
+    expect(actions).toContain("getIntelligenceReportRequestHref");
   });
 
   it("uses accessible light surfaces for Properties and Concentration", () => {

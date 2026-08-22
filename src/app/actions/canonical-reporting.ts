@@ -133,6 +133,8 @@ export async function generateCanonicalReportAction(form: FormData) {
     options.actor,
   );
   revalidatePath("/dashboard/reports");
+  if (String(form.get("returnToReports")) === "true")
+    redirect(`/dashboard/reports?generated=${encodeURIComponent(result.reportId)}`);
   redirect(
     `/dashboard/reports/${result.reportId}/versions/${result.versionId}`,
   );

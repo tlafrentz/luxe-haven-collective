@@ -22,7 +22,7 @@ describe("FinancialExportMenu", () => {
     render(<FinancialExportMenu csvSummary="a,b\r\n" csvExpenses="c,d\r\n" filePrefix="financial-intelligence-2026-07" />);
     await user.click(screen.getByRole("button", { name: "Export" }));
     const link=screen.getByRole("menuitem", { name: "Generate overview report" });
-    expect(link.getAttribute("href")).toContain("/dashboard/reports/new/custom.report.v1");
+    expect(link.getAttribute("href")).toContain("/dashboard/reports/new?sourceCapability=financial");
   });
   it("downloads the financial summary CSV with the expected filename", async () => {
     const user = userEvent.setup();
