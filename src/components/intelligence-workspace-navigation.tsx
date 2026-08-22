@@ -42,6 +42,7 @@ export function IntelligenceWorkspaceHeader({
 }) {
   const pathname = usePathname();
   const observeCapability = pathname.startsWith("/dashboard/observe/financial") ? "financial" : "revenue";
+  const understandCapability = pathname.startsWith("/dashboard/understand/portfolio") ? "portfolio" : "executive";
   const title = stage === "observe" ? "Observe" : "Understand";
   const description =
     stage === "observe"
@@ -98,7 +99,7 @@ export function IntelligenceWorkspaceHeader({
             );
           })}
         </nav>
-        <div className="hidden shrink-0 gap-2 sm:flex">{stage === "observe" ? <IntelligencePageActions capability={observeCapability}/> : null}</div>
+        <div className="flex shrink-0 gap-2"><IntelligencePageActions capability={stage === "observe" ? observeCapability : understandCapability}/></div>
       </div>
       <p className="sr-only" role="status" aria-live="polite">
         {lenses[stage].find((lens) => pathname.startsWith(lens.href))?.label}{" "}

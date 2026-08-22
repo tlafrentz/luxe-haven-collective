@@ -28,6 +28,7 @@ import {
   type PortfolioIntelligenceDashboard,
   type PortfolioIntelligenceDashboardState,
 } from "./contracts";
+import { getPropertyIntelligenceHref } from "@/platform/experience";
 
 export function buildPortfolioIntelligenceDashboard(
   source: PortfolioDashboardSource,
@@ -468,7 +469,7 @@ function subject(source: PortfolioDashboardSource, type: PortfolioDashboardSubje
   const property = type === "property" ? source.current.properties.find((item) => item.propertyId === id) : undefined;
   const opportunity = type === "opportunity" ? source.current.opportunities.find((item) => item.opportunityId === id) : undefined;
   const label = property?.name ?? opportunity?.name ?? id;
-  const destination = type === "property" ? `/properties/${encodeURIComponent(id)}`
+  const destination = type === "property" ? getPropertyIntelligenceHref(id)
     : type === "opportunity" ? `/dashboard/investments/opportunities/${encodeURIComponent(id)}`
       : workspacePath(source);
   return Object.freeze({ type, id, label, destination });

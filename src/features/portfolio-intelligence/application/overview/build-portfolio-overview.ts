@@ -9,6 +9,7 @@ import type {
   PortfolioExecutionSummary, PortfolioMetric, PortfolioMetricSummary, PortfolioOverview,
   PortfolioOverviewThresholdPolicy,
 } from "./contracts";
+import { getPropertyIntelligenceHref } from "@/platform/experience";
 import { canonicalComparison } from "@/platform/calculations";
 
 const emptyExecution: PortfolioExecutionSummary = Object.freeze({ activeDecisions: 0, openActions: 0, outcomeReviewsDue: 0, items: [] });
@@ -112,11 +113,11 @@ export function identifyPortfolioAttentionSignals(current: PortfolioProjection, 
   const items: PortfolioAttentionItem[] = [];
   for (const property of current.properties) {
     const evidence = refs(property);
-    if (property.freshness !== "current") items.push({ id: `attention:freshness:${property.propertyId}`, type: "operational-degradation", propertyId: property.propertyId, title: property.name, description: `Operational data is ${property.freshness}.`, impact: "Portfolio totals may rely on last known data.", confidence: property.confidence, evidence, destination: `/properties/${property.propertyId}` });
-    if (!property.evidence.length) items.push({ id: `attention:evidence:${property.propertyId}`, type: "data-limitation", propertyId: property.propertyId, title: property.name, description: "This property has limited supporting evidence.", impact: "Change interpretation is limited.", confidence: property.confidence, evidence, destination: `/properties/${property.propertyId}` });
+    if (property.freshness !== "current") items.push({ id: `attention:freshness:${property.propertyId}`, type: "operational-degradation", propertyId: property.propertyId, title: property.name, description: `Operational data is ${property.freshness}.`, impact: "Portfolio totals may rely on last known data.", confidence: property.confidence, evidence, destination: getPropertyIntelligenceHref(property.propertyId) });
+    if (!property.evidence.length) items.push({ id: `attention:evidence:${property.propertyId}`, type: "data-limitation", propertyId: property.propertyId, title: property.name, description: "This property has limited supporting evidence.", impact: "Change interpretation is limited.", confidence: property.confidence, evidence, destination: getPropertyIntelligenceHref(property.propertyId) });
   }
   for (const item of contributions.filter(({ revenueShare }) => revenueShare !== null && revenueShare >= policy.materialContributionShare)) {
-    items.push({ id: `attention:contribution:${item.propertyId}`, type: "material-contribution", propertyId: item.propertyId, title: item.name, description: `${Math.round((item.revenueShare ?? 0) * 100)}% of portfolio revenue comes from this property.`, impact: "Its movement materially affects the portfolio rollup.", confidence: item.confidence, evidence: [], destination: `/properties/${item.propertyId}` });
+    items.push({ id: `attention:contribution:${item.propertyId}`, type: "material-contribution", propertyId: item.propertyId, title: item.name, description: `${Math.round((item.revenueShare ?? 0) * 100)}% of portfolio revenue comes from this property.`, impact: "Its movement materially affects the portfolio rollup.", confidence: item.confidence, evidence: [], destination: getPropertyIntelligenceHref(item.propertyId) });
   }
   return items.slice(0, 5);
 }

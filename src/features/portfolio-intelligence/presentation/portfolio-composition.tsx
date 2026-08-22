@@ -53,8 +53,8 @@ export function PortfolioCompositionView({
 }
 function Header({ composition }: { composition: PortfolioComposition }) {
   return (
-    <header className="rounded-[2rem] bg-[#101416] p-6 text-white sm:p-8">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-200">
+    <header className="rounded-[2rem] border border-stone-200 bg-white p-6 text-stone-950 shadow-sm sm:p-8">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-700">
         Portfolio Intelligence · Concentration
       </p>
       <div className="mt-3 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -62,10 +62,10 @@ function Header({ composition }: { composition: PortfolioComposition }) {
           <h1 className="text-3xl font-semibold sm:text-4xl">
             Composition &amp; Concentration
           </h1>
-          <p className="mt-3 text-lg text-stone-200">
+          <p className="mt-3 text-lg text-stone-800">
             {composition.scopeLabel}
           </p>
-          <p className="mt-1 text-sm text-stone-400">
+          <p className="mt-1 text-sm text-stone-600">
             {composition.scope.propertyCount} included properties ·{" "}
             {composition.period.current.from}–{composition.period.current.to}
           </p>
@@ -88,7 +88,7 @@ function Header({ composition }: { composition: PortfolioComposition }) {
           />
         </dl>
       </div>
-      <p className="mt-7 border-t border-white/10 pt-5 text-xs text-stone-300">
+      <p className="mt-7 border-t border-stone-200 pt-5 text-xs text-stone-600">
         Workspace, scope, reporting period, comparison, and basis are inherited
         from the shared context.
       </p>

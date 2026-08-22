@@ -13,7 +13,7 @@ describe("FI-002 canonical Financial Intelligence shell", () => {
   });
   it("shares functional page actions across Revenue and Financial Intelligence", () => {
     const header=fs.readFileSync(path.join(process.cwd(),"src/components/intelligence-workspace-navigation.tsx"),"utf8");
-    expect(header).toContain("<IntelligencePageActions capability={observeCapability}/>");
+    expect(header).toContain("<IntelligencePageActions capability={stage === \"observe\" ? observeCapability : understandCapability}/>");
     expect(header).not.toContain('aria-label="More options"');
   });
   it("routes exports through Reports and never browser print",()=>{
