@@ -4,14 +4,12 @@ import type {
 } from "../application";
 import { FinancialPerformanceChart } from "./financial-performance-chart";
 import { FinancialKpiRow, type FinancialKpiCard, type FinancialKpiDrawerContent } from "./financial-kpi-drawer";
-import { FinancialExportMenu } from "./financial-export-menu";
 
 export function FinancialOverviewView({ overview }: { overview: FinancialOverview }) {
   if (overview.state === "empty") return <FinancialOverviewEmpty />;
   return <main className="mx-auto max-w-[1500px] space-y-4 px-4 pb-8 pt-3 sm:px-6 lg:px-8">
     <div className="sr-only"><h1>Financial Overview</h1><Link href={`/dashboard/reports/new?type=financial-performance&workspace=${overview.identity.workspaceId}`}>Generate financial report</Link><span>{overview.scope.label} · {range(overview.period.from,overview.period.to)}</span></div>
     <PrintDisclosure overview={overview}/>
-    <FinancialExportMenu csvSummary={buildFinancialSummaryCsv(overview)} csvExpenses={buildExpenseDetailCsv(overview)} filePrefix={exportFilePrefix(overview)}/>
     {overview.permissionLimited ? <Notice title="Financial Summary">You can view authorized property profitability, but workspace cash balances and sensitive owner-level financial details may be restricted.</Notice> : null}
     <FinancialKpiRow cards={buildKpiCards(overview)} drawers={buildKpiDrawerContent(overview)}/>
     <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
@@ -51,9 +49,6 @@ function PrintDisclosure({ overview }: { overview: FinancialOverview }) {
 }
 function Row({ label, value }: { label: string; value: string }) { return <div><dt className="inline font-semibold">{label}: </dt><dd className="inline">{value}</dd></div>; }
 
-function exportFilePrefix(overview: FinancialOverview): string {
-  return `financial-intelligence-${overview.period.from}-to-${overview.period.to}`;
-}
 const CSV_CONTROL_CHARACTERS = new RegExp("[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]", "g");
 const CSV_FORMULA_PREFIX = new RegExp("^[\\s\\uFEFF]*[=+\\-@]", "u");
 export function csvEscape(value: unknown): string {

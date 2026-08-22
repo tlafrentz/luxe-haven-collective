@@ -23,7 +23,7 @@ export const PAGE_HEADER_ACTIONS_SLOT_ID = "workspace-header-page-actions";
 
 export function IntelligenceWorkspaceHeader({ stage }: { stage: "observe" | "understand" }) {
   const pathname = usePathname();
-  const hasPageOwnExport = ROUTES_WITH_PAGE_EXPORT.includes(pathname);
+  const hasPageOwnExport = ROUTES_WITH_PAGE_EXPORT.some(route => pathname === route || pathname.startsWith(`${route}/`));
   const title = stage === "observe" ? "Observe" : "Understand";
   const description = stage === "observe" ? "Understand what is happening across your business." : "Gain clarity on why performance is happening and what matters most.";
   return <header className="mx-auto max-w-[1500px] px-4 pb-3 pt-6 sm:px-6 lg:px-8">

@@ -121,9 +121,9 @@ describe("Financial Overview presentation states", () => {
     expect(html).toContain("Cash position");
     expect(html).toContain("Forecast inputs");
   });
-  it("renders an Export control and a print-only disclosure block stating scope, period, comparison, currency, completeness, and cash inclusion", () => {
+  it("renders a print-only disclosure block while the shared shell owns Export", () => {
     const html = renderToStaticMarkup(<FinancialOverviewView overview={{ ...overview, period: { ...overview.period, comparison: { from: "2026-06-01", to: "2026-06-30" } } }} />);
-    expect(html).toContain(">Export<");
+    expect(html).not.toContain('aria-label="Export options"');
     expect(html).toContain("Full Workspace");
     expect(html).toContain("Jul 1, 2026");
     expect(html).toContain("Jun 1, 2026");
