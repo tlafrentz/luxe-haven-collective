@@ -15,6 +15,7 @@ type BookingRow = Readonly<{
 }>;
 type AccountRow = Readonly<{ id:string;workspace_id:string;code:string;name:string;category:FinancialAccount["category"];subcategory:string|null;active:boolean }>;
 type TransactionRow = Readonly<{ id:string;workspace_id:string;account_id:string;property_id:string|null;amount_minor:number;currency:string;measurement:FinancialTransaction["props"]["measurement"];effective_date:string;posting_date:string|null;source_provider:string;source_external_id:string|null;status:FinancialTransaction["props"]["status"];evidence_ids:string[] }>;
+type BalanceRow = Readonly<{ id:string;workspace_id:string;account_id:string;property_id:string|null;amount_minor:number;currency:string;as_of:string;source_type:string }>;
 
 const DAY_MS = 86_400_000;
 
@@ -53,16 +54,17 @@ export class SupabaseFinancialOverviewSource implements FinancialSource, Financi
   }
   async listTransactions(scope: Parameters<FinancialSource["listTransactions"]>[0]) {
     const propertyIds = scope.propertyId ? [scope.propertyId] : [...(scope.propertyIds ?? [])];
-    if (!propertyIds.length) return Object.freeze([]);
     const client = await createClient();
-    const [bookingResult,transactionResult] = await Promise.all([
-      client.from("bookings").select("id,property_id,check_in,check_out,total_amount,currency,updated_at")
+    const bookingQuery=propertyIds.length?client.from("bookings").select("id,property_id,check_in,check_out,total_amount,currency,updated_at")
         .in("property_id", propertyIds).neq("status", "cancelled")
-        .lt("check_in", nextDate(scope.period.to)).gt("check_out", scope.period.from),
-      client.from("financial_transactions").select("id,workspace_id,account_id,property_id,amount_minor,currency,measurement,effective_date,posting_date,source_provider,source_external_id,status,evidence_ids")
-        .eq("workspace_id",scope.workspaceId).in("property_id",propertyIds).neq("status","voided").gte("effective_date",scope.period.from).lte("effective_date",scope.period.to),
+        .lt("check_in", nextDate(scope.period.to)).gt("check_out", scope.period.from):Promise.resolve({data:[],error:null});
+    let transactionQuery=client.from("financial_transactions").select("id,workspace_id,account_id,property_id,amount_minor,currency,measurement,effective_date,posting_date,source_provider,source_external_id,status,evidence_ids").eq("workspace_id",scope.workspaceId).neq("status","voided").gte("effective_date",scope.period.from).lte("effective_date",scope.period.to);
+    transactionQuery=propertyIds.length?transactionQuery.or(`property_id.is.null,property_id.in.(${propertyIds.join(",")})`):transactionQuery.is("property_id",null);
+    const [bookingResult,transactionResult,balanceResult] = await Promise.all([
+      bookingQuery, transactionQuery,
+      client.from("cash_balance_observations").select("id,workspace_id,account_id,property_id,amount_minor,currency,as_of,source_type").eq("workspace_id",scope.workspaceId).gte("as_of",scope.period.from).lte("as_of",scope.period.to),
     ]);
-    if (bookingResult.error||transactionResult.error) throw new Error(`Unable to read canonical financial observations: ${bookingResult.error?.message??transactionResult.error?.message}`);
+    if (bookingResult.error||transactionResult.error||balanceResult.error) throw new Error(`Unable to read canonical financial observations: ${bookingResult.error?.message??transactionResult.error?.message??balanceResult.error?.message}`);
     const identity = await this.getIdentity(scope.workspaceId);
     const revenue=((bookingResult.data ?? []) as BookingRow[]).flatMap(row => {
       const currency = row.currency ?? identity.reportingCurrency;
@@ -86,7 +88,8 @@ export class SupabaseFinancialOverviewSource implements FinancialSource, Financi
       effectiveDate:row.effective_date,postingDate:row.posting_date??undefined,
       source:{provider:row.source_provider,externalId:row.source_external_id??undefined},status:row.status,evidenceIds:Object.freeze(row.evidence_ids??[]),
     }));
-    return Object.freeze([...revenue,...observations]);
+    const balances=((balanceResult.data??[])as BalanceRow[]).map(row=>FinancialTransaction.create({id:`cash-balance:${row.id}`,accountId:row.account_id,workspaceId:row.workspace_id,propertyId:row.property_id??undefined,amount:Money.fromMinorUnits(Number(row.amount_minor),row.currency),category:"cash-balance",measurement:"actual",effectiveDate:row.as_of,postingDate:row.as_of,source:{provider:row.source_type,externalId:row.id},status:"posted",evidenceIds:[`cash-balance:${row.id}`]}));
+    return Object.freeze([...revenue,...observations,...balances]);
   }
   async getSynchronization(workspaceId: string) {
     const client = await createClient();

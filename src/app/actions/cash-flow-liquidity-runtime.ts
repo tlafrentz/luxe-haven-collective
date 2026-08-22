@@ -2,7 +2,7 @@ import "server-only";
 import { financialPeriod, type FinancialPeriodPreset } from "./financial-overview-runtime";
 import {
   CashFlowLiquidityError, CashFlowLiquidityProjectionAdapter, getCashFlowLiquidity,
-  SupabaseFinancialOverviewSource,
+  SupabaseCashBalanceReader, SupabaseCashTransactionReader, SupabaseFinancialOverviewSource,
 } from "@/features/financial-intelligence";
 import { resolveWorkspaceAccessContext, SupabaseTeamAccessRepository } from "@/features/workspace";
 import { getSessionProfile } from "@/lib/auth/session";
@@ -21,7 +21,7 @@ export async function getCashFlowLiquidityRouteState(input: Readonly<{
     const periodComparison = input.comparisonType === "forecast" ? "none" : input.comparisonType;
     const period = financialPeriod(input.periodPreset, periodComparison, evaluatedAt, input.customFrom, input.customTo);
     const source = new SupabaseFinancialOverviewSource();
-    const view = await getCashFlowLiquidity(new CashFlowLiquidityProjectionAdapter(access, source, source), {
+    const view = await getCashFlowLiquidity(new CashFlowLiquidityProjectionAdapter(access, source, source, { balances: new SupabaseCashBalanceReader(), movements: new SupabaseCashTransactionReader() }), {
       workspaceId: access.workspaceId, propertyIds: input.propertyIds, accountIds: input.accountIds,
       portfolioId: input.portfolioId, period, comparisonType: input.comparisonType,
       obligationHorizonDays: input.obligationHorizonDays, evaluatedAt: evaluatedAt.toISOString(),

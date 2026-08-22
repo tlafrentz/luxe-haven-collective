@@ -7,6 +7,7 @@ export * from "./supabase-financial-snapshot-writer";
 export * from "./income-statement-projection-adapter";
 export * from "./income-statement-cache";
 export * from "./cash-flow-projection-adapter";
+export * from "./supabase-cash-data-source";
 export * from "./cash-flow-cache";
 export * from "./financial-planning-projection-adapter";
 export * from "./financial-planning-cache";
