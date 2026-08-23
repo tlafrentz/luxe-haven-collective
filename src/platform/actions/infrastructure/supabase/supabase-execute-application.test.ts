@@ -30,7 +30,7 @@ class Client implements ExecuteSupabaseClient {
 
 const actor = { type: "user", id: "operator-1" } as const;
 const now = new Date("2026-08-09T12:00:00.000Z");
-const draft = () => ActionPlan.createDraft({ id: "plan-1", workspaceId: "workspace-1", title: "Improve arrival", origin: { type: "manual" }, scope: { type: "property", propertyIds: ["11111111-1111-4111-8111-111111111111"] }, owner: actor, priority: "high", successMetrics: [], actions: [{ id: "draft-1", position: 0, title: "Replace lock", owner: actor, dueAt: new Date("2026-08-12T12:00:00.000Z") }], createdBy: actor, createdAt: now });
+const draft = () => ActionPlan.createDraft({ id: "plan-1", workspaceId: "workspace-1", title: "Improve arrival", origin: { type: "manual" }, scope: { type: "property", propertyIds: ["11111111-1111-4111-8111-111111111111"] }, owner: actor, priority: "high", expectedOutcome: "A reliable arrival", successMetrics: [], actions: [{ id: "draft-1", position: 0, title: "Replace lock", category: "maintenance", propertyId: "11111111-1111-4111-8111-111111111111", owner: actor, dueAt: new Date("2026-08-12T12:00:00.000Z"), completionCriteria: ["Lock tested"], evidencePolicy: { mode: "specific", reviewRequired: true }, measurementRequirement: { metric: "entry-success" } }], createdBy: actor, createdAt: now });
 
 describe("Supabase Execute application persistence", () => {
   it("persists a draft plan, Draft Actions, and activity through one RPC", async () => {
@@ -52,12 +52,13 @@ describe("Supabase Execute application persistence", () => {
     const active = draft().activate({ actor, occurredAt: now });
     await unit.execute(async (context) => {
       await context.plans.replace(active, 1);
-      await context.actions.add({ action: persistedAction() });
+      await context.actions.add({ action: persistedAction("workspace-1", "draft-1") });
       await context.activity.append([event("plan-activated")]);
       await context.notifications.add([{ id: "notice-1", workspaceId: "workspace-1", recipientType: "user", recipientId: "operator-1", eventType: "new-assignment", entityType: "action", entityId: "action-1", templateVariables: { title: "Action" }, channel: "in-app", status: "pending", idempotencyKey: "assignment:action-1", attemptCount: 0, createdAt: now }]);
     });
     expect(client.calls[0]?.name).toBe("activate_execute_action_plan");
     expect(client.calls[0]?.args.p_action_payloads).toHaveLength(1);
+    expect(client.calls[0]?.args.p_action_payloads).toEqual([expect.objectContaining({ action: expect.objectContaining({ plan_id: "plan-1", property_id: "11111111-1111-4111-8111-111111111111", scope_type: "property", category: "maintenance", expected_outcome: "A reliable arrival", completion_criteria: ["Lock tested"], evidence_policy: { mode: "specific", reviewRequired: true }, measurement_requirement: { metric: "entry-success" }, review_required: true }) })]);
     expect(client.calls[0]?.args.p_notification_intents).toHaveLength(1);
   });
 

@@ -4,6 +4,9 @@ export type PlatformActionRow = Readonly<{
   workspace_id: string; id: string; title: string; description: string | null; action_type: string | null;
   status: ActionStatus; priority: ActionPriority; owner_type: ActionActorType; owner_id: string | null;
   schedule_created: string; schedule_scheduled: string | null; schedule_start_after: string | null; schedule_due: string | null; schedule_completed: string | null;
+  plan_id: string | null; property_id: string | null; scope_type: "property" | "multiple-properties" | "portfolio" | "organization"; category: string;
+  expected_outcome: string | null; completion_criteria: readonly string[]; evidence_policy: Readonly<Record<string, unknown>>;
+  measurement_requirement: Readonly<Record<string, unknown>> | null; review_required: boolean; archived_at: string | null;
   created_at: string; created_by_type: ActionActorType; created_by_id: string | null; updated_at: string; version: number;
 }>;
 export type PlatformActionAssignmentRow = Readonly<{

@@ -8,6 +8,8 @@ export function mapPlatformActionToPersistenceRows(action: PlatformAction): Plat
     workspace_id: workspaceId, id: actionId, title: action.title, description: action.description ?? null, action_type: action.actionType ?? null,
     status: action.status, priority: action.priority, owner_type: action.owner.type, owner_id: action.owner.id ?? null,
     schedule_created: iso(action.scheduleValue.created), schedule_scheduled: optionalIso(action.scheduleValue.scheduled), schedule_start_after: optionalIso(action.scheduleValue.startAfter), schedule_due: optionalIso(action.scheduleValue.due), schedule_completed: optionalIso(action.scheduleValue.completed),
+    plan_id: null, property_id: null, scope_type: "organization", category: "other", expected_outcome: null,
+    completion_criteria: [], evidence_policy: { mode: "optional" }, measurement_requirement: null, review_required: false, archived_at: null,
     created_at: iso(action.createdAt), created_by_type: action.createdBy.type, created_by_id: action.createdBy.id ?? null, updated_at: iso(action.updatedAt), version: action.version.value,
   };
   return Object.freeze({
