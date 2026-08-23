@@ -51,6 +51,8 @@ describe("workspace-driven platform experience", () => {
     expect(resolveWorkspaceForPath("/dashboard")).toBeUndefined();
     expect(resolveWorkspaceForPath("/properties")).toBeUndefined();
     expect(matchesNavigationRoute("/dashboard/investments-old", { type: "prefix", prefix: "/dashboard/investments" })).toBe(false);
+    expect(matchesNavigationRoute("/dashboard/portfolio", { type: "patterns", patterns: ["/dashboard/portfolio$"] })).toBe(true);
+    expect(matchesNavigationRoute("/dashboard/portfolio/decisions", { type: "patterns", patterns: ["/dashboard/portfolio$"] })).toBe(false);
   });
 
   it("filters internal operations from external roles", () => {
@@ -102,6 +104,12 @@ describe("workspace-driven platform experience", () => {
     const investmentRoutes = platformRouteDefinitions.filter(route => route.pathPattern.startsWith("/dashboard/investments"));
     expect(investmentRoutes.length).toBeGreaterThan(5);
     expect(investmentRoutes.every(route => route.hpmStage === "decide" && route.navigationItemId === "decide")).toBe(true);
+  });
+
+  it("registers canonical Execute Action and Action Plan detail routes", () => {
+    for (const pathPattern of ["/dashboard/execute/actions/[id]", "/dashboard/execute/plans/[planId]"]) {
+      expect(platformRouteDefinitions.find(route => route.pathPattern === pathPattern)).toMatchObject({ hpmStage: "execute", navigationItemId: "execute", smoke: "requires-fixture" });
+    }
   });
 
   it("owns Portfolio Intelligence as an Understand lifecycle destination", () => {

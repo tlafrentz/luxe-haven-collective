@@ -44,7 +44,7 @@ export function PortfolioDecisionReviewControls({ candidate, decision, canApprov
 
   return <section aria-labelledby="decision-actions-heading" className="rounded-2xl border border-stone-200 bg-white p-6">
     <h2 id="decision-actions-heading" className="text-xl font-semibold">Decision actions</h2>
-    <p className="mt-2 text-sm text-stone-600">Approval is explicit and idempotent. It creates editable Action Center drafts; it does not move funds.</p>
+    <p className="mt-2 text-sm text-stone-600">Approval is explicit and idempotent. It records the decision; entering Execute requires a separate Action Plan handoff.</p>
     <div className="mt-5 grid gap-4">
       <label className="text-sm font-semibold">Selected alternative<select value={selectedAlternativeId} onChange={(event) => setSelectedAlternativeId(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-stone-300 px-3 font-normal">{candidate.alternatives.map((item) => <option key={item.id} value={item.id}>{item.label}{item.baseline ? " — baseline" : ""}</option>)}</select></label>
       <label className="text-sm font-semibold">Decision rationale<textarea value={rationale} onChange={(event) => setRationale(event.target.value)} rows={4} className="mt-2 w-full rounded-xl border border-stone-300 p-3 font-normal" placeholder="Explain the selected alternative, expected outcomes, assumptions, and accepted tradeoffs." /></label>
@@ -63,4 +63,3 @@ export function PortfolioDecisionReviewControls({ candidate, decision, canApprov
 function Feedback({ result }: Readonly<{ result: PortfolioDecisionActionResult | null }>) {
   return result ? <p role={result.ok ? "status" : "alert"} tabIndex={result.ok ? undefined : -1} className={`mt-4 rounded-xl p-3 text-sm ${result.ok ? "bg-teal-50 text-teal-900" : "bg-rose-50 text-rose-900"}`}>{result.message}</p> : null;
 }
-

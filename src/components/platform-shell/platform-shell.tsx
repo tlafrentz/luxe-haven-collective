@@ -858,6 +858,20 @@ export function pageDetails(
           : [{ id: "current", label: "Conversation", current: true }]),
       ],
     };
+  if (pathname === "/dashboard/learn" || pathname.startsWith("/dashboard/learn/")) {
+    const section = pathname.startsWith("/dashboard/learn/lessons") ? "Knowledge"
+      : pathname.startsWith("/dashboard/learn/experiments") ? "Experiments"
+        : pathname.startsWith("/dashboard/learn/improvement") ? "Improvement" : "Outcomes";
+    return {
+      eyebrow: "Learn",
+      title: section,
+      breadcrumbs: [
+        { id: "home", label: "Home", href: "/dashboard" },
+        { id: "learn", label: "Learn", ...(pathname === "/dashboard/learn" ? { current: true as const } : { href: "/dashboard/learn" }) },
+        ...(pathname === "/dashboard/learn" ? [] : [{ id: "current", label: section, current: true as const }]),
+      ],
+    };
+  }
   if (pathname.startsWith("/dashboard/learning")) {
     const workspace = pathname.startsWith("/dashboard/learning/workspace");
     return {
@@ -868,7 +882,7 @@ export function pageDetails(
         {
           id: "learning",
           label: "Learning Intelligence",
-          ...(workspace ? { href: "/dashboard/learning" } : { current: true }),
+          ...(workspace ? { href: "/dashboard/learn" } : { current: true }),
         },
         ...(workspace
           ? [

@@ -4,11 +4,13 @@ import { buildPortfolioDecisionWorkspace } from "../application/decisions";
 import { portfolioDecisionFixture } from "../application/decisions/portfolio-decisions.test";
 import { PortfolioDecisionsError, PortfolioDecisionsSkeleton, PortfolioDecisionsView } from "./portfolio-decisions";
 import { PortfolioDecisionReviewControls } from "./portfolio-decision-review-controls";
+import { DecisionActionPlanHandoff } from "./decision-action-plan-handoff";
 
 vi.mock("@/app/actions/portfolio-decisions-runtime", () => ({
   createPortfolioDecisionAction: vi.fn(),
   commandPortfolioDecisionAction: vi.fn(),
 }));
+vi.mock("@/app/actions/execute-plans", () => ({ createExecutePlanFromDecisionAction: vi.fn() }));
 
 describe("Portfolio decisions presentation", () => {
   it("renders candidates, alternatives, capital states, pipeline, conflicts, and expected-value language", () => {
@@ -45,5 +47,14 @@ describe("Portfolio decisions presentation", () => {
     expect(owner).toContain("Review date");
     const viewer = renderToStaticMarkup(<PortfolioDecisionReviewControls candidate={candidate} decision={decision} canApprove={false} />);
     expect(viewer).toContain("review-only access");
+  });
+  it("keeps approval separate from the explicit canonical Action Plan handoff", () => {
+    const { decision } = portfolioDecisionFixture();
+    const controls = renderToStaticMarkup(<PortfolioDecisionReviewControls candidate={portfolioDecisionFixture().candidate} decision={decision} canApprove />);
+    expect(controls).toContain("records the decision");
+    expect(controls).toContain("separate Action Plan handoff");
+    const handoff = renderToStaticMarkup(<DecisionActionPlanHandoff decisionId={decision.decisionId} />);
+    expect(handoff).toContain("Create Action Plan");
+    expect(handoff).toContain("does not activate or assign execution");
   });
 });

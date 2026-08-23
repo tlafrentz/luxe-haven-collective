@@ -9,6 +9,7 @@ describe("EDS-006 Execute and Learn experience", () => {
       "execute",
       "execute/actions",
       "execute/actions/[id]",
+      "execute/plans/[planId]",
       "learn",
       "learn/outcomes",
       "learn/outcomes/[reviewId]",

@@ -118,7 +118,7 @@ export async function projectExecuteActionDetail(
       commands.push("resume");
     if (
       action.status === "in-progress" &&
-      !(
+      (
         state.evidencePolicy.reviewRequired ??
         state.evidencePolicy.reviewerApprovalRequired
       ) &&

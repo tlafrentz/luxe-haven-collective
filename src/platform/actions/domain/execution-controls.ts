@@ -60,6 +60,7 @@ export type ActionBlockerCategory =
   | "financial-approval"
   | "dependency-incomplete"
   | "other";
+export const DEFAULT_ACTION_BLOCKER_SEVERITY = "medium" as const;
 export type ActionBlocker = Readonly<{
   id: string;
   workspaceId: string;

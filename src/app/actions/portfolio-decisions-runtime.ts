@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { PortfolioComparison } from "@/features/portfolio";
 import {
   applyPortfolioDecisionCommand, buildPortfolioDecisionWorkspace,
-  createApprovedDecisionActions, createDecisionMeasurementPlan,
+  createDecisionMeasurementPlan,
   createPortfolioDecision, getCapitalAllocationCandidates,
   PortfolioDecisionError, savePortfolioDecisionMeasurementPlan,
   SupabasePortfolioDecisionRepository,
@@ -12,8 +12,6 @@ import {
 } from "@/features/portfolio-intelligence";
 import { resolveWorkspaceAccessContext, SupabaseTeamAccessRepository } from "@/features/workspace";
 import { getSessionProfile } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
-import { createPlatformActionProvider } from "./action-center-runtime";
 import { getPortfolioFindingsRouteState } from "./portfolio-findings-runtime";
 
 type RouteInput = Readonly<{
@@ -95,11 +93,6 @@ export async function commandPortfolioDecisionAction(
       ...(input.reviewAt ? { reviewAt: input.reviewAt } : {}),
     });
     if (saved.status === "approved") {
-      const client = await createClient();
-      await createApprovedDecisionActions({
-        decision: saved, provider: createPlatformActionProvider(client),
-        actorProfileId: loaded.access.profileId, commandId: input.commandId, occurredAt: now,
-      });
       const measurement = createDecisionMeasurementPlan(saved);
       await savePortfolioDecisionMeasurementPlan(
         saved.workspaceId, measurement, saved.evidenceVersion, loaded.access.profileId,

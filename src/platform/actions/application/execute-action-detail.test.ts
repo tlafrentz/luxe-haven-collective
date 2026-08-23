@@ -86,4 +86,17 @@ describe("EX-001B2 Action detail projection", () => {
     expect(detail.validCommands).not.toContain("complete");
     expect(Object.isFrozen(detail.validCommands)).toBe(true);
   });
+  it("offers review submission only when review-required evidence is present", async () => {
+    let current = action();
+    current = current.start({ workspaceId: current.workspaceId, expectedVersion: current.version, actor, occurredAt: at });
+    const state: ExecuteControlState = {
+      action: current,
+      evidencePolicy: { mode: "specific", requiredTypes: ["photo"], reviewRequired: true },
+      evidence: [{ id: "evidence-1", workspaceId: "w", actionId: "a", type: "photo", status: "submitted", createdAt: at, createdBy: "owner" }],
+      blockers: [], dependencies: [], relatedActions: [current],
+    };
+    const detail = await projectExecuteActionDetail({ state, activity: [], actor, authorization });
+    expect(detail.validCommands).toContain("submit-for-review");
+    expect(detail.validCommands).not.toContain("complete");
+  });
 });

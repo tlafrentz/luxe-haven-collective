@@ -19,6 +19,7 @@ export {
 } from "./action-queue";
 
 export { ActionPlanQueue } from "./action-plan-queue";
+export { ActionPlanWorkspace } from "./action-plan-workspace";
 
 export {
   ActionStatusBadge,
@@ -31,3 +32,4 @@ export {
 export {
   ExecutionWorkspacePage,
 } from "./execution-workspace";
+export { ExecutionDetailWorkspace } from "./execution-detail-workspace";

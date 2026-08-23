@@ -102,18 +102,26 @@ export async function getPlatformOutcomeReviewDetail(id: string, workspaceId?: s
     .eq("workspace_id",access.workspaceId).eq("id",id).maybeSingle();
   if (!review) return null;
   const row=review as Row,revision=number(row,"revision");
-  const [{data:evaluations},{data:measurements},{data:summary},{data:lessons},{data:activity}]=await Promise.all([
+  const measurementPlanVersionId=text(row,"measurement_plan_version_id");
+  const [{data:evaluations},{data:measurements},{data:summary},{data:lessons},{data:activity},{data:measurementPlan}]=await Promise.all([
     client.from("learning_metric_evaluations").select("*").eq("workspace_id",access.workspaceId).eq("outcome_review_id",id).eq("review_revision",revision),
     client.from("learning_measured_outcome_revisions").select("*").eq("workspace_id",access.workspaceId).eq("outcome_review_id",id),
     client.from("learning_review_summaries").select("*").eq("workspace_id",access.workspaceId).eq("outcome_review_id",id).eq("review_revision",revision).maybeSingle(),
     client.from("learning_lesson_versions").select("id,statement,status,maturity,confidence,source_review_ids").eq("workspace_id",access.workspaceId).contains("source_review_ids",[id]),
     client.from("learning_activity").select("*").eq("workspace_id",access.workspaceId).eq("subject_id",text(row,"learning_subject_id")).order("occurred_at",{ascending:false}).limit(100),
+    client.from("learning_measurement_plan_versions").select("id,title,source_action_id,source_action_plan_id,source_decision_id,property_id,created_at,activated_at")
+      .eq("workspace_id",access.workspaceId).eq("id",measurementPlanVersionId).maybeSingle(),
   ]);
   return Object.freeze({review:mapReview(row,new Map(summary?[[`${id}:${revision}`,summary as Row]]:[])),
     expected:Object.freeze(array(row.expected_outcome_snapshots) as Row[]),
     evaluations:Object.freeze((evaluations??[]) as Row[]),measurements:Object.freeze((measurements??[]) as Row[]),
     evidence:Object.freeze(array(row.evidence_references) as Row[]),lessons:Object.freeze((lessons??[]) as Row[]),
-    activity:Object.freeze((activity??[]) as Row[])});
+    activity:Object.freeze((activity??[]) as Row[]),
+    lineage:Object.freeze({measurementPlanVersionId,...(measurementPlan?{
+      measurementPlanTitle:text(measurementPlan as Row,"title"),sourceActionId:text(measurementPlan as Row,"source_action_id"),
+      sourceActionPlanId:text(measurementPlan as Row,"source_action_plan_id"),sourceDecisionId:text(measurementPlan as Row,"source_decision_id"),
+      propertyId:text(measurementPlan as Row,"property_id"),createdAt:text(measurementPlan as Row,"created_at"),activatedAt:text(measurementPlan as Row,"activated_at"),
+    }: {})})});
 }
 export async function getRelevantLearning(input:
   Omit<LearningDecisionContext,"workspaceId"|"evaluatedAt"> & {workspaceId?:string;evaluatedAt?:string}) {

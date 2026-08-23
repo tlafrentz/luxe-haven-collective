@@ -146,20 +146,20 @@ export function buildKnowledgeGaps(input: {
 }): readonly KnowledgeGap[] {
   const gaps: KnowledgeGap[] = [];
   if (input.unvalidatedAssumptionCount) gaps.push(gap("assumptions", "unvalidated-assumption", "high",
-    `${input.unvalidatedAssumptionCount} assumptions need validation`, "Completed reviews have assumptions without a governed result.", "/dashboard/learning/reviews"));
+    `${input.unvalidatedAssumptionCount} assumptions need validation`, "Completed reviews have assumptions without a governed result.", "/dashboard/learn/outcomes"));
   const overdue = input.reviews.filter(x => x.status === "overdue").length;
   if (overdue) gaps.push(gap("overdue", "overdue-review", "high", `${overdue} reviews are overdue`,
-    "Expected outcomes remain unmeasured or incomplete.", "/dashboard/learning/reviews?status=overdue"));
+    "Expected outcomes remain unmeasured or incomplete.", "/dashboard/learn/outcomes?status=overdue"));
   const missing = input.reviews.filter(x => x.status === "unable-to-evaluate").length;
   if (missing) gaps.push(gap("measurements", "missing-measurement", "medium",
-    `${missing} reviews lack sufficient evidence`, "Unavailable measurements remain explicit.", "/dashboard/learning/reviews?status=unable-to-evaluate"));
+    `${missing} reviews lack sufficient evidence`, "Unavailable measurements remain explicit.", "/dashboard/learn/outcomes?status=unable-to-evaluate"));
   const low = input.lessons.filter(x => ["low", "insufficient-evidence"].includes(x.confidence)).length;
   if (low) gaps.push(gap("confidence", "low-confidence-lesson", "medium", `${low} lessons have low confidence`,
-    "Additional reviews or stronger evidence are needed.", "/dashboard/learning/lessons?confidence=low"));
+    "Additional reviews or stronger evidence are needed.", "/dashboard/learn/lessons?confidence=low"));
   if (input.contradictions.length) gaps.push(gap("contradictions", "contradiction", "high",
-    `${input.contradictions.length} contradictions need resolution`, "Conflicting knowledge remains visible.", "/dashboard/learning/health#contradictions"));
+    `${input.contradictions.length} contradictions need resolution`, "Conflicting knowledge remains visible.", "/dashboard/learn/lessons?status=contradicted"));
   input.unsupportedContexts.forEach((context, index) => gaps.push(gap(`context:${index}`, "unsupported-context", "low",
-    `No validated learning for ${context}`, "This operating context lacks validated coverage.", "/dashboard/learning/lessons")));
+    `No validated learning for ${context}`, "This operating context lacks validated coverage.", "/dashboard/learn/lessons")));
   return Object.freeze(gaps);
 }
 
