@@ -12,7 +12,9 @@ export default async function ConnectedSystemsPage({ searchParams }: { searchPar
   const { user } = await requireUser();
   const params = await searchParams;
   const requestedReturn = params.returnTo;
-  const returnTo = requestedReturn?.startsWith("/dashboard/observe/") ? requestedReturn : undefined;
+  const returnTo = requestedReturn?.startsWith("/dashboard/observe/") || requestedReturn === "/properties"
+    ? requestedReturn
+    : undefined;
   const context = await resolveWorkspaceAccessContext(new SupabaseTeamAccessRepository(), user.id, params.workspace);
   const overview = await getPropertiesAndSystemsOverview(new SupabasePropertiesSystemsRepository(), context);
   const financialConnections = await listPlaidConnectionsAction(context.workspaceId);

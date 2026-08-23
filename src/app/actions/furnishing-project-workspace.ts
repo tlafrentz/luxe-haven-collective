@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertFurnishingEntitlement } from "./furnishing-access";
 import {
   minorUnits,
   representativeOffer,
@@ -41,6 +42,7 @@ async function authorize(
     ]);
   const { data } = await query.maybeSingle();
   if (!data) throw new Error("FURNISHING_PROJECT_ACCESS_DENIED");
+  await assertFurnishingEntitlement(workspaceId);
 }
 export async function getProjectSetup() {
   const { db, profile } = await context();
@@ -54,7 +56,14 @@ export async function getProjectSetup() {
           .from("workspace_memberships")
           .select("workspace_id,role")
           .eq("profile_id", profile?.id)
-          .eq("status", "active");
+          .eq("status", "active")
+          .order("created_at", { ascending: true })
+          .limit(1);
+  if (profile?.role !== "admin") {
+    const workspaceId = (workspaceRows?.[0] as Row | undefined)?.workspace_id;
+    if (!workspaceId) throw new Error("FURNISHING_PROJECT_ACCESS_DENIED");
+    await authorize(db, profile, String(workspaceId), false);
+  }
   let properties = db
     .from("properties")
     .select(
@@ -62,15 +71,8 @@ export async function getProjectSetup() {
     )
     .order("name");
   if (profile?.role !== "admin") {
-    const { data: members } = await db
-      .from("workspace_memberships")
-      .select("workspace_id")
-      .eq("profile_id", profile?.id)
-      .eq("status", "active");
-    properties = properties.in(
-      "owner_id",
-      (members ?? []).map((x) => x.workspace_id),
-    );
+    const workspaceId = (workspaceRows?.[0] as Row | undefined)?.workspace_id;
+    properties = properties.eq("owner_id", workspaceId);
   }
   const [propertyRows, packages, styles] = await Promise.all([
     properties,
@@ -88,7 +90,7 @@ export async function getProjectSetup() {
       .eq("lifecycle_status", "approved"),
   ]);
   const error = [propertyRows, packages, styles].find((x) => x.error)?.error;
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   return {
     properties: propertyRows.data ?? [],
     packages: packages.data ?? [],
@@ -109,14 +111,16 @@ export async function listProjectWorkspaces() {
       .from("workspace_memberships")
       .select("workspace_id")
       .eq("profile_id", profile?.id)
-      .eq("status", "active");
-    query = query.in(
-      "workspace_id",
-      (members ?? []).map((x) => x.workspace_id),
-    );
+      .eq("status", "active")
+      .order("created_at", { ascending: true })
+      .limit(1);
+    const workspaceId = members?.[0]?.workspace_id;
+    if (!workspaceId) throw new Error("FURNISHING_PROJECT_ACCESS_DENIED");
+    await authorize(db, profile, String(workspaceId), false);
+    query = query.eq("workspace_id", workspaceId);
   }
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   return data ?? [];
 }
 const suggestedRooms = (bedrooms: number, bathrooms: number) => [
@@ -187,7 +191,7 @@ export async function createFurnishingPropertyAction(formData: FormData) {
     })
     .select("id")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   const prefix = profile?.role === "admin" ? "/admin" : "/dashboard";
   redirect(`${prefix}/furnishing/projects/new?property=${property.id}`);
 }
@@ -226,7 +230,7 @@ export async function createProjectWorkspaceAction(formData: FormData) {
     })
     .select("id")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   const bedrooms =
       Number(formData.get("bedrooms")) || Number(property.bedrooms) || 1,
     bathrooms = Math.ceil(
@@ -277,7 +281,7 @@ export async function createProjectWorkspaceAction(formData: FormData) {
       })
       .select("id")
       .single();
-    if (pe) throw new Error(pe.message);
+    if (pe) throw new Error("FURNISHING_DESIGN_PROFILE_FAILED");
     const { data: profileVersion } = await db
       .from("furnishing_design_profile_versions")
       .insert({
@@ -321,7 +325,7 @@ export async function getProjectWorkspace(projectId: string) {
     )
     .eq("id", projectId)
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   await authorize(db, profile, project.workspace_id, false);
   const [
     { data: packages },
@@ -433,7 +437,7 @@ export async function generateFurnishingPlanAction(formData: FormData) {
     })
     .select("id")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   let total = 0,
     selectionOrder = 0;
   const compositions: Row[] =
@@ -626,7 +630,7 @@ export async function replaceProjectSelectionAction(formData: FormData) {
     })
     .eq("id", selectionId)
     .eq("revision", revision);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   if (
     (compatibility === null || compatibility === "avoid") &&
     projectContext?.design_profile_version_id
@@ -676,7 +680,7 @@ export async function changeSelectionOfferAction(formData: FormData) {
     })
     .eq("id", selectionId)
     .eq("revision", revision);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   await recalculatePlan(db, plan.id);
   revalidatePath(`/admin/furnishing/projects/${plan.project_id}`);
 }
@@ -898,7 +902,7 @@ export async function completeProjectAction(formData: FormData) {
     .from("furnishing_projects")
     .update({ lifecycle_status: "completed", completed_at: new Date().toISOString() })
     .eq("id", projectId);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   revalidatePath(`/dashboard/furnishing/projects/${projectId}`);
   revalidatePath(`/admin/furnishing/projects/${projectId}`);
 }
@@ -1073,7 +1077,7 @@ export async function createPlanRevisionAction(formData: FormData) {
     .eq("id", sourceId)
     .eq("status", "approved")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   const { data: next, error: ne } = await db
     .from("furnishing_plans")
     .insert({
@@ -1093,7 +1097,7 @@ export async function createPlanRevisionAction(formData: FormData) {
     })
     .select("id")
     .single();
-  if (ne) throw new Error(ne.message);
+  if (ne) throw new Error("FURNISHING_PLAN_REVISION_FAILED");
   if (source.furnishing_product_selections.length)
     await db.from("furnishing_product_selections").insert(
       source.furnishing_product_selections.map((x: Row) => ({

@@ -81,7 +81,7 @@ export async function NewProjectWorkspace({
               </option>
             ))}
           </select>
-          <details className="mt-4 rounded-xl border p-4">
+          {customer ? <Link href="/properties/new?returnTo=%2Fdashboard%2Ffurnishing%2Fprojects%2Fnew" className="mt-4 inline-flex rounded-xl border px-4 py-2.5 text-sm font-semibold text-violet-700">+ Add new canonical property</Link> : <details className="mt-4 rounded-xl border p-4">
             <summary className="cursor-pointer font-semibold text-violet-700">
               + Add new canonical property
             </summary>
@@ -181,7 +181,7 @@ export async function NewProjectWorkspace({
                 Save property
               </button>
             </div>
-          </details>
+          </details>}
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <label>
               Bedrooms

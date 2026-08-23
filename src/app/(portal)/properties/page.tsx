@@ -19,6 +19,7 @@ import {
   getOperationalSurfaceProjection,
 } from "@/features/operational-surfaces";
 import { requireUser } from "@/lib/auth/session";
+import { resolveWorkspaceAccessContext, SupabaseTeamAccessRepository } from "@/features/workspace";
 
 type PropertiesPageProps = Readonly<{
   searchParams: Promise<{
@@ -34,11 +35,15 @@ export default async function PropertiesPage({
   searchParams,
 }: PropertiesPageProps) {
   const { user, profile } = await requireUser();
+  const access = await resolveWorkspaceAccessContext(
+    new SupabaseTeamAccessRepository(),
+    user.id,
+  );
   const params = await searchParams;
   const fullProjection = await getOperationalSurfaceProjection({
     principal: {
       userId: user.id,
-      workspaceId: user.id,
+      workspaceId: access.workspaceId,
       role: profile?.role ?? "guest",
     },
     workspaceLabel: profile?.full_name
@@ -96,7 +101,7 @@ export default async function PropertiesPage({
         <WorkspaceContent>
           <WorkspaceEmptyState
             title="No properties available"
-            description="Import properties from your connected hospitality platform to begin operating your portfolio."
+            description="Add a property manually or import one from a connected hospitality platform to begin operating your portfolio."
             action={
               <Link
                 href="/properties/new"

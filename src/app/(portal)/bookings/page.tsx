@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth/session";
+import { resolveWorkspaceAccessContext, SupabaseTeamAccessRepository } from "@/features/workspace";
 import {
   getBooking,
   getBookings,
@@ -39,6 +40,10 @@ export default async function BookingsPage({
   searchParams,
 }: BookingsPageProps) {
   const { user, profile } = await requireUser();
+  const access = await resolveWorkspaceAccessContext(
+    new SupabaseTeamAccessRepository(),
+    user.id,
+  );
   const params = await searchParams;
   const statusValue = first(params.status);
   const filters: BookingFilters = {
@@ -61,7 +66,7 @@ export default async function BookingsPage({
   const contextRepository = new SupabaseReservationContextRepository();
   const principal = {
     userId: user.id,
-    workspaceId: user.id,
+    workspaceId: access.workspaceId,
     role: profile?.role ?? ("guest" as const),
   };
   const contexts = await getReservationContexts(
@@ -84,10 +89,10 @@ export default async function BookingsPage({
     contexts.map((context) => [
       context.bookingId,
       evaluateBookingQuality({
-        workspaceId: user.id,
+        workspaceId: access.workspaceId,
         bookingId: context.bookingId,
         propertyId: context.property.id,
-        propertyWorkspaceId: user.id,
+        propertyWorkspaceId: access.workspaceId,
         arrival: context.stay.window.arrivalDate,
         departure: context.stay.window.departureDate,
         status:
@@ -136,7 +141,7 @@ export default async function BookingsPage({
       qualityByBookingId={qualityByBookingId}
       qualitySummary={qualitySummary}
       contextValue={{
-        workspaceId: user.id,
+        workspaceId: access.workspaceId,
         workspaceLabel: profile?.full_name
           ? `${profile.full_name}'s Workspace`
           : "Luxe Haven Workspace",

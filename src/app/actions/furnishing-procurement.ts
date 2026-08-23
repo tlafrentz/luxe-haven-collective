@@ -3,6 +3,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertFurnishingEntitlement } from "./furnishing-access";
 // Pending FS migrations are intentionally not represented in generated database types yet.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -18,6 +19,7 @@ async function scope(projectId: string, write = false) {
     const { data } = await membership.maybeSingle();
     if (!data) throw new Error("FURNISHING_PROCUREMENT_ACCESS_DENIED");
   }
+  await assertFurnishingEntitlement(String(project.workspace_id), profile?.role === "admin");
   return { db, project: project as Row, actorId: profile?.id ?? user.id, profile };
 }
 export async function getProcurementWorkspace(projectId: string) {
@@ -35,7 +37,7 @@ export async function getProcurementWorkspace(projectId: string) {
     db.from("furnishing_shipments").select("*,furnishing_procurement_orders!inner(baseline_id,vendor)").eq("furnishing_procurement_orders.baseline_id", baseline.id).order("created_at", { ascending: false }),
   ]);
   const failed = [lines, budget, batches, orders, exceptions, events, retailers, shipments].find((x) => x.error)?.error;
-  if (failed) throw new Error(failed.message);
+  if (failed) throw new Error("FURNISHING_OPERATION_FAILED");
   return { project, baseline, lines: lines.data ?? [], budget: budget.data ?? null, batches: batches.data ?? [], orders: orders.data ?? [], exceptions: exceptions.data ?? [], events: events.data ?? [], retailers: retailers.data ?? [], shipments: shipments.data ?? [] };
 }
 export async function generateProcurementBaselineAction(formData: FormData) {
@@ -47,11 +49,11 @@ export async function generateProcurementBaselineAction(formData: FormData) {
   if (existing.data) return { id: existing.data.id, alreadyGenerated: true };
   const hash = `${plan.id}:${plan.revision}:${plan.updated_at}`;
   const { data: baseline, error } = await db.from("furnishing_procurement_baselines").insert({workspace_id: project.workspace_id,property_id: project.property_id,project_id: project.id,source_plan_id: plan.id,source_plan_version: plan.version_number,source_snapshot: { package: plan.package_snapshot, design: plan.design_snapshot, approval: plan.approval_snapshot },source_hash: hash,currency: plan.currency,status: "draft",estimated_subtotal_minor: plan.estimated_subtotal_minor,estimated_tax_minor: plan.estimated_tax_minor,estimated_shipping_minor: plan.estimated_shipping_minor,estimated_total_minor: plan.estimated_total_minor,idempotency_key: idempotencyKey,created_by: actorId}).select("id").single();
-  if (error || !baseline) throw new Error(error?.message ?? "FS006_BASELINE_CREATE_FAILED");
+  if (error || !baseline) throw new Error("FS006_BASELINE_CREATE_FAILED");
   const selections = (plan.furnishing_product_selections ?? []) as Row[];
   const rows = selections.filter((s) => Number(s.resolved_quantity) > 0).map((s) => ({baseline_id: baseline.id,source_plan_line_id:s.id,room_id:s.room_id,product_id:s.product_id,selected_offer_id:s.selected_offer_id,category:s.furnishing_products?.category ?? "Unclassified",description:s.requirement_name ?? s.furnishing_products?.name ?? "Furnishing item",planned_quantity:Number(s.quantity_override ?? s.resolved_quantity),existing_inventory_quantity:Number(s.existing_quantity ?? 0),estimated_unit_cost_minor:s.estimated_unit_price_minor,estimated_line_cost_minor:s.estimated_total_minor,currency:s.currency,source_snapshot:{selectionStatus:s.selection_status,priority:s.priority,quantityRuleId:s.quantity_rule_id,overrideReason:s.quantity_override_reason,styleCompatibility:s.style_compatibility}}));
   const inserted = rows.length ? await db.from("furnishing_procurement_lines").insert(rows) : { error: null };
-  if (inserted.error) { await db.from("furnishing_procurement_baselines").delete().eq("id", baseline.id); throw new Error(inserted.error.message); }
+  if (inserted.error) { await db.from("furnishing_procurement_baselines").delete().eq("id", baseline.id); throw new Error("FS006_BASELINE_LINES_FAILED"); }
   await db.from("furnishing_procurement_events").insert({baseline_id:baseline.id,workspace_id:project.workspace_id,property_id:project.property_id,project_id:project.id,actor_id:actorId,correlation_id:crypto.randomUUID(),event_type:"procurement_baseline_generated",resulting_version:1,policy_version:"fs006-v1",related_type:"plan",related_id:plan.id,payload:{sourcePlanVersion:plan.version_number,lineCount:rows.length}});
   revalidatePath(`/dashboard/furnishing/projects/${projectId}/procurement`); revalidatePath(`/admin/furnishing/projects/${projectId}/procurement`);
   return { id: baseline.id, alreadyGenerated: false };
@@ -69,7 +71,7 @@ export async function changeProcurementLineOfferAction(formData: FormData) {
     estimated_unit_cost_minor: unit,
     estimated_line_cost_minor: unit === null ? null : Math.round(Number(unit) * Number(line.procurement_quantity)),
   }).eq("id", lineId);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   revalidatePath(`/dashboard/furnishing/projects/${projectId}/procurement`); revalidatePath(`/admin/furnishing/projects/${projectId}/procurement`);
 }
 export async function submitPurchaseBatchAction(formData: FormData) {
@@ -89,14 +91,14 @@ export async function submitPurchaseBatchAction(formData: FormData) {
     readiness_snapshot: { lineCount: eligible.length }, version: 1, idempotency_key: idempotencyKey,
     created_by: actorId, submitted_by: actorId, submitted_at: new Date().toISOString(),
   }).select("id").single();
-  if (error || !batch) throw new Error(error?.message ?? "FS006_BATCH_CREATE_FAILED");
+  if (error || !batch) throw new Error("FS006_BATCH_CREATE_FAILED");
   const batchLines = eligible.map((l: Row) => ({
     batch_id: batch.id, line_id: l.id, quantity: l.procurement_quantity,
     confirmed_unit_price_minor: l.estimated_unit_cost_minor ?? 0,
     offer_confirmation: { offerId: l.selected_offer_id, listedPriceMinor: l.furnishing_product_offers?.listed_price_minor, availability: l.furnishing_product_offers?.availability },
   }));
   const { error: linesError } = await db.from("furnishing_purchase_batch_lines").insert(batchLines);
-  if (linesError) { await db.from("furnishing_purchase_batches").delete().eq("id", batch.id); throw new Error(linesError.message); }
+  if (linesError) { await db.from("furnishing_purchase_batches").delete().eq("id", batch.id); throw new Error("FS006_BATCH_LINES_FAILED"); }
   revalidatePath(`/dashboard/furnishing/projects/${projectId}/procurement`); revalidatePath(`/admin/furnishing/projects/${projectId}/procurement`);
 }
 export async function authorizePurchaseBatchAction(formData: FormData) {
@@ -107,7 +109,7 @@ export async function authorizePurchaseBatchAction(formData: FormData) {
   if (batch.status !== "submitted") throw new Error("FS006_BATCH_NOT_SUBMITTED");
   if (batch.submitted_by === actorId) throw new Error("FS006_AUTHORIZATION_REQUIRES_DIFFERENT_ACTOR");
   const { error } = await db.from("furnishing_purchase_batches").update({ status: "authorized", authorized_by: actorId, authorized_at: new Date().toISOString() }).eq("id", batchId);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   const { data: batchLines } = await db.from("furnishing_purchase_batch_lines").select("line_id").eq("batch_id", batchId);
   const lineIds = (batchLines ?? []).map((x: Row) => x.line_id);
   if (lineIds.length) await db.from("furnishing_procurement_lines").update({ status: "authorized" }).in("id", lineIds);
@@ -129,7 +131,7 @@ export async function recordExternalOrderAction(formData: FormData) {
     order_date: orderDate || new Date().toISOString().slice(0, 10),
     authorized_total_minor: batch.total_minor, actual_total_minor: batch.total_minor,
   }).select("id").single();
-  if (error || !order) throw new Error(error?.message ?? "FS006_ORDER_CREATE_FAILED");
+  if (error || !order) throw new Error("FS006_ORDER_CREATE_FAILED");
   const orderLines = (batchLines ?? []).map((bl: Row) => ({
     order_id: order.id, procurement_line_id: bl.line_id, snapshot: bl.offer_confirmation,
     ordered_quantity: bl.quantity, unit_price_minor: bl.confirmed_unit_price_minor,
@@ -138,7 +140,7 @@ export async function recordExternalOrderAction(formData: FormData) {
   }));
   if (orderLines.length) {
     const { error: olError } = await db.from("furnishing_procurement_order_lines").insert(orderLines);
-    if (olError) throw new Error(olError.message);
+    if (olError) throw new Error("FS006_ORDER_LINES_FAILED");
   }
   await db.from("furnishing_purchase_batches").update({ status: "ordered" }).eq("id", batchId);
   const lineIds = (batchLines ?? []).map((x: Row) => x.line_id);
@@ -158,7 +160,7 @@ export async function recordReceivingAction(formData: FormData) {
   const { error } = await db.from("furnishing_procurement_lines").update({
     received_quantity: receivedQuantity, accepted_quantity: acceptedQuantity, status,
   }).eq("id", lineId);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   if (receivedQuantity > acceptedQuantity || condition !== "good") {
     await db.from("furnishing_procurement_exceptions").insert({
       baseline_id: line.baseline_id, line_id: lineId,
@@ -175,5 +177,5 @@ export async function saveProcurementBudgetAction(formData: FormData) {
   const {db,project,actorId}=await scope(projectId,true);
   const {data:latest}=await db.from("furnishing_project_procurement_budgets").select("version").eq("baseline_id",baselineId).order("version",{ascending:false}).limit(1).maybeSingle();
   const {error}=await db.from("furnishing_project_procurement_budgets").insert({baseline_id:baselineId,workspace_id:project.workspace_id,property_id:project.property_id,project_id:project.id,currency:"USD",status:"submitted",base_amount_minor:base,contingency_minor:contingency,forecast_final_minor:base,version:Number(latest?.version??0)+1,submitted_by:actorId,submitted_at:new Date().toISOString(),created_by:actorId});
-  if(error) throw new Error(error.message); revalidatePath(`/dashboard/furnishing/projects/${projectId}/procurement`); revalidatePath(`/admin/furnishing/projects/${projectId}/procurement`);
+  if(error) throw new Error("FURNISHING_OPERATION_FAILED"); revalidatePath(`/dashboard/furnishing/projects/${projectId}/procurement`); revalidatePath(`/admin/furnishing/projects/${projectId}/procurement`);
 }
