@@ -1,12 +1,359 @@
 "use client";
 import { useActionState, useRef, useState } from "react";
-import { importFinancialCsvAction, recordCashBalanceAction, type CashAcquisitionState } from "@/app/actions/cash-data-acquisition";
+import {
+  importFinancialCsvAction,
+  recordCashBalanceAction,
+  type CashAcquisitionState,
+} from "@/app/actions/cash-data-acquisition";
 
-const initial:CashAcquisitionState={};
-export function CashDataAcquisition({workspaceId}:{workspaceId:string}){
- const balance=useRef<HTMLDialogElement>(null),csv=useRef<HTMLDialogElement>(null);return <><div className="flex flex-wrap gap-3"><button onClick={()=>balance.current?.showModal()} className="min-h-10 rounded-md bg-emerald-800 px-4 text-sm font-semibold text-white">Enter balance</button><button onClick={()=>csv.current?.showModal()} className="min-h-10 rounded-md border border-stone-300 bg-white px-4 text-sm font-semibold">Import CSV</button></div><BalanceDialog ref={balance} workspaceId={workspaceId}/><CsvDialog ref={csv} workspaceId={workspaceId}/></>;
+const initial: CashAcquisitionState = {};
+export function CashDataAcquisition({ workspaceId }: { workspaceId: string }) {
+  const balance = useRef<HTMLDialogElement>(null),
+    csv = useRef<HTMLDialogElement>(null);
+  return (
+    <>
+      <div className="flex flex-wrap gap-3">
+        <button
+          onClick={() => balance.current?.showModal()}
+          className="min-h-10 rounded-md bg-emerald-800 px-4 text-sm font-semibold text-white"
+        >
+          Enter balance
+        </button>
+        <button
+          onClick={() => csv.current?.showModal()}
+          className="min-h-10 rounded-md border border-stone-300 bg-white px-4 text-sm font-semibold"
+        >
+          Import CSV
+        </button>
+      </div>
+      <BalanceDialog ref={balance} workspaceId={workspaceId} />
+      <CsvDialog ref={csv} workspaceId={workspaceId} />
+    </>
+  );
 }
-function BalanceDialog({workspaceId,ref}:{workspaceId:string;ref:React.RefObject<HTMLDialogElement|null>}){const[state,action,pending]=useActionState(recordCashBalanceAction,initial);return <dialog ref={ref} className="ml-auto mr-0 h-full max-h-none w-full max-w-lg border-l bg-white p-0 backdrop:bg-stone-950/30"><form action={action} className="flex min-h-full flex-col p-6"><input type="hidden" name="workspaceId" value={workspaceId}/><input type="hidden" name="currency" value="USD"/><input type="hidden" name="idempotencyKey" value={crypto.randomUUID()}/><div className="flex justify-between"><div><p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Financial Intelligence</p><h2 className="mt-2 text-2xl font-semibold">Enter Cash Balance</h2></div><button formMethod="dialog" aria-label="Close">×</button></div><div className="mt-7 grid gap-5"><Field label="Account name *"><input required name="name" defaultValue="Operating Account" className="ui-control w-full px-3"/></Field><Field label="Account type *"><select required name="accountType" className="ui-control w-full px-3"><option value="operating">Operating</option><option value="reserve">Reserve</option><option value="tax">Tax</option><option value="other-cash">Other Cash</option></select></Field><Field label="Balance *"><input required name="balance" inputMode="decimal" placeholder="$ 0.00" className="ui-control w-full px-3"/></Field><Field label="Balance as of *"><input required name="asOf" type="date" defaultValue={new Date().toISOString().slice(0,10)} className="ui-control w-full px-3"/></Field><Field label="Scope"><input readOnly value="Entire Portfolio" className="ui-control w-full bg-stone-50 px-3"/></Field><Field label="Notes"><textarea name="notes" className="ui-control min-h-24 w-full p-3" placeholder="Optional"/></Field></div>{state.message?<p role="status" className={`mt-5 text-sm ${state.ok?"text-emerald-700":"text-rose-700"}`}>{state.message}</p>:null}<div className="mt-auto flex justify-end gap-3 pt-8"><button formMethod="dialog" className="rounded-md border px-4 py-2">Cancel</button><button disabled={pending} className="rounded-md bg-emerald-800 px-5 py-2 font-semibold text-white disabled:opacity-50">{pending?"Adding…":"Add Account"}</button></div></form></dialog>}
-type Row={date:string;account:string;description:string;amount?:number;category:string;balance?:number};
-function CsvDialog({workspaceId,ref}:{workspaceId:string;ref:React.RefObject<HTMLDialogElement|null>}){const[state,action,pending]=useActionState(importFinancialCsvAction,initial),[rows,setRows]=useState<Row[]>([]),[invalid,setInvalid]=useState(0),[name,setName]=useState("");async function choose(file?:File){if(!file)return;setName(file.name);const parsed=parseCsv(await file.text());setRows(parsed.rows);setInvalid(parsed.invalid);}const accounts=[...new Set(rows.map(row=>row.account))],dates=rows.map(row=>row.date).sort();return <dialog ref={ref} className="ml-auto mr-0 h-full max-h-none w-full max-w-2xl border-l bg-white p-0 backdrop:bg-stone-950/30"><form action={action} className="flex min-h-full flex-col p-6"><input type="hidden" name="workspaceId" value={workspaceId}/><input type="hidden" name="importId" value={crypto.randomUUID()}/><input type="hidden" name="rows" value={JSON.stringify(rows)}/><div className="flex justify-between"><div><p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Financial Intelligence</p><h2 className="mt-2 text-2xl font-semibold">Import Financial Data</h2></div><button formMethod="dialog" aria-label="Close">×</button></div><p className="mt-3 text-sm text-stone-600">Upload cash balances and transaction history using Date, Account, Description, Amount, Category, and Balance columns.</p><a download="financial-data-template.csv" href="data:text/csv;charset=utf-8,Date%2CAccount%2CDescription%2CAmount%2CCategory%2CBalance%0A2026-08-22%2COperating%20Account%2CStarting%20balance%2C%2C%2C17300" className="mt-3 text-sm font-semibold text-emerald-800 underline">Download CSV template →</a><label className="mt-7 grid min-h-44 cursor-pointer place-items-center rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-6 text-center"><span><strong className="block">Choose CSV file</strong><small className="mt-2 block text-stone-500">CSV only · up to 5,000 data rows</small></span><input className="sr-only" type="file" accept=".csv,text/csv" onChange={event=>choose(event.target.files?.[0])}/></label>{name?<div className="mt-6 space-y-4"><section className="rounded-xl border p-4"><h3 className="font-semibold">1 · File validation</h3><p className="mt-1 text-sm">{name} · {rows.length+invalid} rows</p><p className="mt-3 text-sm text-emerald-700">✓ {rows.length} valid</p>{invalid?<p className="text-sm text-amber-700">! {invalid} need review and will be skipped</p>:null}</section><section className="rounded-xl border p-4"><h3 className="font-semibold">2 · Column mapping</h3><p className="mt-2 text-xs text-stone-600">Transaction Date → Date · Bank Account → Account · Description → Description · Amount → Amount · Category → Category · Balance → Balance</p></section><section className="rounded-xl border p-4"><h3 className="font-semibold">3 · Review import</h3><p className="mt-2 text-sm">{accounts.length} account{accounts.length===1?"":"s"} · {rows.filter(row=>row.amount!==undefined).length} transactions · {rows.filter(row=>row.balance!==undefined).length} balances</p><p className="mt-2 text-xs text-stone-500">Accounts: {accounts.join(", ")||"None"}{dates.length?` · ${dates[0]} to ${dates.at(-1)}`:""}</p><p className="mt-1 text-xs text-stone-500">Duplicate rows are protected by this import command’s idempotency key.</p></section></div>:null}{state.ok?<section role="status" className="mt-6 rounded-xl bg-emerald-50 p-4"><h3 className="font-semibold text-emerald-900">Financial data imported</h3><p className="mt-2 text-sm">{state.accounts} accounts · {state.transactions} transactions · {state.balances} balance observations</p><p className="mt-2 text-xs text-emerald-800">Cash position and Forecast readiness will recalculate from these canonical records.</p></section>:state.message?<p role="alert" className="mt-5 text-sm text-rose-700">{state.message}</p>:null}<div className="mt-auto flex justify-end gap-3 pt-8"><button formMethod="dialog" className="rounded-md border px-4 py-2">Cancel</button><button disabled={pending||!rows.length} className="rounded-md bg-emerald-800 px-5 py-2 font-semibold text-white disabled:opacity-50">{pending?"Importing…":"Import Financial Data"}</button></div></form></dialog>}
-function parseCsv(text:string){const lines=text.replace(/^\uFEFF/,"").split(/\r?\n/).filter(Boolean),headers=(lines.shift()??"").split(",").map(x=>x.trim().toLocaleLowerCase("en-US")),at=(values:string[],key:string)=>values[headers.indexOf(key)]?.trim()??"";const rows:Row[]=[];let invalid=0;for(const line of lines){const values=line.split(",").map(x=>x.trim().replace(/^"|"$/g,"")),date=at(values,"date")||at(values,"transaction date"),account=at(values,"account")||at(values,"bank account"),amount=number(at(values,"amount")),balance=number(at(values,"balance"));if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!account||(amount===undefined&&balance===undefined)){invalid++;continue;}rows.push({date,account,description:at(values,"description"),...(amount!==undefined?{amount}:{}),category:at(values,"category"),...(balance!==undefined?{balance}:{})});}return{rows,invalid};}function number(value:string){if(!value)return undefined;const parsed=Number(value.replace(/[$,]/g,""));return Number.isFinite(parsed)?parsed:undefined;}function Field({label,children}:{label:string;children:React.ReactNode}){return <label className="grid gap-2 text-sm font-semibold">{label}{children}</label>}
+function BalanceDialog({
+  workspaceId,
+  ref,
+}: {
+  workspaceId: string;
+  ref: React.RefObject<HTMLDialogElement | null>;
+}) {
+  const [state, action, pending] = useActionState(
+    recordCashBalanceAction,
+    initial,
+  );
+  const close = () => ref.current?.close();
+  return (
+    <dialog
+      ref={ref}
+      className="ml-auto mr-0 h-full max-h-none w-full max-w-lg border-l bg-white p-0 backdrop:bg-stone-950/30"
+    >
+      <form action={action} className="flex min-h-full flex-col p-6">
+        <input type="hidden" name="workspaceId" value={workspaceId} />
+        <input type="hidden" name="currency" value="USD" />
+        <input
+          type="hidden"
+          name="idempotencyKey"
+          value={crypto.randomUUID()}
+        />
+        <div className="flex justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+              Financial Intelligence
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">Enter Cash Balance</h2>
+          </div>
+          <button type="button" onClick={close} aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div className="mt-7 grid gap-5">
+          <Field label="Account name *">
+            <input
+              required
+              name="name"
+              defaultValue="Operating Account"
+              className="ui-control w-full px-3"
+            />
+          </Field>
+          <Field label="Account type *">
+            <select
+              required
+              name="accountType"
+              className="ui-control w-full px-3"
+            >
+              <option value="operating">Operating</option>
+              <option value="reserve">Reserve</option>
+              <option value="tax">Tax</option>
+              <option value="other-cash">Other Cash</option>
+            </select>
+          </Field>
+          <Field label="Balance *">
+            <input
+              required
+              name="balance"
+              inputMode="decimal"
+              placeholder="$ 0.00"
+              className="ui-control w-full px-3"
+            />
+          </Field>
+          <Field label="Balance as of *">
+            <input
+              required
+              name="asOf"
+              type="date"
+              defaultValue={new Date().toISOString().slice(0, 10)}
+              className="ui-control w-full px-3"
+            />
+          </Field>
+          <Field label="Scope">
+            <input
+              readOnly
+              value="Entire Portfolio"
+              className="ui-control w-full bg-stone-50 px-3"
+            />
+          </Field>
+          <Field label="Notes">
+            <textarea
+              name="notes"
+              className="ui-control min-h-24 w-full p-3"
+              placeholder="Optional"
+            />
+          </Field>
+        </div>
+        {state.message ? (
+          <p
+            role="status"
+            className={`mt-5 text-sm ${state.ok ? "text-emerald-700" : "text-rose-700"}`}
+          >
+            {state.message}
+          </p>
+        ) : null}
+        <div className="mt-auto flex justify-end gap-3 pt-8">
+          <button type="button" onClick={close} className="rounded-md border px-4 py-2">
+            Cancel
+          </button>
+          <button
+            disabled={pending}
+            className="rounded-md bg-emerald-800 px-5 py-2 font-semibold text-white disabled:opacity-50"
+          >
+            {pending ? "Adding…" : "Add Account"}
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+type Row = {
+  date: string;
+  account: string;
+  description: string;
+  amount?: number;
+  category: string;
+  balance?: number;
+};
+function CsvDialog({
+  workspaceId,
+  ref,
+}: {
+  workspaceId: string;
+  ref: React.RefObject<HTMLDialogElement | null>;
+}) {
+  const [state, action, pending] = useActionState(
+      importFinancialCsvAction,
+      initial,
+    ),
+    [rows, setRows] = useState<Row[]>([]),
+    [invalid, setInvalid] = useState(0),
+    [name, setName] = useState("");
+  const close = () => ref.current?.close();
+  async function choose(file?: File) {
+    if (!file) return;
+    setName(file.name);
+    const parsed = parseCsv(await file.text());
+    setRows(parsed.rows);
+    setInvalid(parsed.invalid);
+  }
+  const accounts = [...new Set(rows.map((row) => row.account))],
+    dates = rows.map((row) => row.date).sort();
+  return (
+    <dialog
+      ref={ref}
+      className="ml-auto mr-0 h-full max-h-none w-full max-w-2xl border-l bg-white p-0 backdrop:bg-stone-950/30"
+    >
+      <form action={action} className="flex min-h-full flex-col p-6">
+        <input type="hidden" name="workspaceId" value={workspaceId} />
+        <input type="hidden" name="importId" value={crypto.randomUUID()} />
+        <input type="hidden" name="rows" value={JSON.stringify(rows)} />
+        <div className="flex justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+              Financial Intelligence
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              Import Financial Data
+            </h2>
+          </div>
+          <button type="button" onClick={close} aria-label="Close">
+            ×
+          </button>
+        </div>
+        <p className="mt-3 text-sm text-stone-600">
+          Upload cash balances and transaction history using Date, Account,
+          Description, Amount, Category, and Balance columns.
+        </p>
+        <a
+          download="financial-data-template.csv"
+          href="data:text/csv;charset=utf-8,Date%2CAccount%2CDescription%2CAmount%2CCategory%2CBalance%0A2026-08-22%2COperating%20Account%2CStarting%20balance%2C%2C%2C17300"
+          className="mt-3 text-sm font-semibold text-emerald-800 underline"
+        >
+          Download CSV template →
+        </a>
+        <label className="mt-7 grid min-h-44 cursor-pointer place-items-center rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-6 text-center">
+          <span>
+            <strong className="block">Choose CSV file</strong>
+            <small className="mt-2 block text-stone-500">
+              CSV only · up to 5,000 data rows
+            </small>
+          </span>
+          <input
+            className="sr-only"
+            type="file"
+            accept=".csv,text/csv"
+            onChange={(event) => choose(event.target.files?.[0])}
+          />
+        </label>
+        {name ? (
+          <div className="mt-6 space-y-4">
+            <section className="rounded-xl border p-4">
+              <h3 className="font-semibold">1 · File validation</h3>
+              <p className="mt-1 text-sm">
+                {name} · {rows.length + invalid} rows
+              </p>
+              <p className="mt-3 text-sm text-emerald-700">
+                ✓ {rows.length} valid
+              </p>
+              {invalid ? (
+                <p className="text-sm text-amber-700">
+                  ! {invalid} need review and will be skipped
+                </p>
+              ) : null}
+            </section>
+            <section className="rounded-xl border p-4">
+              <h3 className="font-semibold">2 · Column mapping</h3>
+              <p className="mt-2 text-xs text-stone-600">
+                Transaction Date → Date · Bank Account → Account · Description →
+                Description · Amount → Amount · Category → Category · Balance →
+                Balance
+              </p>
+            </section>
+            <section className="rounded-xl border p-4">
+              <h3 className="font-semibold">3 · Review import</h3>
+              <p className="mt-2 text-sm">
+                {accounts.length} account{accounts.length === 1 ? "" : "s"} ·{" "}
+                {rows.filter((row) => row.amount !== undefined).length}{" "}
+                transactions ·{" "}
+                {rows.filter((row) => row.balance !== undefined).length}{" "}
+                balances
+              </p>
+              <p className="mt-2 text-xs text-stone-500">
+                Accounts: {accounts.join(", ") || "None"}
+                {dates.length ? ` · ${dates[0]} to ${dates.at(-1)}` : ""}
+              </p>
+              <p className="mt-1 text-xs text-stone-500">
+                Duplicate rows are protected by this import command’s
+                idempotency key.
+              </p>
+            </section>
+          </div>
+        ) : null}
+        {state.ok ? (
+          <section role="status" className="mt-6 rounded-xl bg-emerald-50 p-4">
+            <h3 className="font-semibold text-emerald-900">
+              Financial data imported
+            </h3>
+            <p className="mt-2 text-sm">
+              {state.accounts} accounts · {state.transactions} transactions ·{" "}
+              {state.balances} balance observations
+            </p>
+            <p className="mt-2 text-xs text-emerald-800">
+              Cash position and Forecast readiness will recalculate from these
+              canonical records.
+            </p>
+          </section>
+        ) : state.message ? (
+          <p role="alert" className="mt-5 text-sm text-rose-700">
+            {state.message}
+          </p>
+        ) : null}
+        <div className="mt-auto flex justify-end gap-3 pt-8">
+          <button type="button" onClick={close} className="rounded-md border px-4 py-2">
+            Cancel
+          </button>
+          <button
+            disabled={pending || !rows.length}
+            className="rounded-md bg-emerald-800 px-5 py-2 font-semibold text-white disabled:opacity-50"
+          >
+            {pending ? "Importing…" : "Import Financial Data"}
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+function parseCsv(text: string) {
+  const lines = text
+      .replace(/^\uFEFF/, "")
+      .split(/\r?\n/)
+      .filter(Boolean),
+    headers = (lines.shift() ?? "")
+      .split(",")
+      .map((x) => x.trim().toLocaleLowerCase("en-US")),
+    at = (values: string[], key: string) =>
+      values[headers.indexOf(key)]?.trim() ?? "";
+  const rows: Row[] = [];
+  let invalid = 0;
+  for (const line of lines) {
+    const values = line.split(",").map((x) => x.trim().replace(/^"|"$/g, "")),
+      date = at(values, "date") || at(values, "transaction date"),
+      account = at(values, "account") || at(values, "bank account"),
+      amount = number(at(values, "amount")),
+      balance = number(at(values, "balance"));
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !account ||
+      (amount === undefined && balance === undefined)
+    ) {
+      invalid++;
+      continue;
+    }
+    rows.push({
+      date,
+      account,
+      description: at(values, "description"),
+      ...(amount !== undefined ? { amount } : {}),
+      category: at(values, "category"),
+      ...(balance !== undefined ? { balance } : {}),
+    });
+  }
+  return { rows, invalid };
+}
+function number(value: string) {
+  if (!value) return undefined;
+  const parsed = Number(value.replace(/[$,]/g, ""));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="grid gap-2 text-sm font-semibold">
+      {label}
+      {children}
+    </label>
+  );
+}
