@@ -1,0 +1,54 @@
+{
+  "correlationId": "ps001c-c599659b-0147-4d4f-b49b-5e8c92b5ff2b",
+  "candidate": {
+    "commit": "bc10a69a409e2b52f658bf589a1f87e752c161fd",
+    "deployment": "dpl_HjFaULGhF3pbSQWAHwn1GRytGmFZ",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "a771a82b-030b-4e69-9f1a-7176efb7a0cc",
+    "adminId": "1a547f89-94a1-42f7-81a7-210f77e9ca21",
+    "wrongTenantId": "0ff94b17-2c5b-429f-88c0-c3343d1b195d",
+    "revokedId": "51fee3a1-bb92-4882-80d2-15148eb939ca",
+    "workspaceId": "70380b00-c9e7-413b-89e0-f620eb6c4d0d"
+  },
+  "startedAt": "2026-08-23T20:13:46.924Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T20:13:50.051Z",
+      "workspaceId": "70380b00-c9e7-413b-89e0-f620eb6c4d0d",
+      "propertyId": "d42d7959-8bb6-46fd-94e7-e83da1a91130",
+      "opportunityId": "opportunity-5e8c92b5ff2b",
+      "decisionId": "decision-5e8c92b5ff2b",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T20:13:54.927Z",
+      "userId": "a771a82b-030b-4e69-9f1a-7176efb7a0cc",
+      "workspaceId": "70380b00-c9e7-413b-89e0-f620eb6c4d0d",
+      "profileRole": "owner",
+      "sessionSubject": "a771a82b-030b-4e69-9f1a-7176efb7a0cc"
+    },
+    {
+      "name": "decide-history-deeplinks-passed",
+      "at": "2026-08-23T20:14:17.868Z"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T20:14:22.659Z",
+      "workspaceId": "70380b00-c9e7-413b-89e0-f620eb6c4d0d",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "DECISION_HANDOFF_MISSING",
+  "cleanup": {
+    "workspaceId": "70380b00-c9e7-413b-89e0-f620eb6c4d0d",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T20:14:22.659Z"
+}

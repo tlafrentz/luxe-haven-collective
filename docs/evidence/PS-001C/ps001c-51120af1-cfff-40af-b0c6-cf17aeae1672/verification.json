@@ -1,0 +1,54 @@
+{
+  "correlationId": "ps001c-51120af1-cfff-40af-b0c6-cf17aeae1672",
+  "candidate": {
+    "commit": "bc10a69a409e2b52f658bf589a1f87e752c161fd",
+    "deployment": "dpl_HjFaULGhF3pbSQWAHwn1GRytGmFZ",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "05805fb4-c66b-4a55-b355-a042703a4f4a",
+    "adminId": "582b3207-2894-4521-9a47-6fa05c61979c",
+    "wrongTenantId": "a7c92916-55ac-477a-9ab8-91afb2ab7267",
+    "revokedId": "e2ab5280-98d2-486b-909b-3f77bdbc6976",
+    "workspaceId": "a9a56726-1e84-4fff-beba-71babfa7f544"
+  },
+  "startedAt": "2026-08-23T20:26:07.044Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T20:26:09.782Z",
+      "workspaceId": "a9a56726-1e84-4fff-beba-71babfa7f544",
+      "propertyId": "cf4bfdc2-e94f-4435-87f3-c7e4f9095e57",
+      "opportunityId": "opportunity-cf17aeae1672",
+      "decisionId": "decision-cf17aeae1672",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T20:26:14.008Z",
+      "userId": "05805fb4-c66b-4a55-b355-a042703a4f4a",
+      "workspaceId": "a9a56726-1e84-4fff-beba-71babfa7f544",
+      "profileRole": "owner",
+      "sessionSubject": "05805fb4-c66b-4a55-b355-a042703a4f4a"
+    },
+    {
+      "name": "decide-history-deeplinks-passed",
+      "at": "2026-08-23T20:26:33.653Z"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T20:26:39.548Z",
+      "workspaceId": "a9a56726-1e84-4fff-beba-71babfa7f544",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "DECISION_HANDOFF_COMMAND:Execute could not save the change. Your prior records were not changed.",
+  "cleanup": {
+    "workspaceId": "a9a56726-1e84-4fff-beba-71babfa7f544",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T20:26:39.548Z"
+}

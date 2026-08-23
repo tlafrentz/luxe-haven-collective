@@ -1,0 +1,61 @@
+{
+  "correlationId": "ps001c-79c6c23a-b247-4894-86fd-4a68d112bf9b",
+  "candidate": {
+    "commit": "29596506",
+    "deployment": "dpl_b5NDTHmG932NmqTHws9cg1cdMycK",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "6e0516c6-7e64-415a-9196-f23301237bf7",
+    "adminId": "f551dd6e-df59-46e8-8c85-81e1cc02effc",
+    "wrongTenantId": "a8653f62-9043-4555-9829-59ed4e3710bc",
+    "revokedId": "365fbff2-5c1d-46d9-8ede-2774a8ede97d",
+    "workspaceId": "a4cb5d6a-3b1d-48fc-87c9-610d434c7b02"
+  },
+  "startedAt": "2026-08-23T21:10:15.003Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T21:10:18.681Z",
+      "workspaceId": "a4cb5d6a-3b1d-48fc-87c9-610d434c7b02",
+      "propertyId": "aae51954-4429-4249-af2e-c77632a62e25",
+      "opportunityId": "opportunity-4a68d112bf9b",
+      "decisionId": "decision-4a68d112bf9b",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T21:10:24.712Z",
+      "userId": "6e0516c6-7e64-415a-9196-f23301237bf7",
+      "workspaceId": "a4cb5d6a-3b1d-48fc-87c9-610d434c7b02",
+      "profileRole": "owner",
+      "sessionSubject": "6e0516c6-7e64-415a-9196-f23301237bf7"
+    },
+    {
+      "name": "decide-history-deeplinks-passed",
+      "at": "2026-08-23T21:10:45.704Z"
+    },
+    {
+      "name": "decision-plan-handoff-persisted",
+      "at": "2026-08-23T21:10:54.957Z",
+      "planId": "plan-decision-4a68d112bf9b",
+      "status": "draft",
+      "decisionId": "decision-4a68d112bf9b"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T21:11:24.975Z",
+      "workspaceId": "a4cb5d6a-3b1d-48fc-87c9-610d434c7b02",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "PLAN_PROJECTION_DISAGREES",
+  "cleanup": {
+    "workspaceId": "a4cb5d6a-3b1d-48fc-87c9-610d434c7b02",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T21:11:24.975Z"
+}

@@ -1,0 +1,61 @@
+{
+  "correlationId": "ps001c-937b7e57-5d5b-4271-bf46-14700ecbec05",
+  "candidate": {
+    "commit": "f5a265e1",
+    "deployment": "dpl_7Zw7bMagnGAJRsLs99yn1aAB7g3N",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "2dcee4ce-2afe-44b1-9a21-a1e4dfcf8f19",
+    "adminId": "aa3f9f93-504b-4f18-99b0-ba0eefab65b0",
+    "wrongTenantId": "51fb4222-bcec-457f-ab57-a3a157dd4a1e",
+    "revokedId": "e02fe01b-da66-4876-a391-1b4bd501c321",
+    "workspaceId": "36c5b3ba-edd0-4af4-95fa-6fca745cf493"
+  },
+  "startedAt": "2026-08-23T20:42:23.765Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T20:42:27.281Z",
+      "workspaceId": "36c5b3ba-edd0-4af4-95fa-6fca745cf493",
+      "propertyId": "b55249d8-e182-4d4f-bff6-591a0b5e20ef",
+      "opportunityId": "opportunity-14700ecbec05",
+      "decisionId": "decision-14700ecbec05",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T20:42:32.390Z",
+      "userId": "2dcee4ce-2afe-44b1-9a21-a1e4dfcf8f19",
+      "workspaceId": "36c5b3ba-edd0-4af4-95fa-6fca745cf493",
+      "profileRole": "owner",
+      "sessionSubject": "2dcee4ce-2afe-44b1-9a21-a1e4dfcf8f19"
+    },
+    {
+      "name": "decide-history-deeplinks-passed",
+      "at": "2026-08-23T20:42:52.663Z"
+    },
+    {
+      "name": "decision-plan-handoff-persisted",
+      "at": "2026-08-23T20:42:58.238Z",
+      "planId": "plan-decision-14700ecbec05",
+      "status": "draft",
+      "decisionId": "decision-14700ecbec05"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T20:43:20.904Z",
+      "workspaceId": "36c5b3ba-edd0-4af4-95fa-6fca745cf493",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "PLAN_ACTIVATION_COMMAND:Execute could not save the change. Your prior records were not changed.",
+  "cleanup": {
+    "workspaceId": "36c5b3ba-edd0-4af4-95fa-6fca745cf493",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T20:43:20.904Z"
+}

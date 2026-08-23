@@ -1,0 +1,78 @@
+{
+  "correlationId": "ps001c-8426a891-09b7-4aec-9aa4-da5f12ead18b",
+  "candidate": {
+    "commit": "29596506",
+    "deployment": "dpl_b5NDTHmG932NmqTHws9cg1cdMycK",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "a37101b7-c19a-4f8d-9e78-a8a9fc4b73a8",
+    "adminId": "b59e63f0-7f9d-4db9-bd71-f2b34acb01da",
+    "wrongTenantId": "e7140731-00f7-4c77-8e19-d5bc6957147f",
+    "revokedId": "d9c5f3fa-2115-4e4c-b403-7f9b374591ff",
+    "workspaceId": "4a813e37-e711-46f8-a7f6-f9641dcb1ea0"
+  },
+  "startedAt": "2026-08-23T21:22:52.052Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T21:22:55.760Z",
+      "workspaceId": "4a813e37-e711-46f8-a7f6-f9641dcb1ea0",
+      "propertyId": "8e8209a3-ba93-4eef-943d-237efe965682",
+      "opportunityId": "opportunity-da5f12ead18b",
+      "decisionId": "decision-da5f12ead18b",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T21:23:00.258Z",
+      "userId": "a37101b7-c19a-4f8d-9e78-a8a9fc4b73a8",
+      "workspaceId": "4a813e37-e711-46f8-a7f6-f9641dcb1ea0",
+      "profileRole": "owner",
+      "sessionSubject": "a37101b7-c19a-4f8d-9e78-a8a9fc4b73a8"
+    },
+    {
+      "name": "decide-history-deeplinks-passed",
+      "at": "2026-08-23T21:23:21.889Z"
+    },
+    {
+      "name": "decision-plan-handoff-persisted",
+      "at": "2026-08-23T21:23:27.049Z",
+      "planId": "plan-decision-da5f12ead18b",
+      "status": "draft",
+      "decisionId": "decision-da5f12ead18b"
+    },
+    {
+      "name": "plan-activation-canonical-projection",
+      "at": "2026-08-23T21:23:52.773Z",
+      "actionIds": [
+        "decision-da5f12ead18b:action:1",
+        "decision-da5f12ead18b:action:2",
+        "decision-da5f12ead18b:action:3",
+        "decision-da5f12ead18b:action:4"
+      ],
+      "count": 4
+    },
+    {
+      "name": "plan-activation-replay-safe",
+      "at": "2026-08-23T21:25:59.217Z",
+      "before": 4,
+      "after": 4
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T21:26:04.980Z",
+      "workspaceId": "4a813e37-e711-46f8-a7f6-f9641dcb1ea0",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "ROUTE_FAILED:/dashboard/execute/actions/decision-da5f12ead18b%3Aaction%3A1:LH LUXE HAVEN COLLECTIVE ‹ CURRENT WORKSPACE Luxe Haven Collective Home Home Workspace HPM LIFECYCLE Observe Understand Decide Execute Learn BUSINESS Properties Bookings Guest Communications Reports SERVICES Guidebook Studio TL Todd L. Administrator WORKSPACE Luxe Haven Collective ORGANIZATION Luxe Haven Holdings ENVIRONMENT Production TL 404 This page could not be found.",
+  "cleanup": {
+    "workspaceId": "4a813e37-e711-46f8-a7f6-f9641dcb1ea0",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T21:26:04.980Z"
+}

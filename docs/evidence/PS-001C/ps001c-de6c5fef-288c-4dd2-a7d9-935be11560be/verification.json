@@ -1,0 +1,192 @@
+{
+  "correlationId": "ps001c-de6c5fef-288c-4dd2-a7d9-935be11560be",
+  "candidate": {
+    "commit": "3c60ac47",
+    "deployment": "dpl_4Hb8SwxfaR6khLtk1y2brmzqCres",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "2f47d719-9a77-4c45-835c-852d6ead51c4",
+    "adminId": "748a84b5-33e8-42a9-93b0-272fef27fa3d",
+    "wrongTenantId": "f529338c-0af2-4d32-be3f-e989c1615d18",
+    "revokedId": "4f9376c0-6d18-4f11-8a82-64e0e679a575",
+    "workspaceId": "73622764-e728-407d-b576-df6d185815dd"
+  },
+  "startedAt": "2026-08-23T21:59:26.807Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T21:59:30.562Z",
+      "workspaceId": "73622764-e728-407d-b576-df6d185815dd",
+      "propertyId": "795e5e8d-bd4e-4fea-9e91-7f431251ef51",
+      "opportunityId": "opportunity-935be11560be",
+      "decisionId": "decision-935be11560be",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T21:59:35.681Z",
+      "userId": "2f47d719-9a77-4c45-835c-852d6ead51c4",
+      "workspaceId": "73622764-e728-407d-b576-df6d185815dd",
+      "profileRole": "owner",
+      "sessionSubject": "2f47d719-9a77-4c45-835c-852d6ead51c4"
+    },
+    {
+      "name": "decide-history-deeplinks-passed",
+      "at": "2026-08-23T21:59:53.440Z"
+    },
+    {
+      "name": "decision-plan-handoff-persisted",
+      "at": "2026-08-23T21:59:58.661Z",
+      "planId": "plan-decision-935be11560be",
+      "status": "draft",
+      "decisionId": "decision-935be11560be"
+    },
+    {
+      "name": "plan-activation-canonical-projection",
+      "at": "2026-08-23T22:00:25.964Z",
+      "actionIds": [
+        "decision-935be11560be:action:1",
+        "decision-935be11560be:action:2",
+        "decision-935be11560be:action:3",
+        "decision-935be11560be:action:4"
+      ],
+      "count": 4
+    },
+    {
+      "name": "plan-activation-replay-safe",
+      "at": "2026-08-23T22:02:32.445Z",
+      "before": 4,
+      "after": 4
+    },
+    {
+      "name": "execute-command-canonical-projection",
+      "at": "2026-08-23T22:02:41.494Z",
+      "actionId": "decision-935be11560be:action:1",
+      "status": "in-progress"
+    },
+    {
+      "name": "execute-command-canonical-projection",
+      "at": "2026-08-23T22:02:55.170Z",
+      "actionId": "decision-935be11560be:action:1",
+      "status": "awaiting-review"
+    },
+    {
+      "name": "execute-command-canonical-projection",
+      "at": "2026-08-23T22:03:04.495Z",
+      "actionId": "decision-935be11560be:action:1",
+      "status": "completed"
+    },
+    {
+      "name": "action-evidence-review-completion-persisted",
+      "at": "2026-08-23T22:03:04.936Z",
+      "actionId": "decision-935be11560be:action:1",
+      "evidenceId": "execute-e02b1202-41a9-434c-b39d-d9a213196f2b-1"
+    },
+    {
+      "name": "outcome-learning-matrix-seeded",
+      "at": "2026-08-23T22:03:06.773Z",
+      "pendingReview": "review-pending-935be11560be",
+      "measuredReview": "review-measured-935be11560be",
+      "inconclusiveReview": "review-inconclusive-935be11560be",
+      "learningId": "lesson-935be11560be"
+    },
+    {
+      "name": "outcome-learning-negative-positive-proofs-passed",
+      "at": "2026-08-23T22:03:26.785Z"
+    },
+    {
+      "name": "anonymous-denied",
+      "at": "2026-08-23T22:03:27.757Z"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T22:03:30.053Z",
+      "userId": "748a84b5-33e8-42a9-93b0-272fef27fa3d",
+      "profileRole": "admin",
+      "sessionSubject": "748a84b5-33e8-42a9-93b0-272fef27fa3d"
+    },
+    {
+      "name": "admin-representative-read-verified",
+      "at": "2026-08-23T22:03:32.444Z"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T22:03:34.527Z",
+      "userId": "f529338c-0af2-4d32-be3f-e989c1615d18",
+      "workspaceId": "cff4f24f-d495-4a94-80df-c036108c78ff",
+      "profileRole": "owner",
+      "sessionSubject": "f529338c-0af2-4d32-be3f-e989c1615d18"
+    },
+    {
+      "name": "wrong-tenant-representative-read-verified",
+      "at": "2026-08-23T22:03:36.915Z"
+    },
+    {
+      "name": "wrong-tenant-mutation-denied",
+      "at": "2026-08-23T22:03:37.484Z"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T22:03:39.509Z",
+      "userId": "4f9376c0-6d18-4f11-8a82-64e0e679a575",
+      "workspaceId": "73622764-e728-407d-b576-df6d185815dd",
+      "profileRole": "owner",
+      "sessionSubject": "4f9376c0-6d18-4f11-8a82-64e0e679a575"
+    },
+    {
+      "name": "revoked-read-write-denied",
+      "at": "2026-08-23T22:03:44.624Z"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T22:03:46.848Z",
+      "userId": "2f47d719-9a77-4c45-835c-852d6ead51c4",
+      "workspaceId": "73622764-e728-407d-b576-df6d185815dd",
+      "profileRole": "owner",
+      "sessionSubject": "2f47d719-9a77-4c45-835c-852d6ead51c4"
+    },
+    {
+      "name": "responsive-desktop-passed",
+      "at": "2026-08-23T22:03:50.839Z"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T22:03:53.077Z",
+      "userId": "2f47d719-9a77-4c45-835c-852d6ead51c4",
+      "workspaceId": "73622764-e728-407d-b576-df6d185815dd",
+      "profileRole": "owner",
+      "sessionSubject": "2f47d719-9a77-4c45-835c-852d6ead51c4"
+    },
+    {
+      "name": "responsive-tablet-passed",
+      "at": "2026-08-23T22:03:55.603Z"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T22:03:58.122Z",
+      "userId": "2f47d719-9a77-4c45-835c-852d6ead51c4",
+      "workspaceId": "73622764-e728-407d-b576-df6d185815dd",
+      "profileRole": "owner",
+      "sessionSubject": "2f47d719-9a77-4c45-835c-852d6ead51c4"
+    },
+    {
+      "name": "responsive-mobile-passed",
+      "at": "2026-08-23T22:04:00.535Z"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T22:04:01.916Z",
+      "workspaceId": "73622764-e728-407d-b576-df6d185815dd",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "passed",
+  "cleanup": {
+    "workspaceId": "73622764-e728-407d-b576-df6d185815dd",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T22:04:01.916Z"
+}

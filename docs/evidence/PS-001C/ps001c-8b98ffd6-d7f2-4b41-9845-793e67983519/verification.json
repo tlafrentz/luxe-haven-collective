@@ -1,0 +1,54 @@
+{
+  "correlationId": "ps001c-8b98ffd6-d7f2-4b41-9845-793e67983519",
+  "candidate": {
+    "commit": "bc10a69a409e2b52f658bf589a1f87e752c161fd",
+    "deployment": "dpl_HjFaULGhF3pbSQWAHwn1GRytGmFZ",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "af25839d-11b2-473e-a7f9-bcbc17b8d93f",
+    "adminId": "b4943fe4-f3a0-4157-babc-5207f9475011",
+    "wrongTenantId": "e5a444b0-cf2c-4229-8763-00c51b3b4f4d",
+    "revokedId": "5badd15d-afec-400c-924b-28107d7702b1",
+    "workspaceId": "17945c00-bcdc-42d2-a522-7d10d7127d51"
+  },
+  "startedAt": "2026-08-23T20:15:18.508Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T20:15:22.467Z",
+      "workspaceId": "17945c00-bcdc-42d2-a522-7d10d7127d51",
+      "propertyId": "42673436-d075-4e16-973f-40d94c22b35a",
+      "opportunityId": "opportunity-793e67983519",
+      "decisionId": "decision-793e67983519",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T20:15:26.702Z",
+      "userId": "af25839d-11b2-473e-a7f9-bcbc17b8d93f",
+      "workspaceId": "17945c00-bcdc-42d2-a522-7d10d7127d51",
+      "profileRole": "owner",
+      "sessionSubject": "af25839d-11b2-473e-a7f9-bcbc17b8d93f"
+    },
+    {
+      "name": "decide-history-deeplinks-passed",
+      "at": "2026-08-23T20:15:47.732Z"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T20:15:53.082Z",
+      "workspaceId": "17945c00-bcdc-42d2-a522-7d10d7127d51",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "DECISION_HANDOFF_MISSING:LH LUXE HAVEN COLLECTIVE ‹ CURRENT WORKSPACE Luxe Haven Collective Home Home Workspace HPM LIFECYCLE Observe Understand Decide Execute Learn BUSINESS Properties Bookings Guest Communications Reports SERVICES Guidebook Studio TL Todd L. Administrator WORKSPACE Luxe Haven Collective SCOPE Entire Portfolio Active Properties REPORTING PERIOD Jul 24, 2026 – Aug 23, 2026 COMPARISON Jun 23, 2026 – Jul 23, 2026 BASIS Actual Accrual Cash TL ← Portfolio decisions DECISION REVIEW Should the controlled workspace implement the revenue improvement plan? Controlled evidence supports a bounded revenue improvement test. Governed review Review alternatives, evidence, assumptions, dependencies, resource requirements, tradeoffs, expected outcomes, and the review date before submitting an idempotent approval command. Approval records the decision only. Moving into Execute requires an explicit Action Plan handoff. DECIDE → EXECUTE Create the canonical Action Plan The draft will retain this decision, rationale, authorized scope, expected outcomes, and proposed work. Creating it does not activate or assign execution. Create Action Plan",
+  "cleanup": {
+    "workspaceId": "17945c00-bcdc-42d2-a522-7d10d7127d51",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T20:15:53.082Z"
+}

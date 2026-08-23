@@ -1,0 +1,42 @@
+{
+  "correlationId": "ps001c-2b717528-32de-48f1-9eee-87385a24f65e",
+  "candidate": {
+    "commit": "bc10a69a409e2b52f658bf589a1f87e752c161fd",
+    "deployment": "dpl_HjFaULGhF3pbSQWAHwn1GRytGmFZ",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "d82de34d-2c56-4b35-8b3f-80ba12fd02e7",
+    "adminId": "12ada1ce-a7ca-4cd5-95d3-842cef9a57dd",
+    "wrongTenantId": "5dd28767-58f5-4b4c-9678-5c9b75b1e11c",
+    "revokedId": "41234938-730a-4896-bc55-4386e871275b",
+    "workspaceId": "6d2a3d90-c3ea-49cd-8bb6-cc034491e85d"
+  },
+  "startedAt": "2026-08-23T20:03:44.997Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T20:03:49.039Z",
+      "workspaceId": "6d2a3d90-c3ea-49cd-8bb6-cc034491e85d",
+      "propertyId": "919a7f4f-19d1-4c52-aad6-8e41bb08ae2c",
+      "opportunityId": "opportunity-87385a24f65e",
+      "decisionId": "decision-87385a24f65e",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T20:03:58.475Z",
+      "workspaceId": "6d2a3d90-c3ea-49cd-8bb6-cc034491e85d",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "CONTROLLED_IDENTITY_MISMATCH:d82de34d-2c56-4b35-8b3f-80ba12fd02e7",
+  "cleanup": {
+    "workspaceId": "6d2a3d90-c3ea-49cd-8bb6-cc034491e85d",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T20:03:58.475Z"
+}

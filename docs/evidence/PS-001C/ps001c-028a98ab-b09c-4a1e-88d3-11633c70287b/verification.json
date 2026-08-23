@@ -1,0 +1,102 @@
+{
+  "correlationId": "ps001c-028a98ab-b09c-4a1e-88d3-11633c70287b",
+  "candidate": {
+    "commit": "3c60ac47",
+    "deployment": "dpl_4Hb8SwxfaR6khLtk1y2brmzqCres",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "1d584724-1f3b-4a60-8391-0dfe8cd8cf65",
+    "adminId": "876d4e42-cb13-4373-8014-a7a818b1330f",
+    "wrongTenantId": "36c81e35-f02d-4510-b720-161a5420c652",
+    "revokedId": "f40d701f-773c-47f0-8834-8f4fb10d4f32",
+    "workspaceId": "1be490d9-587c-4ff5-aaed-1d36eed780cd"
+  },
+  "startedAt": "2026-08-23T21:36:03.438Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T21:36:07.281Z",
+      "workspaceId": "1be490d9-587c-4ff5-aaed-1d36eed780cd",
+      "propertyId": "e5089f3e-1d98-4178-9107-2e15eed56e8a",
+      "opportunityId": "opportunity-11633c70287b",
+      "decisionId": "decision-11633c70287b",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T21:36:12.149Z",
+      "userId": "1d584724-1f3b-4a60-8391-0dfe8cd8cf65",
+      "workspaceId": "1be490d9-587c-4ff5-aaed-1d36eed780cd",
+      "profileRole": "owner",
+      "sessionSubject": "1d584724-1f3b-4a60-8391-0dfe8cd8cf65"
+    },
+    {
+      "name": "decide-history-deeplinks-passed",
+      "at": "2026-08-23T21:36:33.052Z"
+    },
+    {
+      "name": "decision-plan-handoff-persisted",
+      "at": "2026-08-23T21:36:38.054Z",
+      "planId": "plan-decision-11633c70287b",
+      "status": "draft",
+      "decisionId": "decision-11633c70287b"
+    },
+    {
+      "name": "plan-activation-canonical-projection",
+      "at": "2026-08-23T21:37:03.494Z",
+      "actionIds": [
+        "decision-11633c70287b:action:1",
+        "decision-11633c70287b:action:2",
+        "decision-11633c70287b:action:3",
+        "decision-11633c70287b:action:4"
+      ],
+      "count": 4
+    },
+    {
+      "name": "plan-activation-replay-safe",
+      "at": "2026-08-23T21:39:09.765Z",
+      "before": 4,
+      "after": 4
+    },
+    {
+      "name": "execute-command-canonical-projection",
+      "at": "2026-08-23T21:39:18.547Z",
+      "actionId": "decision-11633c70287b:action:1",
+      "status": "in-progress"
+    },
+    {
+      "name": "execute-command-canonical-projection",
+      "at": "2026-08-23T21:39:32.211Z",
+      "actionId": "decision-11633c70287b:action:1",
+      "status": "awaiting-review"
+    },
+    {
+      "name": "execute-command-canonical-projection",
+      "at": "2026-08-23T21:39:41.945Z",
+      "actionId": "decision-11633c70287b:action:1",
+      "status": "completed"
+    },
+    {
+      "name": "action-evidence-review-completion-persisted",
+      "at": "2026-08-23T21:39:42.331Z",
+      "actionId": "decision-11633c70287b:action:1",
+      "evidenceId": "execute-ed2af7de-b2dc-4333-b5e6-82ac9bdb540b-1"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T21:39:44.909Z",
+      "workspaceId": "1be490d9-587c-4ff5-aaed-1d36eed780cd",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "SUMMARY_measured:{\"code\":\"PGRST204\",\"details\":null,\"hint\":null,\"message\":\"Could not find the 'evidence_references' column of 'learning_review_summaries' in the schema cache\"}",
+  "cleanup": {
+    "workspaceId": "1be490d9-587c-4ff5-aaed-1d36eed780cd",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T21:39:44.909Z"
+}

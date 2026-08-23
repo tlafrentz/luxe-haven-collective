@@ -1,6 +1,6 @@
 # PS-001C Read-Only Baseline Audit
 
-**Audit state:** Initial inventory complete; bounded correction in progress  
+**Audit state:** Complete; bounded corrections certified
 **Authority:** `PS-001C-decide-execute-learn-stabilization.md`
 
 | Surface | Expected customer contract | Baseline implementation | Canonical capability | Classification | Disposition |

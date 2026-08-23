@@ -1,0 +1,50 @@
+{
+  "correlationId": "ps001c-e6c0e60b-754c-49d5-9bbc-089c153d81e8",
+  "candidate": {
+    "commit": "bc10a69a409e2b52f658bf589a1f87e752c161fd",
+    "deployment": "dpl_HjFaULGhF3pbSQWAHwn1GRytGmFZ",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "3b07bdce-7876-4262-aa8e-8b46be37b2a7",
+    "adminId": "80a34548-af6f-4a10-a2e9-0d5297b16237",
+    "wrongTenantId": "a577b2c1-4e59-4428-85d0-5bc4025b7fad",
+    "revokedId": "08f9e0f9-718a-4d5b-832c-0600b57ca0fd",
+    "workspaceId": "9a169d48-c67c-4543-b817-32b81b1a8490"
+  },
+  "startedAt": "2026-08-23T20:09:28.117Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T20:09:32.222Z",
+      "workspaceId": "9a169d48-c67c-4543-b817-32b81b1a8490",
+      "propertyId": "f74c82aa-ee2f-4add-9b84-96c54e3320fb",
+      "opportunityId": "opportunity-089c153d81e8",
+      "decisionId": "decision-089c153d81e8",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T20:09:37.223Z",
+      "userId": "3b07bdce-7876-4262-aa8e-8b46be37b2a7",
+      "workspaceId": "9a169d48-c67c-4543-b817-32b81b1a8490",
+      "profileRole": "owner",
+      "sessionSubject": "3b07bdce-7876-4262-aa8e-8b46be37b2a7"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T20:09:42.621Z",
+      "workspaceId": "9a169d48-c67c-4543-b817-32b81b1a8490",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "INVESTMENT_TAB_Overview:https://luxehavencollective.co/dashboard/investments?workspace=9a169d48-c67c-4543-b817-32b81b1a8490:LH LUXE HAVEN COLLECTIVE ‹ CURRENT WORKSPACE Luxe Haven Collective Home Home Workspace HPM LIFECYCLE Observe Understand Decide Execute Learn BUSINESS Properties Bookings Guest Communications Reports SERVICES Guidebook Studio TL Todd L. Administrator WORKSPACE Luxe Haven Collective ORGANIZATION Luxe Haven Holdings ENVIRONMENT Production TL Operational Home could not load Your operational records were not changed. Try loading Home again. If the issue continues, review your connected hospitality platform. Try again",
+  "cleanup": {
+    "workspaceId": "9a169d48-c67c-4543-b817-32b81b1a8490",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T20:09:42.621Z"
+}

@@ -1,0 +1,137 @@
+{
+  "correlationId": "ps001c-083ca59d-51b8-4b14-b403-f8bbfb466c43",
+  "candidate": {
+    "commit": "3c60ac47",
+    "deployment": "dpl_4Hb8SwxfaR6khLtk1y2brmzqCres",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "d95370a2-091c-4dc9-a627-fbb3cae9ac93",
+    "adminId": "78c2e941-38c3-45ac-87c4-3e6c39181654",
+    "wrongTenantId": "d493d2ee-08b5-436d-9f4c-a866f0323224",
+    "revokedId": "c7ba2775-dd64-4586-878d-4687a2b52f22",
+    "workspaceId": "4b28e4f1-d133-4de6-8707-797281aff4bc"
+  },
+  "startedAt": "2026-08-23T21:47:20.525Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T21:47:24.921Z",
+      "workspaceId": "4b28e4f1-d133-4de6-8707-797281aff4bc",
+      "propertyId": "321c149c-09d4-404b-8cca-851edbbc5486",
+      "opportunityId": "opportunity-f8bbfb466c43",
+      "decisionId": "decision-f8bbfb466c43",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T21:47:29.739Z",
+      "userId": "d95370a2-091c-4dc9-a627-fbb3cae9ac93",
+      "workspaceId": "4b28e4f1-d133-4de6-8707-797281aff4bc",
+      "profileRole": "owner",
+      "sessionSubject": "d95370a2-091c-4dc9-a627-fbb3cae9ac93"
+    },
+    {
+      "name": "decide-history-deeplinks-passed",
+      "at": "2026-08-23T21:47:49.160Z"
+    },
+    {
+      "name": "decision-plan-handoff-persisted",
+      "at": "2026-08-23T21:47:55.346Z",
+      "planId": "plan-decision-f8bbfb466c43",
+      "status": "draft",
+      "decisionId": "decision-f8bbfb466c43"
+    },
+    {
+      "name": "plan-activation-canonical-projection",
+      "at": "2026-08-23T21:48:20.109Z",
+      "actionIds": [
+        "decision-f8bbfb466c43:action:2",
+        "decision-f8bbfb466c43:action:1",
+        "decision-f8bbfb466c43:action:3",
+        "decision-f8bbfb466c43:action:4"
+      ],
+      "count": 4
+    },
+    {
+      "name": "plan-activation-replay-safe",
+      "at": "2026-08-23T21:50:26.544Z",
+      "before": 4,
+      "after": 4
+    },
+    {
+      "name": "execute-command-canonical-projection",
+      "at": "2026-08-23T21:50:35.289Z",
+      "actionId": "decision-f8bbfb466c43:action:2",
+      "status": "in-progress"
+    },
+    {
+      "name": "execute-command-canonical-projection",
+      "at": "2026-08-23T21:50:48.844Z",
+      "actionId": "decision-f8bbfb466c43:action:2",
+      "status": "awaiting-review"
+    },
+    {
+      "name": "execute-command-canonical-projection",
+      "at": "2026-08-23T21:50:58.195Z",
+      "actionId": "decision-f8bbfb466c43:action:2",
+      "status": "completed"
+    },
+    {
+      "name": "action-evidence-review-completion-persisted",
+      "at": "2026-08-23T21:50:58.573Z",
+      "actionId": "decision-f8bbfb466c43:action:2",
+      "evidenceId": "execute-33be0bf3-b951-4b89-87d6-8c90dfb4fda1-1"
+    },
+    {
+      "name": "outcome-learning-matrix-seeded",
+      "at": "2026-08-23T21:51:00.573Z",
+      "pendingReview": "review-pending-f8bbfb466c43",
+      "measuredReview": "review-measured-f8bbfb466c43",
+      "inconclusiveReview": "review-inconclusive-f8bbfb466c43",
+      "learningId": "lesson-f8bbfb466c43"
+    },
+    {
+      "name": "outcome-learning-negative-positive-proofs-passed",
+      "at": "2026-08-23T21:51:14.162Z"
+    },
+    {
+      "name": "anonymous-denied",
+      "at": "2026-08-23T21:51:15.406Z"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T21:51:17.759Z",
+      "userId": "78c2e941-38c3-45ac-87c4-3e6c39181654",
+      "profileRole": "admin",
+      "sessionSubject": "78c2e941-38c3-45ac-87c4-3e6c39181654"
+    },
+    {
+      "name": "admin-representative-read-verified",
+      "at": "2026-08-23T21:51:20.310Z"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T21:51:22.373Z",
+      "userId": "d493d2ee-08b5-436d-9f4c-a866f0323224",
+      "workspaceId": "2df49a25-91a1-4f8e-b005-a718fcfea62e",
+      "profileRole": "owner",
+      "sessionSubject": "d493d2ee-08b5-436d-9f4c-a866f0323224"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T21:51:26.414Z",
+      "workspaceId": "4b28e4f1-d133-4de6-8707-797281aff4bc",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "ROUTE_FAILED:/dashboard/execute/plans/plan-decision-f8bbfb466c43:LH LUXE HAVEN COLLECTIVE ‹ CURRENT WORKSPACE Luxe Haven Collective Home Home Workspace HPM LIFECYCLE Observe Understand Decide Execute Learn BUSINESS Properties Bookings Guest Communications Reports SERVICES Guidebook Studio TL Todd L. Administrator WORKSPACE Luxe Haven Collective ORGANIZATION Luxe Haven Holdings ENVIRONMENT Production TL 404 This page could not be found.",
+  "cleanup": {
+    "workspaceId": "4b28e4f1-d133-4de6-8707-797281aff4bc",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T21:51:26.414Z"
+}

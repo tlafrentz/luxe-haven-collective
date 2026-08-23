@@ -1,0 +1,61 @@
+{
+  "correlationId": "ps001c-d84ecb0c-71a9-40b8-9c15-3f1c89e01797",
+  "candidate": {
+    "commit": "f5a265e1",
+    "deployment": "dpl_7Zw7bMagnGAJRsLs99yn1aAB7g3N",
+    "base": "https://luxehavencollective.co"
+  },
+  "controlled": {
+    "ownerId": "0dae43c2-b896-47f0-92c6-088d92796788",
+    "adminId": "b26a5365-8752-4fac-bc3d-707f64e728c6",
+    "wrongTenantId": "43ff8076-07b5-41a0-be6b-42b3b47a77cb",
+    "revokedId": "90f63602-a90a-4ada-92c0-01811f27f1d8",
+    "workspaceId": "29d785aa-4241-4204-b69f-9d1d8848c30a"
+  },
+  "startedAt": "2026-08-23T20:37:52.421Z",
+  "steps": [
+    {
+      "name": "controlled-lifecycle-seeded",
+      "at": "2026-08-23T20:37:56.090Z",
+      "workspaceId": "29d785aa-4241-4204-b69f-9d1d8848c30a",
+      "propertyId": "b60ced6f-c08d-40cf-b388-dd251702eaf1",
+      "opportunityId": "opportunity-3f1c89e01797",
+      "decisionId": "decision-3f1c89e01797",
+      "estimatedImpact": "1500 USD/month"
+    },
+    {
+      "name": "controlled-browser-identity",
+      "at": "2026-08-23T20:38:01.735Z",
+      "userId": "0dae43c2-b896-47f0-92c6-088d92796788",
+      "workspaceId": "29d785aa-4241-4204-b69f-9d1d8848c30a",
+      "profileRole": "owner",
+      "sessionSubject": "0dae43c2-b896-47f0-92c6-088d92796788"
+    },
+    {
+      "name": "decide-history-deeplinks-passed",
+      "at": "2026-08-23T20:38:21.708Z"
+    },
+    {
+      "name": "decision-plan-handoff-persisted",
+      "at": "2026-08-23T20:38:27.685Z",
+      "planId": "plan-decision-3f1c89e01797",
+      "status": "draft",
+      "decisionId": "decision-3f1c89e01797"
+    },
+    {
+      "name": "synthetic-access-revoked-immutable-evidence-retained",
+      "at": "2026-08-23T20:39:00.359Z",
+      "workspaceId": "29d785aa-4241-4204-b69f-9d1d8848c30a",
+      "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+      "credentialRetained": false
+    }
+  ],
+  "result": "failed",
+  "failure": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('Due date').filter({ visible: true }).first().locator('..').getByRole('button', { name: 'Save due date' })\u001b[22m\n",
+  "cleanup": {
+    "workspaceId": "29d785aa-4241-4204-b69f-9d1d8848c30a",
+    "reason": "Canonical learning and lifecycle audit records are immutable/append-only; the synthetic workspace is revoked and retained as certification evidence.",
+    "credentialRetained": false
+  },
+  "completedAt": "2026-08-23T20:39:00.359Z"
+}
