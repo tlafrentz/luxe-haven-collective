@@ -96,4 +96,15 @@ describe("FI-003 canonical cash data acquisition", () => {
     expect(view).not.toContain("bg-[#101416]");
     expect(view).toContain("Financial Intelligence · Cash Flow");
   });
+  it("progressively reveals cash analysis without presenting unknown activity as zero", () => {
+    const view = source(
+      "src/features/financial-intelligence/presentation/cash-flow-liquidity.tsx",
+    );
+    expect(view).toContain("Cash Flow Statement — Not yet available");
+    expect(view).toContain("Property contribution unavailable");
+    expect(view).toContain("Cash-flow trends are not yet available");
+    expect(view).toContain("Transaction history missing");
+    expect(view).toContain("Obligations not configured");
+    expect(view).toContain("Reserve target not configured");
+  });
 });

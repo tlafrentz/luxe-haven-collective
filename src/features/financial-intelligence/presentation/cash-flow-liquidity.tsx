@@ -8,9 +8,13 @@ import { CashDataAcquisition } from "./cash-data-acquisition";
 export function CashFlowLiquidityPage({ view }: { view: View }) {
   if (view.state === "empty")
     return <CashFlowEmpty workspaceId={view.identity.workspaceId} />;
+  const hasMovementHistory = view.statement.evidenceIds.length > 0;
+  const hasPropertyAttribution = view.evidence.propertyAttribution > 0;
   return (
     <main className="mx-auto max-w-[1500px] space-y-8 px-4 py-8 sm:px-6 lg:px-8">
       <Header view={view} />
+      <Position view={view} />
+      <Attention view={view} />
       <div className="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-4">
         <p className="text-sm text-stone-600">
           Add another cash account or import transaction history.
@@ -46,25 +50,27 @@ export function CashFlowLiquidityPage({ view }: { view: View }) {
         </Notice>
       ) : null}
       <Condition view={view} />
-      <Position view={view} />
-      <div className="grid gap-8 xl:grid-cols-2">
+      {hasMovementHistory ? (
+        <div className="grid gap-8 xl:grid-cols-2">
+          <Statement view={view} />
+          <Drivers view={view} />
+        </div>
+      ) : (
         <Statement view={view} />
-        <Drivers view={view} />
-      </div>
+      )}
       <div className="grid gap-8 xl:grid-cols-2">
         <Accounts view={view} />
         <Obligations view={view} />
       </div>
       <div className="grid gap-8 xl:grid-cols-2">
-        <Properties view={view} />
+        <Properties view={view} available={hasPropertyAttribution} />
         <Reserves view={view} />
       </div>
       <div className="grid gap-8 xl:grid-cols-2">
-        <BurnRunway view={view} />
+        {hasMovementHistory ? <BurnRunway view={view} /> : null}
         <Outlook view={view} />
       </div>
-      <Trends view={view} />
-      <Attention view={view} />
+      <Trends view={view} available={hasMovementHistory} />
       <Evidence view={view} />
     </main>
   );
@@ -134,15 +140,12 @@ function Position({ view }: { view: View }) {
     items = [
       ["Total Cash", p.totalCash],
       ["Available Cash", p.availableCash],
-      ["Restricted / Reserved", p.restrictedCash],
-      ["Committed Cash", p.committedCash],
-      ["Net Cash Movement", p.netCashMovement],
+      ["Reserve Cash", p.restrictedCash],
       [
-        "Opening / Closing",
-        p.openingCash && p.closingCash
-          ? `${p.openingCash.format()} → ${p.closingCash.format()}`
-          : null,
+        "Upcoming Obligations",
+        view.obligations.totalKnown?.format() ?? "Insufficient data",
       ],
+      ["Liquidity Confidence", title(view.confidence)],
     ] as const;
   return (
     <Section
@@ -150,7 +153,7 @@ function Position({ view }: { view: View }) {
       title="Cash position"
       description="Measured balances from included, authorized cash accounts; never inferred from profit."
     >
-      <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {items.map(([label, value]) => (
           <article
             key={label}
@@ -175,6 +178,19 @@ function Position({ view }: { view: View }) {
   );
 }
 function Statement({ view }: { view: View }) {
+  if (!view.statement.evidenceIds.length)
+    return (
+      <Card
+        id="cash-statement"
+        title="Cash Flow Statement — Not yet available"
+        description="Import transaction history to calculate operating, investing, financing, and other cash activity."
+      >
+        <Empty>
+          Current balances establish cash position, but do not establish whether
+          cash moved during the selected period.
+        </Empty>
+      </Card>
+    );
   const sections = [
     view.statement.operatingActivities,
     view.statement.investingActivities,
@@ -335,14 +351,14 @@ function Obligations({ view }: { view: View }) {
     </Card>
   );
 }
-function Properties({ view }: { view: View }) {
+function Properties({ view, available }: { view: View; available: boolean }) {
   return (
     <Card
       id="property-cash"
       title="Property cash contribution"
       description="Authorized, explicitly attributed cash activity reconciles to scope; shared items remain unallocated."
     >
-      {view.propertyContribution.length ? (
+      {available && view.propertyContribution.length ? (
         <ul className="divide-y divide-stone-100">
           {view.propertyContribution.map((item) => (
             <li key={item.propertyId} className="py-4">
@@ -369,11 +385,16 @@ function Properties({ view }: { view: View }) {
           ))}
         </ul>
       ) : (
-        <Empty>No attributable property cash activity.</Empty>
+        <Empty>
+          Property contribution unavailable. Transaction history has not yet
+          been attributed to individual properties.
+        </Empty>
       )}
-      <p className="mt-4 text-xs text-stone-500">
-        Unallocated cash activity: {view.unallocatedCashActivity.format()}
-      </p>
+      {available ? (
+        <p className="mt-4 text-xs text-stone-500">
+          Unallocated cash activity: {view.unallocatedCashActivity.format()}
+        </p>
+      ) : null}
     </Card>
   );
 }
@@ -498,43 +519,95 @@ function Outlook({ view }: { view: View }) {
     </Card>
   );
 }
-function Trends({ view }: { view: View }) {
+function Trends({ view, available }: { view: View; available: boolean }) {
   return (
     <Section
       id="cash-trends"
       title="Cash-flow trends"
       description="Operating, investing, financing, and balance movement remain separate."
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {view.trends.map((item) => (
-          <article
-            key={item.metric}
-            className="rounded-2xl border border-stone-200 bg-white p-5"
-          >
-            <Fact
-              label={title(item.metric)}
-              value={item.current?.format() ?? "Unavailable"}
-            />
-            <p className="mt-3 text-xs text-stone-500">
-              {title(item.classification)} ·{" "}
-              {item.variance?.format() ?? "comparison unavailable"}
-            </p>
-          </article>
-        ))}
-      </div>
+      {available ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {view.trends.map((item) => (
+            <article
+              key={item.metric}
+              className="rounded-2xl border border-stone-200 bg-white p-5"
+            >
+              <Fact
+                label={title(item.metric)}
+                value={item.current?.format() ?? "Unavailable"}
+              />
+              <p className="mt-3 text-xs text-stone-500">
+                {title(item.classification)} ·{" "}
+                {item.variance?.format() ?? "comparison unavailable"}
+              </p>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <Empty>
+          Cash-flow trends are not yet available. Import transaction history to
+          reveal movement over time.
+        </Empty>
+      )}
     </Section>
   );
 }
 function Attention({ view }: { view: View }) {
+  const setupItems = [
+    ...(!view.statement.evidenceIds.length
+      ? [
+          {
+            id: "setup-transactions",
+            subject: "Transaction history missing",
+            condition:
+              "Import transaction history to calculate cash movement and trends.",
+          },
+        ]
+      : []),
+    ...(view.evidence.obligationCoverage === 0
+      ? [
+          {
+            id: "setup-obligations",
+            subject: "Obligations not configured",
+            condition:
+              "Add known future payments to understand coverage and runway.",
+          },
+        ]
+      : []),
+    ...(!view.reserves.configured
+      ? [
+          {
+            id: "setup-reserves",
+            subject: "Reserve target not configured",
+            condition:
+              "Configure a reserve target to measure reserve coverage.",
+          },
+        ]
+      : []),
+  ];
+  const intelligenceItems = view.attention.filter(
+    (item) => item.id !== "obligation-coverage",
+  );
   return (
     <Section
       id="cash-attention"
-      title="Liquidity attention"
-      description="Descriptive observations for inspection, not financing or capital recommendations."
+      title="What needs attention"
+      description="The most important missing evidence and measured liquidity conditions in the current context."
     >
-      {view.attention.length ? (
-        <ul className="grid gap-4 md:grid-cols-2">
-          {view.attention.map((item) => (
+      {setupItems.length || intelligenceItems.length ? (
+        <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {setupItems.map((item) => (
+            <li
+              key={item.id}
+              className="rounded-2xl border border-amber-200 bg-amber-50 p-5"
+            >
+              <Pill>Setup required</Pill>
+              <h3 className="mt-3 font-semibold">{item.subject}</h3>
+              <p className="mt-2 text-sm text-stone-600">{item.condition}</p>
+            </li>
+          ))}
+          {intelligenceItems.map((item) => (
             <li
               key={item.id}
               className="rounded-2xl border border-amber-200 bg-amber-50 p-5"
