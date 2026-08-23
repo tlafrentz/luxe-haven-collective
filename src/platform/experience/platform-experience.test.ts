@@ -101,14 +101,14 @@ describe("workspace-driven platform experience", () => {
   it("owns canonical and legacy investment routes from Decide", () => {
     const investmentRoutes = platformRouteDefinitions.filter(route => route.pathPattern.startsWith("/dashboard/investments"));
     expect(investmentRoutes.length).toBeGreaterThan(5);
-    expect(investmentRoutes.every(route => route.hpmStage === "decide" && route.navigationItemId === "investment-intelligence")).toBe(true);
+    expect(investmentRoutes.every(route => route.hpmStage === "decide" && route.navigationItemId === "decide")).toBe(true);
   });
 
   it("owns Portfolio Intelligence as an Understand lifecycle destination", () => {
     const route = platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio");
-    expect(route).toMatchObject({ hpmStage: "understand", businessWorkspace: "portfolio", navigationItemId: "portfolio-intelligence" });
+    expect(route).toMatchObject({ hpmStage: "understand", businessWorkspace: "portfolio", navigationItemId: "understand" });
     expect(clientWorkspaceNavigation.find(item => item.id === "understand")).toMatchObject({ group: "hpm", level: 1, href: "/dashboard/understand/executive", icon: "understand" });
-    expect(platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio/workspace")).toMatchObject({ hpmStage: "understand", navigationItemId: "portfolio-intelligence" });
+    expect(platformRouteDefinitions.find(item => item.pathPattern === "/dashboard/portfolio/workspace")).toMatchObject({ hpmStage: "understand", navigationItemId: "understand" });
   });
 
   it("keeps business navigation limited to operational record sets", () => {

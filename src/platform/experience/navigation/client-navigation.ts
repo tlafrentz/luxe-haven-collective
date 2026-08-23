@@ -2,7 +2,7 @@ import type { NavigationItem } from "./navigation-types";
 
 export const clientWorkspaceNavigation = [
   { id: "home", kind: "product", level: 1, label: "Home", href: "/dashboard", icon: "home", group: "home", experience: "client-workspace", availability: "available", activeMatch: { type: "exact", href: "/dashboard" }, requiredCapabilities: ["view_home"] },
-  { id: "workspace-overview", kind: "product", level: 1, label: "Workspace", href: "/dashboard/workspace", icon: "workspace", group: "home", experience: "client-workspace", availability: "available", activeMatch: { type: "exact", href: "/dashboard/workspace" }, requiredCapabilities: ["view_home"] },
+  { id: "workspace-overview", kind: "product", level: 1, label: "Workspace", href: "/dashboard/workspace", icon: "workspace", group: "home", experience: "client-workspace", availability: "available", activeMatch: { type: "prefix", prefix: "/dashboard/workspace" }, requiredCapabilities: ["view_home"] },
 
   { id: "observe", kind: "product", level: 1, lifecycleStage: "observe", label: "Observe", href: "/dashboard/observe/revenue", icon: "observe", group: "hpm", experience: "client-workspace", availability: "available", activeMatch: { type: "patterns", patterns: ["/dashboard/observe/**", "/dashboard/insights/**", "/dashboard/financial/**"] }, requiredCapabilities: ["view_observations"] },
   { id: "understand", kind: "product", level: 1, lifecycleStage: "understand", label: "Understand", href: "/dashboard/understand/executive", icon: "understand", group: "hpm", experience: "client-workspace", availability: "available", activeMatch: { type: "patterns", patterns: ["/dashboard/understand/**", "/dashboard/portfolio/**"] }, requiredCapabilities: ["view_executive_intelligence"] },
