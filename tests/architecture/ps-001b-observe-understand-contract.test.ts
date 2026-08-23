@@ -65,4 +65,11 @@ describe("PS-001B Observe and Understand stabilization contract", () => {
     ];
     for (const path of paths) expect(existsSync(resolve(path)), path).toBe(true);
   });
+
+  it("denies the customer shell when no active workspace membership resolves", () => {
+    const layout = read("src/app/(dashboard)/layout.tsx");
+    expect(layout).toContain("if (!access)");
+    expect(layout).toContain("You no longer have access to this workspace");
+    expect(layout.indexOf("if (!access)")).toBeLessThan(layout.indexOf("const commerceAccess"));
+  });
 });
