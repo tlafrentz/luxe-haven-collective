@@ -71,121 +71,34 @@ export function CashFlowLiquidityPage({ view }: { view: View }) {
 }
 function Header({ view }: { view: View }) {
   return (
-    <header className="rounded-[2rem] bg-[#101416] p-6 text-white sm:p-8">
-      <nav aria-label="Financial Intelligence">
-        <ol className="flex flex-wrap gap-2 text-xs font-semibold">
-          <li>
-            <Link
-              className="rounded-full border border-white/20 px-3 py-2 text-stone-300"
-              href="/dashboard/financial"
-            >
-              Overview
-            </Link>
-          </li>
-          <li>
-            <Link
-              className="rounded-full border border-white/20 px-3 py-2 text-stone-300"
-              href="/dashboard/financial/profitability"
-            >
-              Profitability
-            </Link>
-          </li>
-          <li>
-            <span
-              aria-current="page"
-              className="inline-flex rounded-full bg-white px-3 py-2 text-stone-950"
-            >
-              Cash Flow
-            </span>
-          </li>
-          <li>
-            <Link
-              className="rounded-full border border-white/20 px-3 py-2 text-stone-300"
-              href="/dashboard/financial/planning"
-            >
-              Planning
-            </Link>
-          </li>
-        </ol>
-      </nav>
-      <p className="mt-6 text-xs font-semibold uppercase tracking-[.18em] text-teal-200">
-        Understand · Financial Intelligence
-      </p>
-      <div className="mt-3 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+    <header aria-labelledby="cash-flow-heading">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold sm:text-4xl">
+          <p className="text-xs font-semibold uppercase tracking-[.16em] text-emerald-800">
+            Financial Intelligence · Cash Flow
+          </p>
+          <h1
+            id="cash-flow-heading"
+            className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl"
+          >
             Cash Flow &amp; Liquidity
           </h1>
-          <p className="mt-3 text-lg text-stone-200">{view.scope.label}</p>
-          <p className="mt-1 text-sm text-stone-400">
+          <p className="mt-2 text-sm text-stone-600">
+            Current cash position for {view.scope.label.toLowerCase()} ·{" "}
             {view.scope.propertyCount} included properties ·{" "}
             {range(view.period.from, view.period.to)}
           </p>
         </div>
-        <dl className="grid grid-cols-2 gap-5 sm:grid-cols-3">
-          <Fact label="Currency" value={view.reportingCurrency} />
-          <Fact label="Accounts" value={`${view.accounts.length} visible`} />
-          <Fact
-            label="Comparison"
-            value={
-              view.comparison?.available
-                ? title(view.comparison.type)
-                : "Unavailable"
-            }
-          />
-          <Fact label="Confidence" value={title(view.confidence)} />
-          <Fact label="Freshness" value={title(view.freshness)} />
-          <Fact label="Evaluated" value={dateTime(view.evaluatedAt)} />
-        </dl>
+        <div className="text-sm text-stone-600 lg:text-right">
+          <p>
+            <strong className="text-stone-950">{title(view.freshness)}</strong>{" "}
+            freshness · {title(view.confidence)} confidence
+          </p>
+          <p className="mt-1">
+            Updated {dateTime(view.evaluatedAt)} · {view.reportingCurrency}
+          </p>
+        </div>
       </div>
-      <form
-        aria-label="Cash Flow reporting context"
-        className="mt-7 grid gap-3 border-t border-white/10 pt-6 sm:grid-cols-2 lg:grid-cols-4"
-      >
-        <Control
-          label="Scope"
-          name="scope"
-          options={[
-            ["workspace", "Full Workspace"],
-            ["selected-properties", "Selected Properties"],
-            ["single-property", "Single Property"],
-          ]}
-        />
-        <Control
-          label="Period"
-          name="period"
-          options={[
-            ["this-month", "This Month"],
-            ["last-month", "Last Month"],
-            ["qtd", "Quarter to Date"],
-            ["ytd", "Year to Date"],
-            ["12m", "Trailing 12 Months"],
-          ]}
-        />
-        <Control
-          label="Comparison"
-          name="comparison"
-          options={[
-            ["previous-period", "Previous Period"],
-            ["previous-year", "Previous Year"],
-            ["forecast", "Forecast"],
-            ["none", "No Comparison"],
-          ]}
-        />
-        <Control
-          label="Obligations"
-          name="horizon"
-          options={[
-            ["7", "Next 7 Days"],
-            ["30", "Next 30 Days"],
-            ["60", "Next 60 Days"],
-            ["90", "Next 90 Days"],
-          ]}
-        />
-        <button className="min-h-11 rounded-full bg-white px-5 text-sm font-semibold text-stone-950 sm:col-span-2 sm:justify-self-start lg:col-span-4">
-          Update cash view
-        </button>
-      </form>
     </header>
   );
 }
@@ -936,32 +849,6 @@ function Pill({ children }: { children: React.ReactNode }) {
     <span className="inline-flex rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-[11px] font-semibold text-stone-700">
       {children}
     </span>
-  );
-}
-function Control({
-  label,
-  name,
-  options,
-}: {
-  label: string;
-  name: string;
-  options: readonly (readonly [string, string])[];
-}) {
-  return (
-    <label className="text-xs font-semibold text-stone-300">
-      {label}
-      <select
-        aria-label={label}
-        name={name}
-        className="mt-2 min-h-11 w-full rounded-xl border border-white/20 bg-white/10 px-3 text-sm text-white"
-      >
-        {options.map(([value, text]) => (
-          <option className="text-stone-950" value={value} key={value}>
-            {text}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 function percent(value: number) {

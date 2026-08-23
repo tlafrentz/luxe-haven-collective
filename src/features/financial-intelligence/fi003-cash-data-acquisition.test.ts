@@ -86,4 +86,14 @@ describe("FI-003 canonical cash data acquisition", () => {
     expect(reader).toMatch(/input\.asOf\s*\?\?\s*input\.period\.to/);
     expect(view).toMatch(/Cash-flow history is not yet available/);
   });
+  it("renders only Cash Flow content beneath the canonical Financial Intelligence shell", () => {
+    const view = source(
+      "src/features/financial-intelligence/presentation/cash-flow-liquidity.tsx",
+    );
+    expect(view).not.toContain('aria-label="Cash Flow reporting context"');
+    expect(view).not.toContain('href="/dashboard/financial/profitability"');
+    expect(view).not.toContain("Update cash view");
+    expect(view).not.toContain("bg-[#101416]");
+    expect(view).toContain("Financial Intelligence · Cash Flow");
+  });
 });
