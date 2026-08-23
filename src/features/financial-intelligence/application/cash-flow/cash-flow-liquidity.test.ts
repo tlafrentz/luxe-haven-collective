@@ -1,25 +1,290 @@
 import { describe, expect, it, vi } from "vitest";
-import { permissionsForRole, type WorkspaceAccessContext } from "@/features/workspace";
+import {
+  permissionsForRole,
+  type WorkspaceAccessContext,
+} from "@/features/workspace";
 import { Money } from "@/platform/kernel";
 import { buildFinancialReadModel, type FinancialSource } from "../..";
-import type { BuildCashFlowLiquidityInput, CashAccountBalance, CashMovement } from ".";
+import type {
+  BuildCashFlowLiquidityInput,
+  CashAccountBalance,
+  CashMovement,
+} from ".";
 import { buildCashFlowLiquidityView, matchInternalTransfers } from ".";
 
-const access:WorkspaceAccessContext={profileId:"p",workspaceId:"w",ownerId:"w",ownerProfileId:"p",membershipId:"m",role:"owner",status:"active",propertyAccess:{type:"all"},permissions:permissionsForRole("owner")};
-const account=(overrides:Partial<CashAccountBalance>={}):CashAccountBalance=>({id:"operating",workspaceId:"w",propertyId:"one",label:"Operating",type:"operating",currency:"USD",openingBalance:Money.usd(100),closingBalance:Money.usd(130),restriction:"available",restrictedAmount:Money.usd(20),committedAmount:Money.usd(10),restrictionsComplete:true,openingAsOf:"2026-07-01",closingAsOf:"2026-07-31",status:"current",reconciliation:"reconciled",confidence:"high",freshness:"current",evidenceIds:["balance"],...overrides});
-const movement=(id:string,amount:number,direction:"inflow"|"outflow",activity:CashMovement["activity"],overrides:Partial<CashMovement>={}):CashMovement=>({id,workspaceId:"w",accountId:"operating",propertyId:"one",amount:Money.usd(amount),direction,activity,classification:direction==="inflow"?"economic-inflow":"economic-outflow",category:id,occurredAt:"2026-07-15",recurring:"recurring",allocated:true,qualification:"measured",confidence:"high",freshness:"current",evidenceIds:[id],...overrides});
-async function input(overrides:Partial<BuildCashFlowLiquidityInput>={}):Promise<BuildCashFlowLiquidityInput>{
-  const source:FinancialSource={getIdentity:vi.fn(async()=>({workspaceId:"w",organizationId:"o",reportingCurrency:"USD",fiscalYearStartMonth:1,timezone:"UTC",reportingStandards:["GAAP"],accountingMethod:"cash" as const})),listAccounts:vi.fn(async()=>[]),listTransactions:vi.fn(async()=>[]),getSynchronization:vi.fn(async()=>({lastSuccessfulAt:"2026-07-25T00:00:00Z",expectedProviders:1,connectedProviders:1,historyMonths:6}))};
-  const financial=await buildFinancialReadModel(source,{access,workspaceId:"w",propertyIds:["one"],period:{kind:"month",from:"2026-07-01",to:"2026-07-31",reportingCalendar:"calendar"},evaluatedAt:"2026-07-25T12:00:00Z"});
-  return{financial,scope:{type:"workspace",label:"Full Workspace",propertyIds:["one"],propertyCount:1},accounts:[account()],movements:[movement("receipts",60,"inflow","operating"),movement("operations",20,"outflow","operating"),movement("capex",10,"outflow","investing")],propertyLabels:{one:"Property One"},obligations:{sourceAvailable:true,coverage:1,items:[{id:"tax",description:"Property tax",category:"tax",amount:Money.usd(40),dueDate:"2026-07-30",status:"due-soon",propertyId:"one",scopeLabel:"Property One",recurrence:"one-time",confidence:"high",evidenceIds:["tax"]}]},reservePolicies:[],historyMonths:3,obligationHorizonDays:30,canViewAccounts:true,canViewTransactions:true,canViewObligations:true,canViewReserves:true,evaluatedAt:"2026-07-25T12:00:00Z",...overrides};
+const access: WorkspaceAccessContext = {
+  profileId: "p",
+  workspaceId: "w",
+  ownerId: "w",
+  ownerProfileId: "p",
+  membershipId: "m",
+  role: "owner",
+  status: "active",
+  propertyAccess: { type: "all" },
+  permissions: permissionsForRole("owner"),
+};
+const account = (
+  overrides: Partial<CashAccountBalance> = {},
+): CashAccountBalance => ({
+  id: "operating",
+  workspaceId: "w",
+  propertyId: "one",
+  label: "Operating",
+  type: "operating",
+  currency: "USD",
+  openingBalance: Money.usd(100),
+  closingBalance: Money.usd(130),
+  restriction: "available",
+  restrictedAmount: Money.usd(20),
+  committedAmount: Money.usd(10),
+  restrictionsComplete: true,
+  openingAsOf: "2026-07-01",
+  closingAsOf: "2026-07-31",
+  status: "current",
+  reconciliation: "reconciled",
+  confidence: "high",
+  freshness: "current",
+  evidenceIds: ["balance"],
+  ...overrides,
+});
+const movement = (
+  id: string,
+  amount: number,
+  direction: "inflow" | "outflow",
+  activity: CashMovement["activity"],
+  overrides: Partial<CashMovement> = {},
+): CashMovement => ({
+  id,
+  workspaceId: "w",
+  accountId: "operating",
+  propertyId: "one",
+  amount: Money.usd(amount),
+  direction,
+  activity,
+  classification:
+    direction === "inflow" ? "economic-inflow" : "economic-outflow",
+  category: id,
+  occurredAt: "2026-07-15",
+  recurring: "recurring",
+  allocated: true,
+  qualification: "measured",
+  confidence: "high",
+  freshness: "current",
+  evidenceIds: [id],
+  ...overrides,
+});
+async function input(
+  overrides: Partial<BuildCashFlowLiquidityInput> = {},
+): Promise<BuildCashFlowLiquidityInput> {
+  const source: FinancialSource = {
+    getIdentity: vi.fn(async () => ({
+      workspaceId: "w",
+      organizationId: "o",
+      reportingCurrency: "USD",
+      fiscalYearStartMonth: 1,
+      timezone: "UTC",
+      reportingStandards: ["GAAP"],
+      accountingMethod: "cash" as const,
+    })),
+    listAccounts: vi.fn(async () => []),
+    listTransactions: vi.fn(async () => []),
+    getSynchronization: vi.fn(async () => ({
+      lastSuccessfulAt: "2026-07-25T00:00:00Z",
+      expectedProviders: 1,
+      connectedProviders: 1,
+      historyMonths: 6,
+    })),
+  };
+  const financial = await buildFinancialReadModel(source, {
+    access,
+    workspaceId: "w",
+    propertyIds: ["one"],
+    period: {
+      kind: "month",
+      from: "2026-07-01",
+      to: "2026-07-31",
+      reportingCalendar: "calendar",
+    },
+    evaluatedAt: "2026-07-25T12:00:00Z",
+  });
+  return {
+    financial,
+    scope: {
+      type: "workspace",
+      label: "Full Workspace",
+      propertyIds: ["one"],
+      propertyCount: 1,
+    },
+    accounts: [account()],
+    movements: [
+      movement("receipts", 60, "inflow", "operating"),
+      movement("operations", 20, "outflow", "operating"),
+      movement("capex", 10, "outflow", "investing"),
+    ],
+    propertyLabels: { one: "Property One" },
+    obligations: {
+      sourceAvailable: true,
+      coverage: 1,
+      items: [
+        {
+          id: "tax",
+          description: "Property tax",
+          category: "tax",
+          amount: Money.usd(40),
+          dueDate: "2026-07-30",
+          status: "due-soon",
+          propertyId: "one",
+          scopeLabel: "Property One",
+          recurrence: "one-time",
+          confidence: "high",
+          evidenceIds: ["tax"],
+        },
+      ],
+    },
+    reservePolicies: [],
+    historyMonths: 3,
+    obligationHorizonDays: 30,
+    canViewAccounts: true,
+    canViewTransactions: true,
+    canViewObligations: true,
+    canViewReserves: true,
+    evaluatedAt: "2026-07-25T12:00:00Z",
+    ...overrides,
+  };
 }
-describe("Cash Flow & Liquidity",()=>{
-  it("reconciles opening, classified movement, and closing balances",async()=>{const view=buildCashFlowLiquidityView(await input());expect(view.position.availableCash?.amount).toBe(100);expect(view.statement.operatingActivities.net.amount).toBe(40);expect(view.statement.investingActivities.net.amount).toBe(-10);expect(view.statement.netCashMovement.amount).toBe(30);expect(view.statement.reconciliation.status).toBe("reconciled");});
-  it("eliminates matched internal transfers from consolidated flow",async()=>{const pair=[movement("transfer-out",25,"outflow","other",{accountId:"operating",classification:"internal-transfer",transferReference:"t"}),movement("transfer-in",25,"inflow","other",{accountId:"reserve",classification:"internal-transfer",transferReference:"t"})];expect(matchInternalTransfers(pair).matchedPairs).toBe(1);const view=buildCashFlowLiquidityView(await input({accounts:[account(),account({id:"reserve",label:"Reserve",type:"reserve",openingBalance:Money.usd(0),closingBalance:Money.usd(0),restrictedAmount:Money.zero("USD"),committedAmount:Money.zero("USD")})],movements:[...(await input()).movements,...pair]}));expect(view.statement.internalTransfersEliminated).toBe(1);expect(view.statement.netCashMovement.amount).toBe(30);});
-  it("keeps operating, investing, and financing flows distinct",async()=>{const view=buildCashFlowLiquidityView(await input({movements:[movement("ops",30,"outflow","operating"),movement("capex",10,"outflow","investing"),movement("loan",70,"inflow","financing")]}));expect(view.statement.operatingActivities.net.amount).toBe(-30);expect(view.statement.investingActivities.net.amount).toBe(-10);expect(view.statement.financingActivities.net.amount).toBe(70);});
-  it("does not claim obligations are zero when coverage is missing",async()=>{const view=buildCashFlowLiquidityView(await input({obligations:{sourceAvailable:false,coverage:0,items:[]}}));expect(view.obligations.totalKnown).toBeNull();expect(view.condition.status).toBe("insufficient-evidence");expect(view.runway.status).not.toBe("available");});
-  it("marks positive cash generation as no applicable runway",async()=>{const view=buildCashFlowLiquidityView(await input());expect(view.burnRate.applicable).toBe(false);expect(view.runway.status).toBe("not-applicable");});
-  it("calculates conditional runway for reliable negative burn",async()=>{const view=buildCashFlowLiquidityView(await input({accounts:[account({closingBalance:Money.usd(70),restrictedAmount:Money.zero("USD"),committedAmount:Money.zero("USD")})],movements:[movement("ops",30,"outflow","operating")]}));expect(view.burnRate.applicable).toBe(true);expect(view.runway.status).toBe("available");expect(view.runway.months).toBeCloseTo(7);});
-  it("omits sensitive balances and movement details at the application boundary",async()=>{const view=buildCashFlowLiquidityView(await input({canViewAccounts:false,canViewTransactions:false,permissionLimited:true}));expect(view.position.totalCash).toBeNull();expect(view.accounts).toEqual([]);expect(view.statement.operatingActivities.lines).toEqual([]);expect(view.drivers.inflows).toEqual([]);expect(view.statement.unmatchedTransfers).toEqual([]);});
-  it("rejects silent multi-currency aggregation",async()=>{const candidate=await input({accounts:[account({currency:"EUR",closingBalance:Money.of(1,"EUR")})]});expect(()=>buildCashFlowLiquidityView(candidate)).toThrow("CASH_FLOW_CURRENCY_MISMATCH");});
+describe("Cash Flow & Liquidity", () => {
+  it("reconciles opening, classified movement, and closing balances", async () => {
+    const view = buildCashFlowLiquidityView(await input());
+    expect(view.position.availableCash?.amount).toBe(100);
+    expect(view.statement.operatingActivities.net.amount).toBe(40);
+    expect(view.statement.investingActivities.net.amount).toBe(-10);
+    expect(view.statement.netCashMovement.amount).toBe(30);
+    expect(view.statement.reconciliation.status).toBe("reconciled");
+  });
+  it("eliminates matched internal transfers from consolidated flow", async () => {
+    const pair = [
+      movement("transfer-out", 25, "outflow", "other", {
+        accountId: "operating",
+        classification: "internal-transfer",
+        transferReference: "t",
+      }),
+      movement("transfer-in", 25, "inflow", "other", {
+        accountId: "reserve",
+        classification: "internal-transfer",
+        transferReference: "t",
+      }),
+    ];
+    expect(matchInternalTransfers(pair).matchedPairs).toBe(1);
+    const view = buildCashFlowLiquidityView(
+      await input({
+        accounts: [
+          account(),
+          account({
+            id: "reserve",
+            label: "Reserve",
+            type: "reserve",
+            openingBalance: Money.usd(0),
+            closingBalance: Money.usd(0),
+            restrictedAmount: Money.zero("USD"),
+            committedAmount: Money.zero("USD"),
+          }),
+        ],
+        movements: [...(await input()).movements, ...pair],
+      }),
+    );
+    expect(view.statement.internalTransfersEliminated).toBe(1);
+    expect(view.statement.netCashMovement.amount).toBe(30);
+  });
+  it("keeps operating, investing, and financing flows distinct", async () => {
+    const view = buildCashFlowLiquidityView(
+      await input({
+        movements: [
+          movement("ops", 30, "outflow", "operating"),
+          movement("capex", 10, "outflow", "investing"),
+          movement("loan", 70, "inflow", "financing"),
+        ],
+      }),
+    );
+    expect(view.statement.operatingActivities.net.amount).toBe(-30);
+    expect(view.statement.investingActivities.net.amount).toBe(-10);
+    expect(view.statement.financingActivities.net.amount).toBe(70);
+  });
+  it("does not claim obligations are zero when coverage is missing", async () => {
+    const view = buildCashFlowLiquidityView(
+      await input({
+        obligations: { sourceAvailable: false, coverage: 0, items: [] },
+      }),
+    );
+    expect(view.obligations.totalKnown).toBeNull();
+    expect(view.condition.status).toBe("insufficient-evidence");
+    expect(view.runway.status).not.toBe("available");
+  });
+  it("renders a manual balance-only account without provider metadata or transactions", async () => {
+    const manual = account({
+      propertyId: undefined,
+      openingBalance: undefined,
+      restrictedAmount: undefined,
+      committedAmount: undefined,
+      closingBalance: Money.usd(6243.68),
+      closingAsOf: "2026-08-23",
+      reconciliation: "not-applicable",
+    });
+    const view = buildCashFlowLiquidityView(
+      await input({
+        accounts: [manual],
+        movements: [],
+        comparisonAccounts: [],
+        comparisonMovements: [],
+        obligations: { sourceAvailable: false, coverage: 0, items: [] },
+      }),
+    );
+    expect(view.state).toBe("balances-only");
+    expect(view.position.totalCash?.amount).toBe(6243.68);
+  });
+  it("marks positive cash generation as no applicable runway", async () => {
+    const view = buildCashFlowLiquidityView(await input());
+    expect(view.burnRate.applicable).toBe(false);
+    expect(view.runway.status).toBe("not-applicable");
+  });
+  it("calculates conditional runway for reliable negative burn", async () => {
+    const view = buildCashFlowLiquidityView(
+      await input({
+        accounts: [
+          account({
+            closingBalance: Money.usd(70),
+            restrictedAmount: Money.zero("USD"),
+            committedAmount: Money.zero("USD"),
+          }),
+        ],
+        movements: [movement("ops", 30, "outflow", "operating")],
+      }),
+    );
+    expect(view.burnRate.applicable).toBe(true);
+    expect(view.runway.status).toBe("available");
+    expect(view.runway.months).toBeCloseTo(7);
+  });
+  it("omits sensitive balances and movement details at the application boundary", async () => {
+    const view = buildCashFlowLiquidityView(
+      await input({
+        canViewAccounts: false,
+        canViewTransactions: false,
+        permissionLimited: true,
+      }),
+    );
+    expect(view.position.totalCash).toBeNull();
+    expect(view.accounts).toEqual([]);
+    expect(view.statement.operatingActivities.lines).toEqual([]);
+    expect(view.drivers.inflows).toEqual([]);
+    expect(view.statement.unmatchedTransfers).toEqual([]);
+  });
+  it("rejects silent multi-currency aggregation", async () => {
+    const candidate = await input({
+      accounts: [
+        account({ currency: "EUR", closingBalance: Money.of(1, "EUR") }),
+      ],
+    });
+    expect(() => buildCashFlowLiquidityView(candidate)).toThrow(
+      "CASH_FLOW_CURRENCY_MISMATCH",
+    );
+  });
 });

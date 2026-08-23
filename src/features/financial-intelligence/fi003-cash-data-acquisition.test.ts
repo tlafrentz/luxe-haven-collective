@@ -27,15 +27,18 @@ describe("FI-003 canonical cash data acquisition", () => {
     expect(acquisition).not.toContain("/dashboard/settings");
     expect(acquisition).not.toContain("connected-systems");
   });
-  it("feeds the same canonical records to Cash Flow and Forecast", () => {
+  it("keeps cash balances behind the dedicated cash-position boundary", () => {
     const cash = source("src/app/actions/cash-flow-liquidity-runtime.ts"),
       financial = source(
         "src/features/financial-intelligence/infrastructure/supabase-financial-overview-source.ts",
+      ),
+      balances = source(
+        "src/features/financial-intelligence/infrastructure/supabase-cash-data-source.ts",
       );
     expect(cash).toContain("SupabaseCashBalanceReader");
     expect(cash).toContain("SupabaseCashTransactionReader");
-    expect(financial).toContain('from("cash_balance_observations")');
-    expect(financial).toContain('category:"cash-balance"');
+    expect(balances).toContain('from("cash_balance_observations")');
+    expect(financial).not.toContain('from("cash_balance_observations")');
   });
   it("keeps bank sync capability-gated and provides a Cash Flow return target", () => {
     const view = source(
