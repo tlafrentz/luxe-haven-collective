@@ -32,6 +32,7 @@ A controlled authorized customer must be able to make a traceable decision, deli
 - Decision-to-plan handoff preserves source decision, scope, rationale, and evidence references and never requires duplicate entry of known context.
 - A draft plan creates no execution until canonical activation. Activation is authorized, versioned, transactional, dependency-validated, and idempotent.
 - Customer action detail is composed from canonical Execute projections and commands. Presentation never duplicates lifecycle rules.
+- After every customer-visible Execute command, certification must reload the persisted canonical Execute projection and assert that the rendered state agrees with it. A transient optimistic UI success is not evidence of a successful command.
 - Completion cannot bypass evidence, dependencies, blockers, review, or authorization.
 - Action completed is not Outcome measured. Outcome measured is not Learning established.
 - Estimated impact never becomes realized impact through completion. Only supported measurement can establish realized impact.
