@@ -1,0 +1,92 @@
+{
+  "correlationId": "ps001b-61d61f0a-c71e-4d29-8e84-87d9645d95ef",
+  "candidate": {
+    "commit": "91adc182",
+    "deployment": "dpl_8oigBrnep6bsLXyTf2rc58rSCBfh",
+    "base": "https://luxehavencollective.co"
+  },
+  "startedAt": "2026-08-23T18:37:48.446Z",
+  "steps": [
+    {
+      "name": "complete-evidence-seeded",
+      "at": "2026-08-23T18:37:52.559Z",
+      "workspaceId": "01927f4c-54d0-49ef-9624-bd372aa0d8dd",
+      "propertyId": "25824f61-e4f6-4c56-8c34-f86005ab58b2"
+    },
+    {
+      "name": "revenue-current-report-handoff",
+      "at": "2026-08-23T18:38:04.879Z",
+      "url": "https://luxehavencollective.co/dashboard/reports/new?sourceCapability=revenue&sourceView=overview&reportScope=current-view&workspace=01927f4c-54d0-49ef-9624-bd372aa0d8dd&scope=entire-portfolio&from=2026-08-01&to=2026-08-31&compareFrom=2026-07-01&compareTo=2026-07-31&basis=actual"
+    },
+    {
+      "name": "report-current-view-artifact-inspected",
+      "at": "2026-08-23T18:38:17.650Z",
+      "reportId": "3f3f0c3b-05c9-4b8f-8716-1512a38591c3",
+      "versionId": "61918088-6a5b-42f2-8160-2705ba222a38",
+      "generatedAt": "2026-08-23T18:38:12.732+00:00",
+      "immutableSnapshot": true
+    },
+    {
+      "name": "report-full-capability-artifact-inspected",
+      "at": "2026-08-23T18:38:29.279Z",
+      "reportId": "e6a37101-0700-4f5b-85a4-00d25abe2eab",
+      "versionId": "b5d1dec0-0757-47d4-b5b6-0bf3b40c9322",
+      "generatedAt": "2026-08-23T18:38:24.563+00:00",
+      "immutableSnapshot": true
+    },
+    {
+      "name": "observe-journey-passed",
+      "at": "2026-08-23T18:38:37.449Z"
+    },
+    {
+      "name": "executive-journey-passed",
+      "at": "2026-08-23T18:38:43.924Z"
+    },
+    {
+      "name": "portfolio-journey-passed",
+      "at": "2026-08-23T18:38:57.611Z"
+    },
+    {
+      "name": "responsive-desktop-passed",
+      "at": "2026-08-23T18:39:03.880Z"
+    },
+    {
+      "name": "responsive-tablet-passed",
+      "at": "2026-08-23T18:39:08.482Z"
+    },
+    {
+      "name": "responsive-mobile-passed",
+      "at": "2026-08-23T18:39:13.062Z"
+    },
+    {
+      "name": "anonymous-denied",
+      "at": "2026-08-23T18:39:13.793Z"
+    },
+    {
+      "name": "admin-verified",
+      "at": "2026-08-23T18:39:18.893Z"
+    },
+    {
+      "name": "wrong-tenant-verified",
+      "at": "2026-08-23T18:39:24.173Z"
+    },
+    {
+      "name": "revoked-denied",
+      "at": "2026-08-23T18:39:29.100Z"
+    },
+    {
+      "name": "partial-evidence-passed",
+      "at": "2026-08-23T18:39:35.581Z"
+    },
+    {
+      "name": "degraded-evidence-passed",
+      "at": "2026-08-23T18:39:42.185Z"
+    },
+    {
+      "name": "synthetic-cleanup-completed",
+      "at": "2026-08-23T18:39:46.120Z"
+    }
+  ],
+  "result": "passed",
+  "completedAt": "2026-08-23T18:39:46.120Z"
+}

@@ -8,8 +8,8 @@
 
 **Priority:** P0/P1
 
-**Status:** Active
-**Feature freeze:** Active — no new product scope during PS-001
+**Status:** Complete — production verified 2026-08-23
+**Feature freeze:** Closed without new product scope
 
 ## Objective
 
@@ -47,6 +47,7 @@ Retired parallel intelligence workspaces are compatibility redirects only and ar
 - Material values disclose measured, derived, estimated, last-known, or insufficient-evidence semantics as applicable, plus source, period, freshness, confidence, and derivation.
 - Loading, ready, partial evidence, insufficient evidence, degraded data, empty, recoverable failure, and unauthorized behavior are intentional presentation states. Raw provider, database, and JavaScript errors are never customer copy.
 - Export and Export options converge on canonical Reports. Shared context and current/full-capability report intent survive the handoff.
+- Report rendering uses the immutable request snapshot as its authoritative reporting context. It must not substitute current context, default or hard-coded dates, or reconstructed UI state. The snapshot retains workspace and scope as applicable, reporting period, comparison, basis, source capability/view, and current-view versus full-capability intent.
 - Connected Systems manages providers; it is not a generic fallback for manual entry, CSV import, or unrelated setup.
 - Contextual Attention, Supporting Signals, Property Intelligence, and Data Quality remain within their owning Understand capability and receive deterministic return targets.
 - Every visible interactive element is registered or explicitly verified as navigation, command, filter, drawer/modal, external, or disabled-by-design.
