@@ -25,6 +25,12 @@ describe("PS-001B Observe and Understand stabilization contract", () => {
     expect(actions).toContain("<ContextLink href={href}");
     expect(actions).not.toContain("window.print");
     expect(actions).not.toMatch(/reports\/definitions\//);
+    const chooser = read("src/app/(dashboard)/dashboard/reports/new/page.tsx");
+    const configure = read("src/app/(dashboard)/dashboard/reports/new/[definitionId]/page.tsx");
+    const generation = read("src/platform/reporting/foundation/generation.ts");
+    expect(chooser).toContain("compareFrom");
+    expect(configure).toContain('name="accountingBasis"');
+    expect(generation).toContain("sourceContext: validated.sourceContext");
   });
 
   it("does not manufacture provider connection state in intelligence presentation", () => {

@@ -3,7 +3,7 @@ import { normalizeScope, ReportFoundationError, validatePeriod } from "./model";
 import { standardReportRegistry, type ReportDefinition } from "./registry";
 
 export type ReportActor = Readonly<{ userId: string; tenantId: string; authenticated: boolean }>;
-export type GenerateReportRequest = Readonly<{ definitionId: string; definitionVersion?: number; scope: ReportScope; period: ReportPeriod; comparisonPeriod?: ComparisonPeriod; title?: string; customConfiguration?: Readonly<Record<string, unknown>>; idempotencyKey?: string }>;
+export type GenerateReportRequest = Readonly<{ definitionId: string; definitionVersion?: number; scope: ReportScope; period: ReportPeriod; comparisonPeriod?: ComparisonPeriod; title?: string; customConfiguration?: Readonly<Record<string, unknown>>; sourceContext?: Readonly<Record<string, string>>; idempotencyKey?: string }>;
 export interface ReportAuthorization { authorize(input: Readonly<{ actor: ReportActor; definition: ReportDefinition; scope: ReportScope }>): Promise<Readonly<{ allowed: boolean; authorizedPropertyIds: readonly string[] }>>; }
 export interface ReportRepository { createReport(input: Report): Promise<Report>; createVersion(input: ReportVersion): Promise<ReportVersion>; markGenerating(reportVersionId: string): Promise<void>; markReady(reportVersionId: string, snapshot: ReportSnapshot): Promise<void>; markFailed(reportVersionId: string, failure: Readonly<{ code: string; message: string }>): Promise<void>; getReport(reportId: string, actor: ReportActor): Promise<Report | null>; getVersion(reportId: string, reportVersionId: string, actor: ReportActor): Promise<ReportVersion | null>; listReports(actor: ReportActor): Promise<readonly Report[]>; listVersions(reportId: string, actor: ReportActor): Promise<readonly ReportVersion[]>; archiveReport(reportId: string, actor: ReportActor): Promise<void>; restoreReport(reportId: string, actor: ReportActor): Promise<void>; }
 export interface ExecutiveReportDataProvider { load(input: Readonly<{ scope: ReportScope; period: ReportPeriod }>): Promise<unknown>; }
@@ -26,5 +26,6 @@ export async function validateGenerateReportRequest(input: GenerateReportRequest
   if (!grant.allowed) throw new ReportFoundationError("REPORT_SCOPE_FORBIDDEN", "Report scope is forbidden.");
   const requestedProperties = scope.kind === "property" ? [scope.propertyId] : "propertyIds" in scope ? scope.propertyIds : [];
   if (requestedProperties.some(id => !grant.authorizedPropertyIds.includes(id))) throw new ReportFoundationError("REPORT_SCOPE_FORBIDDEN", "Every property must be authorized.");
-  return Object.freeze({ definition, scope, period, comparisonPeriod: input.comparisonPeriod, authorizedPropertyIds: Object.freeze([...new Set(grant.authorizedPropertyIds)].sort()), title });
+  const sourceContext = Object.freeze(Object.fromEntries(Object.entries(input.sourceContext ?? {}).filter(([key,value]) => /^[a-z][a-zA-Z]*$/.test(key) && typeof value === "string" && value.length <= 160)));
+  return Object.freeze({ definition, scope, period, comparisonPeriod: input.comparisonPeriod, authorizedPropertyIds: Object.freeze([...new Set(grant.authorizedPropertyIds)].sort()), title, sourceContext });
 }

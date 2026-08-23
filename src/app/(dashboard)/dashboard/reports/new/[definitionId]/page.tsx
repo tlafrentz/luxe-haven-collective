@@ -12,10 +12,11 @@ export default async function ConfigureReportPage({
   searchParams,
 }: {
   params: Promise<{ definitionId: string }>;
-  searchParams: Promise<{ sourceCapability?: string }>;
+  searchParams: Promise<{ sourceCapability?: string; sourceView?: string; reportScope?: string; from?: string; to?: string; compareFrom?: string; compareTo?: string; basis?: string }>;
 }) {
   const { definitionId } = await params,
-    sourceCapability = (await searchParams).sourceCapability,
+    request = await searchParams,
+    sourceCapability = request.sourceCapability,
     options = await getGenerationOptions();
   if (!options) redirect("/login");
   const item = options.definitions.find(
@@ -39,6 +40,9 @@ export default async function ConfigureReportPage({
         className="space-y-6 rounded-3xl border bg-white p-6"
       >
         <input name="definitionId" type="hidden" value={d.definitionId} />
+        {request.sourceCapability ? <input name="sourceCapability" type="hidden" value={request.sourceCapability}/> : null}
+        {request.sourceView ? <input name="sourceView" type="hidden" value={request.sourceView}/> : null}
+        {request.reportScope ? <input name="reportScope" type="hidden" value={request.reportScope}/> : null}
         {sourceCapability ? <input name="returnToReports" type="hidden" value="true" /> : null}
         <input
           name="idempotencyKey"
@@ -105,7 +109,7 @@ export default async function ConfigureReportPage({
                 name="startDate"
                 required
                 type="date"
-                defaultValue="2026-07-01"
+                defaultValue={request.from}
               />
             </label>
             <label>
@@ -115,7 +119,7 @@ export default async function ConfigureReportPage({
                 name="endDate"
                 required
                 type="date"
-                defaultValue="2026-07-31"
+                defaultValue={request.to}
               />
             </label>
             <label>
@@ -131,6 +135,8 @@ export default async function ConfigureReportPage({
               </select>
             </label>
           </div>
+          {request.compareFrom && request.compareTo ? <div className="mt-3 grid gap-3 sm:grid-cols-2"><label>Comparison start<input className="mt-1 w-full rounded-lg border p-3" name="comparisonStartDate" readOnly type="date" value={request.compareFrom}/></label><label>Comparison end<input className="mt-1 w-full rounded-lg border p-3" name="comparisonEndDate" readOnly type="date" value={request.compareTo}/></label></div> : null}
+          {request.basis ? <input name="accountingBasis" type="hidden" value={request.basis}/> : null}
         </section>
         <section>
           <h2 className="text-xl font-semibold">3. Configure options</h2>

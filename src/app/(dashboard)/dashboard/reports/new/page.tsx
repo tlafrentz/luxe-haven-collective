@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { CatalogCard } from "@/features/reporting-suite";
 import { getGenerationOptions } from "@/features/reporting-suite/application/reporting-workspace-composition";
-export default async function NewReportPage({ searchParams }: { searchParams: Promise<{ sourceCapability?: string; sourceView?: string; reportScope?: string }> }) {
+type ReportRequestParams = Readonly<{ sourceCapability?: string; sourceView?: string; reportScope?: string; workspace?: string; scope?: string; from?: string; to?: string; compareFrom?: string; compareTo?: string; basis?: string }>;
+export default async function NewReportPage({ searchParams }: { searchParams: Promise<ReportRequestParams> }) {
   const [options, params] = await Promise.all([getGenerationOptions(), searchParams]);
   if (!options) redirect("/login?next=/dashboard/reports/new");
   const source = capability(params.sourceCapability),
@@ -11,6 +12,13 @@ export default async function NewReportPage({ searchParams }: { searchParams: Pr
           sourceCapability: params.sourceCapability!,
           ...(params.sourceView ? { sourceView: params.sourceView } : {}),
           ...(params.reportScope ? { reportScope: params.reportScope } : {}),
+          ...(params.workspace ? { workspace: params.workspace } : {}),
+          ...(params.scope ? { scope: params.scope } : {}),
+          ...(params.from ? { from: params.from } : {}),
+          ...(params.to ? { to: params.to } : {}),
+          ...(params.compareFrom ? { compareFrom: params.compareFrom } : {}),
+          ...(params.compareTo ? { compareTo: params.compareTo } : {}),
+          ...(params.basis ? { basis: params.basis } : {}),
         }).toString()
       : "";
   return (

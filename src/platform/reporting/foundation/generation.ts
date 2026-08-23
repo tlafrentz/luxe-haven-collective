@@ -259,6 +259,7 @@ export class ReportGenerator {
           scope: validated.scope,
           period: validated.period,
           comparisonPeriod: validated.comparisonPeriod ?? null,
+          sourceContext: validated.sourceContext,
           customConfiguration: normalizedCustom ?? null,
         },
         generatorVersion: this.dependencies.generatorVersion ?? "rp001c.v1",

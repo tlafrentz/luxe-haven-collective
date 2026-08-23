@@ -126,6 +126,12 @@ export async function generateCanonicalReportAction(form: FormData) {
       scope,
       period,
       ...(comparison ? { comparisonPeriod: comparison } : {}),
+      sourceContext: Object.fromEntries([
+        ["sourceCapability", String(form.get("sourceCapability") ?? "")],
+        ["sourceView", String(form.get("sourceView") ?? "")],
+        ["reportScope", String(form.get("reportScope") ?? "")],
+        ["accountingBasis", String(form.get("accountingBasis") ?? "")],
+      ].filter(([,value]) => value)),
       title,
       ...(customConfiguration ? { customConfiguration } : {}),
       idempotencyKey: String(form.get("idempotencyKey") ?? crypto.randomUUID()),
@@ -185,6 +191,7 @@ export async function regenerateCanonicalReportAction(form: FormData) {
             generation?: {
               normalizedRequest?: {
                 customConfiguration?: Record<string, unknown>;
+                sourceContext?: Record<string, string>;
               };
             };
           }
@@ -204,6 +211,7 @@ export async function regenerateCanonicalReportAction(form: FormData) {
       ...(normalized?.customConfiguration
         ? { customConfiguration: normalized.customConfiguration }
         : {}),
+      ...(normalized?.sourceContext ? { sourceContext: normalized.sourceContext } : {}),
       idempotencyKey: String(form.get("idempotencyKey") ?? crypto.randomUUID()),
     },
     options.actor,
