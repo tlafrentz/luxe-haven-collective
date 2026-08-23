@@ -108,6 +108,11 @@ describe("canonical financial read model", () => {
     await expect(buildFinancialReadModel(gateway, query({ propertyId: "property-2" }))).rejects.toMatchObject({ code: "SOURCE_SCOPE_VIOLATION" });
   });
 
+  it("accepts workspace-level unallocated data when the property selection is empty", async () => {
+    const unallocated = FinancialTransaction.create({ ...transaction("cash", "asset", 10).props, propertyId: undefined });
+    await expect(buildFinancialReadModel(source({ listTransactions: vi.fn(async () => [unallocated]) }), query({ propertyId: undefined, propertyIds: [] }))).resolves.toMatchObject({ identity: { workspaceId: "workspace-1" } });
+  });
+
   it("rejects mixed currency rather than silently aggregating it", async () => {
     const mixed = FinancialTransaction.create({ ...transaction("eur", "revenue", 1).props, amount: Money.of(1, "EUR") });
     await expect(buildFinancialReadModel(source({ listTransactions: vi.fn(async () => [mixed]) }), query())).rejects.toMatchObject({ code: "CURRENCY_MISMATCH" });

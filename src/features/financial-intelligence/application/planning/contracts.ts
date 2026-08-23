@@ -150,6 +150,7 @@ export type FinancialPlanning = Readonly<{
 }>;
 export type BuildFinancialPlanningInput = Readonly<{
   actuals: FinancialReadModel;
+  cashPositionAvailable?: boolean;
   scope: FinancialOverviewScope;
   budget?: FinancialBudgetPlan | null;
   forecast?: FinancialForecastPlan | null;

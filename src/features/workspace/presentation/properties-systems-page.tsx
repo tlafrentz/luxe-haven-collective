@@ -6,10 +6,12 @@ import {
   WorkspaceCard, WorkspaceContent, WorkspaceGrid, WorkspaceHeader, WorkspacePage,
 } from "@/components/application-layout";
 import type { PropertiesAndSystemsOverview } from "../application/properties-systems-services";
+import type { PlaidConnectionSummary } from "@/app/actions/plaid-financial-ingestion";
+import { PlaidRecoveryControls } from "@/features/financial-intelligence/presentation/plaid-recovery-controls";
 
 const badge = (status: string) => (
   <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-semibold capitalize text-stone-700">
-    {status.replaceAll("-", " ")}
+    {status.replaceAll("-", " ").replaceAll("_", " ")}
   </span>
 );
 
@@ -71,14 +73,15 @@ export function WorkspacePropertiesPage({ overview, canManage, title = "Properti
   );
 }
 
-export function WorkspaceConnectedSystemsPage({ overview, canManage, returnTo }: Readonly<{
-  overview: PropertiesAndSystemsOverview; canManage: boolean; returnTo?: string;
+export function WorkspaceConnectedSystemsPage({ overview, canManage, returnTo, financialConnections=[] }: Readonly<{
+  overview: PropertiesAndSystemsOverview; canManage: boolean; returnTo?: string; financialConnections?:readonly PlaidConnectionSummary[];
 }>) {
   return (
     <WorkspacePage width="wide">
       <WorkspaceHeader eyebrow="Workspace configuration" title="Connected Systems"
         description="Review external platform connectivity, property linkage, synchronization freshness, and recovery actions without exposing provider secrets." />
       {returnTo ? <Link href={returnTo} className="inline-flex min-h-10 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold">← Back to intelligence</Link> : null}
+      {financialConnections.map(connection=><WorkspaceContent key={connection.connectionId}><WorkspaceCard level={2} className="p-6"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Financial provider</p><h2 className="mt-1 text-xl font-semibold">{connection.institutionName}</h2><p className="mt-2 text-sm text-stone-600">{connection.selectedAccounts} discovered account records · historical canonical data is retained through recovery and disconnect.</p></div>{badge(connection.status==="healthy"?"connected":connection.status==="reauth_required"?"needs-attention":connection.status)}</div><div className="mt-5 grid gap-3 sm:grid-cols-2"><p className="text-sm"><strong className="block">Last balance refresh</strong>{connection.lastBalancesAt?new Date(connection.lastBalancesAt).toLocaleString():"Never"}</p><p className="text-sm"><strong className="block">Last transaction sync</strong>{connection.lastTransactionsAt?new Date(connection.lastTransactionsAt).toLocaleString():"Never"}</p></div>{canManage?<PlaidRecoveryControls workspaceId={connection.workspaceId} connectionId={connection.connectionId} status={connection.status}/>:<p className="mt-5 text-sm text-stone-600">Connection recovery is limited to workspace administrators.</p>}</WorkspaceCard></WorkspaceContent>)}
       <WorkspaceContent>
         {!overview.systems.length ? (
           <WorkspaceCard level={2} className="p-8">

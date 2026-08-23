@@ -224,7 +224,7 @@ function Statement({ view }: { view: View }) {
       ))}
       <dl className="mt-5 grid grid-cols-2 gap-4">
         <Fact
-          label="Net change in cash"
+          label="Net Cash Movement"
           value={view.statement.netCashMovement.format()}
         />
         <Fact

@@ -278,7 +278,7 @@ export async function buildFinancialReadModel(source: FinancialSource, query: Ge
     source.listTransactions({ workspaceId: query.workspaceId, period: query.period, portfolioId: query.portfolioId, propertyId: query.propertyId, propertyIds: query.propertyIds }),
     source.getSynchronization(query.workspaceId),
   ]);
-  const selected = query.propertyIds ? new Set(query.propertyIds) : undefined;
+  const selected = query.propertyIds?.length ? new Set(query.propertyIds) : undefined;
   if (accounts.some((account) => account.workspaceId !== query.workspaceId) || transactions.some(({ props }) => props.workspaceId !== query.workspaceId || (query.propertyId && props.propertyId !== query.propertyId) || (selected && (!props.propertyId || !selected.has(props.propertyId))))) {
     throw new FinancialReadError("SOURCE_SCOPE_VIOLATION", "A financial source returned data outside the authorized scope.");
   }

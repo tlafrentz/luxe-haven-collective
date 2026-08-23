@@ -1,10 +1,14 @@
 "use client";
 import { useActionState, useRef, useState } from "react";
+import Script from "next/script";
 import {
   importFinancialCsvAction,
   recordCashBalanceAction,
   type CashAcquisitionState,
 } from "@/app/actions/cash-data-acquisition";
+import { createPlaidLinkTokenAction, exchangePlaidPublicTokenAction, selectPlaidAccountsAction, syncPlaidTransactionsAction, type PlaidAccountChoice } from "@/app/actions/plaid-financial-ingestion";
+
+declare global { interface Window { Plaid?: { create(input:{token:string;onSuccess:(publicToken:string,metadata:{institution?:{name?:string};accounts?:Array<{id:string}>})=>void;onExit:()=>void}):{open():void} } } }
 
 const initial: CashAcquisitionState = {};
 export function CashDataAcquisition({ workspaceId }: { workspaceId: string }) {
@@ -13,6 +17,7 @@ export function CashDataAcquisition({ workspaceId }: { workspaceId: string }) {
   return (
     <>
       <div className="flex flex-wrap gap-3">
+        <BankConnection workspaceId={workspaceId} />
         <button
           onClick={() => balance.current?.showModal()}
           className="min-h-10 rounded-md bg-emerald-800 px-4 text-sm font-semibold text-white"
@@ -30,6 +35,13 @@ export function CashDataAcquisition({ workspaceId }: { workspaceId: string }) {
       <CsvDialog ref={csv} workspaceId={workspaceId} />
     </>
   );
+}
+function BankConnection({workspaceId}:{workspaceId:string}){
+  const dialog=useRef<HTMLDialogElement>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(""),[connectionId,setConnectionId]=useState(""),[accounts,setAccounts]=useState<readonly PlaidAccountChoice[]>([]),[selected,setSelected]=useState<string[]>([]),[balanceReady,setBalanceReady]=useState(false);
+  async function connect(){setBusy(true);setMessage("");const link=await createPlaidLinkTokenAction(workspaceId);setBusy(false);if(!link.ok||!link.linkToken||!window.Plaid){setMessage(link.message??"Secure bank connection is still loading.");dialog.current?.showModal();return;}window.Plaid.create({token:link.linkToken,onExit:()=>setBusy(false),onSuccess:async(publicToken,metadata)=>{setBusy(true);const exchanged=await exchangePlaidPublicTokenAction({workspaceId,publicToken,institutionName:metadata.institution?.name});setBusy(false);if(!exchanged.ok){setMessage(exchanged.message??"Authorization failed.");dialog.current?.showModal();return;}setConnectionId(exchanged.connectionId??"");setAccounts(exchanged.accounts??[]);setSelected((exchanged.accounts??[]).map(a=>a.id));dialog.current?.showModal();}}).open();}
+  async function save(){setBusy(true);const result=await selectPlaidAccountsAction({workspaceId,connectionId,accountIds:selected});setBusy(false);setMessage(result.message??"");setBalanceReady(Boolean(result.ok));}
+  async function sync(){setBusy(true);const result=await syncPlaidTransactionsAction({workspaceId,connectionId});setBusy(false);setMessage(result.message??"");}
+  return <><Script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js" strategy="afterInteractive"/><button type="button" disabled={busy} onClick={connect} className="min-h-10 rounded-md border border-stone-300 bg-white px-4 text-sm font-semibold">{busy?"Connecting…":"Connect bank"}</button><dialog ref={dialog} className="m-auto w-full max-w-lg rounded-2xl p-6 backdrop:bg-stone-950/30"><div className="flex justify-between"><div><p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Secure bank ingestion</p><h2 className="mt-2 text-2xl font-semibold">Select cash accounts</h2></div><button type="button" onClick={()=>dialog.current?.close()} aria-label="Close">×</button></div>{accounts.length?<fieldset className="mt-6 space-y-3"><legend className="text-sm text-stone-600">Only selected accounts become canonical Cash Flow accounts.</legend>{accounts.map(account=><label key={account.id} className="flex items-center gap-3 rounded-xl border p-3"><input type="checkbox" checked={selected.includes(account.id)} onChange={event=>setSelected(value=>event.target.checked?[...value,account.id]:value.filter(id=>id!==account.id))}/><span><strong className="block">{account.name}</strong><small className="text-stone-500">{account.mask?`•••• ${account.mask} · `:""}{account.type} · {account.currency}</small></span></label>)}</fieldset>:null}{message?<p role="status" className="mt-5 text-sm">{message}</p>:null}<div className="mt-6 flex justify-end gap-3"><button type="button" onClick={()=>dialog.current?.close()} className="rounded-md border px-4 py-2">Close</button>{accounts.length&&!balanceReady?<button type="button" disabled={busy||!selected.length} onClick={save} className="rounded-md bg-emerald-800 px-4 py-2 font-semibold text-white disabled:opacity-50">Add balances to Cash Flow</button>:null}{balanceReady?<button type="button" disabled={busy} onClick={sync} className="rounded-md bg-emerald-800 px-4 py-2 font-semibold text-white disabled:opacity-50">Sync transactions</button>:null}</div></dialog></>;
 }
 function BalanceDialog({
   workspaceId,

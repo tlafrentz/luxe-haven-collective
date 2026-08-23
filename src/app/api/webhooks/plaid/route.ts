@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { processPlaidWebhook } from "@/features/financial-intelligence/infrastructure/plaid-recovery";
+export async function POST(request:Request){const raw=await request.text();try{const result=await processPlaidWebhook(raw,request.headers.get("plaid-verification"));return NextResponse.json(result);}catch(error){const code=error instanceof Error?error.message:"WEBHOOK_REJECTED",authentication=/SIGNATURE|HASH|CONTEXT|BODY_INVALID/.test(code);console.error("plaid_webhook_rejected",{code});return NextResponse.json({accepted:false,code:authentication?"WEBHOOK_UNAUTHORIZED":"WEBHOOK_RETRY_REQUIRED"},{status:authentication?401:503});}}

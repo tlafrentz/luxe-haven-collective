@@ -74,7 +74,7 @@ export function evaluateForecastReadiness(
           PLANNING_POLICY.minimumExpenseCoverage
           ? "ready"
           : "required",
-      cash_position: snapshot.profitability.cashPosition ? "ready" : "required",
+      cash_position: input.cashPositionAvailable || snapshot.profitability.cashPosition ? "ready" : "required",
       recurring_obligations: snapshot.liabilities ? "ready" : "required",
     } as const,
     missing = forecastRequirements.filter(

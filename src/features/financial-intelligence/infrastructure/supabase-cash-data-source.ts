@@ -12,6 +12,7 @@ type Account = Readonly<{
   name: string;
   account_type: string | null;
   source_type: string;
+  status: string;
   active: boolean;
 }>;
 type Balance = Readonly<{
@@ -44,7 +45,7 @@ class SupabaseCashDataStore {
     const client = await createClient();
     let accountsQuery = client
       .from("financial_accounts")
-      .select("id,workspace_id,name,account_type,source_type,active")
+      .select("id,workspace_id,name,account_type,source_type,status,active")
       .eq("workspace_id", input.workspaceId)
       .eq("active", true)
       .in("category", ["asset", "reserve"]);
@@ -96,10 +97,10 @@ class SupabaseCashDataStore {
             type === "reserve" ? ("reserved" as const) : ("available" as const),
           restrictionsComplete: true,
           closingAsOf: balance.as_of,
-          status: "current" as const,
+          status: account.status === "disconnected" ? ("disconnected" as const) : ("current" as const),
           reconciliation: "not-applicable" as const,
-          confidence: "high" as const,
-          freshness: "current" as const,
+          confidence: account.status !== "active" ? ("moderate" as const) : ("high" as const),
+          freshness: account.status !== "active" ? ("stale" as const) : ("current" as const),
           evidenceIds: Object.freeze([`cash-balance:${balance.id}`]),
         },
       ] satisfies CashAccountBalance[];
