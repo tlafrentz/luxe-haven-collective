@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const action = readFileSync("src/app/actions/workspace.ts", "utf8");
 const control = readFileSync("src/features/workspace/presentation/initialize-workspace-form.tsx", "utf8");
+const layout = readFileSync("src/app/(dashboard)/layout.tsx", "utf8");
 const migration = readFileSync("supabase/migrations/20260806030000_initialize_workspace_owner_membership.sql", "utf8");
 
 describe("initial workspace onboarding boundary", () => {
@@ -11,6 +12,8 @@ describe("initial workspace onboarding boundary", () => {
     expect(control).toContain('type="submit"');
     expect(control).toContain('disabled={pending}');
     expect(control).toContain('role="status"');
+    expect(layout).toContain('profile?.role === "owner" || profile?.role === "admin"');
+    expect(layout).toContain("<InitializeWorkspaceForm />");
   });
 
   it("preserves authenticated eligibility checks and a recoverable failure state", () => {

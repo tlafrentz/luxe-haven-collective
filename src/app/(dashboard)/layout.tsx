@@ -4,6 +4,7 @@ import { AppShell } from "@/components/application-layout"
 import { getCommerceAccessWorkspace } from "@/app/actions/commerce-access"
 import { SupabaseTeamAccessRepository } from "@/features/workspace"
 import { requireUser } from "@/lib/auth/session"
+import { InitializeWorkspaceForm } from "@/features/workspace/presentation/initialize-workspace-form"
 
 type DashboardLayoutProps = {
   children: ReactNode
@@ -23,6 +24,12 @@ export default async function DashboardLayout({
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Workspace access unavailable</p>
             <h1 className="mt-3 text-3xl font-semibold text-stone-950">You no longer have access to this workspace</h1>
             <p className="mt-3 text-stone-700">Your workspace membership is inactive or has been removed. Contact a workspace administrator if you believe this is incorrect.</p>
+            {profile?.role === "owner" || profile?.role === "admin" ? (
+              <div className="mt-6 rounded-2xl bg-stone-950 p-5 text-white">
+                <p className="text-sm text-stone-300">If this is a new account, initialize its first workspace through the canonical owner setup boundary.</p>
+                <InitializeWorkspaceForm />
+              </div>
+            ) : null}
           </section>
         </main>
       </AppShell>
