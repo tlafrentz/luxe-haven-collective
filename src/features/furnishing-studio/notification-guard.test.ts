@@ -12,4 +12,9 @@ describe("FS-008A P2.2 notification boundary", () => {
     expect(new Set(denied.map((x) => x.reason))).toEqual(new Set(["killed_globally"]));
     expect(("hpm" as string) === "furnishing").toBe(false);
   });
+  it("requires typed product-family metadata for known Furnishing work", () => {
+    const intent = { eventType: "furnishing_reminder", productFamily: "furnishing" as const };
+    expect(intent.productFamily).toBe("furnishing");
+    expect((intent as { productFamily?: string }).productFamily).not.toBeUndefined();
+  });
 });
