@@ -1,4 +1,4 @@
-import type { ExecuteNotificationIntent } from "@/platform/actions/application/execute-application";
+type ExecuteNotificationIntent = Readonly<{ id:string; workspaceId:string; recipientType:string; recipientId:string; eventType:string; entityType:string; entityId:string; templateVariables:Readonly<Record<string,string>>; channel:"in-app"|"email"|"sms"|"slack"|"teams"; status:"pending"; idempotencyKey:string; attemptCount:0; createdAt:Date; productFamily?:"furnishing"|"hpm"|"guidebook_studio"|"investment_intelligence" }>;
 
 /** Canonical notification kinds emitted by Furnishing workflows. */
 export type FurnishingNotificationKind =

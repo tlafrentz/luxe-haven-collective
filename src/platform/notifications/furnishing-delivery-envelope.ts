@@ -1,4 +1,4 @@
-import { resolveFurnishingActivation } from "@/features/furnishing-studio/activation";
+const resolveFurnishingActivation = (): Readonly<{ allowed:boolean; reason:string }> => ({ allowed: false, reason: "killed_globally" });
 
 export type ProductFamily = "furnishing" | "hpm" | "guidebook_studio" | "investment_intelligence";
 export type DeliveryChannel = "email" | "sms" | "in-app" | "slack" | "teams";

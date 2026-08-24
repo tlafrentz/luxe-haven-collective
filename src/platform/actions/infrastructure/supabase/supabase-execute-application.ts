@@ -2,7 +2,7 @@ import { ActionPlan, type ActionActor, type ActionPlanProps, type PlatformAction
 import type { PlatformActionRepository } from "../../application/action-repository";
 import { ExecutePersistenceConflict, type ActionPlanRepository, type ExecuteActivityEvent, type ExecuteActivityRepository, type ExecuteNotificationIntent, type ExecuteNotificationOutbox, type ExecuteTransactionContext, type ExecuteUnitOfWork } from "../../application/execute-application";
 import { mapPlatformActionToPersistenceRows } from "./action-persistence-mapper";
-import { resolveFurnishingActivation } from "@/features/furnishing-studio/activation";
+import { resolveFurnishingActivation } from "@/platform/furnishing-activation-policy";
 
 type DatabaseError=Readonly<{message:string;code?:string}>;
 type DatabaseResult=Readonly<{data:unknown;error:DatabaseError|null}>;
