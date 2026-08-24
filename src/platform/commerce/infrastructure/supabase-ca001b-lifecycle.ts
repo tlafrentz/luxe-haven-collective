@@ -1,19 +1,267 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CommercialLifecycleRepository } from "../application";
 import type { BillingProviderEvent, CommercialAgreement } from "../domain";
-type Row=Record<string,unknown>;
-const agreement=(row:Row):CommercialAgreement=>Object.freeze({id:String(row.id),tenantId:String(row.tenant_id),customerAccountId:String(row.customer_account_id),offerCode:String(row.offer_code),offerVersion:Number(row.offer_version),billingPriceMappingId:String(row.billing_price_mapping_id),agreementType:row.agreement_type as CommercialAgreement["agreementType"],status:row.status as CommercialAgreement["status"],provider:"stripe",providerCustomerReference:String(row.provider_customer_reference),...(row.provider_agreement_reference?{providerAgreementReference:String(row.provider_agreement_reference)}:{}),...(row.current_period_start?{currentPeriodStart:String(row.current_period_start)}:{}),...(row.current_period_end?{currentPeriodEnd:String(row.current_period_end)}:{}),...(row.cancel_at_period_end!==null?{cancelAtPeriodEnd:Boolean(row.cancel_at_period_end)}:{}),...(row.ended_at?{endedAt:String(row.ended_at)}:{}),...(row.activated_at?{activatedAt:String(row.activated_at)}:{}),createdAt:String(row.created_at),updatedAt:String(row.updated_at),revision:Number(row.revision)});
-export class SupabaseCommercialLifecycleRepository implements CommercialLifecycleRepository{
-  private currentAttemptId?:string;
-  private currentEventId?:string;
-  private currentEventRevision?:number;
-  constructor(private readonly client:SupabaseClient){}
-  async claimEvent(event:BillingProviderEvent){const{data,error}=await this.client.from("billing_provider_events").select("id,status,attempt_count,revision").eq("provider_event_id",event.providerEventId).eq("account_mode",event.accountMode).maybeSingle();if(error)throw new Error("COMMERCIAL_EVENT_READ_FAILED");if(data){if(data.status!=="failed")return"duplicate"as const;const revision=Number(data.revision)+1,{data:reclaimed,error:reclaimError}=await this.client.from("billing_provider_events").update({status:"processing",processed_at:null,stable_failure_code:null,attempt_count:Number(data.attempt_count)+1,revision}).eq("id",data.id).eq("status","failed").select("id").maybeSingle();if(reclaimError)throw new Error("COMMERCIAL_EVENT_CLAIM_FAILED");if(!reclaimed)return"duplicate"as const;this.currentEventId=String(data.id);this.currentEventRevision=revision;return"claimed"as const}const result=await this.client.from("billing_provider_events").insert({id:event.id,provider:"stripe",provider_event_id:event.providerEventId,event_type:event.eventType,account_mode:event.accountMode,status:"processing",received_at:event.receivedAt,correlation_id:event.correlationId,payload_checksum:event.payloadChecksum,attempt_count:1,revision:1});if(result.error)return result.error.code==="23505"?"duplicate"as const:Promise.reject(new Error("COMMERCIAL_EVENT_CLAIM_FAILED"));this.currentEventId=event.id;this.currentEventRevision=1;return"claimed"as const}
-  async findAttempt(id:string){const{data,error}=await this.client.from("billing_checkout_attempts").select("*").eq("id",id).maybeSingle();if(error)throw new Error("COMMERCIAL_ATTEMPT_READ_FAILED");if(data)this.currentAttemptId=id;return data?Object.freeze({id:String(data.id),tenantId:String(data.tenant_id),customerAccountId:String(data.customer_account_id),offerCode:String(data.offer_code),offerVersion:Number(data.offer_version),billingPriceMappingId:String(data.billing_price_mapping_id),mode:data.mode as "payment"|"subscription",...(data.stripe_customer_reference?{stripeCustomerReference:String(data.stripe_customer_reference)}:{}),status:String(data.status)}):null}
-  async findAgreementByAttempt(id:string){const{data,error}=await this.client.from("commercial_agreements").select("*").eq("checkout_attempt_id",id).maybeSingle();if(error)throw new Error("COMMERCIAL_AGREEMENT_READ_FAILED");return data?agreement(data):null}
-  async saveAgreement(value:CommercialAgreement,eventId:string){if(!this.currentAttemptId)throw new Error("COMMERCIAL_ATTEMPT_CONTEXT_MISSING");const row={id:value.id,tenant_id:value.tenantId,customer_account_id:value.customerAccountId,checkout_attempt_id:this.currentAttemptId,offer_code:value.offerCode,offer_version:value.offerVersion,billing_price_mapping_id:value.billingPriceMappingId,agreement_type:value.agreementType,status:value.status,provider:"stripe",provider_customer_reference:value.providerCustomerReference,provider_agreement_reference:value.providerAgreementReference??null,current_period_start:value.currentPeriodStart??null,current_period_end:value.currentPeriodEnd??null,cancel_at_period_end:value.cancelAtPeriodEnd??null,ended_at:value.endedAt??null,activated_at:value.activatedAt??null,created_at:value.createdAt,updated_at:value.updatedAt,revision:value.revision};const{data,error}=await this.client.from("commercial_agreements").upsert(row,{onConflict:"id"}).select("*").single();if(error||!data)throw new Error("COMMERCIAL_AGREEMENT_WRITE_FAILED");await this.client.from("commercial_agreement_history").upsert({tenant_id:value.tenantId,agreement_id:value.id,provider_event_id:eventId,to_status:value.status,reason_code:"verified_provider_event",correlation_id:eventId,occurred_at:value.updatedAt,revision:value.revision},{onConflict:"agreement_id,revision",ignoreDuplicates:true});return agreement(data)}
-  async markEvent(id:string,status:BillingProviderEvent["status"],failureCode?:string){const eventId=this.currentEventId??id,revision=(this.currentEventRevision??1)+1,{error}=await this.client.from("billing_provider_events").update({status,processed_at:new Date().toISOString(),stable_failure_code:failureCode??null,revision}).eq("id",eventId);this.currentEventId=undefined;this.currentEventRevision=undefined;if(error)throw new Error("COMMERCIAL_EVENT_WRITE_FAILED")}
-  async hasActivatedEntitlements(agreementId:string){const{count,error}=await this.client.from("commercial_entitlements").select("id",{count:"exact",head:true}).eq("source_reference_id",agreementId).eq("status","active");if(error)throw new Error("ENTITLEMENT_READ_FAILED");return(count??0)>0}
-  async activateEntitlements(input:Readonly<{agreement:CommercialAgreement;idempotencyKey:string}>){if((await this.client.rpc("activate_oc001_agreement_entitlements",{p_agreement_id:input.agreement.id,p_idempotency_key:input.idempotencyKey})).error)throw new Error("ENTITLEMENT_ACTIVATION_FAILED");if((await this.client.rpc("initialize_oc001_agreement_effects",{p_agreement_id:input.agreement.id,p_idempotency_key:`${input.idempotencyKey}:effects`})).error)throw new Error("COMMERCIAL_EFFECT_INITIALIZATION_FAILED")}
-  async transitionSourceEntitlements(input:Readonly<{agreementId:string;action:"suspend"|"restore"|"expire";effectiveAt:string;idempotencyKey:string}>){const{error}=await this.client.rpc("transition_oc001_agreement_entitlements",{p_agreement_id:input.agreementId,p_action:input.action,p_effective_at:input.effectiveAt,p_idempotency_key:input.idempotencyKey});if(error)throw new Error("ENTITLEMENT_TRANSITION_FAILED")}
+import { resolveFurnishingActivation } from "@/features/furnishing-studio/activation";
+type Row = Record<string, unknown>;
+const isFurnishing = (offerCode: string) => /^FS-|furnishing/i.test(offerCode);
+const assertFurnishingEntitlementActivation = () => {
+  const decision = resolveFurnishingActivation({
+    globalKillSwitch: true,
+    globalState: "disabled",
+    workspaceKillSwitch: false,
+    workspaceEnabled: false,
+    cohortEligible: false,
+    capabilityEnabled: false,
+    configurationValid: true,
+    policyVersion: "fs008a-v1",
+  });
+  if (!decision.allowed)
+    throw new Error(`FURNISHING_ENTITLEMENT_${decision.reason.toUpperCase()}`);
+};
+const agreement = (row: Row): CommercialAgreement =>
+  Object.freeze({
+    id: String(row.id),
+    tenantId: String(row.tenant_id),
+    customerAccountId: String(row.customer_account_id),
+    offerCode: String(row.offer_code),
+    offerVersion: Number(row.offer_version),
+    billingPriceMappingId: String(row.billing_price_mapping_id),
+    agreementType: row.agreement_type as CommercialAgreement["agreementType"],
+    status: row.status as CommercialAgreement["status"],
+    provider: "stripe",
+    providerCustomerReference: String(row.provider_customer_reference),
+    ...(row.provider_agreement_reference
+      ? { providerAgreementReference: String(row.provider_agreement_reference) }
+      : {}),
+    ...(row.current_period_start
+      ? { currentPeriodStart: String(row.current_period_start) }
+      : {}),
+    ...(row.current_period_end
+      ? { currentPeriodEnd: String(row.current_period_end) }
+      : {}),
+    ...(row.cancel_at_period_end !== null
+      ? { cancelAtPeriodEnd: Boolean(row.cancel_at_period_end) }
+      : {}),
+    ...(row.ended_at ? { endedAt: String(row.ended_at) } : {}),
+    ...(row.activated_at ? { activatedAt: String(row.activated_at) } : {}),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    revision: Number(row.revision),
+  });
+export class SupabaseCommercialLifecycleRepository
+  implements CommercialLifecycleRepository
+{
+  private currentAttemptId?: string;
+  private currentEventId?: string;
+  private currentEventRevision?: number;
+  constructor(private readonly client: SupabaseClient) {}
+  async claimEvent(event: BillingProviderEvent) {
+    const { data, error } = await this.client
+      .from("billing_provider_events")
+      .select("id,status,attempt_count,revision")
+      .eq("provider_event_id", event.providerEventId)
+      .eq("account_mode", event.accountMode)
+      .maybeSingle();
+    if (error) throw new Error("COMMERCIAL_EVENT_READ_FAILED");
+    if (data) {
+      if (data.status !== "failed") return "duplicate" as const;
+      const revision = Number(data.revision) + 1,
+        { data: reclaimed, error: reclaimError } = await this.client
+          .from("billing_provider_events")
+          .update({
+            status: "processing",
+            processed_at: null,
+            stable_failure_code: null,
+            attempt_count: Number(data.attempt_count) + 1,
+            revision,
+          })
+          .eq("id", data.id)
+          .eq("status", "failed")
+          .select("id")
+          .maybeSingle();
+      if (reclaimError) throw new Error("COMMERCIAL_EVENT_CLAIM_FAILED");
+      if (!reclaimed) return "duplicate" as const;
+      this.currentEventId = String(data.id);
+      this.currentEventRevision = revision;
+      return "claimed" as const;
+    }
+    const result = await this.client
+      .from("billing_provider_events")
+      .insert({
+        id: event.id,
+        provider: "stripe",
+        provider_event_id: event.providerEventId,
+        event_type: event.eventType,
+        account_mode: event.accountMode,
+        status: "processing",
+        received_at: event.receivedAt,
+        correlation_id: event.correlationId,
+        payload_checksum: event.payloadChecksum,
+        attempt_count: 1,
+        revision: 1,
+      });
+    if (result.error)
+      return result.error.code === "23505"
+        ? ("duplicate" as const)
+        : Promise.reject(new Error("COMMERCIAL_EVENT_CLAIM_FAILED"));
+    this.currentEventId = event.id;
+    this.currentEventRevision = 1;
+    return "claimed" as const;
+  }
+  async findAttempt(id: string) {
+    const { data, error } = await this.client
+      .from("billing_checkout_attempts")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw new Error("COMMERCIAL_ATTEMPT_READ_FAILED");
+    if (data) this.currentAttemptId = id;
+    return data
+      ? Object.freeze({
+          id: String(data.id),
+          tenantId: String(data.tenant_id),
+          customerAccountId: String(data.customer_account_id),
+          offerCode: String(data.offer_code),
+          offerVersion: Number(data.offer_version),
+          billingPriceMappingId: String(data.billing_price_mapping_id),
+          mode: data.mode as "payment" | "subscription",
+          ...(data.stripe_customer_reference
+            ? {
+                stripeCustomerReference: String(data.stripe_customer_reference),
+              }
+            : {}),
+          status: String(data.status),
+        })
+      : null;
+  }
+  async findAgreementByAttempt(id: string) {
+    const { data, error } = await this.client
+      .from("commercial_agreements")
+      .select("*")
+      .eq("checkout_attempt_id", id)
+      .maybeSingle();
+    if (error) throw new Error("COMMERCIAL_AGREEMENT_READ_FAILED");
+    return data ? agreement(data) : null;
+  }
+  async saveAgreement(value: CommercialAgreement, eventId: string) {
+    if (!this.currentAttemptId)
+      throw new Error("COMMERCIAL_ATTEMPT_CONTEXT_MISSING");
+    const row = {
+      id: value.id,
+      tenant_id: value.tenantId,
+      customer_account_id: value.customerAccountId,
+      checkout_attempt_id: this.currentAttemptId,
+      offer_code: value.offerCode,
+      offer_version: value.offerVersion,
+      billing_price_mapping_id: value.billingPriceMappingId,
+      agreement_type: value.agreementType,
+      status: value.status,
+      provider: "stripe",
+      provider_customer_reference: value.providerCustomerReference,
+      provider_agreement_reference: value.providerAgreementReference ?? null,
+      current_period_start: value.currentPeriodStart ?? null,
+      current_period_end: value.currentPeriodEnd ?? null,
+      cancel_at_period_end: value.cancelAtPeriodEnd ?? null,
+      ended_at: value.endedAt ?? null,
+      activated_at: value.activatedAt ?? null,
+      created_at: value.createdAt,
+      updated_at: value.updatedAt,
+      revision: value.revision,
+    };
+    const { data, error } = await this.client
+      .from("commercial_agreements")
+      .upsert(row, { onConflict: "id" })
+      .select("*")
+      .single();
+    if (error || !data) throw new Error("COMMERCIAL_AGREEMENT_WRITE_FAILED");
+    await this.client
+      .from("commercial_agreement_history")
+      .upsert(
+        {
+          tenant_id: value.tenantId,
+          agreement_id: value.id,
+          provider_event_id: eventId,
+          to_status: value.status,
+          reason_code: "verified_provider_event",
+          correlation_id: eventId,
+          occurred_at: value.updatedAt,
+          revision: value.revision,
+        },
+        { onConflict: "agreement_id,revision", ignoreDuplicates: true },
+      );
+    return agreement(data);
+  }
+  async markEvent(
+    id: string,
+    status: BillingProviderEvent["status"],
+    failureCode?: string,
+  ) {
+    const eventId = this.currentEventId ?? id,
+      revision = (this.currentEventRevision ?? 1) + 1,
+      { error } = await this.client
+        .from("billing_provider_events")
+        .update({
+          status,
+          processed_at: new Date().toISOString(),
+          stable_failure_code: failureCode ?? null,
+          revision,
+        })
+        .eq("id", eventId);
+    this.currentEventId = undefined;
+    this.currentEventRevision = undefined;
+    if (error) throw new Error("COMMERCIAL_EVENT_WRITE_FAILED");
+  }
+  async hasActivatedEntitlements(agreementId: string) {
+    const { count, error } = await this.client
+      .from("commercial_entitlements")
+      .select("id", { count: "exact", head: true })
+      .eq("source_reference_id", agreementId)
+      .eq("status", "active");
+    if (error) throw new Error("ENTITLEMENT_READ_FAILED");
+    return (count ?? 0) > 0;
+  }
+  async activateEntitlements(
+    input: Readonly<{ agreement: CommercialAgreement; idempotencyKey: string }>,
+  ) {
+    if (isFurnishing(input.agreement.offerCode)) assertFurnishingEntitlementActivation();
+    if (
+      (
+        await this.client.rpc("activate_oc001_agreement_entitlements", {
+          p_agreement_id: input.agreement.id,
+          p_idempotency_key: input.idempotencyKey,
+        })
+      ).error
+    )
+      throw new Error("ENTITLEMENT_ACTIVATION_FAILED");
+    if (
+      (
+        await this.client.rpc("initialize_oc001_agreement_effects", {
+          p_agreement_id: input.agreement.id,
+          p_idempotency_key: `${input.idempotencyKey}:effects`,
+        })
+      ).error
+    )
+      throw new Error("COMMERCIAL_EFFECT_INITIALIZATION_FAILED");
+  }
+  async transitionSourceEntitlements(
+    input: Readonly<{
+      agreementId: string;
+      action: "suspend" | "restore" | "expire";
+      effectiveAt: string;
+      idempotencyKey: string;
+    }>,
+  ) {
+    const { data: sourceAgreement } = await this.client.from("commercial_agreements").select("offer_code").eq("id", input.agreementId).maybeSingle();
+    if (sourceAgreement && isFurnishing(String(sourceAgreement.offer_code))) assertFurnishingEntitlementActivation();
+    const { error } = await this.client.rpc(
+      "transition_oc001_agreement_entitlements",
+      {
+        p_agreement_id: input.agreementId,
+        p_action: input.action,
+        p_effective_at: input.effectiveAt,
+        p_idempotency_key: input.idempotencyKey,
+      },
+    );
+    if (error) throw new Error("ENTITLEMENT_TRANSITION_FAILED");
+  }
 }
