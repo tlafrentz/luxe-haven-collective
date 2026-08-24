@@ -70,7 +70,7 @@ export async function inviteTeamMemberAction(input: Readonly<{
     });
     invitationId = invitation.id;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const url = `${siteUrl}/dashboard/workspace/team/accept?workspace=${encodeURIComponent(context.workspaceId)}&token=${encodeURIComponent(secure.token)}`;
+    const url = `${siteUrl}/workspace-invitations/accept?workspace=${encodeURIComponent(context.workspaceId)}&token=${encodeURIComponent(secure.token)}`;
     await sendEmail({
       to: invitation.email,
       subject: "You’re invited to a Luxe Haven workspace",
@@ -121,7 +121,7 @@ export async function resendTeamInvitationAction(input: Readonly<{
       subject: "Your Luxe Haven workspace invitation",
       html: invitationHtml({
         organization: "your hospitality team",
-        url: `${siteUrl}/dashboard/workspace/team/accept?workspace=${encodeURIComponent(context.workspaceId)}&token=${encodeURIComponent(secure.token)}`,
+        url: `${siteUrl}/workspace-invitations/accept?workspace=${encodeURIComponent(context.workspaceId)}&token=${encodeURIComponent(secure.token)}`,
         role: input.role,
         expiresAt: new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(new Date(expiresAt)),
       }),

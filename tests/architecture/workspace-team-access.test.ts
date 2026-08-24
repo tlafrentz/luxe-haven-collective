@@ -7,6 +7,8 @@ const booking = readFileSync(new URL("../../src/features/bookings/infrastructure
 const operational = readFileSync(new URL("../../src/features/operational-surfaces/infrastructure/supabase-operational-surface-repository.ts", import.meta.url), "utf8");
 const page = readFileSync(new URL("../../src/app/(dashboard)/dashboard/workspace/team/page.tsx", import.meta.url), "utf8");
 const manager = readFileSync(new URL("../../src/features/workspace/presentation/team-access-manager.tsx", import.meta.url), "utf8");
+const actions = readFileSync(new URL("../../src/app/actions/workspace-team-access.ts", import.meta.url), "utf8");
+const acceptancePage = readFileSync(new URL("../../src/app/workspace-invitations/accept/page.tsx", import.meta.url), "utf8");
 
 describe("Sprint 4C workspace team and access", () => {
   it("creates explicit membership, invitation, selected-property, activity, notification, and receipt persistence", () => {
@@ -64,5 +66,13 @@ describe("Sprint 4C workspace team and access", () => {
     expect(manager).toContain("Selected properties");
     expect(manager).toContain("window.confirm");
     expect(manager).toContain('aria-live="polite"');
+  });
+
+  it("routes authenticated invitees to acceptance before workspace membership exists", () => {
+    expect(actions).toContain("/workspace-invitations/accept?workspace=");
+    expect(actions).not.toContain("/dashboard/workspace/team/accept?workspace=");
+    expect(acceptancePage).toContain("getSessionProfile");
+    expect(acceptancePage).toContain("<AcceptWorkspaceInvitation");
+    expect(acceptancePage).toContain("/login?next=");
   });
 });
