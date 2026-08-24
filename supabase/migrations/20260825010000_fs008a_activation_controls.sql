@@ -33,5 +33,9 @@ do $$ declare t text; begin
     execute format('create trigger fs008a_disabled_effect before insert or update on public.%I for each row when (public.fs008a_furnishing_effects_disabled()) execute function public.fs008a_deny_furnishing_effect()',t);
   end loop;
 end $$;
+drop trigger if exists fs008a_disabled_furnishing_entitlement on public.commercial_entitlements;
+create trigger fs008a_disabled_furnishing_entitlement before insert or update on public.commercial_entitlements for each row when (new.capability_code like 'furnishing.%' and public.fs008a_furnishing_effects_disabled()) execute function public.fs008a_deny_furnishing_effect();
+drop trigger if exists fs008a_disabled_furnishing_notification on public.notification_deliveries;
+create trigger fs008a_disabled_furnishing_notification before insert or update on public.notification_deliveries for each row when (coalesce(new.event_type,'') ilike '%furnish%' and public.fs008a_furnishing_effects_disabled()) execute function public.fs008a_deny_furnishing_effect();
 revoke all on function public.fs008a_deny_furnishing_effect(),public.fs008a_furnishing_effects_disabled() from public,anon,authenticated;
 grant execute on function public.fs008a_furnishing_effects_disabled() to service_role;
