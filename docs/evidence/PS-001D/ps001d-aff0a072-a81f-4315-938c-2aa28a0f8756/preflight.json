@@ -1,0 +1,42 @@
+{
+  "milestone": "PS-001D",
+  "productionRunId": "ps001d-production-aff0a072-a81f-4315-938c-2aa28a0f8756",
+  "correlationId": "ps001d-aff0a072-a81f-4315-938c-2aa28a0f8756",
+  "startedAt": "2026-08-24T01:29:14Z",
+  "completedAt": "2026-08-24T01:29:14Z",
+  "result": "blocked-before-claim",
+  "candidate": {
+    "commit": "253c459b7e5d6b7e66d288890b7ecfc0c018f762",
+    "deploymentId": "dpl_9HnJCEKvS25CQqsrZnbzXyrf4sCZ",
+    "deploymentUrl": "https://luxe-haven-collective-3ms56tn37-luxe-haven-collective.vercel.app",
+    "productionAlias": "https://luxehavencollective.co"
+  },
+  "preflight": {
+    "candidateDeploymentIdentity": "passed",
+    "deploymentReady": "passed",
+    "productionAliasAssignment": "passed",
+    "migrationParityThrough": "20260824001000",
+    "productionHealth": "failed",
+    "remainingChecks": "not-evaluated-after-fail-closed-stop",
+    "identityAuthorizations": "not-created",
+    "claim": "not-acquired",
+    "fs008CatalogIsolation": "unchanged-by-candidate; runtime-baseline-not-evaluated-after-stop"
+  },
+  "healthEvidence": {
+    "initialAliasHead": "receive-timeout-without-response",
+    "boundedAliasGet": {"httpStatus": 0, "remoteIp": "64.29.17.1", "elapsedSeconds": 18.061387, "result": "receive-timeout"},
+    "boundedImmutableDeploymentGet": {"httpStatus": 302, "remoteIp": "216.198.79.131", "elapsedSeconds": 0.18514, "result": "prompt-redirect"}
+  },
+  "mutationBoundary": {
+    "identityAuthorizationRecordsCreated": 0,
+    "claimAcquired": false,
+    "claimId": null,
+    "ledgerEntries": 0,
+    "businessDomainMutations": 0,
+    "syntheticResources": 0,
+    "cleanupRequired": false,
+    "blockedCorrelationReusable": false
+  },
+  "reason": "The production alias health request failed to return a response during two read-only attempts. Verification stopped without mutation.",
+  "sanitization": "No credentials, tokens, user email addresses, raw provider payloads, or customer data are retained."
+}

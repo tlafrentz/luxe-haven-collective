@@ -29,4 +29,10 @@ Focused automated coverage must prove concurrency, replay rejection, binding sub
 
 After all local gates pass, the verification-only diff must be frozen as a new candidate and deployed exactly. A fresh correlation ID is mandatory. Production mutation remains prohibited until the new read-only preflight passes and the one-shot claim is acquired. The claim may be used once and never reset or bypassed.
 
+## Two-stage target correction
+
+Pre-claim target validation requires an approved, unexpired `PS001D_VERIFICATION_ONLY_NON_CUSTOMER` tenant and its canonical ID. It validates the ordinary Admin, operator, owner, wrong-tenant, and anonymous scenarios; exact candidate/deployment/alias/correlation identity; authorizations; claim availability; ledger and cleanup capability; migration/configuration parity; and the absence of customer, provider, payment, publication, automation, and catalog relationships. A dormant controlled tenant is valid. An active property or booking is not a pre-claim requirement, and no real customer tenant or record may be substituted.
+
+After the claim is acquired and permanently consumed for its first authorized mutation, the run may create exactly one draft PS-001D synthetic property and one pending PS-001D synthetic booking through the bounded domain fixture operations. Each canonical row and its typed ledger entry are committed atomically. The booking must reference the claim-bound property and tenant. Provider synchronization, payment, notification, publication, automation, and catalog effects remain suppressed. Cleanup is idempotent and processes the booking before the property while retaining the append-only PS-001D audit and reconciled ledger.
+
 The blocked-run evidence remains legitimate milestone history and may be committed with the new candidate without changing the identity or outcome of the blocked `7197dec7` attempt.

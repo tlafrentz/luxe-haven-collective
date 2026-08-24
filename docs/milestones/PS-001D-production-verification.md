@@ -30,3 +30,17 @@ The unrelated `.gitignore` modification and untracked `scripts/check-guidebook-c
 ## Required clearance
 
 Before a new controlled run, establish and deploy a reviewed PS-001D verification contract that atomically claims the exact candidate/deployment/tenant/correlation tuple, rejects replay durably, registers the required PS-001D scenarios and persona authorization, and proves ledger-driven cleanup operations. That change creates a new candidate and requires the deployment identity chain and read-only preflight to restart.
+
+## Certification-controls candidate blocked preflight
+
+Candidate `253c459b7e5d6b7e66d288890b7ecfc0c018f762` was deployed exactly as Vercel deployment `dpl_9HnJCEKvS25CQqsrZnbzXyrf4sCZ`. Migration parity was confirmed through `20260824001000`, but the production alias health request failed to return a response during two read-only attempts. The immutable deployment URL responded promptly with an HTTP redirect, isolating the observed failure to the production-alias health boundary available to the verifier.
+
+The run stopped before identity-authorization creation and before claim acquisition under correlation `ps001d-aff0a072-a81f-4315-938c-2aa28a0f8756`. It created no ledger rows, synthetic resources, or business-domain mutations and requires no cleanup. The correlation is permanently retired. Evidence is retained at `docs/evidence/PS-001D/ps001d-aff0a072-a81f-4315-938c-2aa28a0f8756/preflight.json`.
+
+### Alias recovery and restarted preflight
+
+The alias recovered without code, configuration, DNS, alias, middleware, or deployment changes. Three consecutive HEAD and GET pairs returned HTTP 200, both published A-record paths returned HTTP 200, TLS verification passed, Vercel reported the exact deployment Ready and assigned to the alias, and no error-level runtime logs correlated with the probes. The immutable deployment URL's HTTP 302 destination was the expected Vercel deployment-protection SSO endpoint. Vercel reported all systems operational.
+
+A fresh read-only preflight used correlation `ps001d-65252e77-081f-425e-bc33-433cdf445527`. It confirmed the existing controlled platform Admin and authenticated personas, migration/control-table availability, no active claim conflict, and unchanged FS-008/catalog state. It then stopped because the controlled tenant has only one archived property and zero bookings, while no other active registered controlled tenant has a usable property/booking target. No PS-001D authorization, claim, ledger, audit, synthetic, or business resource was created. This correlation is permanently retired; evidence is retained at `docs/evidence/PS-001D/ps001d-65252e77-081f-425e-bc33-433cdf445527/preflight.json`.
+
+That stop remains valid evidence of safe fail-closed behavior, but its target-record prerequisite exposed a sequencing defect. Property and booking fixtures are claim-owned resources and therefore must not exist before claim acquisition. The corrected contract accepts a dormant approved non-customer controlled tenant at preflight, then creates at most one property and one booking atomically with ledger records after claim consumption. Candidate `253c459b7e5d6b7e66d288890b7ecfc0c018f762` remains preserved as the untagged blocked attempt; the correction requires a new candidate and deployment.

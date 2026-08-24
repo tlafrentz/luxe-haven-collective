@@ -1,0 +1,58 @@
+{
+  "milestone": "PS-001D",
+  "productionRunId": "ps001d-production-65252e77-081f-425e-bc33-433cdf445527",
+  "correlationId": "ps001d-65252e77-081f-425e-bc33-433cdf445527",
+  "result": "blocked-before-authorization-and-claim",
+  "candidate": {
+    "commit": "253c459b7e5d6b7e66d288890b7ecfc0c018f762",
+    "deploymentId": "dpl_9HnJCEKvS25CQqsrZnbzXyrf4sCZ",
+    "productionAlias": "https://luxehavencollective.co"
+  },
+  "aliasDiagnosis": {
+    "vercelMapping": "confirmed",
+    "deploymentStatus": "Ready",
+    "dnsARecords": ["216.198.79.1", "64.29.17.1"],
+    "tls": "TLS 1.3; certificate verification passed",
+    "consecutiveAliasHeadResults": [200, 200, 200],
+    "consecutiveAliasGetResults": [200, 200, 200],
+    "forcedAddressHeadResults": {"216.198.79.1": 200, "64.29.17.1": 200},
+    "forcedAddressGetResults": {"216.198.79.1": 200, "64.29.17.1": 200},
+    "immutableDeploymentResult": 302,
+    "immutableDeploymentRedirect": "expected Vercel deployment-protection SSO endpoint",
+    "platformStatus": "all systems operational",
+    "correlatedRuntimeErrors": 0,
+    "changesMade": 0
+  },
+  "preflight": {
+    "health": "passed",
+    "candidateDeploymentIdentity": "passed",
+    "migrationParityThrough": "20260824001000",
+    "controlledPlatformAdmin": "passed-existing-unexpired-release-verifier",
+    "operatorIdentity": "passed",
+    "ownerIdentity": "passed",
+    "wrongTenantIdentity": "passed",
+    "anonymousScenarioCapability": "passed",
+    "activeClaimConflicts": 0,
+    "ledgerAndAuditTables": "available-and-empty",
+    "fs008CatalogIsolation": "unchanged",
+    "controlledTenantTargetRecords": "failed"
+  },
+  "controlledTargetEvidence": {
+    "tenantId": "4abe0850-6ad7-40a0-89bb-b1fb5e6afe82",
+    "propertyCount": 1,
+    "activePropertyCount": 0,
+    "bookingCount": 0,
+    "otherActiveRegisteredControlledTenantsWithBookingTargets": 0
+  },
+  "mutationBoundary": {
+    "identityAuthorizationRecordsCreated": 0,
+    "claimAcquired": false,
+    "ledgerEntries": 0,
+    "businessDomainMutations": 0,
+    "syntheticResources": 0,
+    "cleanupRequired": false,
+    "correlationReusable": false
+  },
+  "reason": "No already-approved controlled tenant has an active property and booking target capable of supporting the required real Bookings workspace-boundary verification.",
+  "sanitization": "No credentials, tokens, email addresses, customer content, or raw provider payloads are retained."
+}

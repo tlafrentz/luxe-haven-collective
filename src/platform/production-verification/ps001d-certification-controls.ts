@@ -47,6 +47,18 @@ export type Ps001dPreflightInput = Readonly<{
   ledgerAvailable: boolean;
   cleanupAvailable: boolean;
   activeClaimConflict: boolean;
+  controlledTenant: Readonly<{
+    tenantId: string;
+    designation: "PS001D_VERIFICATION_ONLY_NON_CUSTOMER" | string;
+    approved: boolean;
+    expiresAt: Date;
+    hasCustomerRelationships: boolean;
+    hasProviderRelationships: boolean;
+    hasPaymentRelationships: boolean;
+    hasPublicationRelationships: boolean;
+    hasAutomationRelationships: boolean;
+    hasCatalogRelationships: boolean;
+  }>;
   authorizations: readonly Ps001dIdentityAuthorization[];
   now: Date;
 }>;
@@ -68,6 +80,13 @@ export function evaluatePs001dPreflight(input: Ps001dPreflightInput): Ps001dPref
   if (!input.claimAvailable || input.activeClaimConflict) blockers.push("PS001D_CLAIM_UNAVAILABLE");
   if (!input.ledgerAvailable) blockers.push("PS001D_LEDGER_UNAVAILABLE");
   if (!input.cleanupAvailable) blockers.push("PS001D_CLEANUP_UNAVAILABLE");
+  const tenant = input.controlledTenant;
+  if (tenant.tenantId !== input.expected.tenantId || tenant.designation !== "PS001D_VERIFICATION_ONLY_NON_CUSTOMER" || !tenant.approved || tenant.expiresAt <= input.now) {
+    blockers.push("PS001D_CONTROLLED_TENANT_INVALID");
+  }
+  if (tenant.hasCustomerRelationships || tenant.hasProviderRelationships || tenant.hasPaymentRelationships || tenant.hasPublicationRelationships || tenant.hasAutomationRelationships || tenant.hasCatalogRelationships) {
+    blockers.push("PS001D_CONTROLLED_TENANT_RELATIONSHIP_INVALID");
+  }
   for (const scenario of PS001D_SCENARIOS) {
     const matches = input.authorizations.filter((authorization) =>
       authorization.scenario === scenario &&
@@ -79,6 +98,19 @@ export function evaluatePs001dPreflight(input: Ps001dPreflightInput): Ps001dPref
     if (matches.length !== 1) blockers.push(`PS001D_${scenario.toUpperCase()}_AUTHORIZATION_INVALID`);
   }
   return Object.freeze({ ready: blockers.length === 0, blockerCodes: Object.freeze([...new Set(blockers)]) });
+}
+
+export type Ps001dFixtureStage = Readonly<{
+  claimStatus: "unavailable" | "acquired" | "consumed" | "completed" | "failed" | "expired";
+  propertyCount: number;
+  bookingCount: number;
+}>;
+
+export function evaluatePs001dFixtureStage(stage: Ps001dFixtureStage): Ps001dPreflightResult {
+  const blockers: string[] = [];
+  if (stage.claimStatus !== "consumed") blockers.push("PS001D_FIXTURE_CLAIM_REQUIRED");
+  if (stage.propertyCount > 1 || stage.bookingCount > 1 || stage.bookingCount > stage.propertyCount) blockers.push("PS001D_FIXTURE_CARDINALITY_INVALID");
+  return Object.freeze({ ready: blockers.length === 0, blockerCodes: Object.freeze(blockers) });
 }
 
 export function sameBinding(left: Ps001dBinding, right: Ps001dBinding) {
