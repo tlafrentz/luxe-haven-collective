@@ -59,6 +59,15 @@ export type Ps001dPreflightInput = Readonly<{
     hasAutomationRelationships: boolean;
     hasCatalogRelationships: boolean;
   }>;
+  operatorAccess: Readonly<{
+    authenticated: boolean;
+    active: boolean;
+    role: string;
+    propertyAccessMode: string;
+    elevated: boolean;
+    crossTenantPrivileges: boolean;
+    canReceiveSelectedPropertyAccess: boolean;
+  }>;
   authorizations: readonly Ps001dIdentityAuthorization[];
   now: Date;
 }>;
@@ -86,6 +95,10 @@ export function evaluatePs001dPreflight(input: Ps001dPreflightInput): Ps001dPref
   }
   if (tenant.hasCustomerRelationships || tenant.hasProviderRelationships || tenant.hasPaymentRelationships || tenant.hasPublicationRelationships || tenant.hasAutomationRelationships || tenant.hasCatalogRelationships) {
     blockers.push("PS001D_CONTROLLED_TENANT_RELATIONSHIP_INVALID");
+  }
+  const operator = input.operatorAccess;
+  if (!operator.authenticated || !operator.active || operator.role !== "operator" || operator.elevated || operator.crossTenantPrivileges || !operator.canReceiveSelectedPropertyAccess || !["selected", "none"].includes(operator.propertyAccessMode)) {
+    blockers.push("PS001D_OPERATOR_IDENTITY_INVALID");
   }
   for (const scenario of PS001D_SCENARIOS) {
     const matches = input.authorizations.filter((authorization) =>

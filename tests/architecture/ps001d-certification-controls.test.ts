@@ -15,6 +15,7 @@ import {
 const migration = [
   readFileSync("supabase/migrations/20260824001000_ps001d_certification_controls.sql", "utf8"),
   readFileSync("supabase/migrations/20260824020000_ps001d_two_stage_controlled_fixtures.sql", "utf8"),
+  readFileSync("supabase/migrations/20260824030000_ps001d_claimed_operator_property_access.sql", "utf8"),
 ].join("\n");
 const binding = { candidateCommit: "a".repeat(40), deploymentId: "dpl_candidate", tenantId: "tenant-a", correlationId: "ps001d-00000000-0000-4000-8000-000000000001" } as const;
 const now = new Date("2026-08-24T01:00:00Z");
@@ -27,7 +28,7 @@ const authorizations = PS001D_SCENARIOS.map((scenario): Ps001dIdentityAuthorizat
   validFrom: new Date("2026-08-24T00:00:00Z"),
   expiresAt: new Date("2026-08-24T02:00:00Z"),
 }));
-const ready = () => ({ expected: binding, deployed: binding, aliasDeploymentId: binding.deploymentId, migrationParity: true, requiredConfigurationPresent: true, fs008AndCatalogUnchanged: true, claimAvailable: true, ledgerAvailable: true, cleanupAvailable: true, activeClaimConflict: false, controlledTenant: { tenantId: binding.tenantId, designation: "PS001D_VERIFICATION_ONLY_NON_CUSTOMER", approved: true, expiresAt: new Date("2026-09-01T00:00:00Z"), hasCustomerRelationships: false, hasProviderRelationships: false, hasPaymentRelationships: false, hasPublicationRelationships: false, hasAutomationRelationships: false, hasCatalogRelationships: false }, authorizations, now });
+const ready = () => ({ expected: binding, deployed: binding, aliasDeploymentId: binding.deploymentId, migrationParity: true, requiredConfigurationPresent: true, fs008AndCatalogUnchanged: true, claimAvailable: true, ledgerAvailable: true, cleanupAvailable: true, activeClaimConflict: false, controlledTenant: { tenantId: binding.tenantId, designation: "PS001D_VERIFICATION_ONLY_NON_CUSTOMER", approved: true, expiresAt: new Date("2026-09-01T00:00:00Z"), hasCustomerRelationships: false, hasProviderRelationships: false, hasPaymentRelationships: false, hasPublicationRelationships: false, hasAutomationRelationships: false, hasCatalogRelationships: false }, operatorAccess: { authenticated: true, active: true, role: "operator", propertyAccessMode: "selected", elevated: false, crossTenantPrivileges: false, canReceiveSelectedPropertyAccess: true }, authorizations, now });
 
 describe("PS-001D certification enablement", () => {
   it("implements atomic concurrent one-shot acquisition and permanent replay rejection", () => {
@@ -116,6 +117,12 @@ describe("PS-001D certification enablement", () => {
     expect(evaluatePs001dFixtureStage({ claimStatus: "unavailable", propertyCount: 0, bookingCount: 0 }).blockerCodes).toContain("PS001D_FIXTURE_CLAIM_REQUIRED");
   });
 
+  it("allows an ordinary selected operator before the future property assignment exists", () => {
+    expect(evaluatePs001dPreflight(ready()).ready).toBe(true);
+    expect(evaluatePs001dPreflight({ ...ready(), operatorAccess: { ...ready().operatorAccess, elevated: true } }).blockerCodes).toContain("PS001D_OPERATOR_IDENTITY_INVALID");
+    expect(evaluatePs001dPreflight({ ...ready(), operatorAccess: { ...ready().operatorAccess, crossTenantPrivileges: true } }).blockerCodes).toContain("PS001D_OPERATOR_IDENTITY_INVALID");
+  });
+
   it("rejects real-customer and relationship-bearing tenants", () => {
     const realCustomer = { ...ready(), controlledTenant: { ...ready().controlledTenant, designation: "CUSTOMER", hasCustomerRelationships: true } };
     expect(evaluatePs001dPreflight(realCustomer).blockerCodes).toEqual(expect.arrayContaining(["PS001D_CONTROLLED_TENANT_INVALID", "PS001D_CONTROLLED_TENANT_RELATIONSHIP_INVALID"]));
@@ -155,6 +162,37 @@ describe("PS-001D certification enablement", () => {
     expect(propertyDelete).toBeGreaterThan(bookingDelete);
     expect(migration).toContain("status not in('cleaned','retained')");
     expect(migration).toContain("not exists(select 1 from public.ps001d_verification_resource_ledger where claim_id=p_claim_id and status not in('cleaned','retained'))");
+  });
+
+  it("creates minimum selected access only after the claimed property is ledgered", () => {
+    expect(migration).toContain("apply_workspace_access_command(p_tenant_id,'change-access'");
+    expect(migration).toContain("v_claim.status<>'consumed'");
+    expect(migration).toContain("resource_type='property' and canonical_resource_id=p_property_id::text and status='created'");
+    expect(migration).toContain("PS001D_PROPERTY_SCOPE_MISMATCH");
+    expect(migration).not.toMatch(/insert into public\.workspace_member_property_access/);
+    expect(migration).not.toMatch(/set_config\([^)]*sub|impersonat/i);
+  });
+
+  it("rejects cross-tenant access and replays idempotently without broadening", () => {
+    expect(migration).toContain("workspace_id=p_tenant_id and profile_id=p_operator_id and role='operator' and status='active'");
+    expect(migration).toContain("v_assignment.operator_id<>p_operator_id or v_assignment.property_id<>p_property_id or v_assignment.tenant_id<>p_tenant_id");
+    expect(migration).toContain("return v_assignment");
+    expect(migration).toContain("PS001D_ACCESS_ASSIGNMENT_REPLAY_MISMATCH");
+    expect(migration).toContain("original_property_ids");
+  });
+
+  it("requires operator access before booking and restores the original snapshot during cleanup", () => {
+    expect(migration).toContain("PS001D_OPERATOR_PROPERTY_ACCESS_REQUIRED");
+    expect(migration).toContain("originalAccessRestored");
+    expect(migration).toContain("'next','workspace_membership'");
+    expect(migration).toContain("PS001D_CLEANUP_ORDER_INVALID");
+    expect(migration).toContain("v_restored_ids<>v_assignment.original_property_ids");
+    const booking = migration.lastIndexOf("delete from public.bookings b");
+    const access = migration.lastIndexOf("'next','workspace_membership'");
+    const property = migration.lastIndexOf("delete from public.properties p");
+    expect(booking).toBeLessThan(access);
+    expect(access).toBeLessThan(property);
+    expect(migration.match(/property\.status<>'archived'/g)).toHaveLength(2);
   });
 
   it("keeps FS-008, catalog, generic attempts, impersonation, and arbitrary execution outside scope", () => {
