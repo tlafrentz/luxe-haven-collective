@@ -1,0 +1,86 @@
+{
+  "milestone": "PS-001D",
+  "result": "blocked",
+  "phase": "read-only-production-preflight",
+  "observedAt": "2026-08-24T00:01:50Z",
+  "candidate": {
+    "commitSha": "7197dec75f2ec2198005bee26a61117499fd659e",
+    "deploymentId": "dpl_6P5g6RG5DcTaHybiiQTdfJow8VaD",
+    "deploymentUrl": "https://luxe-haven-collective-o7qt1t2o6-luxe-haven-collective.vercel.app",
+    "productionAlias": "https://luxehavencollective.co",
+    "deployedApplicationCommit": "7197dec75f2ec2198005bee26a61117499fd659e",
+    "aliasDeploymentVerified": true,
+    "health": {
+      "ok": true,
+      "service": "luxe-haven-collective"
+    }
+  },
+  "correlationId": "ps001d-9c9672ea-a324-4fca-9858-1cbc6bb5add8",
+  "productionRunId": null,
+  "claimRecord": null,
+  "mutationStarted": false,
+  "migrationState": {
+    "localRemoteParity": true,
+    "latestLocal": "20260823212000",
+    "latestRemote": "20260823212000"
+  },
+  "configuration": {
+    "requiredProductionEnvironmentEntriesPresent": true,
+    "fs008OrCatalogActivationChangedByCandidate": false,
+    "note": "The candidate contains no migration, catalog, offer, price, publication, payment, provider, or FS-008 change. Secret values were not retained."
+  },
+  "identityPreflight": {
+    "generalRequiredPersonaTypesPresent": true,
+    "approvedAdminCount": 22,
+    "activeControlledTenantCount": 5,
+    "ps001dEligibleIdentityTypes": [],
+    "existingPs001dAttemptCount": 0
+  },
+  "claimPreflight": {
+    "requiredBinding": [
+      "candidateCommitSha",
+      "deploymentId",
+      "tenantId",
+      "correlationId"
+    ],
+    "atomicPs001dClaimOperationAvailable": false,
+    "genericAttemptTableIsAcceptableSubstitute": false,
+    "replayRejectionProvableBeforeMutation": false
+  },
+  "cleanupPreflight": {
+    "confirmedForPs001d": false,
+    "reason": "No PS-001D run/claim contract exists to bind a deterministic resource ledger and cleanup operations before mutation."
+  },
+  "resourceLedger": [],
+  "blockers": [
+    {
+      "code": "PS001D_ATOMIC_CLAIM_UNAVAILABLE",
+      "severity": "P0",
+      "expected": "One atomic, one-shot PS-001D claim bound to the exact candidate, deployment, tenant, and correlation ID, with durable replay rejection.",
+      "observed": "Only generic production_verification_attempts uniqueness exists; no PS-001D claim operation or four-field atomic binding exists."
+    },
+    {
+      "code": "PS001D_CONTROLLED_IDENTITIES_UNAUTHORIZED",
+      "severity": "P0",
+      "expected": "Approved controlled identities explicitly authorized for PS-001D scenarios and the selected controlled tenant.",
+      "observed": "The general persona inventory exists, but zero active identities have an allowed scenario code beginning with PS001D."
+    },
+    {
+      "code": "PS001D_CLEANUP_CAPABILITY_UNPROVEN",
+      "severity": "P0",
+      "expected": "Ledger-driven PS-001D cleanup capability confirmed before mutation.",
+      "observed": "Cleanup cannot be bound to a PS-001D run and claim because those boundaries are unavailable."
+    }
+  ],
+  "safetyOutcome": {
+    "claimAcquired": false,
+    "syntheticResourcesCreated": 0,
+    "productionRowsMutated": 0,
+    "customerEffects": 0,
+    "providerEffects": 0,
+    "paymentEffects": 0,
+    "publicationEffects": 0,
+    "catalogEffects": 0,
+    "tagCreated": false
+  }
+}
