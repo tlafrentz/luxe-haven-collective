@@ -11,6 +11,7 @@ const actions = readFileSync(new URL("../../src/app/actions/workspace-team-acces
 const acceptancePage = readFileSync(new URL("../../src/app/workspace-invitations/accept/page.tsx", import.meta.url), "utf8");
 const digestFix = readFileSync(new URL("../../supabase/migrations/20260824050000_fix_workspace_invitation_digest_resolution.sql", import.meta.url), "utf8");
 const completionGate = readFileSync(new URL("../../supabase/migrations/20260824150000_ps001d_verification_completion_gate.sql", import.meta.url), "utf8");
+const failedCleanup = readFileSync(new URL("../../supabase/migrations/20260824170000_ps001d_failed_cleanup_and_owner_booking_access.sql", import.meta.url), "utf8");
 
 describe("Sprint 4C workspace team and access", () => {
   it("creates explicit membership, invitation, selected-property, activity, notification, and receipt persistence", () => {
@@ -90,5 +91,13 @@ describe("Sprint 4C workspace team and access", () => {
     expect(completionGate).toContain("status='cleaning'");
     expect(completionGate).toContain("PS001D_MATRIX_INCOMPLETE");
     expect(completionGate).toContain("c.status<>'cleaning'");
+  });
+
+  it("preserves tenant-scoped owner reads and reconciles failed verification before terminal state", () => {
+    expect(failedCleanup).toContain("grant select on public.bookings to authenticated");
+    expect(migration).toContain("Workspace members read authorized bookings");
+    expect(failedCleanup).toContain("status='cleaning',stable_failure_code=p_failure_code");
+    expect(failedCleanup).toContain("status='failed_cleaned'");
+    expect(failedCleanup).toContain("PS001D_FAILED_RECONCILIATION_INCOMPLETE");
   });
 });
