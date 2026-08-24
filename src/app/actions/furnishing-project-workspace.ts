@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertFurnishingEntitlement } from "./furnishing-access";
+import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 import {
   minorUnits,
   representativeOffer,
@@ -140,6 +141,7 @@ const suggestedRooms = (bedrooms: number, bathrooms: number) => [
   { name: "Dining Room", room_type: "dining_room", ordinal: null },
 ];
 export async function createFurnishingPropertyAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { profile, db } = await context(),
     workspaceId = value(formData, "workspaceId");
   await authorize(db, profile, workspaceId);
@@ -196,6 +198,7 @@ export async function createFurnishingPropertyAction(formData: FormData) {
   redirect(`${prefix}/furnishing/projects/new?property=${property.id}`);
 }
 export async function createProjectWorkspaceAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, profile, db } = await context(),
     propertyId = value(formData, "propertyId");
   const { data: property } = await db

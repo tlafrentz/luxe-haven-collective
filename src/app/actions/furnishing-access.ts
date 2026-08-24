@@ -1,6 +1,11 @@
 import "server-only";
 
 import { getCommerceAccessWorkspace } from "./commerce-access";
+import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
+
+export function assertFurnishingMutationAllowed(): void {
+  return assertFurnishingActivationMutationDisabled();
+}
 
 export async function assertFurnishingEntitlement(
   workspaceId: string,

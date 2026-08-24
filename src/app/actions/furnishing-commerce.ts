@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { SupabaseWorkspaceRepository } from "@/features/workspace/infrastructure/supabase-workspace-repository";
+import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 
 export type FurnishingAccountActionState = {
   ok?: boolean;
@@ -28,6 +29,7 @@ export async function createFurnishingAccountAction(
   _: FurnishingAccountActionState,
   formData: FormData,
 ): Promise<FurnishingAccountActionState> {
+  assertFurnishingActivationMutationDisabled();
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return {

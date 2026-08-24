@@ -4,12 +4,14 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertFurnishingEntitlement } from "./furnishing-access";
+import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 // Pending FS migrations are intentionally not represented in generated database types yet.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 async function scope(projectId: string, write = false) {
   const { user, profile } = await requireUser();
+  if (write) assertFurnishingActivationMutationDisabled();
   const db = createAdminClient();
   const { data: project, error } = await db.from("furnishing_projects").select("*,properties(*)").eq("id", projectId).single();
   if (error || !project) throw new Error("FURNISHING_PROJECT_NOT_FOUND");
