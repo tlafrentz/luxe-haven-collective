@@ -16,3 +16,22 @@ create policy "admins read furnishing activation audit" on public.furnishing_act
 revoke all on public.furnishing_activation_releases,public.furnishing_activation_workspaces,public.furnishing_activation_capabilities,public.furnishing_activation_audit_events from anon;
 revoke insert,update,delete on public.furnishing_activation_releases,public.furnishing_activation_workspaces,public.furnishing_activation_capabilities,public.furnishing_activation_audit_events from authenticated;
 insert into public.furnishing_activation_releases(milestone,release_status,policy_version,global_state,global_kill_switch,configuration_valid,reason) values('FS-008A','candidate','fs008a-v1','disabled',true,false,'FS-008A safe disabled baseline') on conflict(milestone,policy_version) do nothing;
+
+-- Database-level ceiling: no commercial, publication, project, notification,
+-- installation, or retailer-order mutation can bypass the disabled policy.
+create or replace function public.fs008a_deny_furnishing_effect() returns trigger language plpgsql security definer set search_path='' as $$
+begin
+  raise exception 'FURNISHING_ACTIVATION_DISABLED' using errcode='42501';
+end $$;
+create or replace function public.fs008a_furnishing_effects_disabled() returns boolean language sql security definer set search_path='' as $$
+  select exists(select 1 from public.furnishing_activation_releases where milestone='FS-008A' and (global_kill_switch or global_state='disabled' or not configuration_valid));
+$$;
+-- These triggers are intentionally explicit and forward-only. Reads remain available.
+do $$ declare t text; begin
+  foreach t in array array['commercial_catalog_publications','furnishing_projects','furnishing_procurement_orders','furnishing_purchase_batches','furnishing_installation_projects'] loop
+    execute format('drop trigger if exists fs008a_disabled_effect on public.%I',t);
+    execute format('create trigger fs008a_disabled_effect before insert or update on public.%I for each row when (public.fs008a_furnishing_effects_disabled()) execute function public.fs008a_deny_furnishing_effect()',t);
+  end loop;
+end $$;
+revoke all on function public.fs008a_deny_furnishing_effect(),public.fs008a_furnishing_effects_disabled() from public,anon,authenticated;
+grant execute on function public.fs008a_furnishing_effects_disabled() to service_role;
