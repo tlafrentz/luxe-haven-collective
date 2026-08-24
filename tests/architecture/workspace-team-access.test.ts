@@ -9,6 +9,7 @@ const page = readFileSync(new URL("../../src/app/(dashboard)/dashboard/workspace
 const manager = readFileSync(new URL("../../src/features/workspace/presentation/team-access-manager.tsx", import.meta.url), "utf8");
 const actions = readFileSync(new URL("../../src/app/actions/workspace-team-access.ts", import.meta.url), "utf8");
 const acceptancePage = readFileSync(new URL("../../src/app/workspace-invitations/accept/page.tsx", import.meta.url), "utf8");
+const digestFix = readFileSync(new URL("../../supabase/migrations/20260824050000_fix_workspace_invitation_digest_resolution.sql", import.meta.url), "utf8");
 
 describe("Sprint 4C workspace team and access", () => {
   it("creates explicit membership, invitation, selected-property, activity, notification, and receipt persistence", () => {
@@ -74,5 +75,11 @@ describe("Sprint 4C workspace team and access", () => {
     expect(acceptancePage).toContain("getSessionProfile");
     expect(acceptancePage).toContain("<AcceptWorkspaceInvitation");
     expect(acceptancePage).toContain("/login?next=");
+  });
+
+  it("resolves invitation token hashing through the canonical pgcrypto schema", () => {
+    expect(digestFix).toContain("pg_catalog.encode(extensions.digest(p_token,'sha256'),'hex')");
+    expect(digestFix).toContain("if actor_email<>invitation.email");
+    expect(digestFix).toContain("grant execute on function public.accept_workspace_invitation(uuid,text,text) to authenticated");
   });
 });
