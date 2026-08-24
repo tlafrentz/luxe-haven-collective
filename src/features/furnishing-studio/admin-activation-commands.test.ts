@@ -1,0 +1,11 @@
+import { describe, expect, it } from "vitest";
+import { executeFurnishingActivationCommand, type FurnishingActivationCommandRepository, type FurnishingControlRecord } from "./admin-activation-commands";
+
+function repo() { const records = new Map<string, FurnishingControlRecord>([["global:g", { target: "global", targetId: "g", state: "disabled", version: 1 }]]); const keys = new Map<string, any>(); const audits: any[] = []; const r: FurnishingActivationCommandRepository = { read: async (target, id) => records.get(`${target}:${id}`) ?? null, tenantOwnsTarget: async () => true, findIdempotency: async key => keys.get(key) ?? null, commit: async ({ after, audit, fingerprint }) => { records.set(`${after.target}:${after.targetId}`, after); audits.push(audit); keys.set(audit.idempotencyKey, { fingerprint, result: { status: "accepted", record: after, audit } }); } }; return { r, records, audits }; }
+const command = (overrides: Partial<Parameters<typeof executeFurnishingActivationCommand>[1]> = {}) => ({ command: "set-global-state", target: "global" as const, targetId: "g", state: "internal" as const, expectedVersion: 1, reason: "Controlled readiness test", actorId: "admin-1", actorRole: "admin", correlationId: "c-1", idempotencyKey: "k-1", ...overrides });
+
+describe("FS-008A P2.4A activation commands", () => {
+  it("accepts safe transitions and audits exactly once", async () => { const h = repo(); const result = await executeFurnishingActivationCommand(h.r, command()); expect(result.record.version).toBe(2); expect(h.audits).toHaveLength(1); });
+  it("rejects unauthorized, blank reason, public enablement, wrong target, and stale versions", async () => { const h = repo(); for (const c of [command({ actorRole: "owner" }), command({ reason: " " }), command({ state: "enabled" }), command({ targetId: "other" }), command({ expectedVersion: 9 })]) await expect(executeFurnishingActivationCommand(h.r, c)).rejects.toBeInstanceOf(Error); });
+  it("replays idempotently and rejects key input mismatch", async () => { const h = repo(); const first = await executeFurnishingActivationCommand(h.r, command()); expect(await executeFurnishingActivationCommand(h.r, command())).toEqual(first); await expect(executeFurnishingActivationCommand(h.r, command({ state: "limited" }))).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" }); });
+});
