@@ -10,7 +10,6 @@ import {
   UsersRound,
 } from "lucide-react";
 
-import { initializeWorkspaceAction } from "@/app/actions/workspace";
 import {
   WorkspaceCard,
   WorkspaceContent,
@@ -34,6 +33,7 @@ import {
   type WorkspaceIdentity,
   type WorkspacePrincipal,
 } from "@/features/workspace";
+import { InitializeWorkspaceForm } from "@/features/workspace/presentation/initialize-workspace-form";
 import { requireUser } from "@/lib/auth/session";
 
 export default async function WorkspaceOverviewPage() {
@@ -137,11 +137,7 @@ function FirstUseState({ displayName }: Readonly<{ displayName: string | null }>
           <p className="mt-3 max-w-2xl text-sm leading-6 !text-stone-300">
             This creates one owner record for your authenticated profile. Repeating the request is safe and will always return the same workspace.
           </p>
-          <form action={initializeWorkspaceAction} className="mt-6">
-            <button type="submit" className="inline-flex min-h-11 items-center rounded-full bg-white px-5 text-sm font-semibold text-stone-950">
-              Set up workspace
-            </button>
-          </form>
+          <InitializeWorkspaceForm />
         </WorkspaceCard>
       </WorkspaceOverview>
     </WorkspacePage>
