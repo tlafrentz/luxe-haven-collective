@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import ExcelJS from "exceljs";
 import { requireRole } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 
 const value = (data: FormData, key: string) =>
   String(data.get(key) ?? "").trim();
@@ -130,6 +131,7 @@ export async function getRoomPackage(packageId: string) {
 }
 
 export async function createRoomRequirementAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await packageAdmin();
   const name = value(formData, "name"),
     key =
@@ -155,6 +157,7 @@ export async function createRoomRequirementAction(formData: FormData) {
 }
 
 export async function createRoomPackageAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await packageAdmin();
   const { data: pkg, error } = await db
     .from("furnishing_room_packages")
@@ -194,6 +197,7 @@ export async function createRoomPackageAction(formData: FormData) {
 }
 
 export async function addRoomPackageItemAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { db } = await packageAdmin();
   const packageId = value(formData, "packageId"),
     versionId = value(formData, "versionId"),
@@ -239,6 +243,7 @@ export async function addRoomPackageItemAction(formData: FormData) {
 }
 
 export async function addProductAlternativeAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { db } = await packageAdmin();
   const packageId = value(formData, "packageId"),
     itemId = value(formData, "itemId");
@@ -266,6 +271,7 @@ export async function addProductAlternativeAction(formData: FormData) {
 }
 
 export async function submitRoomPackageAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { db } = await packageAdmin();
   const packageId = value(formData, "packageId"),
     versionId = value(formData, "versionId"),
@@ -329,6 +335,7 @@ async function copyRoomPackageItems(
 }
 
 export async function createNextRoomPackageVersionAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await packageAdmin(),
     packageId = value(formData, "packageId"),
     sourceVersionId = value(formData, "versionId");
@@ -377,6 +384,7 @@ export async function createNextRoomPackageVersionAction(formData: FormData) {
 }
 
 export async function duplicateRoomPackageAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await packageAdmin(),
     sourcePackageId = value(formData, "packageId"),
     newName = value(formData, "name");
@@ -432,6 +440,7 @@ export async function duplicateRoomPackageAction(formData: FormData) {
 }
 
 export async function createPropertyPackageAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { db } = await packageAdmin();
   const tier = value(formData, "tier");
   const { data: pkg, error } = await db
@@ -498,6 +507,7 @@ export async function getPropertyPackage(packageId: string) {
 }
 
 export async function addPropertyPackageRoomAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { db } = await packageAdmin();
   const packageId = value(formData, "packageId"),
     versionId = value(formData, "versionId"),
@@ -574,6 +584,7 @@ const proposedRule = (
 type Row = Record<string, unknown>;
 
 export async function startPackageImportAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await packageAdmin();
   const file = formData.get("file"),
     sheetName = value(formData, "sheet");
@@ -684,6 +695,7 @@ export async function getPackageImport(importId: string) {
 }
 
 export async function completePackageImportAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await packageAdmin();
   const importId = value(formData, "importId"),
     name = value(formData, "name");

@@ -1,5 +1,6 @@
 "use server";
 import "server-only";
+import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import ExcelJS from "exceljs";
@@ -116,6 +117,7 @@ export async function getFurnishingProduct(productId: string) {
 }
 
 export async function createFurnishingProductAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await catalogAdmin();
   const name = text(formData, "name"),
     categoryId = text(formData, "categoryId");
@@ -180,6 +182,7 @@ export async function createFurnishingProductAction(formData: FormData) {
 }
 
 export async function createProductOfferAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await catalogAdmin();
   const productId = text(formData, "productId"),
     retailerId = text(formData, "retailerId"),
@@ -219,6 +222,7 @@ export async function createProductOfferAction(formData: FormData) {
 }
 
 export async function setPreferredProductOfferAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await catalogAdmin();
   const productId = text(formData, "productId"),
     offerId = text(formData, "offerId");
@@ -249,6 +253,7 @@ export async function setPreferredProductOfferAction(formData: FormData) {
 }
 
 export async function createRetailerAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { db } = await catalogAdmin();
   const name = text(formData, "name"),
     websiteUrl = canonicalizeRetailerUrl(text(formData, "websiteUrl"));
@@ -293,6 +298,7 @@ const categoryHint = (name: string) => {
 };
 
 export async function startCatalogImportAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await catalogAdmin();
   const file = formData.get("file");
   if (
@@ -410,6 +416,7 @@ export async function startCatalogImportAction(formData: FormData) {
 }
 
 export async function completeCatalogImportAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
   const { user, db } = await catalogAdmin();
   const importId = text(formData, "importId");
   const { data: items, error } = await db
