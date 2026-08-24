@@ -19,6 +19,10 @@ insert into public.furnishing_activation_releases(milestone,release_status,polic
 
 -- Database-level ceiling: no commercial, publication, project, notification,
 -- installation, or retailer-order mutation can bypass the disabled policy.
+alter table public.notification_deliveries add column if not exists product_family text;
+alter table public.notification_deliveries drop constraint if exists notification_deliveries_product_family_check;
+alter table public.notification_deliveries add constraint notification_deliveries_product_family_check check(product_family is null or product_family in('furnishing','hpm','guidebook_studio','investment_intelligence'));
+create index if not exists notification_deliveries_product_family_idx on public.notification_deliveries(product_family);
 create or replace function public.fs008a_deny_furnishing_effect() returns trigger language plpgsql security definer set search_path='' as $$
 begin
   raise exception 'FURNISHING_ACTIVATION_DISABLED' using errcode='42501';
@@ -36,6 +40,6 @@ end $$;
 drop trigger if exists fs008a_disabled_furnishing_entitlement on public.commercial_entitlements;
 create trigger fs008a_disabled_furnishing_entitlement before insert or update on public.commercial_entitlements for each row when (new.capability_code like 'furnishing.%' and public.fs008a_furnishing_effects_disabled()) execute function public.fs008a_deny_furnishing_effect();
 drop trigger if exists fs008a_disabled_furnishing_notification on public.notification_deliveries;
-create trigger fs008a_disabled_furnishing_notification before insert or update on public.notification_deliveries for each row when (coalesce(new.event_type,'') ilike '%furnish%' and public.fs008a_furnishing_effects_disabled()) execute function public.fs008a_deny_furnishing_effect();
+create trigger fs008a_disabled_furnishing_notification before insert or update on public.notification_deliveries for each row when (new.product_family='furnishing' and public.fs008a_furnishing_effects_disabled()) execute function public.fs008a_deny_furnishing_effect();
 revoke all on function public.fs008a_deny_furnishing_effect(),public.fs008a_furnishing_effects_disabled() from public,anon,authenticated;
 grant execute on function public.fs008a_furnishing_effects_disabled() to service_role;

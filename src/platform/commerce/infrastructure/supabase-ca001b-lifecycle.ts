@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CommercialLifecycleRepository } from "../application";
 import type { BillingProviderEvent, CommercialAgreement } from "../domain";
 type ActivationDecision = Readonly<{ allowed:boolean; reason:string }>;
-const resolveFurnishingActivation = (): ActivationDecision => ({ allowed: false, reason: "killed_globally" });
+const resolveFurnishingActivation = (_context: unknown): ActivationDecision => ({ allowed: false, reason: "killed_globally" });
 type Row = Record<string, unknown>;
 const isFurnishing = (offerCode: string) => /^FS-|furnishing/i.test(offerCode);
 const assertFurnishingEntitlementActivation = () => {
