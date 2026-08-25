@@ -16,6 +16,7 @@ import {
   submitRoomPackageAction,
   startPackageImportAction,
 } from "@/app/actions/furnishing-packages";
+import { approveFs008dPackage } from "@/app/actions/fs008d-governance";
 import {
   estimatePackage,
   representativeOffer,
@@ -551,16 +552,9 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
           </form>
         ) : null}
         {version.lifecycle_status === "in_review" ? (
-          <form action={submitRoomPackageAction}>
-            <input type="hidden" name="packageId" value={pkg.id} />
-            <input type="hidden" name="versionId" value={version.id} />
-            <input type="hidden" name="status" value="approved" />
-            <button
-              disabled={issues.length > 0}
-              className={`${button} disabled:opacity-40`}
-            >
-              Approve v{version.version_number}
-            </button>
+          <form action={async (formData) => { "use server"; await approveFs008dPackage({ packageVersionId: version.id, expectedVersion: 1, reason: String(formData.get("reason") ?? "Catalog readiness approved"), correlationId: `fs008d-approval:${version.id}`, idempotencyKey: `fs008d-approval:${version.id}` }); }} className="flex gap-2">
+            <input required name="reason" aria-label="Approval reason" placeholder="Approval reason" className={field} />
+            <button disabled={issues.length > 0} className={`${button} disabled:opacity-40`}>Approve v{version.version_number}</button>
           </form>
         ) : null}
       </div>
