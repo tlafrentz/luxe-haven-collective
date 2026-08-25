@@ -20,6 +20,7 @@ import {
 } from "@/app/actions/furnishing-project-workspace";
 import { budgetStatus, planProgress } from "@/features/furnishing-studio";
 import { Badge, FurnishingHeader } from "./furnishing-navigation";
+import { createFs008dProjectSnapshot } from "@/app/actions/fs008d-governance";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 const field =
@@ -1025,6 +1026,11 @@ function PlanActions({
           <button className={`${button} w-full justify-center`}>
             Approve Plan v{plan.version_number}
           </button>
+        </form>
+      ) : null}
+      {plan.status === "approved" ? (
+        <form action={async () => { "use server"; if (!project.furnishing_package_version_id) throw new Error("PACKAGE_VERSION_REQUIRED"); await createFs008dProjectSnapshot({ projectId: project.id, packageVersionId: project.furnishing_package_version_id, snapshot: { planId: plan.id }, contentHash: `plan:${plan.id}:v${plan.version_number}`, correlationId: `fs008d-snapshot:${project.id}`, idempotencyKey: `fs008d-snapshot:${project.id}:v${plan.version_number}` }); }} className="mt-3">
+          <button className={`${button} w-full justify-center`}>Save immutable catalog snapshot</button>
         </form>
       ) : null}
       {plan.status === "approved" ? (
