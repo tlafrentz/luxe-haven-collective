@@ -7,6 +7,12 @@ Admin command/UI boundaries, neutral platform dependency correction, canonical
 notification classification, and the reproducible local PostgreSQL rehearsal
 runner at `scripts/verification/fs008a-live-rehearsal.sql`.
 
+Checkpoint traceability: P2.1 `441f25c0`; P2.2 `a9011835`, `1d098e1d`,
+`3f7693ca`; P2.3A `b5e066ab`; P2.3B `741e2977`; P2.4A `ddbe1857`; P2.4B
+`0289ce35`, `675608a7`, `d0a8353a`, `3bc35c95`; architecture correction
+`a2e3cf04`; migration correction `0f360286`; OC-001 assertion correction
+`2835b682`.
+
 ## Live rehearsal evidence
 
 The repository-local Supabase stack ran PostgreSQL 17.6.1.141 with Vector and
@@ -16,6 +22,10 @@ ceiling, trigger coverage, notification product-family persistence, and
 authenticated-role denial. The transaction rolled back cleanly with
 `FS008A_REHEARSAL_ASSERTIONS=6 CLEANUP=ROLLBACK`. No remote or Production
 database was accessed.
+
+The migration file `20260825010000_fs008a_activation_controls.sql` remained
+unchanged after the successful rehearsal. The final full suite passed with 774
+files and 4,226 tests.
 
 ## Finding traceability
 
