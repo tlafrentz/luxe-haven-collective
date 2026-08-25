@@ -60,6 +60,12 @@ Existing application entry points include Admin Furnishing package/product/room/
 
 Missing canonical fields (seller classification, pack quantity, delivery assumption, regional restriction, availability, verification source, dimensions/material/color, TV/mount compatibility) remain incomplete until mapped or explicitly reviewed. Unsupported columns are retained as sanitized source metadata, never as executable input.
 
+## Formula policy and import contract
+
+Spreadsheet formulas are never executed or trusted. The importer distinguishes raw cell value, formula expression, cached displayed result, and server-calculated value. Dashboard formulas (21 observed) are provenance-only and are ignored for catalog writes. Catalog Review `Extended Cost` is the sole approved derived field: typed raw Quantity × typed raw Unit Price is recalculated server-side, rounded to cents, and stored as canonical value. The cached workbook result is compared only for evidence: an exact cent match is `valid_derived_value`; a mismatch is `needs_review`; missing/invalid inputs are `invalid`.
+
+Every accepted derived cell records sheet, address, source row, formula-present flag, sanitized formula hash, cached value, canonical value, match result, and import correlation ID. Formula text is never used in application logic or exposed to customers. Formulas in identity, room, item, retailer, quantity, price, status, URL, specification, substitution, verification-date, or supply-treatment fields are rejected. External references, remote/dynamic functions, macros/VBA, DDE, formula-generated URLs, hidden executable payloads, unsupported locations, and formula errors fail closed. A derived formula never compensates for missing raw inputs. Required tests cover all observed Dashboard/Catalog Review formulas, replay, stale caches, changed raw inputs, unsafe formulas, rounding, and proof that no spreadsheet evaluator is invoked.
+
 ## Domain and boundary assessment
 
 Products, retailer offers, room templates, package versions, package items, catalogs, and immutable project snapshots must be separate entities. Legacy package/room/product-option tables are useful read/history sources but do not satisfy governed versioning and retailer-offer separation by themselves. Supply treatment maps `durable_furnishing`, `initial_setup_only`, `recurring_replenishment`, `initial_and_recurring`, or `excluded`; recurring amounts are excluded from the one-time package total.
