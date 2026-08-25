@@ -8,7 +8,7 @@
 - Deployment: `dpl_FtPMU8451bP5H7wzZcDYtHBZ8JoJ`
 - Immutable deployment URL: `https://luxe-haven-collective-5a2igrnd8-luxe-haven-collective.vercel.app`
 - Deployment target/status: Production / Ready
-- Previous Production deployment remains the rollback target.
+- Previous Production deployment remains the rollback target: `dpl_AUhpnDnXV8DNgoMWDiyKX6JoK8kb` (URL `https://luxe-haven-collective-r9o27rdgz-luxe-haven-collective.vercel.app`).
 
 ## Migration parity
 
