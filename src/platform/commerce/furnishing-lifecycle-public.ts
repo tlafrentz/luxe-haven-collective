@@ -1,0 +1,8 @@
+import { createClient } from "@/lib/supabase/server";
+import { SupabaseFurnishingHandoffRepository } from "./infrastructure/supabase-furnishing-handoff-repository";
+
+async function repository() { return new SupabaseFurnishingHandoffRepository(await createClient()); }
+export async function createOrReplayFurnishingHandoff(input: Readonly<{ entitlementId: string; idempotencyKey: string; correlationId: string }>) { return (await repository()).createOrReplay(input.entitlementId, input.idempotencyKey, input.correlationId); }
+export async function startOrResumeFurnishingOnboarding(input: Readonly<{ handoffId: string; expectedVersion: number; idempotencyKey: string; correlationId: string }>) { return (await repository()).startOrResume(input.handoffId, input.expectedVersion, input.idempotencyKey, input.correlationId); }
+export async function activateFurnishingOnboardingProject(input: Readonly<{ sessionId: string; snapshotId: string; expectedVersion: number; idempotencyKey: string; correlationId: string }>) { return (await repository()).activateProject(input.sessionId, input.snapshotId, input.expectedVersion, input.idempotencyKey, input.correlationId); }
+export async function transitionFurnishingOnboardingRecovery(input: Readonly<{ handoffId: string; sessionId: string; toState: string; expectedHandoffVersion: number; expectedSessionVersion: number; idempotencyKey: string; reason: string; correlationId: string }>) { return (await repository()).transitionRecovery(input.handoffId, input.sessionId, input.toState, input.expectedHandoffVersion, input.expectedSessionVersion, input.idempotencyKey, input.reason, input.correlationId); }
