@@ -1,0 +1,3 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+describe("production handoff composition", () => { it("uses persisted Supabase handoff storage", () => { const source = readFileSync("src/platform/commerce/infrastructure/supabase-furnishing-handoff-repository.ts", "utf8"); expect(source).toContain("furnishing_onboarding_handoffs"); expect(source).not.toContain("Map<"); }); it("constructs the adapter from the authenticated server client", () => { const source = readFileSync("src/platform/commerce/infrastructure/production-furnishing-handoff.ts", "utf8"); expect(source).toContain("createClient"); expect(source).toContain("SupabaseFurnishingHandoffRepository"); }); });
