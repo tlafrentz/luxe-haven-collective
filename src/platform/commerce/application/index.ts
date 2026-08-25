@@ -11,3 +11,4 @@ export * from "./administrative-customer-grant";
 export * from "./ca001b-checkout";
 export * from "./ca001b-lifecycle";
 export * from "./oc001-catalog";
+export * from "./furnishing-offers";
