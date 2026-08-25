@@ -1,5 +1,5 @@
 import { BillingActivationError } from "../domain/ca001b-billing";
-import type { FurnishingActivationContext } from "@/platform/furnishing-activation-policy";
+import type { FurnishingActivationContext } from "./furnishing-offers";
 
 export type VerifiedFurnishingPayment = Readonly<{ id: string; status: "payment_verified" | "activation_pending"; productFamily: "furnishing"; customerId: string; tenantId: string; workspaceId: string; offerId: "FS-CONSULT" | "FS-DESIGN"; offerVersion: number; amountMinor: number; currency: "USD"; checkoutAttemptId: string; providerPaymentReference: string; entitlementType: string; idempotencyKey: string; correlationId: string }>;
 export type FurnishingEntitlement = Readonly<{ id: string; productFamily: "furnishing"; customerId: string; tenantId: string; workspaceId: string; offerId: string; offerVersion: number; checkoutAttemptId: string; verifiedPaymentId: string; providerPaymentReference: string; entitlementType: string; status: "pending" | "active"; activatedAt?: string; correlationId: string; idempotencyKey: string }>;

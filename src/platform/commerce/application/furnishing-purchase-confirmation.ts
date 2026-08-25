@@ -1,4 +1,4 @@
-import type { FurnishingActivationContext } from "@/platform/furnishing-activation-policy";
+import type { FurnishingActivationContext } from "./furnishing-offers";
 
 export type FurnishingPurchaseConfirmationStatus = "checkout_processing" | "payment_processing" | "entitlement_pending" | "active" | "payment_failed" | "canceled" | "expired" | "paused" | "reconciliation_required" | "refunded" | "access_denied" | "error";
 export type FurnishingPurchaseConfirmation = Readonly<{ status: FurnishingPurchaseConfirmationStatus; attemptId: string; offerId?: string; offerVersion?: number; amountMinor?: number; currency?: string; billingModel?: string; paymentStatus?: string; entitlementStatus?: string; purchaseDate?: string; workspaceId?: string; nextStep: "wait" | "retry" | "support" | "fs008c_pending" | "unavailable"; message: string; handoff?: FurnishingPendingHandoff }>;

@@ -1,5 +1,5 @@
 import { OC001_OFFER_REGISTRY, type Oc001OfferDefinition } from "../domain/oc001-catalog";
-import { resolveFurnishingActivation, type FurnishingActivationContext } from "@/platform/furnishing-activation-policy";
+export type FurnishingActivationContext = Readonly<{ globalKillSwitch:boolean; globalState:"disabled"|"internal"|"limited"|"enabled"|"paused"; workspaceKillSwitch:boolean; workspaceEnabled:boolean; cohortEligible:boolean; cohortExpired?:boolean; capabilityEnabled:boolean; offerActive?:boolean; catalogAvailable?:boolean; configurationValid:boolean; policyVersion:string; evaluatedAt?:string }>;
 
 export type FurnishingOfferDenialReason =
   | "offer_not_approved" | "offer_incomplete" | "version_not_found" | "version_stale"
@@ -58,6 +58,7 @@ type Input = Readonly<{
   activation: FurnishingActivationContext;
   providerReferences: Readonly<Record<string, FurnishingProviderReference | undefined>>;
   now?: string;
+  resolveActivation: (context: FurnishingActivationContext) => Readonly<{ allowed: boolean; reason: string }>;
 }>;
 
 const APPROVED = new Set(["FS-CONSULT", "FS-DESIGN"]);
@@ -84,7 +85,7 @@ export function resolveApprovedFurnishingOffer(input: Input): FurnishingOfferDec
   if (definition.status !== "approved" && definition.status !== "active") return deny("offer_not_approved");
   if (input.activation.workspaceEnabled === false) return deny("workspace_ineligible");
   if (!input.activation.cohortEligible || input.activation.cohortExpired) return deny("cohort_ineligible");
-  const activation = resolveFurnishingActivation({ ...input.activation, offerActive: true, catalogAvailable: true });
+  const activation = input.resolveActivation({ ...input.activation, offerActive: true, catalogAvailable: true });
   if (!activation.allowed) return deny("activation_disabled");
   const resolved = complete(definition, input.providerReferences[definition.offerCode]);
   if (typeof resolved === "string") return deny(resolved);

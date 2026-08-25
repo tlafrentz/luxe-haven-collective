@@ -4,7 +4,7 @@ import { resolveApprovedFurnishingOffer, type FurnishingProviderReference } from
 const provider: FurnishingProviderReference = { productId: "prod_fs_test", priceId: "price_fs_test", accountMode: "test" };
 const activation = { globalKillSwitch: false, globalState: "internal" as const, workspaceKillSwitch: false, workspaceEnabled: true, cohortEligible: true, capabilityEnabled: true, configurationValid: true, policyVersion: "fs008a-v1" };
 const actor = { role: "customer" as const, userId: "u1", tenantId: "t1" };
-const input = (offerId: string, extra: Record<string, unknown> = {}) => ({ offerId, actor, activation, providerReferences: { "FS-CONSULT": provider, "FS-DESIGN": provider }, ...extra } as Parameters<typeof resolveApprovedFurnishingOffer>[0]);
+const input = (offerId: string, extra: Record<string, unknown> = {}) => ({ offerId, actor, activation, resolveActivation: (context: any) => ({ allowed: !context.globalKillSwitch && context.globalState !== "disabled" && !context.workspaceKillSwitch && context.workspaceEnabled && context.cohortEligible && context.capabilityEnabled, reason: "enabled" }), providerReferences: { "FS-CONSULT": provider, "FS-DESIGN": provider }, ...extra } as Parameters<typeof resolveApprovedFurnishingOffer>[0]);
 
 describe("FS-008B P2.1 approved Furnishing offer registry", () => {
   it.each(["FS-CONSULT", "FS-DESIGN"])("resolves complete approved %s", (offerId) => {
