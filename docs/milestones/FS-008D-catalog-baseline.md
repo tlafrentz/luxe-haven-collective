@@ -125,3 +125,13 @@ Budget contract: calculate durable subtotal, initial-setup subtotal, recurring e
 5. **Production:** deploy disabled, verify parity and zero active catalog/cohort/resources, commit closure evidence, and tag only after read-only safe-state verification. No FS-008D import or activation occurs during closure.
 
 Decision-dependent work is limited to the content items in step 1. Technical work in step 2 may begin only after this baseline is reviewed and accepted; no implementation or Production change has begun in this checkpoint.
+
+## Catalog-authority convergence rule
+
+FS-001/FS-002 canonical tables are the sole writable FS-008D authority for products, retailer offers, packages, package versions, room/package allocations, lifecycle/publication state, and project catalog snapshots. All FS-008D imports, commands, Admin workflows, customer projections, and snapshots use canonical identifiers and do not dual-write.
+
+The `20260803040000_furnishing_studio.sql` model is `legacy_read_compatibility` only. It has no FS-008D lifecycle, publication, write, or snapshot authority. Existing records remain preserved and readable through a compatibility adapter where required. Direct legacy writes are prohibited by architecture tests; no destructive migration or Production rewrite is authorized.
+
+Legacy reconciliation is a forward-only, idempotent, governed backfill: inventory legacy rows, match only deterministic compatible identities, record legacy-to-canonical mappings, create canonical draft/review-required records only when safe, and route ambiguous/incomplete records to Admin reconciliation. Similar names or URLs alone never merge. Reconciliation cannot publish, activate, assign customer content, call retailers, or create downstream effects.
+
+The existing `furnishing_catalog_imports` table remains an operational ledger, not catalog authority. FS-008D may extend it only compatibly or add narrowly scoped import-run/row-result records containing immutable workbook hash/source, correlation/idempotency, expected version/state, sheet/cell/source-row lineage, formula evidence, canonical product/offer resolution, package/version binding, replay conflict, and sanitized audit history. Import rows point to canonical entities and never become a second product/package authority.
