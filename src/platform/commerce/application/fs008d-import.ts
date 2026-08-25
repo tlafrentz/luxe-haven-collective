@@ -36,15 +36,18 @@ export async function parseFs008dWorkbook(buffer: Buffer, correlationId: string)
     const extendedCell = extendedColumn ? row.getCell(extendedColumn) : undefined;
     if (extendedCell?.type === ExcelJS.ValueType.Formula) {
       const formula = extendedCell.value as ExcelJS.CellFormulaValue;
-      evidence.push(classifyFormulaCell({ sheet: sheet.name, address: extendedCell.address, sourceRow: rowNumber, column: "Extended Cost", formula: formula.formula ?? formula.sharedFormula ?? "", cachedValue: formula.result, quantity, unitPrice, correlationId }));
+      const formulaText = formula.formula ?? (formula as unknown as { sharedFormula?: string }).sharedFormula ?? "";
+      evidence.push(classifyFormulaCell({ sheet: sheet.name, address: extendedCell.address, sourceRow: rowNumber, column: "Extended Cost", formula: formulaText, cachedValue: formula.result, quantity, unitPrice, correlationId }));
     }
     const reasons: string[] = [];
     if (!Number.isFinite(quantity) || quantity <= 0) reasons.push("invalid_quantity");
     if (!Number.isFinite(unitPrice) || unitPrice < 0) reasons.push("invalid_unit_price");
+    const offerUrl = text(row.getCell(column("Source URL", "URL") ?? 0).value);
+    if (offerUrl && !/^https?:\/\//i.test(offerUrl)) reasons.push("invalid_url");
     const canonical = Number.isFinite(quantity) && Number.isFinite(unitPrice) ? Math.round(quantity * unitPrice * 100) / 100 : undefined;
     if (evidence.some((entry) => entry.outcome === "needs_review")) reasons.push("extended_cost_cache_mismatch");
     if (evidence.some((entry) => entry.outcome === "rejected_formula_cell")) reasons.push("unsupported_formula");
-    results.push({ sheet: sheet.name, sourceRow: rowNumber, outcome: reasons.some((reason) => reason === "unsupported_formula") ? "rejected" : reasons.length ? "needs_review" : "valid", productId, offerUrl: text(row.getCell(column("Source URL", "URL") ?? 0).value), canonicalExtendedCost: canonical, formulaEvidence: evidence, reasons });
+    results.push({ sheet: sheet.name, sourceRow: rowNumber, outcome: reasons.some((reason) => reason === "unsupported_formula") ? "rejected" : reasons.length ? "needs_review" : "valid", productId, offerUrl, canonicalExtendedCost: canonical, formulaEvidence: evidence, reasons });
   });
   return results;
 }
