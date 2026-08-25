@@ -13,3 +13,4 @@ export * from "./ca001b-lifecycle";
 export * from "./oc001-catalog";
 export * from "./furnishing-offers";
 export * from "./furnishing-checkout";
+export * from "./furnishing-payment-events";

@@ -1,0 +1,32 @@
+import { BillingActivationError } from "../domain/ca001b-billing";
+
+export type FurnishingPaymentEventStatus = "received" | "signature_verified" | "payment_processing" | "payment_verified" | "payment_failed" | "rejected" | "retryable_failure" | "terminal_failure" | "processed" | "superseded";
+export type VerifiedFurnishingProviderEvent = Readonly<{ providerEventId: string; eventType: string; accountMode: "test" | "live"; providerAccountId: string; signatureVerified: true; occurredAt: string; checkoutAttemptId?: string; providerSessionId?: string; providerPaymentId?: string; providerCustomerReference: string; providerProductId: string; providerPriceId: string; amountMinor: number; currency: string; paymentStatus: "processing" | "succeeded" | "failed"; productFamily: "furnishing"; offerId: string; offerVersion: number; customerAccountId: string; tenantId: string; workspaceId: string; billingModel: "one_time"; contentChecksum: string }>;
+export type FurnishingPaymentEventRecord = Readonly<{ providerEventId: string; eventType: string; accountMode: "test" | "live"; status: FurnishingPaymentEventStatus; checkoutAttemptId?: string; correlationId: string; reason?: string; contentChecksum: string; receivedAt: string }>;
+export interface FurnishingPaymentEventRepository { findEvent(providerEventId: string, accountMode: "test" | "live"): Promise<FurnishingPaymentEventRecord | null>; persistEvent(event: FurnishingPaymentEventRecord): Promise<void>; findAttempt(id: string): Promise<Readonly<{ id: string; productFamily: "furnishing"; actorId: string; customerAccountId: string; tenantId: string; workspaceId: string; offerId: string; offerVersion: number; amountMinor: number; currency: string; billingModel: "one_time"; providerProductId: string; providerPriceId: string; providerSessionId?: string; status: string }> | null>; }
+export type FurnishingPaymentEventResult = Readonly<{ status: "payment_processing" | "payment_verified" | "payment_failed" | "event_replayed" | "event_rejected" | "event_unsupported" | "reconciliation_required" | "reconciliation_retryable" | "terminal_conflict"; providerEventId: string; checkoutAttemptId?: string; reason?: string }>;
+
+const supported = new Set(["checkout.session.completed", "payment_intent.succeeded", "payment_intent.payment_failed", "payment_intent.processing", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed", "checkout.session.expired", "charge.refunded", "charge.dispute.created"]);
+const success = new Set(["checkout.session.completed", "payment_intent.succeeded", "checkout.session.async_payment_succeeded"]);
+const processing = new Set(["payment_intent.processing"]);
+
+export class ProcessFurnishingPaymentEvent {
+  constructor(private readonly dependencies: Readonly<{ repository: FurnishingPaymentEventRepository; expectedAccountId: string; expectedMode: "test" | "live"; now?: () => Date }>) {}
+  async execute(event: VerifiedFurnishingProviderEvent, correlationId: string): Promise<FurnishingPaymentEventResult> {
+    if (!event.signatureVerified) throw new BillingActivationError("WEBHOOK_SIGNATURE_INVALID", "Provider signature is invalid.");
+    const existing = await this.dependencies.repository.findEvent(event.providerEventId, event.accountMode);
+    if (existing) { if (existing.contentChecksum !== event.contentChecksum) return { status: "terminal_conflict", providerEventId: event.providerEventId, reason: "EVENT_CONTENT_MISMATCH" }; return { status: "event_replayed", providerEventId: event.providerEventId, ...(existing.checkoutAttemptId ? { checkoutAttemptId: existing.checkoutAttemptId } : {}), ...(existing.reason ? { reason: existing.reason } : {}) }; }
+    const receivedAt = (this.dependencies.now?.() ?? new Date()).toISOString(), base = { providerEventId: event.providerEventId, eventType: event.eventType, accountMode: event.accountMode, correlationId, contentChecksum: event.contentChecksum, receivedAt } as const;
+    if (!supported.has(event.eventType)) { await this.dependencies.repository.persistEvent({ ...base, status: "processed", reason: "WEBHOOK_EVENT_UNSUPPORTED" }); return { status: "event_unsupported", providerEventId: event.providerEventId, reason: "WEBHOOK_EVENT_UNSUPPORTED" }; }
+    if (event.accountMode !== this.dependencies.expectedMode || event.providerAccountId !== this.dependencies.expectedAccountId) return this.reject(base, "BILLING_ENVIRONMENT_MISMATCH");
+    if (!event.checkoutAttemptId) return this.reject(base, "RECONCILIATION_REQUIRED");
+    const attempt = await this.dependencies.repository.findAttempt(event.checkoutAttemptId);
+    if (!attempt) return this.reject({ ...base, checkoutAttemptId: event.checkoutAttemptId }, "RECONCILIATION_REQUIRED");
+    const mismatch = event.productFamily !== attempt.productFamily || event.offerId !== attempt.offerId || event.offerVersion !== attempt.offerVersion || event.customerAccountId !== attempt.customerAccountId || event.tenantId !== attempt.tenantId || event.workspaceId !== attempt.workspaceId || event.amountMinor !== attempt.amountMinor || event.currency !== attempt.currency || event.billingModel !== attempt.billingModel || event.providerProductId !== attempt.providerProductId || event.providerPriceId !== attempt.providerPriceId || (attempt.providerSessionId !== undefined && event.providerSessionId !== attempt.providerSessionId);
+    if (mismatch) return this.reject({ ...base, checkoutAttemptId: attempt.id }, "PAYMENT_NOT_CONFIRMED");
+    const status = success.has(event.eventType) && event.paymentStatus === "succeeded" ? "payment_verified" : processing.has(event.eventType) || event.paymentStatus === "processing" ? "payment_processing" : "payment_failed";
+    await this.dependencies.repository.persistEvent({ ...base, checkoutAttemptId: attempt.id, status, ...(status === "payment_failed" ? { reason: "PAYMENT_FAILED" } : {}) });
+    return { status, providerEventId: event.providerEventId, checkoutAttemptId: attempt.id, ...(status === "payment_failed" ? { reason: "PAYMENT_FAILED" } : {}) };
+  }
+  private async reject(base: Omit<FurnishingPaymentEventRecord, "status" | "reason"> & { checkoutAttemptId?: string }, reason: string): Promise<FurnishingPaymentEventResult> { await this.dependencies.repository.persistEvent({ ...base, status: "rejected", reason }); return { status: "event_rejected", providerEventId: base.providerEventId, ...(base.checkoutAttemptId ? { checkoutAttemptId: base.checkoutAttemptId } : {}), reason }; }
+}
