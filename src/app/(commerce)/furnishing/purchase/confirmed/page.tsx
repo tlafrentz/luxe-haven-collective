@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { getCheckoutResult } from "@/app/actions/commerce-payments";
+import { createOrReplayFurnishingHandoff } from "@/app/actions/furnishing-onboarding-rpc";
 
 export const metadata: Metadata = {
   title: "Purchase Confirmed",
@@ -11,11 +12,14 @@ export const metadata: Metadata = {
 export default async function FurnishingPurchaseConfirmedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ session_id?: string }>;
+  searchParams: Promise<{ session_id?: string; entitlement_id?: string }>;
 }) {
-  const { session_id } = await searchParams;
+  const { session_id, entitlement_id } = await searchParams;
   const result = session_id ? await getCheckoutResult(session_id) : null;
   const paid = result?.orderStatus === "paid";
+  const handoff = paid && entitlement_id
+    ? await createOrReplayFurnishingHandoff({ entitlementId: entitlement_id, idempotencyKey: `confirmation:${session_id}`, correlationId: `confirmation:${session_id}` })
+    : null;
 
   return (
     <main>
@@ -45,6 +49,7 @@ export default async function FurnishingPurchaseConfirmedPage({
           <p className="mt-6 text-xs text-stone-500">
             We&apos;ve sent a confirmation email with your order details.
           </p>
+          {handoff?.ok ? <p className="mt-2 text-xs text-emerald-700">Your onboarding handoff is ready to resume.</p> : null}
           <Link
             href={`/dashboard/furnishing/projects/new${result?.productName ? `?package=${encodeURIComponent(result.productName)}` : ""}`}
             className="mt-8 flex w-full items-center justify-center rounded-2xl bg-emerald-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
