@@ -15,3 +15,4 @@ export * from "./furnishing-offers";
 export * from "./furnishing-checkout";
 export * from "./furnishing-payment-events";
 export * from "./furnishing-entitlement-activation";
+export * from "./furnishing-purchase-confirmation";
