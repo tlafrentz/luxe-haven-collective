@@ -14,3 +14,4 @@ export * from "./oc001-catalog";
 export * from "./furnishing-offers";
 export * from "./furnishing-checkout";
 export * from "./furnishing-payment-events";
+export * from "./furnishing-entitlement-activation";
