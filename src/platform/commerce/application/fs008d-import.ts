@@ -3,7 +3,7 @@ import { classifyFormulaCell, type FormulaEvidence } from "./fs008d-formula-poli
 
 export type Fs008dRowResult = Readonly<{ sheet: string; sourceRow: number; outcome: "valid" | "needs_review" | "invalid" | "rejected"; productId?: string; offerUrl?: string; canonicalExtendedCost?: number; formulaEvidence: FormulaEvidence[]; reasons: readonly string[] }>;
 
-const text = (value: unknown) => typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
+const text = (value: unknown) => typeof value === "string" ? value.trim() : value && typeof value === "object" && "text" in value ? String((value as { text?: unknown }).text ?? "").trim() : value == null ? "" : String(value).trim();
 const number = (value: unknown) => typeof value === "number" ? value : Number(text(value));
 
 export async function parseFs008dWorkbook(buffer: Buffer, correlationId: string): Promise<readonly Fs008dRowResult[]> {
@@ -13,7 +13,10 @@ export async function parseFs008dWorkbook(buffer: Buffer, correlationId: string)
   const sheet = workbook.getWorksheet("Catalog Review");
   if (!sheet) throw new Error("FS008D_CATALOG_REVIEW_SHEET_REQUIRED");
   const headers = new Map<string, number>();
-  sheet.getRow(1).eachCell((cell, column) => headers.set(text(cell.value).toLowerCase(), column));
+  const headerRow = [1, 2, 3, 4].find((candidate) => {
+    let found = 0; sheet.getRow(candidate).eachCell((cell) => { if (["product id", "room", "item", "retailer", "quantity", "unit price"].includes(text(cell.value).toLowerCase())) found += 1; }); return found >= 4;
+  }) ?? 1;
+  sheet.getRow(headerRow).eachCell((cell, column) => headers.set(text(cell.value).toLowerCase(), column));
   const column = (...names: string[]) => names.map((name) => headers.get(name.toLowerCase())).find((value): value is number => value !== undefined);
   const productColumn = column("Product ID", "ProductId");
   const roomColumn = column("Room");
@@ -25,7 +28,7 @@ export async function parseFs008dWorkbook(buffer: Buffer, correlationId: string)
   if (!productColumn || !roomColumn || !itemColumn || !retailerColumn || !quantityColumn || !unitPriceColumn) throw new Error("FS008D_REQUIRED_HEADER_MISSING");
   const results: Fs008dRowResult[] = [];
   sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
+    if (rowNumber <= headerRow) return;
     const productId = text(row.getCell(productColumn).value), room = text(row.getCell(roomColumn).value), item = text(row.getCell(itemColumn).value), retailer = text(row.getCell(retailerColumn).value);
     if (![productId, room, item, retailer].some(Boolean)) return;
     const quantity = number(row.getCell(quantityColumn).value), unitPrice = number(row.getCell(unitPriceColumn).value);
@@ -33,7 +36,7 @@ export async function parseFs008dWorkbook(buffer: Buffer, correlationId: string)
     const extendedCell = extendedColumn ? row.getCell(extendedColumn) : undefined;
     if (extendedCell?.type === ExcelJS.ValueType.Formula) {
       const formula = extendedCell.value as ExcelJS.CellFormulaValue;
-      evidence.push(classifyFormulaCell({ sheet: sheet.name, address: extendedCell.address, sourceRow: rowNumber, column: "Extended Cost", formula: formula.formula, cachedValue: formula.result, quantity, unitPrice, correlationId }));
+      evidence.push(classifyFormulaCell({ sheet: sheet.name, address: extendedCell.address, sourceRow: rowNumber, column: "Extended Cost", formula: formula.formula ?? formula.sharedFormula ?? "", cachedValue: formula.result, quantity, unitPrice, correlationId }));
     }
     const reasons: string[] = [];
     if (!Number.isFinite(quantity) || quantity <= 0) reasons.push("invalid_quantity");
