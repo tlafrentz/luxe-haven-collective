@@ -12,6 +12,7 @@
   "health":{"apex":200,"www":200},
   "postWorkspaceEnableReconciliation":{"observedAt":"2026-08-26T23:16:42Z","workspaceEnabled":true,"workspaceKillSwitch":true,"workspaceCohort":"internal","workspaceVersion":2,"workspaceStateAuditEvents":1,"enabledCapabilities":0,"downstreamResourceEffects":0},
   "postCatalogViewingReconciliation":{"observedAt":"2026-08-26T23:22:39Z","catalogViewingEnabled":true,"catalogViewingVersion":1,"otherEnabledCapabilities":0,"workspaceKillSwitch":true,"globalKillSwitch":true,"downstreamResourceEffects":0},
+  "postDesignWorkspaceReconciliation":{"observedAt":"2026-08-26T23:28:45Z","catalogViewingEnabled":true,"designWorkspaceEnabled":true,"designWorkspaceVersion":1,"otherEnabledCapabilities":0,"workspaceKillSwitch":true,"globalKillSwitch":true,"downstreamResourceEffects":0},
   "preflightMutationsPerformed":false,
   "secretsIncluded":false
 }
