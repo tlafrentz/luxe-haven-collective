@@ -1,0 +1,15 @@
+{
+  "schemaVersion":"fs008g-c2-preflight-v1",
+  "correlationId":"51897c6b-c1d9-49df-97cc-c5c740dd78fc",
+  "observedAt":"2026-08-26T23:13:05Z",
+  "status":"mutation_window_open",
+  "candidateSha":"bca54b66c2d6b6669b19eaec25d9af1888d6747a",
+  "deploymentId":"dpl_F6pCTS4UcoK7E51ZaHgLNqFhjTAF",
+  "migrationCeiling":"20260826013000",
+  "canonicalRolledBackRehearsal":"accepted_workspace_version_2_audit_complete_then_rolled_back",
+  "safeState":{"releaseStatus":"candidate","globalState":"disabled","globalKillSwitch":true,"configurationValid":false,"releaseVersion":1,"activationWorkspaces":1,"workspaceEnabled":false,"workspaceKillSwitch":true,"workspaceCohort":"internal","workspaceVersion":1},
+  "zeroEffects":{"enabledCapabilities":0,"workspaceStateAuditEvents":0,"catalogImports":0,"catalogSnapshots":0,"procurementBaselines":0,"externalOrders":0,"receipts":0,"installationProjects":0},
+  "health":{"apex":200,"www":200},
+  "preflightMutationsPerformed":false,
+  "secretsIncluded":false
+}
