@@ -2,7 +2,9 @@
   "schemaVersion": "fs008g-c2-evidence-manifest-v1",
   "correlationId": "b3bef1ff-dd2a-4cb4-af2f-09470eacb07e",
   "authoritative": true,
-  "currentState": "mutation_window_open",
+  "currentState": "retired",
+  "terminalState": "retired_after_precommit_plpgsql_ambiguity",
+  "retirementReason": "FS008G_C2_CONTROLLED_TENANT_COLUMN_AMBIGUOUS",
   "files": ["preflight.json","evidence-ledger.json","manifest.json"],
   "activationMutationsPerformed": false,
   "secretsIncluded": false
