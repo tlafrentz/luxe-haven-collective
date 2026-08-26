@@ -239,7 +239,11 @@ export async function updatePasswordAction(
   if (error) {
     return {
       ok: false,
-      message: error.message,
+      message:
+        error.code === "session_not_found" ||
+        /auth session missing/i.test(error.message)
+          ? "Your password link is invalid or expired. Request a new link and try again."
+          : "We couldn't update your password. Request a new link and try again.",
     };
   }
 

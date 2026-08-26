@@ -9,7 +9,13 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error) {
+      const recoveryUrl = new URL("/update-password", requestUrl.origin);
+      recoveryUrl.searchParams.set("recovery", "invalid");
+      return NextResponse.redirect(recoveryUrl);
+    }
   }
 
   return NextResponse.redirect(new URL(next, requestUrl.origin));
