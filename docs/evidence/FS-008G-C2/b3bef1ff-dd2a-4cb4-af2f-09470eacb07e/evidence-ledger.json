@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "fs008g-c2-evidence-ledger-v1",
+  "correlationId": "b3bef1ff-dd2a-4cb4-af2f-09470eacb07e",
+  "openedAt": "2026-08-26T22:35:07Z",
+  "state": "mutation_window_open",
+  "retiredCorrelations": [
+    "d753549b-9779-4095-a902-ac7929aab5e4",
+    "79dea015-2a0c-4893-ae75-9d8b89621f36"
+  ],
+  "entries": [
+    {"sequence":1,"kind":"candidate_deployment_binding","result":"passed"},
+    {"sequence":2,"kind":"migration_parity","result":"passed"},
+    {"sequence":3,"kind":"safe_disabled_zero_effects","result":"passed","evidenceFile":"preflight.json"},
+    {"sequence":4,"kind":"mutation_window_gate","result":"opened","nextExpectedVersion":0,"nextAuthorizedControl":"Create/grant controlled cohort"}
+  ],
+  "externalEffectsObserved": 0,
+  "secretsIncluded": false
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "fs008g-c2-preflight-v1",
+  "correlationId": "b3bef1ff-dd2a-4cb4-af2f-09470eacb07e",
+  "observedAt": "2026-08-26T22:35:07Z",
+  "status": "mutation_window_open",
+  "candidateSha": "ceb2bd1b682cada48c9e92a902cc08af674a8138",
+  "deploymentId": "dpl_2cmgJfDGNLqg9tVMcb3y7jY3Usbf",
+  "immutableDeploymentUrl": "https://luxe-haven-collective-7rasvxulr-luxe-haven-collective.vercel.app",
+  "migrationCeiling": "20260826011000",
+  "safeState": {
+    "releaseStatus": "candidate",
+    "globalState": "disabled",
+    "globalKillSwitch": true,
+    "configurationValid": false,
+    "releaseVersion": 1,
+    "activationWorkspaces": 0,
+    "enabledCapabilities": 0,
+    "activationAuditEvents": 0
+  },
+  "zeroEffects": {
+    "catalogImports": 0,
+    "catalogSnapshots": 0,
+    "procurementBaselines": 0,
+    "externalOrders": 0,
+    "receipts": 0,
+    "installationProjects": 0
+  },
+  "verification": {
+    "focusedTests": 21,
+    "fullTestFiles": 798,
+    "fullTests": 4391,
+    "typecheck": "passed",
+    "migrationLint": "no_findings",
+    "isolatedBuild": "passed",
+    "productionBuild": "passed",
+    "apexHealth": 200,
+    "wwwHealth": 200
+  },
+  "retiredCorrelationsReused": false,
+  "preflightMutationsPerformed": false,
+  "secretsIncluded": false
+}
