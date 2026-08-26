@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "fs008g-c2-evidence-ledger-v1",
+  "correlationId": "79dea015-2a0c-4893-ae75-9d8b89621f36",
+  "openedAt": "2026-08-26T05:11:59Z",
+  "state": "mutation_window_open",
+  "entries": [
+    {
+      "sequence": 1,
+      "kind": "prior_correlation_retirement",
+      "result": "passed",
+      "evidence": {
+        "retiredCorrelationId": "d753549b-9779-4095-a902-ac7929aab5e4",
+        "reused": false,
+        "activationRowsCreated": 0,
+        "auditRowsCreated": 0
+      }
+    },
+    {
+      "sequence": 2,
+      "kind": "candidate_deployment_binding",
+      "result": "passed",
+      "evidence": {
+        "candidateSha": "070ca59e3c474f357032fa3ba4efc6eb049efa25",
+        "deploymentId": "dpl_HqyCEPJWGCY7e1Tvx2v2M3c4jbvo",
+        "readyState": "READY",
+        "target": "production",
+        "aliasesBound": true
+      }
+    },
+    {
+      "sequence": 3,
+      "kind": "migration_parity",
+      "result": "passed",
+      "evidence": {
+        "localCeiling": "20260826010000",
+        "remoteCeiling": "20260826010000"
+      }
+    },
+    {
+      "sequence": 4,
+      "kind": "safe_disabled_zero_effects",
+      "result": "passed",
+      "evidenceFile": "preflight.json"
+    },
+    {
+      "sequence": 5,
+      "kind": "mutation_window_gate",
+      "result": "opened",
+      "evidence": {
+        "preflightReadOnly": true,
+        "correlationFresh": true,
+        "nextExpectedVersion": 0,
+        "nextAuthorizedControl": "Create/grant controlled cohort"
+      }
+    }
+  ],
+  "externalEffectsObserved": 0,
+  "secretsIncluded": false
+}
