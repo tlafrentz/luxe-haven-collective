@@ -14,6 +14,7 @@
   "postCatalogViewingReconciliation":{"observedAt":"2026-08-26T23:22:39Z","catalogViewingEnabled":true,"catalogViewingVersion":1,"otherEnabledCapabilities":0,"workspaceKillSwitch":true,"globalKillSwitch":true,"downstreamResourceEffects":0},
   "postDesignWorkspaceReconciliation":{"observedAt":"2026-08-26T23:28:45Z","catalogViewingEnabled":true,"designWorkspaceEnabled":true,"designWorkspaceVersion":1,"otherEnabledCapabilities":0,"workspaceKillSwitch":true,"globalKillSwitch":true,"downstreamResourceEffects":0},
   "postBudgetingReconciliation":{"observedAt":"2026-08-26T23:31:29Z","catalogViewingEnabled":true,"designWorkspaceEnabled":true,"budgetingEnabled":true,"budgetingVersion":1,"otherEnabledCapabilities":0,"workspaceKillSwitch":true,"globalKillSwitch":true,"downstreamResourceEffects":0},
+  "postRequiredCapabilitiesReconciliation":{"observedAt":"2026-08-26T23:32:57Z","enabledCapabilities":["budgeting","catalog_viewing","design_workspace","procurement_readiness"],"allCapabilityVersions":1,"workspaceKillSwitch":true,"globalKillSwitch":true,"globalState":"disabled","downstreamResourceEffects":0},
   "preflightMutationsPerformed":false,
   "secretsIncluded":false
 }

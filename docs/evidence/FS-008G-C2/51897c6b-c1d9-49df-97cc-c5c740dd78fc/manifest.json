@@ -2,7 +2,7 @@
   "schemaVersion":"fs008g-c2-evidence-manifest-v1",
   "correlationId":"51897c6b-c1d9-49df-97cc-c5c740dd78fc",
   "authoritative":true,
-  "currentState":"budgeting_reconciled",
+  "currentState":"required_capabilities_reconciled",
   "files":["preflight.json","evidence-ledger.json","manifest.json"],
   "activationMutationsPerformed":true,
   "secretsIncluded":false
