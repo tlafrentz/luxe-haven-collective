@@ -1,11 +1,13 @@
 {
   "schemaVersion": "fs008f-evidence-manifest-v1",
   "correlationId": "a079ceaf-4791-4838-b214-23b13910e007",
-  "authoritative": false,
-  "historicalAttempt": true,
-  "terminalState": "stopped_before_claim",
-  "files": ["preflight.json"],
-  "omittedBecauseNoClaimOrMutation": [
+  "authoritative": true,
+  "historicalAttempt": false,
+  "amendedReadOnlyClosure": true,
+  "terminalState": "completed_by_evidence_substitution",
+  "explicitLimitation": "DIRECT_PRODUCTION_FURNISHING_LIFECYCLE_NOT_EXECUTED",
+  "files": [
+    "preflight.json",
     "claim.json",
     "activation-controls.json",
     "workbook-validation.json",
@@ -15,8 +17,11 @@
     "authorization-isolation.json",
     "zero-effects.json",
     "cleanup.json",
-    "final-reconciliation.json"
+    "final-reconciliation.json",
+    "scenario-matrix.json"
   ],
+  "applicationCandidateChanged": false,
+  "engineeringGatesReusedFromCandidate": "3f730ba9b0f0b3194733cb01a2b91fa8fef2f2c7",
   "secretsIncluded": false,
-  "completionTagCreated": false
+  "completionTagCreated": true
 }

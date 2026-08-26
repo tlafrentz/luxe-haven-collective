@@ -1,0 +1,20 @@
+{
+  "productionExecution": "not_directly_executed",
+  "evidenceType": "automated_local_verified",
+  "source": "docs/evidence/FS-008D/source/Catalog Review (1).xlsx",
+  "sha256": "ba849761b7c54060a8e6a7c656c57e03a33a234dfe4233c1fb17902e1e304823",
+  "catalogReviewRows": 110,
+  "evidence": [
+    "src/platform/commerce/application/fs008d-integration.test.ts",
+    "src/platform/commerce/application/fs008d-formula-policy.ts",
+    "docs/milestones/FS-008D-catalog-baseline.md"
+  ],
+  "verifiedBehaviors": [
+    "formula safety",
+    "server-calculated Extended Cost",
+    "source-row lineage",
+    "needs-review/rejected rows do not promote"
+  ],
+  "productionImportRuns": 0,
+  "productionImportRows": 0
+}

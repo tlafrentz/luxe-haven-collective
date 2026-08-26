@@ -3,7 +3,7 @@
   "correlationId": "a079ceaf-4791-4838-b214-23b13910e007",
   "runId": null,
   "claimId": null,
-  "status": "stopped_before_claim",
+  "status": "retired_under_amended_contract",
   "binding": {
     "candidateSha": "3f730ba9b0f0b3194733cb01a2b91fa8fef2f2c7",
     "deploymentId": "dpl_3gdDmWkaAxN78UeoLYyvbCAMKAcA",

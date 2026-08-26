@@ -1,0 +1,18 @@
+{
+  "productionExecution": "not_directly_executed",
+  "evidenceType": "automated_local_verified",
+  "evidence": [
+    "supabase/migrations/20260825042000_fs008d_approval_snapshot_commands.sql",
+    "supabase/migrations/20260825051000_fs008e_normalized_snapshot_items.sql",
+    "src/features/furnishing-studio/fs008e-migration.test.ts"
+  ],
+  "mappedBehaviors": [
+    "immutable snapshot",
+    "normalized canonical room IDs",
+    "product and offer lineage",
+    "content-hash replay conflict",
+    "tenant authorization"
+  ],
+  "productionSnapshots": 0,
+  "productionSnapshotItems": 0
+}

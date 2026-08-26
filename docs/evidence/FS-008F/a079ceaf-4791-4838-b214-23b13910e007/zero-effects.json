@@ -1,0 +1,15 @@
+{
+  "evidenceType": "direct_production_read_only",
+  "providerCallsSinceFs008eDeployment": 0,
+  "furnishingNotifications": 0,
+  "installationProjects": 0,
+  "externalOrders": 0,
+  "paymentsOrRefundsCreatedByFs008f": 0,
+  "publicCatalogPublicationsCreatedByFs008f": 0,
+  "automationResourcesCreatedByFs008f": 0,
+  "fs008gCohorts": 0,
+  "supportingAutomatedEvidence": [
+    "src/features/furnishing-studio/notification-guard.test.ts",
+    "tests/architecture/fs008a-activation-controls.test.ts"
+  ]
+}

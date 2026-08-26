@@ -1,0 +1,9 @@
+{
+  "cleanupExecuted": false,
+  "reason": "The amended contract authorized read-only closure; no claim, activation change, or synthetic resource was created.",
+  "resourcesRequiringCleanup": 0,
+  "historicalCorrelationRetired": true,
+  "originalActivationConfigurationUnchanged": true,
+  "ps001dInfrastructureSuitability": "unsuitable_for_fs008f_resource_graph",
+  "replacementFrameworkBuilt": false
+}

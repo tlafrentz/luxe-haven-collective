@@ -1,0 +1,13 @@
+{
+  "evidenceType": "direct_production_read_only",
+  "releaseStatus": "candidate",
+  "globalState": "disabled",
+  "globalKillSwitch": true,
+  "configurationValid": false,
+  "optimisticVersion": 1,
+  "policyVersion": "fs008a-v1",
+  "activeControlledCohorts": 0,
+  "enabledFurnishingCapabilities": 0,
+  "fs008gActive": false,
+  "mutated": false
+}

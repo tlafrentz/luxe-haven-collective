@@ -1,0 +1,21 @@
+{
+  "productionExecution": "not_directly_executed",
+  "evidenceType": "automated_local_verified",
+  "evidence": [
+    "src/features/furnishing-studio/catalog.test.ts",
+    "src/features/furnishing-studio/packages.test.ts",
+    "src/features/furnishing-studio/design.test.ts",
+    "src/platform/commerce/application/fs008d-readiness.ts",
+    "supabase/migrations/20260825042000_fs008d_approval_snapshot_commands.sql"
+  ],
+  "mappedBehaviors": [
+    "catalog product/offer reconciliation",
+    "preferred and alternate offer selection",
+    "package readiness",
+    "Admin-only package approval",
+    "replay and incomplete-readiness denial"
+  ],
+  "productionImportRuns": 0,
+  "productionApprovedPackageVersions": 0,
+  "productionCatalogActivation": false
+}

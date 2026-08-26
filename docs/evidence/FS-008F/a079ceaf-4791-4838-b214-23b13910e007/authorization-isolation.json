@@ -1,0 +1,24 @@
+{
+  "directProduction": [
+    "anonymous Admin procurement route returned HTTP 307 to login",
+    "anonymous customer procurement route returned HTTP 307 to login",
+    "controlled tenant has zero conflicting resources"
+  ],
+  "automatedLocalVerified": [
+    "Admin-only mutation",
+    "owner read projection",
+    "operator denial",
+    "wrong-tenant denial",
+    "anonymous denial",
+    "RLS tenant isolation",
+    "customer-safe projection"
+  ],
+  "notDirectlyExecuted": [
+    "authenticated Admin approval",
+    "authenticated owner catalog/snapshot flow",
+    "wrong-tenant authenticated denial",
+    "customer-safe authenticated projection"
+  ],
+  "productionAuthorizationsForHistoricalCorrelation": 0,
+  "productionClaimsForHistoricalCorrelation": 0
+}

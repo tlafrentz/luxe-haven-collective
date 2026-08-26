@@ -1,0 +1,32 @@
+{
+  "productionExecution": "not_directly_executed",
+  "evidenceType": "automated_local_verified",
+  "evidence": [
+    "src/features/furnishing-studio/fs006-migration.test.ts",
+    "src/features/furnishing-studio/fs008e-migration.test.ts",
+    "src/features/furnishing-studio/procurement.test.ts",
+    "supabase/migrations/20260825052000_fs008e_procurement_rpcs.sql"
+  ],
+  "mappedBehaviors": [
+    "plan-native and snapshot-native baseline construction",
+    "seven transactional RPC boundaries",
+    "replay and stale-version protection",
+    "concurrency locking and uniqueness scopes",
+    "transactional audit and rollback",
+    "receipt and exception lifecycle",
+    "over-receipt denial",
+    "planned-versus-actual budget reconciliation",
+    "RLS and tenant isolation"
+  ],
+  "productionCounts": {
+    "baselines": 0,
+    "lines": 0,
+    "batches": 0,
+    "batchLines": 0,
+    "externalOrders": 0,
+    "orderLines": 0,
+    "receipts": 0,
+    "receiptLines": 0,
+    "budgetAdjustments": 0
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "correlationId": "a079ceaf-4791-4838-b214-23b13910e007",
+  "claimAcquired": false,
+  "authorizationsCreated": 0,
+  "productionAuthorizationsForCorrelation": 0,
+  "productionClaimsForCorrelation": 0,
+  "retired": true,
+  "retirementBasis": "Amended read-only evidence contract.",
+  "replayOrBindingMutationAttempted": false
+}

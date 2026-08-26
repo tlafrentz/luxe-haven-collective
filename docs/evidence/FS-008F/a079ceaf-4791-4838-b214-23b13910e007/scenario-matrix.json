@@ -1,0 +1,101 @@
+{
+  "explicitLimitation": "DIRECT_PRODUCTION_FURNISHING_LIFECYCLE_NOT_EXECUTED",
+  "scenarios": [
+    {
+      "scenario": "PV-01",
+      "directProductionReadOnly": ["workbook hash present; import counts zero"],
+      "automatedLocalVerified": [
+        "110-row parsing; formula safety; canonical Extended Cost; review outcomes"
+      ],
+      "notDirectlyExecuted": ["Production workbook import and replay"]
+    },
+    {
+      "scenario": "PV-02",
+      "directProductionReadOnly": ["approval and catalog resource counts zero"],
+      "automatedLocalVerified": [
+        "catalog reconciliation; package readiness; approval boundary"
+      ],
+      "notDirectlyExecuted": [
+        "controlled catalog/package creation and approval"
+      ]
+    },
+    {
+      "scenario": "PV-03",
+      "directProductionReadOnly": ["snapshot and normalized-item counts zero"],
+      "automatedLocalVerified": [
+        "immutable normalized snapshot; lineage; replay; authorization"
+      ],
+      "notDirectlyExecuted": ["authenticated owner snapshot flow"]
+    },
+    {
+      "scenario": "PV-04",
+      "directProductionReadOnly": ["baseline and line counts zero"],
+      "automatedLocalVerified": [
+        "plan-native and snapshot-native authoritative baseline; replay; no dual writes"
+      ],
+      "notDirectlyExecuted": ["Production procurement baseline creation"]
+    },
+    {
+      "scenario": "PV-05",
+      "directProductionReadOnly": ["FS-008A denial remains authoritative"],
+      "automatedLocalVerified": [
+        "Admin-only approval; reason/version/audit boundaries"
+      ],
+      "notDirectlyExecuted": ["authenticated Admin approval"]
+    },
+    {
+      "scenario": "PV-06",
+      "directProductionReadOnly": ["batch and membership counts zero"],
+      "automatedLocalVerified": [
+        "transactional batch construction; replay; immutable planned values"
+      ],
+      "notDirectlyExecuted": ["Production purchase batch"]
+    },
+    {
+      "scenario": "PV-07",
+      "directProductionReadOnly": [
+        "external-order and provider-call counts zero"
+      ],
+      "automatedLocalVerified": [
+        "transactional order/line allocation; replay conflict; audit"
+      ],
+      "notDirectlyExecuted": ["Production external-order recording"]
+    },
+    {
+      "scenario": "PV-08",
+      "directProductionReadOnly": [
+        "receipt, notification, and installation counts zero"
+      ],
+      "automatedLocalVerified": [
+        "partial fulfillment; receipt replay; over-receipt denial; exception history"
+      ],
+      "notDirectlyExecuted": ["Production receipt and discrepancy lifecycle"]
+    },
+    {
+      "scenario": "PV-09",
+      "directProductionReadOnly": ["budget-adjustment count zero"],
+      "automatedLocalVerified": [
+        "planned/actual separation; financial projection; variance; replay"
+      ],
+      "notDirectlyExecuted": ["Production budget reconciliation"]
+    },
+    {
+      "scenario": "PV-10",
+      "directProductionReadOnly": ["anonymous customer route protection"],
+      "automatedLocalVerified": [
+        "customer-safe projection; refresh/direct-link automation"
+      ],
+      "notDirectlyExecuted": ["authenticated owner procurement projection"]
+    },
+    {
+      "scenario": "PV-11",
+      "directProductionReadOnly": [
+        "zero resources/effects; disabled state; no cohorts/capabilities; anonymous protection"
+      ],
+      "automatedLocalVerified": [
+        "RLS; tenant/persona denial; provider/notification suppression"
+      ],
+      "notDirectlyExecuted": ["wrong-tenant authenticated denial"]
+    }
+  ]
+}
