@@ -1,0 +1,9 @@
+{
+  "schemaVersion":"fs008g-c2-evidence-manifest-v1",
+  "correlationId":"68ebbaed-eb51-485d-abc8-e281625930b7",
+  "authoritative":true,
+  "currentState":"mutation_window_open",
+  "files":["preflight.json","evidence-ledger.json","manifest.json"],
+  "activationMutationsPerformed":false,
+  "secretsIncluded":false
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion":"fs008g-c2-preflight-v1",
+  "correlationId":"68ebbaed-eb51-485d-abc8-e281625930b7",
+  "observedAt":"2026-08-26T22:43:41Z",
+  "status":"mutation_window_open",
+  "candidateSha":"1e3914522d4944fe4c8f5e4c9b21f6dee83d098f",
+  "deploymentId":"dpl_78kRHuj3hR5PXy1QnYjM4Z4gteXy",
+  "migrationCeiling":"20260826012000",
+  "canonicalRolledBackRehearsal":"accepted_version_1_audit_complete",
+  "safeState":{"releaseStatus":"candidate","globalState":"disabled","globalKillSwitch":true,"configurationValid":false,"releaseVersion":1},
+  "zeroEffects":{"activationWorkspaces":0,"enabledCapabilities":0,"activationAuditEvents":0,"catalogImports":0,"catalogSnapshots":0,"procurementBaselines":0,"externalOrders":0,"receipts":0,"installationProjects":0},
+  "health":{"apex":200,"www":200},
+  "preflightMutationsPerformed":false,
+  "secretsIncluded":false
+}
