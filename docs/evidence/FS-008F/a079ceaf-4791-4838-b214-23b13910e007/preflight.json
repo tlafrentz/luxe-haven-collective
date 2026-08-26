@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "fs008f-preflight-v1",
+  "correlationId": "a079ceaf-4791-4838-b214-23b13910e007",
+  "runId": null,
+  "claimId": null,
+  "status": "stopped_before_claim",
+  "binding": {
+    "candidateSha": "3f730ba9b0f0b3194733cb01a2b91fa8fef2f2c7",
+    "deploymentId": "dpl_3gdDmWkaAxN78UeoLYyvbCAMKAcA",
+    "immutableDeploymentUrl": "https://luxe-haven-collective-5nnrxoqfj-luxe-haven-collective.vercel.app",
+    "vercelProjectId": "prj_YTGVIQ11lGz57hEz4UJFX4hCnXPX",
+    "supabaseProjectRef": "jumdtoraygqaraditnie",
+    "migrationCeiling": "20260825052000",
+    "controlledTenantId": "4abe0850-6ad7-40a0-89bb-b1fb5e6afe82",
+    "verificationContractVersion": "fs008f-v1",
+    "rollbackDeploymentId": "dpl_BBonyFgEBqfUvJkTk4v6dYHfTcJ2"
+  },
+  "passed": {
+    "deploymentReady": true,
+    "rollbackReady": true,
+    "aliasesBound": true,
+    "healthAttempts": [true, true, true],
+    "migrationParity": true,
+    "relevantProductionErrors": 0,
+    "workbookSha256": "ba849761b7c54060a8e6a7c656c57e03a33a234dfe4233c1fb17902e1e304823",
+    "workbookAutomatedRowCount": 110,
+    "controlledTenantApproved": true,
+    "controlledTenantExpiresAt": "2026-09-23T02:14:17.155919Z",
+    "customerRelationships": 0,
+    "providerRelationships": 0,
+    "furnishingProjects": 0,
+    "workspaceProducts": 0,
+    "workspacePackages": 0,
+    "catalogSnapshots": 0,
+    "procurementBaselines": 0,
+    "activeClaims": 0,
+    "unresolvedLedgerEntries": 0,
+    "activeControlledCohorts": 0,
+    "enabledFurnishingCapabilities": 0,
+    "fs008aDisabled": true,
+    "globalKillSwitch": true
+  },
+  "identityRowsObserved": {
+    "controlledOwner": 1,
+    "controlledAdministrator": 1,
+    "controlledOperator": 1,
+    "ordinarySessionMaterialAvailable": false,
+    "serviceRoleRejectedAsSessionSubstitute": true
+  },
+  "blockers": [
+    "FS008F_REQUIRED_ORDINARY_SESSIONS_UNAVAILABLE",
+    "FS008F_LEDGER_RESOURCE_TYPES_UNSUPPORTED",
+    "FS008F_GOVERNED_CLEANUP_UNSUPPORTED",
+    "FS008F_CLAIM_BINDING_CONTRACT_INCOMPATIBLE"
+  ],
+  "mutationsPerformed": false,
+  "authorizationsCreated": 0,
+  "claimsAcquired": 0,
+  "syntheticResourcesCreated": 0
+}

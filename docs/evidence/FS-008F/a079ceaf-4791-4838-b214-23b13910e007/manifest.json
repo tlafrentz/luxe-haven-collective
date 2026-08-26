@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "fs008f-evidence-manifest-v1",
+  "correlationId": "a079ceaf-4791-4838-b214-23b13910e007",
+  "authoritative": false,
+  "historicalAttempt": true,
+  "terminalState": "stopped_before_claim",
+  "files": ["preflight.json"],
+  "omittedBecauseNoClaimOrMutation": [
+    "claim.json",
+    "activation-controls.json",
+    "workbook-validation.json",
+    "catalog-package.json",
+    "project-snapshot.json",
+    "procurement-lifecycle.json",
+    "authorization-isolation.json",
+    "zero-effects.json",
+    "cleanup.json",
+    "final-reconciliation.json"
+  ],
+  "secretsIncluded": false,
+  "completionTagCreated": false
+}
