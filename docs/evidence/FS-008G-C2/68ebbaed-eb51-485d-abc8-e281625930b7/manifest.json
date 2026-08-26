@@ -2,8 +2,10 @@
   "schemaVersion":"fs008g-c2-evidence-manifest-v1",
   "correlationId":"68ebbaed-eb51-485d-abc8-e281625930b7",
   "authoritative":true,
-  "currentState":"mutation_window_open",
+  "currentState":"retired",
   "files":["preflight.json","evidence-ledger.json","manifest.json"],
-  "activationMutationsPerformed":false,
+  "activationMutationsPerformed":true,
+  "retiredAt":"2026-08-26T22:56:47Z",
+  "retirementReason":"Cohort grant succeeded at version 1; subsequent stale version-0 workspace enable attempts were rejected without effects.",
   "secretsIncluded":false
 }

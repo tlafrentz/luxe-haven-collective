@@ -2,14 +2,17 @@
   "schemaVersion":"fs008g-c2-evidence-ledger-v1",
   "correlationId":"68ebbaed-eb51-485d-abc8-e281625930b7",
   "openedAt":"2026-08-26T22:43:41Z",
-  "state":"mutation_window_open",
+  "state":"retired",
   "retiredCorrelations":["d753549b-9779-4095-a902-ac7929aab5e4","79dea015-2a0c-4893-ae75-9d8b89621f36","b3bef1ff-dd2a-4cb4-af2f-09470eacb07e"],
   "entries":[
     {"sequence":1,"kind":"candidate_deployment_binding","result":"passed"},
     {"sequence":2,"kind":"migration_parity","result":"passed"},
     {"sequence":3,"kind":"canonical_rollback_rehearsal","result":"accepted_then_rolled_back","persistentEffects":0},
     {"sequence":4,"kind":"safe_disabled_zero_effects","result":"passed","evidenceFile":"preflight.json"},
-    {"sequence":5,"kind":"mutation_window_gate","result":"opened","nextExpectedVersion":0,"nextAuthorizedControl":"Create/grant controlled cohort"}
+    {"sequence":5,"kind":"mutation_window_gate","result":"opened","nextExpectedVersion":0,"nextAuthorizedControl":"Create/grant controlled cohort"},
+    {"sequence":6,"kind":"cohort_grant","result":"accepted","resultingVersion":1,"workspaceEnabled":false,"workspaceKillSwitch":true,"globalKillSwitch":true},
+    {"sequence":7,"kind":"workspace_enable_attempt","result":"version_conflict","persistentEffects":0,"cause":"Admin page lacked a target-scoped post-write version projection"},
+    {"sequence":8,"kind":"correlation_retirement","result":"retired","retiredAt":"2026-08-26T22:56:47Z","cohortStateRetainedSafeDisabled":true}
   ],
   "secretsIncluded":false
 }
