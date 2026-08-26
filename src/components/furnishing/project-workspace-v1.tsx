@@ -493,6 +493,12 @@ export async function ProjectWorkspace({
       selections.filter((x) => x.required).length,
     ),
     validation = validations[0];
+  const missingSetup = [
+    !project.furnishing_package_version_id ? "approved package" : null,
+    !rooms.length ? "canonical rooms" : null,
+    target === null ? "target budget" : null,
+  ].filter((value): value is string => Boolean(value));
+  const canGeneratePlan = !plan && missingSetup.length === 0;
   const base = customer
     ? `/dashboard/furnishing/projects/${projectId}`
     : `/admin/furnishing/projects/${projectId}`;
@@ -536,15 +542,15 @@ export async function ProjectWorkspace({
                 Review plan
               </button>
             </form>
-          ) : (
+          ) : canGeneratePlan ? (
             <form action={generateFurnishingPlanAction}>
               <input type="hidden" name="projectId" value={project.id} />
               <button className={button}>Generate Plan v1</button>
             </form>
-          )}
+          ) : null}
         </div>
       </header>
-      {!plan ? (
+      {!plan && canGeneratePlan ? (
         <section className="mx-auto mt-12 max-w-2xl rounded-2xl border bg-white p-10 text-center">
           <h2 className="text-2xl font-semibold">
             Ready to generate the furnishing plan
@@ -553,6 +559,28 @@ export async function ProjectWorkspace({
             {rooms.length} rooms · {packageVersion?.furnishing_packages?.name} ·
             exact approved package and design versions will be snapshotted.
           </p>
+        </section>
+      ) : !plan ? (
+        <section
+          className="mx-auto mt-12 max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 p-8"
+          role="status"
+        >
+          <h2 className="text-2xl font-semibold text-amber-950">
+            Project setup is incomplete
+          </h2>
+          <p className="mt-3 text-amber-900">
+            This project cannot generate a furnishing plan until its missing
+            setup is reconciled by an Admin.
+          </p>
+          <p className="mt-3 text-sm font-semibold text-amber-950">
+            Missing: {missingSetup.join(", ")}.
+          </p>
+          <Link
+            href={customer ? "/dashboard/furnishing/projects" : "/admin/furnishing/projects"}
+            className="mt-6 inline-flex rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-950"
+          >
+            Return to projects
+          </Link>
         </section>
       ) : (
         <div className="mt-5 grid min-h-[720px] gap-5 lg:grid-cols-[240px_1fr_300px]">

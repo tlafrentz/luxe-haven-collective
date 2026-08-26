@@ -338,13 +338,15 @@ export async function getProjectWorkspace(projectId: string) {
     { data: propertyProfile },
     { data: moodBoards },
   ] = await Promise.all([
-    db
-      .from("furnishing_package_versions")
-      .select(
-        "*,furnishing_packages!furnishing_package_versions_furnishing_package_id_fkey(*),furnishing_package_room_composition(*,furnishing_room_package_versions(*,furnishing_room_packages!furnishing_room_package_versions_room_package_id_fkey(*),furnishing_room_package_items(*,furnishing_room_requirements(*),furnishing_quantity_rules(*),furnishing_products(*,furnishing_product_offers!furnishing_product_offers_product_id_fkey(*)))))",
-      )
-      .eq("id", project.furnishing_package_version_id)
-      .maybeSingle(),
+    project.furnishing_package_version_id
+      ? db
+          .from("furnishing_package_versions")
+          .select(
+            "*,furnishing_packages!furnishing_package_versions_furnishing_package_id_fkey(*),furnishing_package_room_composition(*,furnishing_room_package_versions(*,furnishing_room_packages!furnishing_room_package_versions_room_package_id_fkey(*),furnishing_room_package_items(*,furnishing_room_requirements(*),furnishing_quantity_rules(*),furnishing_products(*,furnishing_product_offers!furnishing_product_offers_product_id_fkey(*)))))",
+          )
+          .eq("id", project.furnishing_package_version_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
     db
       .from("furnishing_products")
       .select(
