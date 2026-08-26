@@ -10,6 +10,7 @@
   "safeState":{"releaseStatus":"candidate","globalState":"disabled","globalKillSwitch":true,"configurationValid":false,"releaseVersion":1,"activationWorkspaces":1,"workspaceEnabled":false,"workspaceKillSwitch":true,"workspaceCohort":"internal","workspaceVersion":1},
   "zeroEffects":{"enabledCapabilities":0,"workspaceStateAuditEvents":0,"catalogImports":0,"catalogSnapshots":0,"procurementBaselines":0,"externalOrders":0,"receipts":0,"installationProjects":0},
   "health":{"apex":200,"www":200},
+  "postWorkspaceEnableReconciliation":{"observedAt":"2026-08-26T23:16:42Z","workspaceEnabled":true,"workspaceKillSwitch":true,"workspaceCohort":"internal","workspaceVersion":2,"workspaceStateAuditEvents":1,"enabledCapabilities":0,"downstreamResourceEffects":0},
   "preflightMutationsPerformed":false,
   "secretsIncluded":false
 }

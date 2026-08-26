@@ -2,14 +2,16 @@
   "schemaVersion":"fs008g-c2-evidence-ledger-v1",
   "correlationId":"51897c6b-c1d9-49df-97cc-c5c740dd78fc",
   "openedAt":"2026-08-26T23:13:05Z",
-  "state":"mutation_window_open",
+  "state":"workspace_enable_reconciled",
   "retiredCorrelations":["d753549b-9779-4095-a902-ac7929aab5e4","79dea015-2a0c-4893-ae75-9d8b89621f36","b3bef1ff-dd2a-4cb4-af2f-09470eacb07e","68ebbaed-eb51-485d-abc8-e281625930b7"],
   "entries":[
     {"sequence":1,"kind":"candidate_deployment_binding","result":"passed"},
     {"sequence":2,"kind":"migration_parity","result":"passed"},
     {"sequence":3,"kind":"canonical_authenticated_admin_rollback_rehearsal","result":"accepted_then_rolled_back","expectedVersion":1,"resultingVersion":2,"persistentEffects":0},
     {"sequence":4,"kind":"safe_disabled_zero_effects","result":"passed","evidenceFile":"preflight.json"},
-    {"sequence":5,"kind":"mutation_window_gate","result":"opened","nextExpectedVersion":1,"nextAuthorizedControl":"Enable controlled workspace"}
+    {"sequence":5,"kind":"mutation_window_gate","result":"opened","nextExpectedVersion":1,"nextAuthorizedControl":"Enable controlled workspace"},
+    {"sequence":6,"kind":"workspace_enable","result":"accepted","resultingVersion":2},
+    {"sequence":7,"kind":"post_workspace_enable_reconciliation","result":"passed","observedAt":"2026-08-26T23:16:42Z","workspaceEnabled":true,"workspaceKillSwitch":true,"globalKillSwitch":true,"enabledCapabilities":0,"downstreamResourceEffects":0}
   ],
   "secretsIncluded":false
 }
