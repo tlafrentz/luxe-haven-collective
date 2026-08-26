@@ -5,7 +5,6 @@ import { requireUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { assertFurnishingEntitlement } from "./furnishing-access";
-import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 // Pending FS migrations are intentionally not represented in generated database types yet.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -17,7 +16,6 @@ const commandError = (error: unknown, fallback: string) => {
 const without = (row: Row, keys: readonly string[]) => Object.fromEntries(Object.entries(row).filter(([key]) => !keys.includes(key)));
 async function scope(projectId: string, write = false) {
   const { user, profile } = await requireUser();
-  if (write) assertFurnishingActivationMutationDisabled();
   const db = createAdminClient();
   const { data: project, error } = await db.from("furnishing_projects").select("*,properties(*)").eq("id", projectId).single();
   if (error || !project) throw new Error("FURNISHING_PROJECT_NOT_FOUND");
@@ -28,6 +26,15 @@ async function scope(projectId: string, write = false) {
     if (!data) throw new Error("FURNISHING_PROCUREMENT_ACCESS_DENIED");
   }
   await assertFurnishingEntitlement(String(project.workspace_id), profile?.role === "admin");
+  if (write) {
+    const now = new Date().toISOString();
+    const [{ data: release }, { data: workspace }, { data: capability }] = await Promise.all([
+      db.from("furnishing_activation_releases").select("global_state,global_kill_switch,configuration_valid").eq("milestone", "FS-008A").maybeSingle(),
+      db.from("furnishing_activation_workspaces").select("enabled,kill_switch,cohort,expires_at,revoked_at").eq("workspace_id", project.workspace_id).maybeSingle(),
+      db.from("furnishing_activation_capabilities").select("enabled").eq("capability", "procurement_readiness").maybeSingle(),
+    ]);
+    if (release?.global_state !== "internal" || release.global_kill_switch || !release.configuration_valid || !workspace?.enabled || workspace.kill_switch || workspace.cohort !== "internal" || workspace.revoked_at || (workspace.expires_at && workspace.expires_at <= now) || !capability?.enabled) throw new Error("FURNISHING_ACTIVATION_DISABLED");
+  }
   return { db, project: project as Row, actorId: profile?.id ?? user.id, profile };
 }
 export async function getProcurementWorkspace(projectId: string) {
@@ -57,11 +64,28 @@ export async function getProcurementWorkspace(projectId: string) {
 }
 export async function generateProcurementBaselineAction(formData: FormData) {
   const projectId = text(formData, "projectId"), idempotencyKey = text(formData, "idempotencyKey") || crypto.randomUUID();
-  const { db } = await scope(projectId);
-  const { data: plan } = await db.from("furnishing_plans").select("id,version_number,approved_at,approval_snapshot").eq("project_id", projectId).eq("status", "approved").order("version_number", { ascending: false }).limit(1).maybeSingle();
-  if (!plan || !plan.approved_at || !plan.approval_snapshot) throw new Error("FS006_APPROVED_PLAN_REQUIRED");
+  const { db } = await scope(projectId, true);
+  const [{ data: snapshots, error: snapshotError }, { data: plans, error: planError }, { data: onboarding }] = await Promise.all([
+    db.from("fs008d_project_catalog_snapshots").select("id,package_version_id,snapshot,content_hash").eq("project_id", projectId).order("created_at", { ascending: false }).limit(2),
+    db.from("furnishing_plans").select("id,version_number,approved_at,approval_snapshot").eq("project_id", projectId).eq("status", "approved").order("version_number", { ascending: false }).limit(2),
+    db.from("furnishing_onboarding_projects").select("offer_code").eq("project_id", projectId).maybeSingle(),
+  ]);
+  if (snapshotError || planError) throw new Error("PROCUREMENT_SOURCE_RESOLUTION_FAILED");
+  if (onboarding?.offer_code === "FS-CONSULT") throw new Error("PROCUREMENT_FS_CONSULT_DENIED");
+  const snapshot = snapshots?.[0], plan = plans?.[0];
+  if ((snapshots?.length ?? 0) > 1 || (plans?.length ?? 0) > 1) throw new Error("PROCUREMENT_SOURCE_RECONCILIATION_REQUIRED");
+  if (snapshot && plan) {
+    const snapshotPlanId = String((snapshot.snapshot as Row | null)?.planId ?? "");
+    if (!snapshotPlanId || snapshotPlanId !== String(plan.id)) throw new Error("PROCUREMENT_SOURCE_RECONCILIATION_REQUIRED");
+  }
+  if (!snapshot && (!plan || !plan.approved_at || !plan.approval_snapshot)) throw new Error("PROCUREMENT_SOURCE_NOT_READY");
   const client = await createClient();
-  const { data: baseline, error } = await client.rpc("create_or_replay_procurement_baseline", { p_input: { source_kind: "furnishing_plan", source_id: plan.id, expected_source_version: plan.version_number, correlation_id: crypto.randomUUID(), idempotency_key: idempotencyKey } });
+  const { data: packageVersion } = snapshot ? await db.from("furnishing_package_versions").select("version_number").eq("id", snapshot.package_version_id).single() : { data: null };
+  if (snapshot && !packageVersion) throw new Error("PROCUREMENT_SOURCE_RECONCILIATION_REQUIRED");
+  const source = snapshot
+    ? { source_kind: "catalog_snapshot", source_id: snapshot.id, expected_source_version: packageVersion!.version_number }
+    : { source_kind: "furnishing_plan", source_id: plan!.id, expected_source_version: plan!.version_number };
+  const { data: baseline, error } = await client.rpc("create_or_replay_procurement_baseline", { p_input: { ...source, correlation_id: crypto.randomUUID(), idempotency_key: idempotencyKey } });
   if (error || !baseline) throw new Error(commandError(error, "FS006_BASELINE_CREATE_FAILED"));
   revalidatePath(`/dashboard/furnishing/projects/${projectId}/procurement`); revalidatePath(`/admin/furnishing/projects/${projectId}/procurement`);
   const result = baseline as Row; return { id: String(result.id), alreadyGenerated: result.status === "replayed" };
