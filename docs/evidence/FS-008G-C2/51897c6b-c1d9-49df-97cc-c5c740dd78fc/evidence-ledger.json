@@ -2,7 +2,7 @@
   "schemaVersion":"fs008g-c2-evidence-ledger-v1",
   "correlationId":"51897c6b-c1d9-49df-97cc-c5c740dd78fc",
   "openedAt":"2026-08-26T23:13:05Z",
-  "state":"required_capabilities_reconciled",
+  "state":"retired",
   "retiredCorrelations":["d753549b-9779-4095-a902-ac7929aab5e4","79dea015-2a0c-4893-ae75-9d8b89621f36","b3bef1ff-dd2a-4cb4-af2f-09470eacb07e","68ebbaed-eb51-485d-abc8-e281625930b7"],
   "entries":[
     {"sequence":1,"kind":"candidate_deployment_binding","result":"passed"},
@@ -15,7 +15,9 @@
     {"sequence":8,"kind":"catalog_viewing_enable_and_reconciliation","result":"passed","observedAt":"2026-08-26T23:22:39Z","resultingVersion":1,"enabledCapabilities":["catalog_viewing"],"downstreamResourceEffects":0},
     {"sequence":9,"kind":"design_workspace_enable_and_reconciliation","result":"passed","observedAt":"2026-08-26T23:28:45Z","resultingVersion":1,"enabledCapabilities":["catalog_viewing","design_workspace"],"downstreamResourceEffects":0},
     {"sequence":10,"kind":"budgeting_enable_and_reconciliation","result":"passed","observedAt":"2026-08-26T23:31:29Z","resultingVersion":1,"enabledCapabilities":["budgeting","catalog_viewing","design_workspace"],"downstreamResourceEffects":0},
-    {"sequence":11,"kind":"procurement_readiness_enable_and_reconciliation","result":"passed","observedAt":"2026-08-26T23:32:57Z","resultingVersion":1,"enabledCapabilities":["budgeting","catalog_viewing","design_workspace","procurement_readiness"],"downstreamResourceEffects":0}
+    {"sequence":11,"kind":"procurement_readiness_enable_and_reconciliation","result":"passed","observedAt":"2026-08-26T23:32:57Z","resultingVersion":1,"enabledCapabilities":["budgeting","catalog_viewing","design_workspace","procurement_readiness"],"downstreamResourceEffects":0},
+    {"sequence":12,"kind":"global_internal_attempt","result":"not_found","persistentEffects":0,"cause":"Admin page submitted a placeholder global target after its broad release-table read was denied"},
+    {"sequence":13,"kind":"correlation_retirement","result":"retired","retiredAt":"2026-08-26T23:36:15Z","configuredWorkspaceAndCapabilitiesRetained":true,"globalState":"disabled","globalKillSwitch":true}
   ],
   "secretsIncluded":false
 }

@@ -5,6 +5,7 @@ const migration=readFileSync("supabase/migrations/20260826010000_fs008g_c2_admin
 const correction=readFileSync("supabase/migrations/20260826011000_fs008g_c2_atomic_wrapper_visibility.sql","utf8");
 const qualification=readFileSync("supabase/migrations/20260826012000_fs008g_c2_qualify_controlled_tenant.sql","utf8");
 const command=readFileSync("supabase/migrations/20260826013000_fs008g_c2_unambiguous_activation_command.sql","utf8");
+const globalResolution=readFileSync("supabase/migrations/20260826014000_fs008g_c2_global_target_resolution.sql","utf8");
 const repository=readFileSync("src/features/furnishing-studio/supabase-activation-command-repository.ts","utf8");
 
 describe("FS-008G-C2 Admin target resolution",()=>{
@@ -15,5 +16,6 @@ describe("FS-008G-C2 Admin target resolution",()=>{
  it("runs the target-scoped atomic eligibility check as a database-owned boundary",()=>{expect(correction).toContain("security definer");expect(migration).toContain("auth.uid()");expect(migration).toContain("public.is_admin()");expect(correction).toContain("grant execute");expect(correction).toContain("to authenticated")});
  it("qualifies controlled-tenant columns against PL/pgSQL variable ambiguity",()=>{expect(qualification).toContain("v.tenant_id=controlled_tenant");expect(qualification).toContain("o.id=controlled_tenant");expect(qualification).toContain("security definer")});
  it("removes reason and version column ambiguity from governed transitions",()=>{expect(command).toContain("command_reason");expect(command).not.toContain("reason=reason");expect(command).toContain("optimistic_version=w.optimistic_version+1");expect(command).toContain("optimistic_version=r.optimistic_version+1")});
+ it("resolves the canonical singleton release from the global sentinel without broad table visibility",()=>{expect(globalResolution).toContain("p_target_id='global'");expect(globalResolution).toContain("'targetId',release.id");expect(globalResolution).toContain("public.is_admin()");expect(globalResolution).not.toMatch(/grant select on public\.furnishing_activation_releases/) });
  it("does not change safe-disabled state or seed activation resources",()=>{expect(migration).not.toMatch(/insert into public\.furnishing_activation_(releases|workspaces|capabilities|audit_events)/);expect(migration).not.toMatch(/global_state\s*=\s*'internal'/);expect(migration).not.toMatch(/global_kill_switch\s*=\s*false/)});
 });

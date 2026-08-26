@@ -2,7 +2,7 @@
   "schemaVersion":"fs008g-c2-preflight-v1",
   "correlationId":"51897c6b-c1d9-49df-97cc-c5c740dd78fc",
   "observedAt":"2026-08-26T23:13:05Z",
-  "status":"mutation_window_open",
+  "status":"retired_after_global_target_rejection",
   "candidateSha":"bca54b66c2d6b6669b19eaec25d9af1888d6747a",
   "deploymentId":"dpl_F6pCTS4UcoK7E51ZaHgLNqFhjTAF",
   "migrationCeiling":"20260826013000",
@@ -15,6 +15,7 @@
   "postDesignWorkspaceReconciliation":{"observedAt":"2026-08-26T23:28:45Z","catalogViewingEnabled":true,"designWorkspaceEnabled":true,"designWorkspaceVersion":1,"otherEnabledCapabilities":0,"workspaceKillSwitch":true,"globalKillSwitch":true,"downstreamResourceEffects":0},
   "postBudgetingReconciliation":{"observedAt":"2026-08-26T23:31:29Z","catalogViewingEnabled":true,"designWorkspaceEnabled":true,"budgetingEnabled":true,"budgetingVersion":1,"otherEnabledCapabilities":0,"workspaceKillSwitch":true,"globalKillSwitch":true,"downstreamResourceEffects":0},
   "postRequiredCapabilitiesReconciliation":{"observedAt":"2026-08-26T23:32:57Z","enabledCapabilities":["budgeting","catalog_viewing","design_workspace","procurement_readiness"],"allCapabilityVersions":1,"workspaceKillSwitch":true,"globalKillSwitch":true,"globalState":"disabled","downstreamResourceEffects":0},
+  "postGlobalTargetRejection":{"observedAt":"2026-08-26T23:36:15Z","globalState":"disabled","globalVersion":1,"globalKillSwitch":true,"globalStateAuditEvents":0,"downstreamResourceEffects":0},
   "preflightMutationsPerformed":false,
   "secretsIncluded":false
 }

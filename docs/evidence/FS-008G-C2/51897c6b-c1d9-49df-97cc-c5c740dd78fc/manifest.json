@@ -2,8 +2,10 @@
   "schemaVersion":"fs008g-c2-evidence-manifest-v1",
   "correlationId":"51897c6b-c1d9-49df-97cc-c5c740dd78fc",
   "authoritative":true,
-  "currentState":"required_capabilities_reconciled",
+  "currentState":"retired",
   "files":["preflight.json","evidence-ledger.json","manifest.json"],
   "activationMutationsPerformed":true,
+  "retiredAt":"2026-08-26T23:36:15Z",
+  "retirementReason":"Configured workspace and capabilities were retained; global-state attempt was rejected without effects because the page submitted a non-canonical placeholder target.",
   "secretsIncluded":false
 }
