@@ -2,7 +2,7 @@
   "schemaVersion": "fs008g-c2-evidence-ledger-v1",
   "correlationId": "79dea015-2a0c-4893-ae75-9d8b89621f36",
   "openedAt": "2026-08-26T05:11:59Z",
-  "state": "mutation_window_open",
+  "state": "retired",
   "entries": [
     {
       "sequence": 1,
@@ -51,6 +51,28 @@
         "correlationFresh": true,
         "nextExpectedVersion": 0,
         "nextAuthorizedControl": "Create/grant controlled cohort"
+      }
+    },
+    {
+      "sequence": 6,
+      "kind": "controlled_cohort_first_write_attempt",
+      "result": "repository_unavailable_before_commit",
+      "evidence": {
+        "displayedCode": "UNAVAILABLE",
+        "displayedMessage": "ACTIVATION_REPOSITORY_UNAVAILABLE",
+        "cohortRowsCreated": 0,
+        "auditRowsCreated": 0,
+        "globalState": "disabled",
+        "globalKillSwitch": true
+      }
+    },
+    {
+      "sequence": 7,
+      "kind": "correlation_retirement",
+      "result": "retired",
+      "evidence": {
+        "reason": "FS008G_C2_ATOMIC_WRAPPER_VISIBILITY_CORRECTION_REQUIRED",
+        "reusable": false
       }
     }
   ],

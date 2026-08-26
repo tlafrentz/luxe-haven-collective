@@ -2,8 +2,8 @@
   "schemaVersion": "fs008g-c2-evidence-manifest-v1",
   "correlationId": "79dea015-2a0c-4893-ae75-9d8b89621f36",
   "authoritative": true,
-  "currentState": "mutation_window_open",
-  "terminalState": null,
+  "currentState": "retired",
+  "terminalState": "retired_after_precommit_repository_unavailable",
   "files": [
     "preflight.json",
     "evidence-ledger.json",
@@ -11,6 +11,8 @@
   ],
   "preflightReadOnly": true,
   "activationMutationsPerformed": false,
+  "retiredAt": "2026-08-26T05:20:00Z",
+  "retirementReason": "FS008G_C2_ATOMIC_WRAPPER_VISIBILITY_CORRECTION_REQUIRED",
   "retiredCorrelationReused": false,
   "secretsIncluded": false
 }
