@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "fs008g-evidence-manifest-v1",
+  "correlationId": "d753549b-9779-4095-a902-ac7929aab5e4",
+  "authoritative": true,
+  "terminalState": "retired_after_precommit_version_conflict",
+  "currentState": "retired",
+  "files": [
+    "preflight.json",
+    "evidence-ledger.json",
+    "manifest.json"
+  ],
+  "preflightReadOnly": true,
+  "activationMutationsPerformed": false,
+  "retiredAt": "2026-08-26T04:41:16Z",
+  "retirementReason": "FS008G_C2_ADMIN_TARGET_RESOLUTION_REQUIRED",
+  "secretsIncluded": false
+}
