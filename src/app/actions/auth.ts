@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { roleHome } from "@/lib/auth/roles";
-import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
+import {
+  resolvePostLoginDestination,
+  safeInternalDestination,
+} from "@/lib/auth/post-login-destination";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/database";
 
@@ -30,6 +33,7 @@ const forgotPasswordSchema = z.object({
 
 const updatePasswordSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters."),
+  next: z.string().optional(),
 });
 
 export type AuthActionState = {
@@ -248,7 +252,9 @@ export async function updatePasswordAction(
   }
 
   const role = await getRoleForCurrentUser();
+  const destination =
+    safeInternalDestination(parsed.data.next) ?? roleHome[role];
 
   revalidatePath("/", "layout");
-  redirect(roleHome[role]);
+  redirect(destination);
 }

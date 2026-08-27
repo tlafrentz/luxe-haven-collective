@@ -10,23 +10,37 @@ export function ForgotPasswordForm() {
   return (
     <form action={action} className="space-y-5">
       <AuthFormStatus state={state} />
-      <label className="block text-sm font-medium text-stone-700">Email
-        <input name="email" type="email" required className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4" />
+      <label className="block text-sm font-medium text-stone-700">
+        Email
+        <input
+          name="email"
+          type="email"
+          required
+          className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4"
+        />
       </label>
-     <SubmitButton>Send reset link</SubmitButton>
+      <SubmitButton>Send reset link</SubmitButton>
     </form>
   );
 }
 
-export function UpdatePasswordForm() {
+export function UpdatePasswordForm({ next }: Readonly<{ next?: string }>) {
   const [state, action] = useActionState(updatePasswordAction, {});
   return (
     <form action={action} className="space-y-5">
       <AuthFormStatus state={state} />
-      <label className="block text-sm font-medium text-stone-700">New password
-        <input name="password" type="password" minLength={8} required className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4" />
+      {next ? <input type="hidden" name="next" value={next} /> : null}
+      <label className="block text-sm font-medium text-stone-700">
+        New password
+        <input
+          name="password"
+          type="password"
+          minLength={8}
+          required
+          className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4"
+        />
       </label>
-     <SubmitButton>Update Password</SubmitButton>
+      <SubmitButton>Update Password</SubmitButton>
     </form>
   );
 }

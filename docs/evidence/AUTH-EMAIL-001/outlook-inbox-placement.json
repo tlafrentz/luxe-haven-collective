@@ -1,0 +1,88 @@
+{
+  "status": "AUTH-EMAIL-001_OUTLOOK_TEST_WINDOW_PAUSED_RECONCILIATION",
+  "captured_at": "2026-08-26T23:14:41.431Z",
+  "authentication_results_reconciled_at": "2026-08-26T23:22:43Z",
+  "emails_sent_total": 2,
+  "placement": {
+    "provider": "Outlook/Microsoft",
+    "organic_placement": "Inbox",
+    "captured_before_link_use": true,
+    "message_opened_after_placement_capture": true,
+    "invitation_link_opened_after_authorization": true
+  },
+  "invitation": {
+    "recipient": "[CONTROLLED_RECIPIENT_REDACTED]",
+    "supabase_user_id": "802c2864-295a-4723-94de-349494a4b6ff",
+    "confirmation_state": "confirmed",
+    "last_sign_in_recorded": true,
+    "profile_role": "owner",
+    "workspace_membership_count": 0
+  },
+  "resend": {
+    "email_id": "5f266ca6-3d96-4573-a0a5-d0bdf699c79d",
+    "message_id_domain": "email.amazonses.com",
+    "created_at": "2026-08-26T23:13:41.754Z",
+    "accepted": true,
+    "last_event": "delivered",
+    "bounced": false,
+    "complained": false,
+    "sending_region": "us-east-1",
+    "domain_status": "verified",
+    "open_tracking": false,
+    "click_tracking": false
+  },
+  "message": {
+    "visible_sender": "Luxe Haven Collective <accounts@auth.luxehavencollective.co>",
+    "subject": "You've been invited",
+    "html_present": true,
+    "plain_text_present": true,
+    "html_sha256": "40180465beffbb64114bd9cc4762595de762d12a88f249a27192829474d35556",
+    "text_sha256": "f79692ddabd9dd6929c179dc20660c83548bb8fb2c0b81732916f1c886209895",
+    "link_count_across_html_and_text": 2,
+    "unique_link_domains": ["jumdtoraygqaraditnie.supabase.co"],
+    "images": 0,
+    "promotional_terms": [],
+    "action_url": "[SINGLE_USE_URL_REDACTED]"
+  },
+  "authentication_results": {
+    "spf": "pass",
+    "dkim": "pass",
+    "dmarc": "pass",
+    "tls": "1.3",
+    "sending_ip": "54.240.9.38"
+  },
+  "result": "OUTLOOK_ORGANIC_INBOX_PASS",
+  "interpretation": "The controlled Outlook/Microsoft sample reached Inbox with aligned authentication and TLS. This indicates the earlier spam placement is not presently reproduced across providers; it does not by itself prove broad deliverability.",
+  "invitation_consumption": {
+    "authorized": true,
+    "reconciled_at": "2026-08-26T23:30:01Z",
+    "expected_first_route": "/update-password",
+    "observed_first_route": "/update-password",
+    "password_setup_succeeded": true,
+    "final_route": "/dashboard",
+    "error_displayed": false,
+    "microsoft_scanner_premature_consumption": false,
+    "profile_role": "owner",
+    "elevated_role_assigned": false,
+    "intended_workspace_membership_created": false,
+    "workspace_membership_count": 0,
+    "result": "FAILED_MISSING_INTENDED_WORKSPACE_MEMBERSHIP",
+    "session_secret_disclosed_in_support_transcript": true,
+    "session_status": "user-signed-out-and-controlled-user-deleted",
+    "reuse_test_performed": false
+  },
+  "cleanup": {
+    "authorized_by_user": true,
+    "completed_at": "2026-08-26T23:32:41Z",
+    "controlled_user_deleted": true,
+    "controlled_user_absent_after_deletion": true,
+    "workspace_membership_count_before_deletion": 0,
+    "authentication_email_sent_by_cleanup": false
+  },
+  "window": {
+    "additional_email_authorized": false,
+    "gmail_test_sent": false,
+    "rate_limit_per_hour": 30,
+    "paused": true
+  }
+}

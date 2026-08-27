@@ -3,9 +3,14 @@ import Link from "next/link";
 import { UpdatePasswordForm } from "@/components/auth/password-forms";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Update Password | Luxe Haven Collective" };
+export const metadata: Metadata = {
+  title: "Update Password | Luxe Haven Collective",
+};
 
-export default async function UpdatePasswordPage() {
+export default async function UpdatePasswordPage({
+  searchParams,
+}: Readonly<{ searchParams: Promise<{ next?: string }> }>) {
+  const { next } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -51,7 +56,7 @@ export default async function UpdatePasswordPage() {
         Set a new password for your Luxe Haven account.
       </p>
       <div className="mt-8">
-        <UpdatePasswordForm />
+        <UpdatePasswordForm next={next} />
       </div>
     </>
   );

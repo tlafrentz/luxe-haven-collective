@@ -1,0 +1,46 @@
+{
+  "status": "AUTH-EMAIL-001_TEST_WINDOW_PAUSED_MEMBERSHIP_DEFECT",
+  "diagnosis": {
+    "root_cause": "The controlled test used Supabase Auth inviteUserByEmail directly. Intended workspace and owner role existed only in Auth user metadata. The canonical workspace invitation command was bypassed, so no durable workspace_invitations row, application token, acceptance command, membership transaction, or workspace access audit could run.",
+    "outlook_specific": false,
+    "affected_boundary": "Any direct Supabase Admin invitation that assumes Auth metadata provisions application workspace access.",
+    "canonical_team_invitation_affected": false,
+    "canonical_team_invitation_limitation": "The existing application workflow supports non-owner workspace roles and requires explicit acceptance, but was not integrated with Supabase invitation/password setup for controlled Admin-owner onboarding.",
+    "callback_behavior": "Authentication succeeded and password completion used the profile role default /dashboard destination. It did not verify workspace provisioning or preserve an invitation-acceptance destination.",
+    "unprovisioned_access": "The dashboard data boundary resolved no active membership and did not load workspace commerce/data. However, it rendered the normal application shell and offered owner workspace initialization based only on profile role, which was incompatible with a pending targeted invitation.",
+    "production_boundary_ran": false,
+    "production_boundary_failure": "skipped",
+    "retained_audit_available": "Resend delivery evidence, sanitized test evidence, and this diagnosis remain. No canonical workspace invitation/activity existed to retain."
+  },
+  "production_orphan_reconciliation": {
+    "mutation_performed": false,
+    "authentication_emails_sent_total": 2,
+    "auth_users": 0,
+    "profiles": 0,
+    "workspace_memberships": 0,
+    "owners": 0,
+    "durable_workspace_invitations": 0,
+    "workspace_access_activity_by_actor": 0,
+    "customer_account_memberships": 0
+  },
+  "correction": {
+    "migration": "20260826233500_auth_email_admin_workspace_invitations.sql",
+    "durable_invitation_before_email": true,
+    "admin_only_owner_invitation": true,
+    "normalized_recipient": true,
+    "workspace_role_actor_expiry_identifier_status_audited": true,
+    "auth_user_binding": true,
+    "atomic_membership_and_consumption": true,
+    "wrong_identity_expiry_replay_duplicate_guards": true,
+    "password_setup_preserves_acceptance_destination": true,
+    "unprovisioned_user_normal_shell_denied": true,
+    "delivery_failure_revocation": true
+  },
+  "current_gate": {
+    "auth_email_001": "blocked pending full gates and corrected deployment",
+    "beta_invitations": "closed",
+    "smtp_test_window": "paused",
+    "new_email_authorized": false,
+    "rate_limit_per_hour": 30
+  }
+}
