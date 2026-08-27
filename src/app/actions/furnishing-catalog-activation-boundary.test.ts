@@ -57,4 +57,15 @@ describe("FS-008G controlled catalog mutation boundary", () => {
     expect(catalog).toContain('importTarget.status !== "review_required"');
     expect(access).toContain('throw new Error("FURNISHING_ACTIVATION_DISABLED")');
   });
+
+  it("discovers governed workbook headers and never offers a zero-row import", () => {
+    expect(catalog).toContain('value === "source url"');
+    expect(catalog).toContain('value === "unit price"');
+    expect(catalog).toContain('value === "room"');
+    expect(catalog).toContain("mapping.rowNumber + 1");
+    expect(catalog).toContain("CATALOG_IMPORT_NO_ROWS");
+    expect(view).toContain(
+      'catalogImport.status === "review_required" && items.length > 0',
+    );
+  });
 });

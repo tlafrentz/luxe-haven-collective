@@ -285,6 +285,42 @@ const roomForSheet = (sheet: string) =>
     bathroom: "bathroom",
     kitchen: "kitchen",
   })[sheet.toLowerCase()] ?? "other";
+const roomForLabel = (room: string) => {
+  const value = normalizeCatalogName(room);
+  if (value === "living room") return "living_room";
+  if (value === "primary bedroom") return "primary_bedroom";
+  if (/bedroom/.test(value)) return "bedroom";
+  if (/bath/.test(value)) return "bathroom";
+  if (/kitchen/.test(value)) return "kitchen";
+  if (/dining/.test(value)) return "dining_room";
+  if (/office|workspace/.test(value)) return "office";
+  if (/outdoor|patio/.test(value)) return "outdoor";
+  if (/entry/.test(value)) return "entry";
+  if (/laundry/.test(value)) return "laundry";
+  return "other";
+};
+const catalogHeader = (sheet: ExcelJS.Worksheet) => {
+  for (let rowNumber = 1; rowNumber <= Math.min(sheet.rowCount, 20); rowNumber++) {
+    const values = sheet.getRow(rowNumber).values as ExcelJS.CellValue[];
+    const names = values.map((value) => cellText(value).toLowerCase());
+    const itemColumn = names.findIndex((value) => value === "item");
+    const linkColumn = names.findIndex(
+      (value) => value === "link" || value === "source url",
+    );
+    const priceColumn = names.findIndex(
+      (value) => value === "price" || value === "unit price",
+    );
+    if (itemColumn > 0 && linkColumn > 0 && priceColumn > 0)
+      return {
+        rowNumber,
+        itemColumn,
+        linkColumn,
+        priceColumn,
+        roomColumn: names.findIndex((value) => value === "room"),
+      };
+  }
+  return null;
+};
 const categoryHint = (name: string) => {
   const value = normalizeCatalogName(name);
   if (/bed frame/.test(value)) return "beds-frames";
@@ -338,20 +374,14 @@ export async function startCatalogImportAction(formData: FormData) {
     existing = products ?? [],
     proposals: Record<string, unknown>[] = [];
   for (const sheet of workbook.worksheets) {
-    if (
-      !["living room", "bedrooms", "bathroom", "kitchen"].includes(
-        sheet.name.toLowerCase(),
-      )
-    )
-      continue;
-    const headers = sheet.getRow(1).values as ExcelJS.CellValue[];
-    const names = headers.map((value) => cellText(value).toLowerCase());
-    const itemColumn = names.findIndex((value) => value === "item"),
-      linkColumn = names.findIndex((value) => value === "link");
-    const priceColumn = names.findIndex(
-      (value) => value === "price" || value === "unit price",
-    );
-    for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
+    const mapping = catalogHeader(sheet);
+    if (!mapping) continue;
+    const { itemColumn, linkColumn, priceColumn, roomColumn } = mapping;
+    for (
+      let rowNumber = mapping.rowNumber + 1;
+      rowNumber <= sheet.rowCount;
+      rowNumber++
+    ) {
       const row = sheet.getRow(rowNumber),
         sourceItem = cellText(row.getCell(itemColumn).value);
       if (!sourceItem) continue;
@@ -380,7 +410,10 @@ export async function startCatalogImportAction(formData: FormData) {
         proposed_name: sourceItem,
         proposed_category_id:
           categoryBySlug.get(categoryHint(sourceItem)) ?? null,
-        proposed_room_type_id: roomForSheet(sheet.name),
+        proposed_room_type_id:
+          roomColumn > 0
+            ? roomForLabel(cellText(row.getCell(roomColumn).value))
+            : roomForSheet(sheet.name),
         proposed_retailer_id:
           retailerRows.find((retailer) =>
             domain.endsWith(retailer.domain ?? "--"),
@@ -402,6 +435,21 @@ export async function startCatalogImportAction(formData: FormData) {
         },
       });
     }
+  }
+  if (!proposals.length) {
+    await db
+      .from("furnishing_catalog_imports")
+      .update({ status: "failed", error_code: "CATALOG_IMPORT_NO_ROWS" })
+      .eq("id", catalogImport.id)
+      .eq("status", "parsing");
+    await db.from("furnishing_catalog_activity").insert({
+      workspace_id: workspaceId,
+      import_id: catalogImport.id,
+      event_type: "catalog_inventory_import_failed",
+      actor_id: user.id,
+      metadata: { code: "CATALOG_IMPORT_NO_ROWS" },
+    });
+    redirect(`/admin/furnishing/products/import/${catalogImport.id}`);
   }
   if (proposals.length)
     await db.from("furnishing_catalog_import_items").insert(proposals);

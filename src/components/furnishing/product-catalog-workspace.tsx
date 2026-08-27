@@ -710,7 +710,7 @@ export async function ImportReview({ importId }: { importId: string }) {
           </table>
         </div>
       </section>
-      {catalogImport.status === "review_required" ? (
+      {catalogImport.status === "review_required" && items.length > 0 ? (
         <form action={completeCatalogImportAction} className="flex justify-end">
           <input type="hidden" name="importId" value={catalogImport.id} />
           <button className={button}>
