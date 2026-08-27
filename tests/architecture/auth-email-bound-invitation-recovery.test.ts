@@ -2,14 +2,20 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
-const migration = read("supabase/migrations/20260827010000_auth_email_resume_bound_invitation.sql");
+const read = (path: string) =>
+  readFileSync(resolve(process.cwd(), path), "utf8");
+const migration = read(
+  "supabase/migrations/20260827010000_auth_email_resume_bound_invitation.sql",
+);
 const action = read("src/app/actions/workspace-invitation-recovery.ts");
+const grant = read("src/lib/auth/password-setup-grant.ts");
 const dashboard = read("src/app/(dashboard)/layout.tsx");
 
 describe("AUTH-EMAIL-002 bound invitation recovery", () => {
   it("limits discovery and rotation to the authenticated bound identity", () => {
-    expect(migration).toContain("invitation.auth_invitation_user_id=auth.uid()");
+    expect(migration).toContain(
+      "invitation.auth_invitation_user_id=auth.uid()",
+    );
     expect(migration).toContain("auth_invitation_user_id=actor_id");
     expect(migration).toContain("email=actor_email");
     expect(migration).toContain("status='pending'");
@@ -27,12 +33,16 @@ describe("AUTH-EMAIL-002 bound invitation recovery", () => {
     expect(migration).not.toContain("insert into public.workspace_memberships");
   });
 
-  it("uses ordinary authentication and reveals the fresh token only to the existing acceptance route", () => {
+  it("uses ordinary authentication and exchanges the rotated token for a server-only setup grant", () => {
     expect(action).toContain("await requireUser()");
     expect(action).toContain("createClient()");
     expect(action).not.toContain("createAdminClient");
     expect(action).toContain("rotate_bound_workspace_invitation_token");
-    expect(action).toContain("/workspace-invitations/accept?");
+    expect(action).toContain("issue_invitation_password_setup_grant");
+    expect(action).toContain("PASSWORD_SETUP_GRANT_COOKIE");
+    expect(grant).toContain("httpOnly: true");
+    expect(action).toContain("/update-password?flow=invitation");
+    expect(action).not.toContain("/workspace-invitations/accept?");
     expect(action).not.toMatch(/console\.(?:info|log|error)/);
   });
 

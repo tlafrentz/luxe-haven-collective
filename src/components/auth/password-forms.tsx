@@ -24,12 +24,14 @@ export function ForgotPasswordForm() {
   );
 }
 
-export function UpdatePasswordForm({ next }: Readonly<{ next?: string }>) {
+export function UpdatePasswordForm({
+  flow,
+}: Readonly<{ flow: "invitation" | "recovery" }>) {
   const [state, action] = useActionState(updatePasswordAction, {});
   return (
     <form action={action} className="space-y-5">
       <AuthFormStatus state={state} />
-      {next ? <input type="hidden" name="next" value={next} /> : null}
+      <input type="hidden" name="flow" value={flow} />
       <label className="block text-sm font-medium text-stone-700">
         New password
         <input

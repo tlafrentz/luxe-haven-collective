@@ -1,8 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 import { createWorkspaceInvitationToken } from "@/features/workspace/infrastructure/invitation-token";
+import {
+  createPasswordSetupGrant,
+  PASSWORD_SETUP_FLOW_COOKIE,
+  PASSWORD_SETUP_GRANT_COOKIE,
+  passwordSetupCookieOptions,
+} from "@/lib/auth/password-setup-grant";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -31,9 +38,28 @@ export async function resumeBoundWorkspaceInvitationAction(): Promise<never> {
   if (invitation.token_hash !== secure.hash)
     redirect("/dashboard?invitationRecovery=reconciliation-required");
 
-  const query = new URLSearchParams({
-    workspace: invitation.workspace_id,
-    token: secure.token,
-  });
-  redirect(`/workspace-invitations/accept?${query.toString()}`);
+  const grant = createPasswordSetupGrant();
+  const grantResult = await client.rpc(
+    "issue_invitation_password_setup_grant" as never,
+    {
+      p_workspace_id: invitation.workspace_id,
+      p_invitation_token: secure.token,
+      p_grant_hash: grant.hash,
+      p_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    } as never,
+  );
+  if (grantResult.error)
+    redirect("/dashboard?invitationRecovery=reconciliation-required");
+  const store = await cookies();
+  store.set(
+    PASSWORD_SETUP_GRANT_COOKIE,
+    grant.token,
+    passwordSetupCookieOptions,
+  );
+  store.set(
+    PASSWORD_SETUP_FLOW_COOKIE,
+    "invitation",
+    passwordSetupCookieOptions,
+  );
+  redirect("/update-password?flow=invitation");
 }

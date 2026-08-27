@@ -1,14 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { roleHome } from "@/lib/auth/roles";
+import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import {
-  resolvePostLoginDestination,
-  safeInternalDestination,
-} from "@/lib/auth/post-login-destination";
+  expiredPasswordSetupCookieOptions,
+  PASSWORD_SETUP_FLOW_COOKIE,
+  PASSWORD_SETUP_GRANT_COOKIE,
+  type PasswordSetupFlow,
+} from "@/lib/auth/password-setup-grant";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/database";
 
@@ -33,7 +37,7 @@ const forgotPasswordSchema = z.object({
 
 const updatePasswordSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters."),
-  next: z.string().optional(),
+  flow: z.enum(["invitation", "recovery"]),
 });
 
 export type AuthActionState = {
@@ -234,26 +238,65 @@ export async function updatePasswordAction(
     return toFormErrors(parsed.error);
   }
 
+  const store = await cookies();
+  const grantToken = store.get(PASSWORD_SETUP_GRANT_COOKIE)?.value;
+  const cookieFlow = store.get(PASSWORD_SETUP_FLOW_COOKIE)?.value;
+  const flow: PasswordSetupFlow = parsed.data.flow;
+  if (!grantToken || cookieFlow !== flow) {
+    return {
+      ok: false,
+      message: "This password setup link is invalid, expired, or already used.",
+    };
+  }
+
   const supabase = await createClient();
+  const claim = await supabase.rpc(
+    "claim_password_setup_grant" as never,
+    {
+      p_grant_token: grantToken,
+      p_flow: flow,
+    } as never,
+  );
+  if (claim.error || !claim.data) {
+    return {
+      ok: false,
+      message: "This password setup link is invalid, expired, or already used.",
+    };
+  }
+  const grantId = claim.data as string;
 
   const { error } = await supabase.auth.updateUser({
     password: parsed.data.password,
   });
-
   if (error) {
+    await supabase.rpc(
+      "fail_claimed_password_setup_grant" as never,
+      { p_grant_id: grantId, p_grant_token: grantToken } as never,
+    );
+  }
+  const completion = error
+    ? { data: false, error }
+    : await supabase.rpc(
+        "password_setup_grant_completed" as never,
+        {
+          p_grant_id: grantId,
+          p_grant_token: grantToken,
+          p_flow: flow,
+        } as never,
+      );
+  store.set(PASSWORD_SETUP_GRANT_COOKIE, "", expiredPasswordSetupCookieOptions);
+  store.set(PASSWORD_SETUP_FLOW_COOKIE, "", expiredPasswordSetupCookieOptions);
+  if (completion.error || completion.data !== true) {
     return {
       ok: false,
-      message:
-        error.code === "session_not_found" ||
-        /auth session missing/i.test(error.message)
-          ? "Your password link is invalid or expired. Request a new link and try again."
-          : "We couldn't update your password. Request a new link and try again.",
+      message: "This password setup link is invalid, expired, or already used.",
     };
   }
 
-  const role = await getRoleForCurrentUser();
   const destination =
-    safeInternalDestination(parsed.data.next) ?? roleHome[role];
+    flow === "invitation"
+      ? "/dashboard"
+      : roleHome[await getRoleForCurrentUser()];
 
   revalidatePath("/", "layout");
   redirect(destination);

@@ -6,14 +6,15 @@ const read = (path: string) =>
   readFileSync(resolve(process.cwd(), path), "utf8");
 
 describe("password recovery boundary", () => {
-  it("does not render the password form without an authenticated session", () => {
+  it("does not render the password form without a valid server grant", () => {
     const page = read("src/app/(auth)/update-password/page.tsx");
 
     expect(page).toContain("await supabase.auth.getUser()");
-    expect(page).toContain("if (!user)");
-    expect(page).toContain('href="/forgot-password"');
-    expect(page.indexOf("if (!user)")).toBeLessThan(
-      page.indexOf("<UpdatePasswordForm next={next} />"),
+    expect(page).toContain("validate_password_setup_grant");
+    expect(page).toContain("!flow || validation.error");
+    expect(page).toContain('href="/login"');
+    expect(page.indexOf("!flow || validation.error")).toBeLessThan(
+      page.indexOf("<UpdatePasswordForm flow={flow} />"),
     );
   });
 
@@ -21,12 +22,10 @@ describe("password recovery boundary", () => {
     const callback = read("src/app/(auth)/auth/callback/route.ts");
 
     expect(callback).toContain(
-      "const { error } = await supabase.auth.exchangeCodeForSession(code)",
+      "await supabase.auth.exchangeCodeForSession(code)",
     );
-    expect(callback).toContain('new URL("/update-password"');
-    expect(callback).toContain(
-      'recoveryUrl.searchParams.set("recovery", "invalid")',
-    );
+    expect(callback).toContain('new URL("/update-password?setup=invalid"');
+    expect(callback).toContain("issue_recovery_password_setup_grant");
   });
 
   it("does not expose raw password-update provider errors", () => {
@@ -35,17 +34,20 @@ describe("password recovery boundary", () => {
       actions.indexOf("export async function updatePasswordAction"),
     );
 
-    expect(updateBoundary).toContain('error.code === "session_not_found"');
+    expect(updateBoundary).toContain("claim_password_setup_grant");
+    expect(updateBoundary).toContain("password_setup_grant_completed");
+    expect(updateBoundary).toContain("auth.updateUser");
     expect(updateBoundary).not.toContain("message: error.message");
   });
 
-  it("preserves only a safe invitation acceptance destination after password setup", () => {
+  it("keeps invitation and recovery flows server-bound and distinct", () => {
     const page = read("src/app/(auth)/update-password/page.tsx");
     const form = read("src/components/auth/password-forms.tsx");
     const actions = read("src/app/actions/auth.ts");
-    expect(page).toContain("searchParams");
-    expect(page).toContain("<UpdatePasswordForm next={next} />");
-    expect(form).toContain('type="hidden" name="next"');
-    expect(actions).toContain("safeInternalDestination(parsed.data.next)");
+    expect(page).toContain("PASSWORD_SETUP_GRANT_COOKIE");
+    expect(page).toContain("<UpdatePasswordForm flow={flow} />");
+    expect(form).toContain('type="hidden" name="flow"');
+    expect(actions).toContain('z.enum(["invitation", "recovery"])');
+    expect(actions).not.toContain("safeInternalDestination(parsed.data.next)");
   });
 });
