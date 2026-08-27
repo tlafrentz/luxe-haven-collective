@@ -32,8 +32,10 @@ describe("PS-001D Business and Services stabilization contract", () => {
 
   it("enforces Furnishing entitlement after workspace authorization", () => {
     const access = read("src/app/actions/furnishing-access.ts");
-    expect(access).toContain('item.key === "furnishing.project.access"');
-    expect(access).toContain('item.status === "available"');
+    expect(access).toContain('.from("customer_account_memberships")');
+    expect(access).toContain('.from("commercial_entitlements")');
+    expect(access).toContain('.eq("capability_code", "furnishing.project.access")');
+    expect(access).not.toContain("commerce_entitlement_grants");
     for (const path of [
       "src/app/actions/furnishing-project-workspace.ts",
       "src/app/actions/furnishing-procurement.ts",
