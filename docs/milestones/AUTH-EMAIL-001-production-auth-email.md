@@ -80,3 +80,9 @@ back.
 Earlier deliverability and membership evidence remains under
 `docs/evidence/AUTH-EMAIL-001/`. The authoritative final disposition is
 `final-closure-blocked.json`.
+
+## Subsequent resolution
+
+This historical disposition is unchanged. The recovery blocker was later
+corrected and directly certified by `AUTH-EMAIL-002 — Recovery Continuation
+Boundary`; see `docs/milestones/AUTH-EMAIL-002-recovery-continuation-boundary.md`.

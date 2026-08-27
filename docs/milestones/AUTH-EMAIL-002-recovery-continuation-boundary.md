@@ -2,8 +2,10 @@
 
 ## Status
 
-Local candidate complete; Production rollout is not authorized. No Production
-mutation or authentication email was performed under AUTH-EMAIL-002.
+Complete. One controlled Production recovery succeeded and all replay paths
+failed closed. Closure evidence is bound to candidate
+`96c5d8de3783abb0f4ee09ae792d536789b5c338`, deployment
+`dpl_DBscPwTiMJ4DsM2sZsUHGTznvZ4r`, and migration `20260827050000`.
 
 ## Objective
 
@@ -62,9 +64,35 @@ pending and `verifyOtp` was never called.
   pre-migration schema and fixture.
 - `git diff --check`: passed.
 
-Production deployment, migration application, the single 8/12 recovery email,
-replay verification, cleanup, closure commit, and `AUTH-EMAIL-002-complete` tag
-remain subject to the separately required Production authorization.
+## Production certification
+
+- The rotated signing key was generated from 32 random bytes, stored as a
+  Sensitive Production variable, and accepted by the deployment guard.
+- An accidental migration-history version was repaired using only pinned
+  Supabase CLI `migration repair`; schema fingerprint
+  `2ed7c6b99009853f55cd02dc1d14c717` and resource counts were unchanged.
+- Local and remote history match exactly through `20260827050000`.
+- Scanner GET created one pending presentation state and performed no
+  verification or grant transition.
+- Explicit continuation advanced exactly one browser state through claim,
+  verification, and recovery-only grant issuance. The scanner state did not
+  advance.
+- The controlled password update succeeded once and landed on the dashboard.
+  Recovery request, state, and grant then became consumed.
+- Same-browser and fresh-private replay both reached the neutral unavailable
+  state without a new state, grant, session, or password form.
+- Canonical expiration terminalized the scanner state. Final reconciliation
+  found zero active recovery states and zero usable grants.
+- Users remained 115, memberships 118, and invitations 3. One email was sent;
+  cumulative controlled usage is 8/12 and the SMTP ceiling remains 30/hour.
+- Apex and www resolve to the Ready deployment and health passed repeatedly.
+  Production error-log review found no errors during the verification window.
+
+AUTH-EMAIL-001 remains historically closed with its recorded blocker. This
+milestone is the subsequent correction and Production certification of that
+specific recovery continuation boundary. Gmail reputation and CAPTCHA/beta
+activation remain outside this milestone; broad and invite-only beta gates
+remain closed.
 
 ## Deterministic prerequisites
 
