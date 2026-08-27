@@ -17,6 +17,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { UserRole } from "@/types/database";
+import { authorizePublicAuth, isRateLimitError, neutralRecoveryMessage, publicAuthMessage, recordAuthEmailRequest, recordAuthOperationalAlert } from "@/lib/auth/public-auth";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email."),
@@ -46,6 +47,8 @@ export type AuthActionState = {
   ok?: boolean;
   message?: string;
   errors?: Record<string, string[]>;
+  correlationId?: string;
+  retryAfterSeconds?: number;
 };
 
 function toFormErrors(error: z.ZodError): AuthActionState {
@@ -87,6 +90,9 @@ export async function signInAction(
     return toFormErrors(parsed.error);
   }
 
+  const decision = await authorizePublicAuth("login", formData, parsed.data.email);
+  if (!decision.allowed) return { ok: false, message: publicAuthMessage(decision.code), correlationId: decision.correlationId };
+
   const supabase = await createClient();
 
   const {
@@ -95,12 +101,16 @@ export async function signInAction(
   } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
+    options: { captchaToken: decision.captchaToken },
   });
 
   if (error) {
+    if (isRateLimitError(error)) await recordAuthOperationalAlert("auth_rate_limited", decision.correlationId);
     return {
       ok: false,
-      message: error.message,
+      message: isRateLimitError(error) ? "Too many attempts. Please wait before trying again." : "Email or password is incorrect.",
+      correlationId: decision.correlationId,
+      ...(isRateLimitError(error) ? { retryAfterSeconds: 60 } : {}),
     };
   }
 
@@ -124,7 +134,8 @@ export async function signInAction(
   if (profileError) {
     return {
       ok: false,
-      message: profileError.message,
+      message: "We couldn't complete sign-in. Please try again.",
+      correlationId: decision.correlationId,
     };
   }
 
@@ -159,6 +170,9 @@ export async function registerAction(
     return toFormErrors(parsed.error);
   }
 
+  const decision = await authorizePublicAuth("signup", formData, parsed.data.email);
+  if (!decision.allowed) return { ok: false, message: publicAuthMessage(decision.code), correlationId: decision.correlationId };
+
   const supabase = await createClient();
 
   const { email, password, fullName, role } = parsed.data;
@@ -167,6 +181,7 @@ export async function registerAction(
     email,
     password,
     options: {
+      captchaToken: decision.captchaToken,
       data: {
         full_name: fullName,
         role,
@@ -175,15 +190,21 @@ export async function registerAction(
   });
 
   if (error) {
+    if (isRateLimitError(error)) await recordAuthOperationalAlert("auth_rate_limited", decision.correlationId);
     return {
       ok: false,
-      message: error.message,
+      message: isRateLimitError(error) ? "Too many requests. Please wait before trying again." : "We couldn't complete that request. Please try again.",
+      correlationId: decision.correlationId,
+      ...(isRateLimitError(error) ? { retryAfterSeconds: 60 } : {}),
     };
   }
+
+  await recordAuthEmailRequest("confirmation", email, decision.correlationId);
 
   return {
     ok: true,
     message: "Account created. Check your email to confirm your sign-in.",
+    correlationId: decision.correlationId,
   };
 }
 
@@ -205,6 +226,11 @@ export async function forgotPasswordAction(
   if (!parsed.success) {
     return toFormErrors(parsed.error);
   }
+
+  const decision = await authorizePublicAuth("recovery", formData, parsed.data.email);
+  if (!decision.allowed) return decision.code === "RECIPIENT_SUPPRESSED"
+    ? { ok: true, message: neutralRecoveryMessage, correlationId: decision.correlationId }
+    : { ok: false, message: publicAuthMessage(decision.code), correlationId: decision.correlationId };
 
   const supabase = await createClient();
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -234,6 +260,7 @@ export async function forgotPasswordAction(
     normalizedEmail,
     {
       redirectTo: `${origin}/auth/callback?next=/update-password${recoveryBinding}`,
+      captchaToken: decision.captchaToken,
     },
   );
   if (request)
@@ -246,10 +273,15 @@ export async function forgotPasswordAction(
       .eq("id", request.id)
       .eq("status", "pending");
 
+  if (isRateLimitError(error)) await recordAuthOperationalAlert("auth_rate_limited", decision.correlationId);
+
+  if (!error && profile) await recordAuthEmailRequest("recovery", normalizedEmail, decision.correlationId);
+
   return {
-    ok: true,
-    message:
-      "If an account exists for that email address, we’ll send password-reset instructions shortly.",
+    ok: !isRateLimitError(error),
+    message: isRateLimitError(error) ? "Too many requests. Please wait before trying again." : neutralRecoveryMessage,
+    correlationId: decision.correlationId,
+    ...(isRateLimitError(error) ? { retryAfterSeconds: 60 } : {}),
   };
 }
 

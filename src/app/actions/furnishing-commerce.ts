@@ -5,11 +5,14 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { SupabaseWorkspaceRepository } from "@/features/workspace/infrastructure/supabase-workspace-repository";
 import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
+import { authorizePublicAuth, isRateLimitError, publicAuthMessage, recordAuthEmailRequest, recordAuthOperationalAlert } from "@/lib/auth/public-auth";
 
 export type FurnishingAccountActionState = {
   ok?: boolean;
   message?: string;
   errors?: Record<string, string[]>;
+  correlationId?: string;
+  retryAfterSeconds?: number;
 };
 
 const schema = z
@@ -40,17 +43,21 @@ export async function createFurnishingAccountAction(
   }
 
   const { fullName, email, password, next } = parsed.data;
+  const decision = await authorizePublicAuth("signup", formData, email);
+  if (!decision.allowed) return { ok: false, message: publicAuthMessage(decision.code), correlationId: decision.correlationId };
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName, role: "owner" } },
+    options: { captchaToken: decision.captchaToken, data: { full_name: fullName, role: "owner" } },
   });
 
   if (error) {
-    return { ok: false, message: error.message };
+    if (isRateLimitError(error)) await recordAuthOperationalAlert("auth_rate_limited", decision.correlationId);
+    return { ok: false, message: isRateLimitError(error) ? "Too many requests. Please wait before trying again." : "We couldn't complete that request. Please try again.", correlationId: decision.correlationId, ...(isRateLimitError(error) ? { retryAfterSeconds: 60 } : {}) };
   }
+  await recordAuthEmailRequest("confirmation", email, decision.correlationId);
 
   const {
     data: { user },
@@ -61,6 +68,7 @@ export async function createFurnishingAccountAction(
       ok: true,
       message:
         "Account created. Check your email to confirm your sign-in, then sign in to continue.",
+      correlationId: decision.correlationId,
     };
   }
 

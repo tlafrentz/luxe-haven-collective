@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { forgotPasswordAction, updatePasswordAction } from "@/app/actions/auth";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { AuthFormStatus } from "@/components/auth/auth-form-status";
+import { PublicAuthSubmitButton, TurnstileChallenge } from "@/components/auth/turnstile";
 
 export function ForgotPasswordForm() {
   const [state, action] = useActionState(forgotPasswordAction, {});
@@ -19,7 +20,8 @@ export function ForgotPasswordForm() {
           className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none ring-brass/20 focus:ring-4"
         />
       </label>
-      <SubmitButton>Send reset link</SubmitButton>
+      <TurnstileChallenge key={state.correlationId ?? "initial"} attemptKey={state.correlationId} />
+      <PublicAuthSubmitButton>Send reset link</PublicAuthSubmitButton>
     </form>
   );
 }

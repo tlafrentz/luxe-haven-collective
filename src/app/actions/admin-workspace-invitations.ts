@@ -6,6 +6,7 @@ import { safeInternalDestination } from "@/lib/auth/post-login-destination";
 import { requireRole } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { recipientDigest } from "@/lib/auth/public-auth";
 
 const inputSchema = z.object({
   workspaceId: z.string().uuid(),
@@ -54,6 +55,9 @@ export async function inviteControlledWorkspaceOwnerAction(
     secure = createWorkspaceInvitationToken(),
     expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     authenticated = await createClient();
+  const admin = createAdminClient();
+  const { data: suppression } = await admin.from("auth_email_suppressions").select("reason").eq("recipient_digest", recipientDigest(input.email)).eq("active", true).maybeSingle();
+  if (suppression) return { ok: false, code: "INVITATION_RECIPIENT_SUPPRESSED", message: "Delivery is suppressed for this recipient. Review the authentication-email operations record before sending." };
   const { data, error } = await authenticated.rpc(
     "create_admin_workspace_owner_invitation" as never,
     {
@@ -97,8 +101,7 @@ export async function inviteControlledWorkspaceOwnerAction(
     safePasswordPath = safeInternalDestination(passwordPath);
   if (!safePasswordPath)
     throw new Error("ADMIN_WORKSPACE_INVITATION_REDIRECT_INVALID");
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-    admin = createAdminClient();
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const invited = await admin.auth.admin.inviteUserByEmail(input.email, {
     data: {
       full_name: "Luxe Haven controlled owner",

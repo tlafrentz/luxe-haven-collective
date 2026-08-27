@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SupabaseWorkspaceRepository } from "@/features/workspace/infrastructure/supabase-workspace-repository";
 import { plansBySlug, type PlanSlug } from "@/lib/plans";
 import { track } from "@/lib/analytics/track";
+import { authorizePublicAuth, isRateLimitError, publicAuthMessage, recordAuthEmailRequest, recordAuthOperationalAlert } from "@/lib/auth/public-auth";
 
 const commerceAccountSchema = z
   .object({
@@ -27,6 +28,8 @@ export type CommerceAccountActionState = {
   ok?: boolean;
   message?: string;
   errors?: Record<string, string[]>;
+  correlationId?: string;
+  retryAfterSeconds?: number;
 };
 
 function toFormErrors(error: z.ZodError): CommerceAccountActionState {
@@ -51,6 +54,8 @@ export async function createCommerceAccountAction(
   }
 
   const { fullName, email, password, plan: planSlug, billing, workspaceDraft } = parsed.data;
+  const decision = await authorizePublicAuth("signup", formData, email);
+  if (!decision.allowed) return { ok: false, message: publicAuthMessage(decision.code), correlationId: decision.correlationId };
 
   if (!plansBySlug[planSlug as PlanSlug]) {
     return { ok: false, message: "The selected plan could not be found." };
@@ -66,12 +71,14 @@ export async function createCommerceAccountAction(
   const { error: signUpError } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName, role: "owner" } },
+    options: { captchaToken: decision.captchaToken, data: { full_name: fullName, role: "owner" } },
   });
 
   if (signUpError) {
-    return { ok: false, message: signUpError.message };
+    if (isRateLimitError(signUpError)) await recordAuthOperationalAlert("auth_rate_limited", decision.correlationId);
+    return { ok: false, message: isRateLimitError(signUpError) ? "Too many requests. Please wait before trying again." : "We couldn't complete that request. Please try again.", correlationId: decision.correlationId, ...(isRateLimitError(signUpError) ? { retryAfterSeconds: 60 } : {}) };
   }
+  await recordAuthEmailRequest("confirmation", email, decision.correlationId);
 
   const {
     data: { user },
@@ -82,6 +89,7 @@ export async function createCommerceAccountAction(
       ok: true,
       message:
         "Account created. Check your email to confirm your sign-in, then return here and sign in to continue.",
+      correlationId: decision.correlationId,
     };
   }
 

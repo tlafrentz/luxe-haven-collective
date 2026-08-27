@@ -1,0 +1,37 @@
+{
+  "milestone": "BETA-EMAIL-001",
+  "stage": "local_candidate",
+  "migration": {
+    "version": "20260828010000",
+    "sha256": "c6e3482f34aa2c47ca664f0fc5b0aefe6189a3bf592447360f25dcef2efba26a"
+  },
+  "production_authorization": "not_requested_yet",
+  "results": {
+    "clean_migration_reset": "pass",
+    "postgres_lifecycle": "pass",
+    "public_control_safe_default": "pass",
+    "mode_replay_and_stale_version": "pass",
+    "webhook_deduplication_and_changed_replay": "pass",
+    "hard_bounce_suppression": "pass",
+    "alert_creation": "pass",
+    "anonymous_database_access": "denied",
+    "focused_architecture_and_webhook_tests": "10/10 pass",
+    "official_standard_webhooks_signature_fixture": "pass",
+    "full_suite": "810 files; 4453 tests pass",
+    "typecheck": "pass",
+    "lint": "pass with six pre-existing warnings and no new warnings",
+    "production_build": "pass",
+    "migration_lint": "pass; no findings",
+    "platform_architecture_tests": "pass within full suite",
+    "git_diff_check": "pass",
+    "secret_and_logging_review": "pass"
+  },
+  "external_configuration_pending": [
+    "Cloudflare Turnstile site and secret keys",
+    "Supabase Production CAPTCHA enablement",
+    "Resend Production webhook and signing secret",
+    "Vercel Production environment publication"
+  ],
+  "production_email_sends": 0,
+  "secrets_or_tokens_recorded": false
+}

@@ -6,7 +6,8 @@ import {
   createInvestmentAccountAction,
   type InvestmentAccountActionState,
 } from "@/app/actions/investment-commerce";
-import { SubmitButton } from "@/components/forms/submit-button";
+import { PublicAuthSubmitButton, TurnstileChallenge } from "@/components/auth/turnstile";
+import { AuthCooldown } from "@/components/auth/auth-form-status";
 
 const initialState: InvestmentAccountActionState = {};
 
@@ -40,6 +41,7 @@ export function InvestmentCreateAccountForm({
           {state.message}
         </div>
       ) : null}
+      <AuthCooldown seconds={state.retryAfterSeconds} attemptKey={state.correlationId} />
       <form action={action} className="space-y-5">
         <input type="hidden" name="next" value={next} />
 
@@ -89,7 +91,8 @@ export function InvestmentCreateAccountForm({
           <FieldError errors={state.errors?.confirmPassword} />
         </label>
 
-        <SubmitButton>Create Account</SubmitButton>
+        <TurnstileChallenge key={state.correlationId ?? "initial"} attemptKey={state.correlationId} />
+        <PublicAuthSubmitButton>Create Account</PublicAuthSubmitButton>
         <p className="text-sm text-stone-600">
           Already have an account?{" "}
           <Link href={signInHref} className="font-medium text-stone-950">

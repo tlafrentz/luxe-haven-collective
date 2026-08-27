@@ -52,6 +52,7 @@
     "react-hook-form": "latest",
     "recharts": "^3.9.2",
     "resend": "latest",
+    "standardwebhooks": "1.0.0",
     "tailwind-merge": "latest",
     "zod": "latest"
   },
