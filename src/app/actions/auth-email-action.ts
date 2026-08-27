@@ -4,9 +4,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
+  createPasswordSetupGrant,
   EMAIL_ACTION_COOKIE,
   expiredPasswordSetupCookieOptions,
+  PASSWORD_SETUP_FLOW_COOKIE,
+  PASSWORD_SETUP_GRANT_COOKIE,
+  passwordSetupCookieOptions,
 } from "@/lib/auth/password-setup-grant";
+import { createClient } from "@/lib/supabase/server";
 
 type EmailAction = Readonly<{
   tokenHash: string;
@@ -37,6 +42,47 @@ export async function continueAuthenticationEmailAction(): Promise<never> {
       throw new Error("EMAIL_ACTION_INVALID");
   } catch {
     redirect("/update-password?setup=invalid");
+  }
+  if (action.type === "recovery") {
+    const supabase = await createClient();
+    const {
+      data: { user: existingUser },
+    } = await supabase.auth.getUser();
+    if (existingUser) redirect("/update-password?setup=invalid");
+
+    const verification = await supabase.auth.verifyOtp({
+      token_hash: action.tokenHash,
+      type: "recovery",
+    });
+    if (verification.error || !verification.data.user) {
+      await supabase.auth.signOut({ scope: "local" });
+      redirect("/update-password?setup=invalid");
+    }
+
+    const grant = createPasswordSetupGrant();
+    const grantResult = await supabase.rpc(
+      "issue_recovery_password_setup_grant" as never,
+      {
+        p_grant_hash: grant.hash,
+        p_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      } as never,
+    );
+    if (grantResult.error) {
+      await supabase.auth.signOut({ scope: "local" });
+      redirect("/update-password?setup=invalid");
+    }
+
+    store.set(
+      PASSWORD_SETUP_GRANT_COOKIE,
+      grant.token,
+      passwordSetupCookieOptions,
+    );
+    store.set(
+      PASSWORD_SETUP_FLOW_COOKIE,
+      "recovery",
+      passwordSetupCookieOptions,
+    );
+    redirect("/update-password?flow=recovery");
   }
   const provider = new URL(
     "/auth/v1/verify",

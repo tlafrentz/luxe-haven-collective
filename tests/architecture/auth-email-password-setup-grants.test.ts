@@ -89,6 +89,8 @@ describe("AUTH-EMAIL-001 password setup grants", () => {
     expect(confirm).toContain('type="submit"');
     expect(confirm).toContain("prefetch={false}");
     expect(emailAction).toContain("/auth/v1/verify");
+    expect(emailAction).toContain("supabase.auth.verifyOtp");
+    expect(emailAction).toContain('type: "recovery"');
     expect(inviteTemplate).toContain("/auth/email-action?");
     expect(recoveryTemplate).toContain("/auth/email-action?");
   });

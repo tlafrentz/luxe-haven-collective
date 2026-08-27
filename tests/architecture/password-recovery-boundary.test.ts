@@ -18,7 +18,7 @@ describe("password recovery boundary", () => {
     );
   });
 
-  it("surfaces callback exchange failures as a safe recovery state", () => {
+  it("keeps legacy callback exchange failures in a safe state", () => {
     const callback = read("src/app/(auth)/auth/callback/route.ts");
 
     expect(callback).toContain(
@@ -26,6 +26,28 @@ describe("password recovery boundary", () => {
     );
     expect(callback).toContain('new URL("/update-password?setup=invalid"');
     expect(callback).toContain("issue_recovery_password_setup_grant");
+  });
+
+  it("reproduces and prevents the private-browser PKCE recovery failure", () => {
+    const emailRoute = read("src/app/auth/email-action/route.ts");
+    const continuation = read("src/app/actions/auth-email-action.ts");
+    const recoveryBranch = continuation.slice(
+      continuation.indexOf('if (action.type === "recovery")'),
+      continuation.indexOf("const provider = new URL"),
+    );
+
+    expect(emailRoute).not.toContain("verifyOtp");
+    expect(emailRoute).not.toContain("exchangeCodeForSession");
+    expect(recoveryBranch.match(/supabase\.auth\.verifyOtp/g)).toHaveLength(1);
+    expect(recoveryBranch).toContain("supabase.auth.verifyOtp");
+    expect(recoveryBranch).toContain("token_hash: action.tokenHash");
+    expect(recoveryBranch).toContain('type: "recovery"');
+    expect(recoveryBranch).toContain("issue_recovery_password_setup_grant");
+    expect(recoveryBranch).toContain("PASSWORD_SETUP_GRANT_COOKIE");
+    expect(recoveryBranch).toContain('signOut({ scope: "local" })');
+    expect(recoveryBranch).toContain('redirect("/update-password?setup=invalid")');
+    expect(recoveryBranch).not.toContain("exchangeCodeForSession");
+    expect(recoveryBranch).not.toContain("/auth/v1/verify");
   });
 
   it("does not expose raw password-update provider errors", () => {
