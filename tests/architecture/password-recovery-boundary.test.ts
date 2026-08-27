@@ -32,7 +32,7 @@ describe("password recovery boundary", () => {
     const emailRoute = read("src/app/auth/email-action/route.ts");
     const continuation = read("src/app/actions/auth-email-action.ts");
     const recoveryBranch = continuation.slice(
-      continuation.indexOf('if (action.type === "recovery")'),
+      continuation.indexOf('if (action.flow === "recovery")'),
       continuation.indexOf("const provider = new URL"),
     );
 
@@ -40,7 +40,7 @@ describe("password recovery boundary", () => {
     expect(emailRoute).not.toContain("exchangeCodeForSession");
     expect(recoveryBranch.match(/supabase\.auth\.verifyOtp/g)).toHaveLength(1);
     expect(recoveryBranch).toContain("supabase.auth.verifyOtp");
-    expect(recoveryBranch).toContain("token_hash: action.tokenHash");
+    expect(recoveryBranch).toContain("token_hash: tokenHash");
     expect(recoveryBranch).toContain('type: "recovery"');
     expect(recoveryBranch).toContain("issue_recovery_password_setup_grant");
     expect(recoveryBranch).toContain("PASSWORD_SETUP_GRANT_COOKIE");
@@ -48,6 +48,24 @@ describe("password recovery boundary", () => {
     expect(recoveryBranch).toContain('redirect("/update-password?setup=invalid")');
     expect(recoveryBranch).not.toContain("exchangeCodeForSession");
     expect(recoveryBranch).not.toContain("/auth/v1/verify");
+  });
+
+  it("claims cross-instance temporary state atomically without storing the raw token", () => {
+    const route = read("src/app/auth/email-action/route.ts");
+    const continuation = read("src/app/actions/auth-email-action.ts");
+    const migration = read(
+      "supabase/migrations/20260827043000_auth_email_action_states.sql",
+    );
+    expect(route).toContain("encryptEmailActionToken(tokenHash)");
+    expect(route).toContain("browser_nonce_digest");
+    expect(route).not.toContain("verifyOtp");
+    expect(continuation).toContain('.eq("status", "pending")');
+    expect(continuation).toContain('.update({ status: "claimed"');
+    expect(migration).toContain("enable row level security");
+    expect(migration).toContain(
+      "revoke all on table public.auth_email_action_states from public,anon,authenticated",
+    );
+    expect(migration).not.toContain("token_hash text");
   });
 
   it("does not expose raw password-update provider errors", () => {

@@ -10,7 +10,7 @@ const migration = read(
 const callback = read("src/app/(auth)/auth/callback/route.ts");
 const page = read("src/app/(auth)/update-password/page.tsx");
 const action = read("src/app/actions/auth.ts");
-const grant = read("src/lib/auth/password-setup-grant.ts");
+    const grant = read("src/lib/auth/password-setup-grant.ts");
 const nextConfig = read("next.config.ts");
 
 describe("AUTH-EMAIL-001 password setup grants", () => {
