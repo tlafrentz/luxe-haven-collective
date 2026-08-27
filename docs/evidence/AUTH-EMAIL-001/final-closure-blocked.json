@@ -1,0 +1,60 @@
+{
+  "milestone": "AUTH-EMAIL-001",
+  "status": "AUTH-EMAIL-001_CLOSED_WITH_RECOVERY_BLOCKER",
+  "completion_tag_created": false,
+  "production": {
+    "candidate": "dcb87034f5128a262bb825cf78760fd4624def8b",
+    "deployment_id": "dpl_2VzA6GCxJ3Qwgrn4czqjycDd9grj",
+    "supabase_project": "jumdtoraygqaraditnie",
+    "migration_ceiling": "20260827043000_auth_email_action_states.sql",
+    "health": "pass",
+    "migration_parity": "pass"
+  },
+  "capabilities": {
+    "resend_custom_smtp": "complete",
+    "spf_dkim_dmarc_tls": "pass",
+    "tracking": "disabled",
+    "outlook_organic_placement": "pass",
+    "gmail": "DELIVERABILITY_REPUTATION_PENDING",
+    "canonical_owner_invitation_atomic_membership": "pass",
+    "invitation_replay_protection": "implemented",
+    "scanner_safe_get": "pass_non_consuming",
+    "password_recovery_continuation": "blocked_before_durable_state_claim"
+  },
+  "recovery_failure": {
+    "final_route": "/update-password?setup=invalid",
+    "durable_state_status": "pending_until_expiration",
+    "claimed_at": null,
+    "consumed_at": null,
+    "supabase_verification_count": 0,
+    "password_change_count": 0,
+    "failure_mode": "fail_closed",
+    "next_milestone": "AUTH-EMAIL-002"
+  },
+  "operations": {
+    "authentication_email_usage": "7/12",
+    "smtp_ceiling_per_hour": 30,
+    "invite_only_beta": "closed",
+    "broad_beta": "closed",
+    "smtp_and_invitation_work_retained": true,
+    "rollback_performed": false,
+    "additional_email_sent_after_failure": false
+  },
+  "gates": {
+    "focused_tests": "16 passed",
+    "full_suite": "806 files, 4432 tests passed",
+    "typecheck": "pass",
+    "lint": "pass_no_errors",
+    "production_build": "pass",
+    "migration_lint": "no_findings",
+    "clean_local_migration_reset": "pass",
+    "secret_review": "pass",
+    "git_diff_check": "pass"
+  },
+  "sanitization": {
+    "recipient_addresses": "redacted",
+    "tokens_and_grants": "not_recorded",
+    "single_use_urls": "not_recorded",
+    "credentials_and_sessions": "not_recorded"
+  }
+}
