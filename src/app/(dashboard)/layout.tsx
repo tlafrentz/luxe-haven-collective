@@ -6,6 +6,7 @@ import { SupabaseTeamAccessRepository } from "@/features/workspace";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { InitializeWorkspaceForm } from "@/features/workspace/presentation/initialize-workspace-form";
+import { resumeBoundWorkspaceInvitationAction } from "@/app/actions/workspace-invitation-recovery";
 
 type DashboardLayoutProps = {
   children: ReactNode;
@@ -38,9 +39,19 @@ export default async function DashboardLayout({
           </h1>
           <p className="mt-3 text-stone-700">
             {pendingInvitation
-              ? "Your account is authenticated, but workspace access is not active yet. Return to the invitation link and complete the explicit acceptance step."
+              ? "Your account is authenticated, but workspace access is not active yet. Resume the invitation, then complete the explicit acceptance step."
               : "Your workspace membership is inactive or has been removed. Contact a workspace administrator if you believe this is incorrect."}
           </p>
+          {pendingInvitation ? (
+            <form action={resumeBoundWorkspaceInvitationAction} className="mt-6">
+              <button
+                type="submit"
+                className="min-h-11 rounded-full bg-stone-950 px-6 text-sm font-semibold text-white"
+              >
+                Resume invitation
+              </button>
+            </form>
+          ) : null}
           {!pendingInvitation &&
           (profile?.role === "owner" || profile?.role === "admin") ? (
             <div className="mt-6 rounded-2xl bg-stone-950 p-5 text-white">
