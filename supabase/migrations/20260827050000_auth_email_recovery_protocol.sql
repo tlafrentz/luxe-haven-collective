@@ -15,16 +15,85 @@ grant all on table public.auth_recovery_requests to service_role;
 alter table public.auth_email_action_states
   add column recovery_request_id uuid references public.auth_recovery_requests(id) on delete cascade,
   add column auth_user_id uuid,
+  add column protocol_version integer,
   add column version integer not null default 1 check (version>0),
   add column claim_correlation uuid,
   add column verified_at timestamptz,
   add column grant_issued_at timestamptz,
   add column failure_code text;
+
+-- The sole pre-cutover Production recovery presentation state was already
+-- expired but used the legacy nullable-binding shape. Classify only expired,
+-- pre-migration rows. Preserve their encrypted payload and null bindings.
+update public.auth_email_action_states
+set protocol_version=1,
+    status='expired',
+    updated_at=now()
+where flow='recovery'
+  and recovery_request_id is null
+  and auth_user_id is null
+  and expires_at<=now()
+  and created_at<timestamptz '2026-08-27 05:00:00+00';
+
+update public.auth_email_action_states
+set protocol_version=2
+where protocol_version is null;
+
+alter table public.auth_email_action_states
+  alter column protocol_version set default 2,
+  alter column protocol_version set not null,
+  add constraint auth_email_action_states_protocol_version_check
+    check (protocol_version in (1,2));
 alter table public.auth_email_action_states drop constraint auth_email_action_states_status_check;
 alter table public.auth_email_action_states add constraint auth_email_action_states_status_check
   check (status in ('pending','claimed','verified','grant_issued','consumed','rejected','expired','verification_failed','cancelled'));
 alter table public.auth_email_action_states add constraint auth_email_action_states_recovery_binding
-  check (flow<>'recovery' or (recovery_request_id is not null and auth_user_id is not null));
+  check (
+    flow<>'recovery'
+    or (
+      protocol_version=1
+      and status='expired'
+      and recovery_request_id is null
+      and auth_user_id is null
+      and expires_at<=timestamptz '2026-08-27 05:00:00+00'
+      and created_at<timestamptz '2026-08-27 05:00:00+00'
+    )
+    or (
+      protocol_version=2
+      and recovery_request_id is not null
+      and auth_user_id is not null
+    )
+  );
+
+create or replace function public.enforce_auth_email_action_protocol()
+returns trigger
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare recovery_actor uuid;
+begin
+  if tg_op='INSERT' and new.protocol_version<>2 then
+    raise exception 'AUTH_EMAIL_ACTION_LEGACY_INSERT_FORBIDDEN' using errcode='23514';
+  end if;
+  if tg_op='UPDATE' and old.protocol_version=1 then
+    raise exception 'AUTH_EMAIL_ACTION_LEGACY_IMMUTABLE' using errcode='23514';
+  end if;
+  if new.flow='recovery' and new.protocol_version=2 then
+    select request.auth_user_id into recovery_actor
+    from public.auth_recovery_requests request
+    where request.id=new.recovery_request_id;
+    if recovery_actor is null or recovery_actor<>new.auth_user_id then
+      raise exception 'AUTH_EMAIL_ACTION_RECOVERY_BINDING_INVALID' using errcode='23514';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger enforce_auth_email_action_protocol_trigger
+before insert or update on public.auth_email_action_states
+for each row execute function public.enforce_auth_email_action_protocol();
 create unique index auth_email_action_states_one_advancing_token_uidx
   on public.auth_email_action_states(token_digest)
   where status in ('claimed','verified','grant_issued','consumed');
@@ -212,4 +281,5 @@ revoke all on function public.issue_recovery_password_setup_grant_v2(uuid,uuid,t
 grant execute on function public.issue_recovery_password_setup_grant_v2(uuid,uuid,text,timestamptz) to service_role;
 revoke all on function public.expire_auth_email_recovery_states() from public,anon,authenticated;
 grant execute on function public.expire_auth_email_recovery_states() to service_role;
+revoke all on function public.enforce_auth_email_action_protocol() from public,anon,authenticated,service_role;
 revoke execute on function public.issue_recovery_password_setup_grant(text,timestamptz) from authenticated;

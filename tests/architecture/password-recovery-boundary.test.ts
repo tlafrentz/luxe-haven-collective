@@ -79,6 +79,19 @@ describe("password recovery boundary", () => {
     expect(cookie).not.toContain("domain:");
   });
 
+  it("grandfathers only immutable expired protocol-v1 recovery states", () => {
+    const migration = read(
+      "supabase/migrations/20260827050000_auth_email_recovery_protocol.sql",
+    );
+    expect(migration).toContain("add column protocol_version integer");
+    expect(migration).toContain("created_at<timestamptz '2026-08-27 05:00:00+00'");
+    expect(migration).toContain("status='expired'");
+    expect(migration).toContain("AUTH_EMAIL_ACTION_LEGACY_INSERT_FORBIDDEN");
+    expect(migration).toContain("AUTH_EMAIL_ACTION_LEGACY_IMMUTABLE");
+    expect(migration).toContain("AUTH_EMAIL_ACTION_RECOVERY_BINDING_INVALID");
+    expect(migration).toContain("alter column protocol_version set default 2");
+  });
+
   it("does not expose raw password-update provider errors", () => {
     const actions = read("src/app/actions/auth.ts");
     const updateBoundary = actions.slice(

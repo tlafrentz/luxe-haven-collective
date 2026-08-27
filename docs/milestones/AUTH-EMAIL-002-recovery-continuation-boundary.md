@@ -55,6 +55,11 @@ pending and `verifyOtp` was never called.
   `20260827050000_auth_email_recovery_protocol.sql`.
 - PostgreSQL rehearsal: one of two competing presentation states advanced;
   the other was rejected, and expiration cleanup was idempotent.
+- Production-ceiling compatibility rehearsal: the exact expired legacy-row
+  fixture was classified as immutable protocol v1 while preserving ciphertext
+  and null bindings. Protocol-v1 inserts/reactivation and unbound or mismatched
+  protocol-v2 recovery states were rejected. Explicit rollback restored the
+  pre-migration schema and fixture.
 - `git diff --check`: passed.
 
 Production deployment, migration application, the single 8/12 recovery email,
