@@ -32,19 +32,18 @@ describe("password recovery boundary", () => {
     const emailRoute = read("src/app/auth/email-action/route.ts");
     const continuation = read("src/app/actions/auth-email-action.ts");
     const recoveryBranch = continuation.slice(
-      continuation.indexOf('if (action.flow === "recovery")'),
-      continuation.indexOf("const provider = new URL"),
+      continuation.indexOf("claim_recovery_email_action_state"),
+      continuation.indexOf('redirect("/update-password?flow=recovery")'),
     );
 
     expect(emailRoute).not.toContain("verifyOtp");
     expect(emailRoute).not.toContain("exchangeCodeForSession");
-    expect(recoveryBranch.match(/supabase\.auth\.verifyOtp/g)).toHaveLength(1);
-    expect(recoveryBranch).toContain("supabase.auth.verifyOtp");
+    expect(recoveryBranch.match(/verifier\.auth\.verifyOtp/g)).toHaveLength(1);
+    expect(recoveryBranch).toContain("verifier.auth.verifyOtp");
     expect(recoveryBranch).toContain("token_hash: tokenHash");
     expect(recoveryBranch).toContain('type: "recovery"');
-    expect(recoveryBranch).toContain("issue_recovery_password_setup_grant");
+    expect(recoveryBranch).toContain("issue_recovery_password_setup_grant_v2");
     expect(recoveryBranch).toContain("PASSWORD_SETUP_GRANT_COOKIE");
-    expect(recoveryBranch).toContain('signOut({ scope: "local" })');
     expect(recoveryBranch).toContain('redirect("/update-password?setup=invalid")');
     expect(recoveryBranch).not.toContain("exchangeCodeForSession");
     expect(recoveryBranch).not.toContain("/auth/v1/verify");
@@ -59,13 +58,25 @@ describe("password recovery boundary", () => {
     expect(route).toContain("encryptEmailActionToken(tokenHash)");
     expect(route).toContain("browser_nonce_digest");
     expect(route).not.toContain("verifyOtp");
+    expect(route).toContain('"Cache-Control": "no-store, max-age=0"');
+    expect(route).toContain('"Referrer-Policy": "no-referrer"');
+    expect(route).toContain('process.env.VERCEL_ENV === "preview"');
     expect(continuation).toContain('.eq("status", "pending")');
-    expect(continuation).toContain('.update({ status: "claimed"');
+    expect(continuation).toContain("claim_recovery_email_action_state");
     expect(migration).toContain("enable row level security");
     expect(migration).toContain(
       "revoke all on table public.auth_email_action_states from public,anon,authenticated",
     );
     expect(migration).not.toContain("token_hash text");
+  });
+
+  it("uses a host-only, short-lived, secure action cookie", () => {
+    const cookie = read("src/lib/auth/password-setup-grant.ts");
+    expect(cookie).toContain("httpOnly: true");
+    expect(cookie).toContain('sameSite: "lax"');
+    expect(cookie).toContain('path: "/auth/email-action"');
+    expect(cookie).toContain("maxAge: 5 * 60");
+    expect(cookie).not.toContain("domain:");
   });
 
   it("does not expose raw password-update provider errors", () => {

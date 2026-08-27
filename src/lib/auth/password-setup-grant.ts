@@ -6,6 +6,19 @@ export const PASSWORD_SETUP_GRANT_COOKIE = "lhc-password-setup-grant";
 export const PASSWORD_SETUP_FLOW_COOKIE = "lhc-password-setup-flow";
 export const EMAIL_ACTION_COOKIE = "lhc-auth-email-action";
 
+export const emailActionCookieOptions = Object.freeze({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/auth/email-action",
+  maxAge: 5 * 60,
+});
+
+export const expiredEmailActionCookieOptions = Object.freeze({
+  ...emailActionCookieOptions,
+  maxAge: 0,
+});
+
 export function createPasswordSetupGrant() {
   const token = randomBytes(32).toString("base64url");
   return Object.freeze({

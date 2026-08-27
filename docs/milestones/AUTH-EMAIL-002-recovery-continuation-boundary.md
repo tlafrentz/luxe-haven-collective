@@ -2,8 +2,8 @@
 
 ## Status
 
-Not started. Production email mutation is prohibited until deterministic
-request-boundary tests pass.
+Local candidate complete; Production rollout is not authorized. No Production
+mutation or authentication email was performed under AUTH-EMAIL-002.
 
 ## Objective
 
@@ -17,6 +17,49 @@ The scanner GET creates a durable, expiring recovery state and does not contact
 Supabase verification. The explicit continuation POST returns
 `/update-password?setup=invalid`; the authoritative state remains `pending`
 with no claim, verification exchange, grant, or password mutation.
+
+Read-only Production evidence proved the exact pre-claim branch:
+`EXISTING_SESSION_SAME_IDENTITY`. The deployed AUTH-EMAIL-001 continuation
+treated every validated Supabase session as a rejection, including the valid
+session belonging to the recovery subject. The state therefore remained
+pending and `verifyOtp` was never called.
+
+## Local correction
+
+- Recovery requests now durably bind the normalized recipient to its canonical
+  Auth user before an email is requested.
+- Scanner presentation states keep the encrypted provider token and only a
+  nonce digest; the browser receives a signed, short-lived, HttpOnly host-only
+  cookie with no recovery credential.
+- The continuation permits no session or the same server-validated identity,
+  rejects a different identity without modifying that session, and claims the
+  state atomically before one isolated `verifyOtp` exchange.
+- A service-only transaction issues a recovery-only password grant bound to
+  the verified Auth user and originating state. Password completion consumes
+  the grant, action state, and recovery request.
+- Canonical-host redirects happen before state creation; preview deployments
+  reject Production recovery actions. Sensitive responses are non-cacheable,
+  non-indexable, and use a no-referrer policy.
+- Production deployment fails during configuration loading when the dedicated
+  signing/encryption secret is absent or shorter than 32 characters.
+
+## Local verification
+
+- Focused recovery/state/grant tests: 24 passed.
+- Full automated suite: 807 files and 4,440 tests passed.
+- Typecheck: passed.
+- Lint: passed with six pre-existing warnings and no new warnings.
+- Production build: passed with an explicit local-only build secret.
+- Migration lint: no findings.
+- Clean local migration reset: passed through
+  `20260827050000_auth_email_recovery_protocol.sql`.
+- PostgreSQL rehearsal: one of two competing presentation states advanced;
+  the other was rejected, and expiration cleanup was idempotent.
+- `git diff --check`: passed.
+
+Production deployment, migration application, the single 8/12 recovery email,
+replay verification, cleanup, closure commit, and `AUTH-EMAIL-002-complete` tag
+remain subject to the separately required Production authorization.
 
 ## Deterministic prerequisites
 

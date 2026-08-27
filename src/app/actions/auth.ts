@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { roleHome } from "@/lib/auth/roles";
+import { digestEmailActionValue } from "@/lib/auth/email-action-state";
 import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import {
   expiredPasswordSetupCookieOptions,
@@ -14,6 +15,7 @@ import {
   type PasswordSetupFlow,
 } from "@/lib/auth/password-setup-grant";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { UserRole } from "@/types/database";
 
 const loginSchema = z.object({
@@ -205,26 +207,49 @@ export async function forgotPasswordAction(
   }
 
   const supabase = await createClient();
-
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const normalizedEmail = parsed.data.email.trim().toLowerCase();
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+  const { data: request } = profile
+    ? await admin
+        .from("auth_recovery_requests")
+        .insert({
+          auth_user_id: profile.id,
+          recipient_digest: digestEmailActionValue(normalizedEmail),
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        })
+        .select("id")
+        .single()
+    : { data: null };
+  const recoveryBinding = request
+    ? `&recovery_request=${encodeURIComponent(request.id)}`
+    : "";
 
   const { error } = await supabase.auth.resetPasswordForEmail(
-    parsed.data.email,
+    normalizedEmail,
     {
-      redirectTo: `${origin}/auth/callback?next=/update-password`,
+      redirectTo: `${origin}/auth/callback?next=/update-password${recoveryBinding}`,
     },
   );
-
-  if (error) {
-    return {
-      ok: false,
-      message: error.message,
-    };
-  }
+  if (request)
+    await admin
+      .from("auth_recovery_requests")
+      .update({
+        status: error ? "failed" : "emailed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", request.id)
+      .eq("status", "pending");
 
   return {
     ok: true,
-    message: "Password reset email sent.",
+    message:
+      "If an account exists for that email address, we’ll send password-reset instructions shortly.",
   };
 }
 
