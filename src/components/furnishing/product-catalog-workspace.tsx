@@ -620,6 +620,16 @@ export function ImportInventory() {
           XLSX files up to 25 MB. Quantities and totals remain project logic and
           are not imported as catalog quantities.
         </p>
+        <label className="mx-auto mt-6 block max-w-xl text-left text-sm font-semibold">
+          Controlled workspace ID
+          <input
+            required
+            type="text"
+            name="workspaceId"
+            className={`${field} mt-2`}
+            placeholder="Canonical controlled workspace UUID"
+          />
+        </label>
         <input
           id="file"
           required
@@ -658,6 +668,9 @@ export async function ImportReview({ importId }: { importId: string }) {
           </div>
         ))}
       </section>
+      <p className="text-sm text-stone-600">
+        Controlled workspace: {catalogImport.workspace_id}
+      </p>
       <section className="overflow-hidden rounded-2xl border bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">

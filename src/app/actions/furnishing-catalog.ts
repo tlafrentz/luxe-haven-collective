@@ -1,6 +1,7 @@
 "use server";
 import "server-only";
 import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
+import { assertFurnishingCatalogMutationAllowed } from "./furnishing-catalog-activation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import ExcelJS from "exceljs";
@@ -298,8 +299,9 @@ const categoryHint = (name: string) => {
 };
 
 export async function startCatalogImportAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
   const { user, db } = await catalogAdmin();
+  const workspaceId = text(formData, "workspaceId");
+  await assertFurnishingCatalogMutationAllowed(workspaceId);
   const file = formData.get("file");
   if (
     !(file instanceof File) ||
@@ -321,6 +323,7 @@ export async function startCatalogImportAction(formData: FormData) {
   const { data: catalogImport, error } = await db
     .from("furnishing_catalog_imports")
     .insert({
+      workspace_id: workspaceId,
       source_filename: file.name,
       status: "parsing",
       created_by: user.id,
@@ -407,6 +410,7 @@ export async function startCatalogImportAction(formData: FormData) {
     .update({ status: "review_required", total_rows: proposals.length })
     .eq("id", catalogImport.id);
   await db.from("furnishing_catalog_activity").insert({
+    workspace_id: workspaceId,
     import_id: catalogImport.id,
     event_type: "catalog_inventory_import_started",
     actor_id: user.id,
@@ -416,9 +420,20 @@ export async function startCatalogImportAction(formData: FormData) {
 }
 
 export async function completeCatalogImportAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
   const { user, db } = await catalogAdmin();
   const importId = text(formData, "importId");
+  const { data: importTarget, error: importTargetError } = await db
+    .from("furnishing_catalog_imports")
+    .select("workspace_id,status")
+    .eq("id", importId)
+    .maybeSingle();
+  if (
+    importTargetError ||
+    !importTarget?.workspace_id ||
+    importTarget.status !== "review_required"
+  )
+    throw new Error("CATALOG_IMPORT_REVIEW_REQUIRED");
+  await assertFurnishingCatalogMutationAllowed(String(importTarget.workspace_id));
   const { data: items, error } = await db
     .from("furnishing_catalog_import_items")
     .select("*")
