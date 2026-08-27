@@ -10,6 +10,10 @@ const view = readFileSync(
   "src/components/furnishing/product-catalog-workspace.tsx",
   "utf8",
 );
+const migration = readFileSync(
+  "supabase/migrations/20260827030000_fs008g_catalog_authorization_boundary.sql",
+  "utf8",
+);
 
 describe("FS-008G controlled catalog mutation boundary", () => {
   it("requires the exact controlled workspace at the Admin import surface", () => {
@@ -22,20 +26,25 @@ describe("FS-008G controlled catalog mutation boundary", () => {
 
   it("revalidates every activation layer through ordinary authenticated reads", () => {
     expect(access).toContain("createClient()");
-    expect(access).toContain('eq("workspace_id", workspaceId)');
-    expect(access).toContain('eq("capability", "catalog_viewing")');
+    expect(access).toContain("authorize_controlled_furnishing_catalog_mutation");
+    expect(migration).toContain("auth.uid()");
+    expect(migration).toContain("public.is_admin()");
+    expect(migration).toContain("workspace_row.workspace_id=p_workspace_id");
+    expect(migration).toContain("capability_row.capability='catalog_viewing'");
     for (const guard of [
       "global_kill_switch",
       "global_state",
       "configuration_valid",
       "kill_switch",
-      'cohort === "internal"',
+      "workspace.cohort<>'internal'",
       "revoked_at",
       "expires_at",
-      "capability?.enabled",
+      "capability.enabled",
     ])
-      expect(access).toContain(guard);
+      expect(migration).toContain(guard);
     expect(access).not.toContain("createAdminClient");
+    expect(migration).toContain("PS001D_VERIFICATION_ONLY_NON_CUSTOMER");
+    expect(migration).toContain("grant execute on function");
   });
 
   it("binds parse and reviewed import to the same workspace and fails closed", () => {
