@@ -9,6 +9,7 @@ function mapped(error: Readonly<{ message?: string }> | null | undefined): Furni
  if(message.includes("FURNISHING_ACTIVATION_FORBIDDEN")||message.includes("FURNISHING_ACTIVATION_ADMIN_REQUIRED"))return new FurnishingActivationCommandError("FORBIDDEN","The activation target is outside the authorized controlled scope.");
  if(message.includes("FURNISHING_ACTIVATION_VERSION_CONFLICT"))return new FurnishingActivationCommandError("VERSION_CONFLICT","The activation control changed; reload and retry.");
  if(message.includes("FURNISHING_ACTIVATION_IDEMPOTENCY_CONFLICT"))return new FurnishingActivationCommandError("IDEMPOTENCY_CONFLICT","The idempotency key was reused with different input.");
+ if(message.includes("FURNISHING_ACTIVATION_SEQUENCE_REQUIRED"))return new FurnishingActivationCommandError("SEQUENCE_REQUIRED","Complete the preceding activation steps shown on this page before retrying this control.");
  return new Error("ACTIVATION_REPOSITORY_UNAVAILABLE");
 }
 

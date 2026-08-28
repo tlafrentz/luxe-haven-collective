@@ -18,7 +18,7 @@ export type FurnishingAdminCommand = Readonly<{
 export type FurnishingControlRecord = Readonly<{ target: FurnishingControlTarget; targetId: string; state: FurnishingControlState; version: number; tenantId?: string }>;
 export type FurnishingAuditEvent = Readonly<{ actorId: string; command: string; target: string; before: FurnishingControlState; after: FurnishingControlState; reason: string; fromVersion: number; toVersion: number; correlationId: string; idempotencyKey: string; policyVersion: string; occurredAt: string }>;
 export type FurnishingCommandResult = Readonly<{ status: "accepted"; record: FurnishingControlRecord; audit: FurnishingAuditEvent }>;
-export class FurnishingActivationCommandError extends Error { constructor(public readonly code: "NOT_AUTHORIZED" | "NOT_FOUND" | "FORBIDDEN" | "REASON_REQUIRED" | "VERSION_CONFLICT" | "IDEMPOTENCY_CONFLICT" | "TRANSITION_PROHIBITED" | "TARGET_INVALID", message: string) { super(message); this.name = "FurnishingActivationCommandError"; } }
+export class FurnishingActivationCommandError extends Error { constructor(public readonly code: "NOT_AUTHORIZED" | "NOT_FOUND" | "FORBIDDEN" | "REASON_REQUIRED" | "VERSION_CONFLICT" | "IDEMPOTENCY_CONFLICT" | "SEQUENCE_REQUIRED" | "TRANSITION_PROHIBITED" | "TARGET_INVALID", message: string) { super(message); this.name = "FurnishingActivationCommandError"; } }
 
 export interface FurnishingActivationCommandRepository {
   read(target: FurnishingControlTarget, targetId: string, tenantId?: string): Promise<FurnishingControlRecord>;
