@@ -62,6 +62,15 @@ These variables are **never** exposed to the browser.
 
 ---
 
+## AUTH_EMAIL_ACTION_ENCRYPTION_KEY
+
+Dedicated high-entropy Production secret used to encrypt recovery tokens at
+rest and authenticate the short-lived scanner-safe browser-state cookie. Use
+the same value on every application instance. Rotate only after pending email
+actions have expired.
+
+---
+
 ## SUPABASE_SERVICE_ROLE_KEY
 
 Server-only administrator key.

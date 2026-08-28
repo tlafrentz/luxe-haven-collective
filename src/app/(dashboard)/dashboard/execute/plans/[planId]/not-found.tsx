@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function ActionPlanNotFound(){return <main className="mx-auto max-w-3xl px-5 py-16"><section role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-6"><h1 className="text-2xl font-semibold">Action Plan unavailable</h1><p className="mt-2 text-amber-950">This plan could not be found in your active workspace or is no longer available.</p><Link className="mt-5 inline-flex font-semibold underline" href="/dashboard/execute?view=plans">Return to Action Plans</Link></section></main>}

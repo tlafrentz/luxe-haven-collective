@@ -10,8 +10,8 @@ import {
   AuthFormStatus,
 } from "@/components/auth/auth-form-status";
 import {
-  SubmitButton,
-} from "@/components/forms/submit-button";
+  PublicAuthSubmitButton, TurnstileChallenge,
+} from "@/components/auth/turnstile";
 
 type LoginFormProps = {
   nextPath?: string;
@@ -86,9 +86,8 @@ export function LoginForm({
         </Link>
       </div>
 
-      <SubmitButton>
-        Sign in
-      </SubmitButton>
+      <TurnstileChallenge key={state.correlationId ?? "initial"} attemptKey={state.correlationId} />
+      <PublicAuthSubmitButton>Sign in</PublicAuthSubmitButton>
     </form>
   );
 }

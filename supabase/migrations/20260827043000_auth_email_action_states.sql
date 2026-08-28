@@ -14,6 +14,7 @@ create table public.auth_email_action_states (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
 create index auth_email_action_states_expiry_idx
   on public.auth_email_action_states(status,expires_at);
 alter table public.auth_email_action_states enable row level security;

@@ -1,0 +1,53 @@
+{
+  "milestone": "BETA-EMAIL-001",
+  "evidence_kind": "read_only_baseline_and_prior_certified_evidence",
+  "captured_at": "2026-08-27T23:00:00Z",
+  "production_mutation_performed": false,
+  "public_auth_calls": {
+    "enabled": [
+      "password sign-in",
+      "password recovery"
+    ],
+    "deployment_gated": [
+      "general registration",
+      "commerce owner registration",
+      "guidebook owner registration",
+      "investment owner registration"
+    ],
+    "safe_disabled_elsewhere": [
+      "furnishing commerce registration"
+    ],
+    "not_found": [
+      "public magic link or OTP request",
+      "public resend-confirmation request",
+      "public invitation-request flow",
+      "anonymous sign-in"
+    ],
+    "authenticated_only": [
+      "secure email change",
+      "canonical Admin workspace invitation"
+    ]
+  },
+  "before_candidate": {
+    "captcha": "disabled",
+    "public_auth_control": "absent",
+    "resend_webhook": "absent",
+    "delivery_projection": "absent",
+    "suppression_model": "absent",
+    "admin_delivery_view": "absent",
+    "application_cooldown_ui": "not consistently implemented",
+    "raw_provider_errors": "present on signup and password sign-in paths"
+  },
+  "frozen_provider_state": {
+    "smtp": "Resend custom SMTP operational",
+    "hourly_ceiling": 30,
+    "same_user_cooldown_seconds": 60,
+    "tracking": "disabled",
+    "anonymous_sign_in": "disabled",
+    "outlook_organic_placement": "pass",
+    "gmail_placement": "reputation pending",
+    "scanner_safe_invitation": "certified",
+    "scanner_safe_recovery": "certified by AUTH-EMAIL-002"
+  },
+  "privacy": "No credentials, tokens, recipient addresses, message bodies, or single-use URLs are included."
+}

@@ -10,10 +10,11 @@ import {
   updateExecuteDraftAction,
 } from "@/app/actions/execute-plans";
 import type { ActionPlanProps, ExecuteActivityEvent } from "@/platform/actions";
+import { actionPlanBackPath } from "../domain/action-plan-route";
 
 type CommandResult = Readonly<{ ok: boolean; message?: string }>;
 
-export function ActionPlanWorkspace({ plan, history }: Readonly<{ plan: ActionPlanProps; history: readonly ExecuteActivityEvent[] }>) {
+export function ActionPlanWorkspace({ plan, history,backContext }: Readonly<{ plan: ActionPlanProps; history: readonly ExecuteActivityEvent[];backContext?:string }>) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
@@ -40,7 +41,8 @@ export function ActionPlanWorkspace({ plan, history }: Readonly<{ plan: ActionPl
   }
 
   return <main className="mx-auto max-w-6xl space-y-8 px-4 py-10 sm:px-6">
-    <nav aria-label="Breadcrumb" className="text-sm text-stone-600"><Link className="font-semibold hover:text-stone-950" href="/dashboard/execute?view=plans">Execute › Action Center</Link><span aria-hidden="true"> › </span><span>Action Plan</span></nav>
+    <nav aria-label="Breadcrumb" className="text-sm text-stone-600"><Link className="font-semibold hover:text-stone-950" href={actionPlanBackPath(plan.workspaceId,backContext)}>Execute › Action Center</Link><span aria-hidden="true"> › </span><span>Action Plan</span></nav>
+    <p><Link className="inline-flex rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-900 hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" href={actionPlanBackPath(plan.workspaceId,backContext)}>← Return to Action Plans</Link></p>
     <header className="rounded-3xl bg-stone-950 p-7 text-white sm:p-9"><p className="text-xs font-semibold uppercase tracking-[.18em] text-amber-300">Execute › Action Center › Action Plan</p><div className="mt-3 flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-3xl font-semibold">{plan.title}</h1>{plan.description ? <p className="mt-3 max-w-3xl text-stone-300">{plan.description}</p> : null}</div><span className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold capitalize">{plan.status.replaceAll("-", " ")}</span></div></header>
     <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Plan context"><Fact label="Version" value={String(plan.version)} /><Fact label="Source" value={plan.origin.type === "decision" ? `Decision ${plan.linkedDecisionId ?? plan.origin.id ?? "unavailable"}` : plan.origin.type} /><Fact label="Scope" value={plan.scope.type.replaceAll("-", " ")} /><Fact label="Created" value={plan.createdAt.toLocaleString()} /></dl>
     {plan.linkedDecisionId ? <p><Link className="font-semibold text-teal-800 underline-offset-4 hover:underline" href={`/dashboard/portfolio/decisions/${encodeURIComponent(plan.linkedDecisionId)}`}>View source decision →</Link></p> : null}

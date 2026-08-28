@@ -20,8 +20,9 @@ const detail: ExecuteActionDetail = {
 
 describe("PS-001C canonical customer action detail", () => {
   it("shows lineage, evidence, dependencies, and only projected commands", () => {
-    const html = renderToStaticMarkup(<ExecutionDetailWorkspace detail={detail} />);
+    const html = renderToStaticMarkup(<ExecutionDetailWorkspace detail={detail} workspaceId="workspace-1" />);
     expect(html).toContain("View Action Plan");
+    expect(html).toContain("workspace=workspace-1");
     expect(html).toContain("View source decision");
     expect(html).toContain("Pricing updated");
     expect(html).toContain("action-0 · Incomplete");

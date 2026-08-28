@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { registerAction } from "@/app/actions/auth";
-import { SubmitButton } from "@/components/forms/submit-button";
+import { PublicAuthSubmitButton, TurnstileChallenge } from "@/components/auth/turnstile";
 import { AuthFormStatus } from "@/components/auth/auth-form-status";
 
 export function RegisterForm() {
@@ -27,7 +27,8 @@ export function RegisterForm() {
         </select>
       </label>
       {state.message ? null : <p className="text-sm text-stone-500">Admin and team roles are assigned internally after account creation.</p>}
-      <SubmitButton>Create account</SubmitButton>
+      <TurnstileChallenge key={state.correlationId ?? "initial"} attemptKey={state.correlationId} />
+      <PublicAuthSubmitButton>Create account</PublicAuthSubmitButton>
       <p className="text-sm text-stone-600">Already have an account? <Link href="/login" className="font-medium text-stone-950">Sign in</Link></p>
     </form>
   );

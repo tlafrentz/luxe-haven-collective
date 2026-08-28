@@ -1,0 +1,68 @@
+{
+  "milestone": "BETA-EMAIL-001",
+  "captured_at": "2026-08-28T01:02:00Z",
+  "candidate": "79e66104cd2e6757569b3a2595d91171fce5acef",
+  "deployment_id": "dpl_NjtRXhvXt8uDmGMKwJY3zbLb4N9d",
+  "migration": {
+    "version": "20260828010000",
+    "sha256": "c6e3482f34aa2c47ca664f0fc5b0aefe6189a3bf592447360f25dcef2efba26a",
+    "ledger_false_positive_repaired": true,
+    "applied_normally": true,
+    "parity": "exact"
+  },
+  "production_configuration": {
+    "turnstile": "enabled_in_supabase_and_configured_in_application",
+    "resend_webhook": "enabled_and_receiving",
+    "smtp_hourly_ceiling": 30,
+    "anonymous_sign_in": false,
+    "final_public_auth_mode": "closed"
+  },
+  "direct_production_passes": {
+    "deployment_ready": true,
+    "apex_and_www_aliases": true,
+    "health_checks": "four consecutive passes",
+    "webhook_signature_acceptance": true,
+    "webhook_exact_replay": true,
+    "webhook_changed_replay_rejected": true,
+    "webhook_stale_and_unsigned_rejected": true,
+    "unknown_webhook_event_retained_as_unsupported": true,
+    "hard_bounce_and_complaint_fixture_suppression": true,
+    "captcha_missing_and_invalid_rejected_for_signup_recovery_and_login": true,
+    "closed_to_invite_only": true,
+    "invite_only_to_broad_beta": true,
+    "stale_version_database_mutation_rejected": true,
+    "emergency_close": true
+  },
+  "failure": {
+    "classification": "BROAD_BETA_BLOCKED_ENGINEERING",
+    "code": "PUBLIC_AUTH_CONTROL_STALE_VERSION_UI_FAILURE",
+    "observed_behavior": "The database rejected the stale expected version without changing state, but the server action threw PUBLIC_AUTH_CONTROL_COMMAND_REJECTED and rendered the generic server-error page instead of an accessible controlled stale-version result.",
+    "authoritative_effect": "No stale control mutation committed and no authentication request or user was created.",
+    "production_log_route": "POST /admin/auth-email"
+  },
+  "final_reconciliation": {
+    "users": 115,
+    "memberships": 118,
+    "invitations": 3,
+    "recovery_requests": 2,
+    "action_states": 4,
+    "password_grants": 2,
+    "authentication_email_requests": 0,
+    "provider_fixture_webhook_receipts": 9,
+    "active_provider_fixture_suppressions": 2,
+    "operational_alerts": 5,
+    "new_authentication_emails": 0,
+    "certification_budget": "0/6",
+    "production_health": "ok"
+  },
+  "not_executed_after_failure": [
+    "Outlook authentication-email certification",
+    "Gmail A or Gmail B placement certification",
+    "public signup confirmation",
+    "protected password recovery",
+    "valid, expired, reused, and wrong-host CAPTCHA browser certification",
+    "suppression release UI certification",
+    "invite-only final activation"
+  ],
+  "privacy": "No credentials, CAPTCHA tokens, webhook secrets, recipient addresses, Auth tokens, message contents, or complete action URLs are retained."
+}

@@ -18,7 +18,7 @@ describe("password recovery boundary", () => {
     );
   });
 
-  it("surfaces callback exchange failures as a safe recovery state", () => {
+  it("keeps legacy callback exchange failures in a safe state", () => {
     const callback = read("src/app/(auth)/auth/callback/route.ts");
 
     expect(callback).toContain(
@@ -26,6 +26,70 @@ describe("password recovery boundary", () => {
     );
     expect(callback).toContain('new URL("/update-password?setup=invalid"');
     expect(callback).toContain("issue_recovery_password_setup_grant");
+  });
+
+  it("reproduces and prevents the private-browser PKCE recovery failure", () => {
+    const emailRoute = read("src/app/auth/email-action/route.ts");
+    const continuation = read("src/app/actions/auth-email-action.ts");
+    const recoveryBranch = continuation.slice(
+      continuation.indexOf("claim_recovery_email_action_state"),
+      continuation.indexOf('redirect("/update-password?flow=recovery")'),
+    );
+
+    expect(emailRoute).not.toContain("verifyOtp");
+    expect(emailRoute).not.toContain("exchangeCodeForSession");
+    expect(recoveryBranch.match(/verifier\.auth\.verifyOtp/g)).toHaveLength(1);
+    expect(recoveryBranch).toContain("verifier.auth.verifyOtp");
+    expect(recoveryBranch).toContain("token_hash: tokenHash");
+    expect(recoveryBranch).toContain('type: "recovery"');
+    expect(recoveryBranch).toContain("issue_recovery_password_setup_grant_v2");
+    expect(recoveryBranch).toContain("PASSWORD_SETUP_GRANT_COOKIE");
+    expect(recoveryBranch).toContain('redirect("/update-password?setup=invalid")');
+    expect(recoveryBranch).not.toContain("exchangeCodeForSession");
+    expect(recoveryBranch).not.toContain("/auth/v1/verify");
+  });
+
+  it("claims cross-instance temporary state atomically without storing the raw token", () => {
+    const route = read("src/app/auth/email-action/route.ts");
+    const continuation = read("src/app/actions/auth-email-action.ts");
+    const migration = read(
+      "supabase/migrations/20260827043000_auth_email_action_states.sql",
+    );
+    expect(route).toContain("encryptEmailActionToken(tokenHash)");
+    expect(route).toContain("browser_nonce_digest");
+    expect(route).not.toContain("verifyOtp");
+    expect(route).toContain('"Cache-Control": "no-store, max-age=0"');
+    expect(route).toContain('"Referrer-Policy": "no-referrer"');
+    expect(route).toContain('process.env.VERCEL_ENV === "preview"');
+    expect(continuation).toContain('.eq("status", "pending")');
+    expect(continuation).toContain("claim_recovery_email_action_state");
+    expect(migration).toContain("enable row level security");
+    expect(migration).toContain(
+      "revoke all on table public.auth_email_action_states from public,anon,authenticated",
+    );
+    expect(migration).not.toContain("token_hash text");
+  });
+
+  it("uses a host-only, short-lived, secure action cookie", () => {
+    const cookie = read("src/lib/auth/password-setup-grant.ts");
+    expect(cookie).toContain("httpOnly: true");
+    expect(cookie).toContain('sameSite: "lax"');
+    expect(cookie).toContain('path: "/auth/email-action"');
+    expect(cookie).toContain("maxAge: 5 * 60");
+    expect(cookie).not.toContain("domain:");
+  });
+
+  it("grandfathers only immutable expired protocol-v1 recovery states", () => {
+    const migration = read(
+      "supabase/migrations/20260827050000_auth_email_recovery_protocol.sql",
+    );
+    expect(migration).toContain("add column protocol_version integer");
+    expect(migration).toContain("created_at<timestamptz '2026-08-27 05:00:00+00'");
+    expect(migration).toContain("status='expired'");
+    expect(migration).toContain("AUTH_EMAIL_ACTION_LEGACY_INSERT_FORBIDDEN");
+    expect(migration).toContain("AUTH_EMAIL_ACTION_LEGACY_IMMUTABLE");
+    expect(migration).toContain("AUTH_EMAIL_ACTION_RECOVERY_BINDING_INVALID");
+    expect(migration).toContain("alter column protocol_version set default 2");
   });
 
   it("does not expose raw password-update provider errors", () => {
@@ -38,18 +102,6 @@ describe("password recovery boundary", () => {
     expect(updateBoundary).toContain("password_setup_grant_completed");
     expect(updateBoundary).toContain("auth.updateUser");
     expect(updateBoundary).not.toContain("message: error.message");
-  });
-
-  it("passes a completed Turnstile challenge to password recovery", () => {
-    const form = read("src/components/auth/password-forms.tsx");
-    const actions = read("src/app/actions/auth.ts");
-
-    expect(form).toContain("NEXT_PUBLIC_TURNSTILE_SITE_KEY");
-    expect(form).toContain('name="captchaToken"');
-    expect(form).toContain("<Turnstile");
-    expect(form).toContain("disabled={!siteKey || !captchaToken}");
-    expect(actions).toContain('captchaToken: z.string().min(1');
-    expect(actions).toContain("captchaToken: parsed.data.captchaToken");
   });
 
   it("keeps invitation and recovery flows server-bound and distinct", () => {

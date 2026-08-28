@@ -1,5 +1,14 @@
 import type { NextConfig } from "next";
 
+if (
+  process.env.VERCEL === "1" &&
+  process.env.VERCEL_ENV === "production" &&
+  (!process.env.AUTH_EMAIL_ACTION_ENCRYPTION_KEY ||
+    process.env.AUTH_EMAIL_ACTION_ENCRYPTION_KEY.length < 32)
+) {
+  throw new Error("AUTH_EMAIL_ACTION_ENCRYPTION_KEY must be configured for Production");
+}
+
 const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/public/owner-checklist/download": [

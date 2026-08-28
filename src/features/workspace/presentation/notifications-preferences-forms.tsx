@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { saveNotificationPreferencesAction, saveWorkspacePreferencesAction, type SettingsActionResult } from "@/app/actions/workspace-notifications-preferences";
 import { notificationCategories, type UserWorkspacePreferences } from "../domain/notifications-preferences";
+import { nextDigestDelivery } from "../domain/notification-digest";
 import type { EffectiveSettings } from "../application/notifications-preferences-services";
 
 const inputClass = "ui-control mt-2 w-full px-3 text-sm";
@@ -9,6 +10,7 @@ export function NotificationPreferencesForm({ settings }: { settings: EffectiveS
   const [value, setValue] = useState(settings.notifications), [baseline, setBaseline] = useState(settings.notifications);
   const [result, setResult] = useState<SettingsActionResult | null>(null), [pending, start] = useTransition();
   const dirty = JSON.stringify(value) !== JSON.stringify(baseline);
+  const nextDelivery = nextDigestDelivery(new Date(), value.timezone, value.digest);
   const subscription = (category: string) => value.subscriptions.find((item) => item.category === category);
   const setFrequency = (category: typeof notificationCategories[number], frequency: string) => setValue((current) => {
     const existing = current.subscriptions.find((item) => item.category === category);
@@ -25,7 +27,10 @@ export function NotificationPreferencesForm({ settings }: { settings: EffectiveS
     <section><h2 className="text-xl font-semibold">Required notifications</h2><p className="mt-2 text-sm text-stone-600">Access changes, suspension, provider authorization expiry, disconnection, and critical security events remain enabled.</p><div className="mt-3 rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-950">Required · cannot be turned off</div></section>
     <section><h2 className="text-xl font-semibold">Subscriptions</h2><div className="mt-4 divide-y rounded-xl border">{notificationCategories.map((category) => <label key={category} className="grid gap-2 p-4 sm:grid-cols-[1fr_13rem] sm:items-center"><span className="font-medium capitalize">{category.replaceAll("-", " & ")}</span><select aria-label={`${category} frequency`} className={inputClass} value={subscription(category)?.frequency ?? "off"} onChange={(e) => setFrequency(category, e.target.value)}><option value="immediate">Immediate</option><option value="daily-digest">Daily digest</option><option value="weekly-digest">Weekly digest</option><option value="off">Off</option></select></label>)}</div></section>
     <section className="grid gap-5 sm:grid-cols-2"><label>Notification timezone<select className={inputClass} value={value.timezone} onChange={(e) => setValue({ ...value, timezone: e.target.value })}>{["America/Chicago","America/Phoenix","America/New_York","America/Denver","America/Los_Angeles"].map((zone) => <option key={zone}>{zone}</option>)}</select></label>
-      <label>Digest schedule<select className={inputClass} value={value.digest.frequency} onChange={(e) => setValue({ ...value, digest: { ...value.digest, frequency: e.target.value as "daily"|"weekly"|"off" } })}><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="off">Off</option></select></label>
+      <label>Digest schedule<select className={inputClass} value={value.digest.frequency} onChange={(e) => setValue({ ...value, digest: { ...value.digest, frequency: e.target.value as "daily"|"weekly"|"off" } })}><option value="daily">Daily at the scheduled time</option><option value="weekly">Weekly at the scheduled time</option><option value="off">Off</option></select></label>
+      <label>Delivery time<input aria-label="Digest delivery time" className={inputClass} type="time" value={value.digest.time} onChange={(e) => setValue({ ...value, digest: { ...value.digest, time: e.target.value } })} /></label>
+      {value.digest.frequency === "weekly" ? <label>Delivery day<select aria-label="Weekly digest day" className={inputClass} value={value.digest.day} onChange={(e) => setValue({ ...value, digest: { ...value.digest, day: Number(e.target.value) } })}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"].map((day,index)=><option key={day} value={index}>{day}</option>)}</select></label> : null}
+      <div className="rounded-xl border bg-stone-50 p-4 text-sm sm:col-span-2"><strong>Scheduled delivery</strong><p className="mt-1 text-stone-600">{nextDelivery ? `Next eligible digest: ${nextDelivery}. Digests are sent only when new eligible notifications exist.` : "Scheduled email digests are off. In-app notifications remain available."}</p></div>
       <label className="rounded-xl border p-4 sm:col-span-2"><input type="checkbox" checked={value.quietHours.enabled} onChange={(e) => setValue({ ...value, quietHours: { ...value.quietHours, enabled: e.target.checked } })} /> <strong>Quiet hours</strong><span className="block text-sm text-stone-600">{value.quietHours.start}–{value.quietHours.end} · critical alerts may still be delivered.</span></label>
     </section>
     <Save dirty={dirty} pending={pending} result={result} label="Save Notification Settings" />
@@ -45,4 +50,4 @@ export function WorkspacePreferencesForm({ settings }: { settings: EffectiveSett
   </form>;
 }
 function Section({ title, children }: { title: string; children: React.ReactNode }) { return <section><h2 className="text-xl font-semibold">{title}</h2><div className="mt-4 grid gap-5 sm:grid-cols-2">{children}</div></section>; }
-function Save({ dirty, pending, result, label }: { dirty: boolean; pending: boolean; result: SettingsActionResult|null; label: string }) { return <div className="sticky bottom-4 rounded-2xl border bg-white/95 p-4 shadow-lg backdrop-blur"><div aria-live="polite" className="mb-2 text-sm">{result?.message ?? (dirty ? "You have unsaved changes." : "All changes saved.")}</div><button disabled={!dirty || pending} className="rounded-full bg-stone-950 px-5 py-2.5 font-semibold text-white disabled:opacity-40">{pending ? "Saving…" : label}</button></div>; }
+function Save({ dirty, pending, result, label }: { dirty: boolean; pending: boolean; result: SettingsActionResult|null; label: string }) { return <div className="sticky bottom-4 rounded-2xl border bg-white/95 p-4 shadow-lg backdrop-blur"><div aria-live="polite" className="mb-2 text-sm">{result?.message ?? (dirty ? "You have unsaved changes." : "Settings loaded. No unsaved changes.")}</div><button disabled={!dirty || pending} className="rounded-full bg-stone-950 px-5 py-2.5 font-semibold text-white disabled:opacity-40">{pending ? "Saving…" : label}</button></div>; }

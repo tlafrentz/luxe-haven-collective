@@ -1,0 +1,69 @@
+{
+  "milestone": "AUTH-EMAIL-002",
+  "status": "complete",
+  "candidate": "96c5d8de3783abb0f4ee09ae792d536789b5c338",
+  "deployment_id": "dpl_DBscPwTiMJ4DsM2sZsUHGTznvZ4r",
+  "supabase_project": "jumdtoraygqaraditnie",
+  "migration": {
+    "repository_version": "20260827050000",
+    "sha256": "8f974289bb3d4214c31896ad8148683e72cd5b393966b7385c1f5342744ffe96",
+    "accidental_version": "20260827205545",
+    "repair_order": [
+      "20260827050000 applied",
+      "20260827205545 reverted"
+    ],
+    "repair_scope": "history only",
+    "final_parity": true,
+    "schema_fingerprint_before": "2ed7c6b99009853f55cd02dc1d14c717",
+    "schema_fingerprint_after": "2ed7c6b99009853f55cd02dc1d14c717"
+  },
+  "production": {
+    "apex_alias": "verified",
+    "www_alias": "verified",
+    "deployment_ready": true,
+    "three_health_checks": "pass",
+    "error_logs": "no errors found",
+    "signing_key": "rotated_sensitive_32_random_bytes",
+    "smtp_ceiling_per_hour": 30
+  },
+  "controlled_recovery": {
+    "recipient": "[CONTROLLED_OUTLOOK_RECIPIENT_REDACTED]",
+    "emails_sent": 1,
+    "cumulative_email_usage": "8/12",
+    "delivery": "delivered",
+    "scanner_get": "pending_state_only_no_verification",
+    "browser_get": "independent_pending_state",
+    "action_cookie": "httponly_secure_samesite_lax_host_only_path_scoped",
+    "same_identity_session_policy": "accepted",
+    "explicit_continuation": "one_claim_one_verification_one_recovery_grant",
+    "password_change": "succeeded_once",
+    "landing": "/dashboard",
+    "same_browser_replay": "rejected_before_password_form",
+    "fresh_private_replay": "rejected_before_password_form",
+    "controlled_session_signed_out": true
+  },
+  "final_reconciliation": {
+    "users": 115,
+    "memberships": 118,
+    "invitations": 3,
+    "recovery_request": "consumed",
+    "legacy_state": "protocol_v1_expired_immutable",
+    "scanner_state": "protocol_v2_expired",
+    "successful_state": "protocol_v2_consumed",
+    "recovery_grant": "consumed_unusable",
+    "active_recovery_states": 0,
+    "usable_password_grants": 0,
+    "unrelated_resources_changed": false
+  },
+  "security": {
+    "tokens_recorded": false,
+    "cookies_recorded": false,
+    "passwords_recorded": false,
+    "recipient_address_recorded": false,
+    "complete_action_urls_recorded": false
+  },
+  "beta_gates": {
+    "broad_beta": "closed_gmail_reputation_pending",
+    "invite_only_beta": "closed_pending_separate_abuse_control_gate"
+  }
+}

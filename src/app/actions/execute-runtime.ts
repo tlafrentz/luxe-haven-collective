@@ -41,7 +41,7 @@ export type ExecuteRuntimeResult =
       message: string;
     }>;
 
-export async function composeExecuteRuntime(): Promise<ExecuteRuntimeResult> {
+export async function composeExecuteRuntime(workspaceId?: string): Promise<ExecuteRuntimeResult> {
   try {
     const client = await createClient();
     const {
@@ -57,7 +57,7 @@ export async function composeExecuteRuntime(): Promise<ExecuteRuntimeResult> {
     const team = new SupabaseTeamAccessRepository();
     let access;
     try {
-      access = await resolveWorkspaceAccessContext(team, user.id);
+      access = await resolveWorkspaceAccessContext(team, user.id, workspaceId);
     } catch {
       return {
         ok: false,

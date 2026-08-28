@@ -1,0 +1,17 @@
+{
+  "focused_tests": {"status": "passed", "files": 10, "tests": 46},
+  "full_suite": {"status": "passed", "files": 818, "tests": 4476},
+  "typecheck": "passed",
+  "lint": {"status": "passed", "errors": 0, "pre_existing_warnings": 6},
+  "production_build": "passed",
+  "migration_lint": "passed",
+  "clean_migration_reset": "passed",
+  "secret_review": "passed",
+  "git_diff_check": "passed",
+  "migration_hashes": {
+    "20260828030000_ps002_notification_digests.sql": "79750f14228bcd994f3d6b0dbdd74bdc948216d90d2256fe8da810528ddce1db",
+    "20260828031000_ps002_notification_digest_scheduler.sql": "83da3dab6c426a6256b8dd380e73e99129c91dbc37ab251b3a1cff08b082b9d8",
+    "20260828032000_ps002_notification_digest_channel_guard.sql": "8cf94e1485c677252bada02ab646f3e64ae8eae7b64b1e171f0b261ed4bc6491",
+    "20260828033000_ps002_notification_digest_pg_net.sql": "f9dfc87c9bd786caa875e55268f7226d17be604b81f8afce799b2710d6ef5d77"
+  }
+}

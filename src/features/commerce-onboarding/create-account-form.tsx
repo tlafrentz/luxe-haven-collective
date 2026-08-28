@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { createCommerceAccountAction, type CommerceAccountActionState } from "@/app/actions/commerce-account";
-import { SubmitButton } from "@/components/forms/submit-button";
+import { PublicAuthSubmitButton, TurnstileChallenge } from "@/components/auth/turnstile";
+import { AuthCooldown } from "@/components/auth/auth-form-status";
 import { useWorkspaceDraft } from "./use-workspace-draft";
 import { isWorkspaceConfigComplete } from "./types";
 import type { Plan } from "@/lib/plans";
@@ -55,6 +56,7 @@ export function CreateAccountForm({ plan, billing }: { plan: Plan; billing: Bill
           {state.message}
         </div>
       ) : null}
+      <AuthCooldown seconds={state.retryAfterSeconds} attemptKey={state.correlationId} />
       <form action={action} className="mt-6 space-y-5">
         <input type="hidden" name="plan" value={plan.slug} />
         <input type="hidden" name="billing" value={billing} />
@@ -122,7 +124,8 @@ export function CreateAccountForm({ plan, billing }: { plan: Plan; billing: Bill
         </label>
         <FieldError errors={state.errors?.termsAccepted} />
 
-        <SubmitButton>Create Account</SubmitButton>
+        <TurnstileChallenge key={state.correlationId ?? "initial"} attemptKey={state.correlationId} />
+        <PublicAuthSubmitButton>Create Account</PublicAuthSubmitButton>
         <p className="text-sm text-stone-600">
           Already have an account?{" "}
           <Link

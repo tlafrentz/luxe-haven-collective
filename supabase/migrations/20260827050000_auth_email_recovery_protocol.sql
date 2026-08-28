@@ -11,6 +11,7 @@ create index auth_recovery_requests_expiry_idx on public.auth_recovery_requests(
 alter table public.auth_recovery_requests enable row level security;
 revoke all on table public.auth_recovery_requests from public,anon,authenticated;
 grant all on table public.auth_recovery_requests to service_role;
+
 alter table public.auth_email_action_states
   add column recovery_request_id uuid references public.auth_recovery_requests(id) on delete cascade,
   add column auth_user_id uuid,
@@ -20,6 +21,7 @@ alter table public.auth_email_action_states
   add column verified_at timestamptz,
   add column grant_issued_at timestamptz,
   add column failure_code text;
+
 -- The sole pre-cutover Production recovery presentation state was already
 -- expired but used the legacy nullable-binding shape. Classify only expired,
 -- pre-migration rows. Preserve their encrypted payload and null bindings.
@@ -32,9 +34,11 @@ where flow='recovery'
   and auth_user_id is null
   and expires_at<=now()
   and created_at<timestamptz '2026-08-27 05:00:00+00';
+
 update public.auth_email_action_states
 set protocol_version=2
 where protocol_version is null;
+
 alter table public.auth_email_action_states
   alter column protocol_version set default 2,
   alter column protocol_version set not null,
@@ -60,6 +64,7 @@ alter table public.auth_email_action_states add constraint auth_email_action_sta
       and auth_user_id is not null
     )
   );
+
 create or replace function public.enforce_auth_email_action_protocol()
 returns trigger
 language plpgsql
@@ -85,17 +90,20 @@ begin
   return new;
 end;
 $$;
+
 create trigger enforce_auth_email_action_protocol_trigger
 before insert or update on public.auth_email_action_states
 for each row execute function public.enforce_auth_email_action_protocol();
 create unique index auth_email_action_states_one_advancing_token_uidx
   on public.auth_email_action_states(token_digest)
   where status in ('claimed','verified','grant_issued','consumed');
+
 alter table public.auth_password_setup_grants
   add column action_state_id uuid references public.auth_email_action_states(id);
 create unique index auth_password_setup_grants_action_state_uidx
   on public.auth_password_setup_grants(action_state_id)
   where action_state_id is not null;
+
 create or replace function public.claim_recovery_email_action_state(
   p_state_id uuid,
   p_browser_nonce_digest text,
@@ -139,6 +147,7 @@ begin
     state_record.version+1;
 end;
 $$;
+
 create or replace function public.issue_recovery_password_setup_grant_v2(
   p_action_state_id uuid,
   p_auth_user_id uuid,
@@ -174,6 +183,7 @@ begin
   return grant_id;
 end;
 $$;
+
 create or replace function public.expire_auth_email_recovery_states()
 returns integer
 language plpgsql
@@ -199,6 +209,7 @@ begin
   return expired_count;
 end;
 $$;
+
 create or replace function public.validate_password_setup_grant(
   p_grant_token text,
   p_flow text
@@ -222,6 +233,7 @@ returns boolean language sql stable security definer set search_path=public as $
       )
   )
 $$;
+
 create or replace function public.complete_password_setup_from_auth_user_update()
 returns trigger language plpgsql security definer set search_path=public as $$
 declare grant_record public.auth_password_setup_grants%rowtype; invitation public.workspace_invitations%rowtype; membership_id uuid;
@@ -262,6 +274,7 @@ begin
   return new;
 end;
 $$;
+
 revoke all on function public.claim_recovery_email_action_state(uuid,text,integer,uuid) from public,anon,authenticated;
 grant execute on function public.claim_recovery_email_action_state(uuid,text,integer,uuid) to service_role;
 revoke all on function public.issue_recovery_password_setup_grant_v2(uuid,uuid,text,timestamptz) from public,anon,authenticated;

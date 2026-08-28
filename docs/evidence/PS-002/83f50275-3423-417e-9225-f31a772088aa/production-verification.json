@@ -1,0 +1,32 @@
+{
+  "notification_digest": {
+    "emails_sent": 1,
+    "provider_handoff": "passed",
+    "signed_webhook_events": ["sent", "delivered"],
+    "provider_delivery": "delivered",
+    "outlook_placement": "junk",
+    "organic_inbox_gate": "not_certified",
+    "placement_disposition": "OUTLOOK_DIGEST_REPUTATION_PENDING",
+    "duplicate_delivery_count": 0,
+    "empty_digest_sent": false
+  },
+  "action_plan": {
+    "fixture": "existing zero-action draft",
+    "initial_result": "controlled unavailable state",
+    "root_cause": "encoded dynamic path segment was passed to the canonical repository without decoding",
+    "corrected_deep_link": "passed",
+    "refresh": "passed",
+    "explicit_return_control": "passed",
+    "return_destination": "Action Plans tab",
+    "authorization_rls": "passed"
+  },
+  "production": {
+    "deployment_ready": true,
+    "apex_alias": "passed",
+    "www_alias": "passed",
+    "health": "passed",
+    "public_auth_mode": "invite_only",
+    "authentication_email_ceiling_changed": false,
+    "new_authentication_email_count": 0
+  }
+}

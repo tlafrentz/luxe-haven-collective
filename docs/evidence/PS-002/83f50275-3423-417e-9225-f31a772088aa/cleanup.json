@@ -1,0 +1,24 @@
+{
+  "controlled_records_before_cleanup": {
+    "digest_requests": 1,
+    "webhook_links": 2,
+    "notification_deliveries": 1,
+    "notifications": 1,
+    "notification_preferences": 1
+  },
+  "controlled_records_after_cleanup": {
+    "digest_requests": 0,
+    "webhook_links": 0,
+    "notification_deliveries": 0,
+    "notifications": 0,
+    "notification_preferences": 0
+  },
+  "final_baselines": {
+    "users": 115,
+    "memberships": 118,
+    "action_plans": 14,
+    "unread_notifications": 2,
+    "public_auth_mode": "invite_only"
+  },
+  "unrelated_resources_changed": false
+}

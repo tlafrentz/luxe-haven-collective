@@ -1,0 +1,31 @@
+{
+  "milestone": "AUTH-EMAIL-002",
+  "scope": "recovery-continuation-boundary",
+  "production_mutation_performed": false,
+  "production_email_sent": false,
+  "starting_email_usage": "7/12",
+  "diagnosis": {
+    "code": "EXISTING_SESSION_SAME_IDENTITY",
+    "state_status": "pending",
+    "state_claimed": false,
+    "provider_verification_called": false,
+    "password_mutated": false
+  },
+  "local_gates": {
+    "focused_tests": "24 passed before final additions; 18 scoped boundary tests passed after final additions",
+    "full_suite": "807 files, 4443 tests passed",
+    "typecheck": "passed",
+    "lint": "passed with 6 pre-existing warnings and no new warnings",
+    "production_build": "passed with local-only build secret",
+    "migration_lint": "no findings",
+    "clean_local_migration_reset": "passed through 20260827050000",
+    "postgres_lifecycle_rehearsal": "one claim winner; competing state rejected; expiration cleanup passed",
+    "production_ceiling_upgrade_rehearsal": "expired legacy fixture classified protocol v1 and immutable; current protocol v2 bindings enforced",
+    "transaction_rollback_rehearsal": "pre-migration schema and legacy fixture remained intact",
+    "cross_process_cookie_verification": "passed",
+    "rls_and_grants": "RLS enabled; service_role-only application access and function execution confirmed",
+    "git_diff_check": "passed"
+  },
+  "production_rollout": "separate authorization required",
+  "sensitive_values_recorded": false
+}
