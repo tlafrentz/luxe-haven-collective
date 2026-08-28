@@ -33,6 +33,7 @@ const registerSchema = loginSchema
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Enter a valid email."),
+  captchaToken: z.string().min(1, "Complete the security check."),
 });
 
 const updatePasswordSchema = z.object({
@@ -212,6 +213,7 @@ export async function forgotPasswordAction(
     parsed.data.email,
     {
       redirectTo: `${origin}/auth/callback?next=/update-password`,
+      captchaToken: parsed.data.captchaToken,
     },
   );
 

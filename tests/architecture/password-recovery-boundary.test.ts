@@ -40,6 +40,18 @@ describe("password recovery boundary", () => {
     expect(updateBoundary).not.toContain("message: error.message");
   });
 
+  it("passes a completed Turnstile challenge to password recovery", () => {
+    const form = read("src/components/auth/password-forms.tsx");
+    const actions = read("src/app/actions/auth.ts");
+
+    expect(form).toContain("NEXT_PUBLIC_TURNSTILE_SITE_KEY");
+    expect(form).toContain('name="captchaToken"');
+    expect(form).toContain("<Turnstile");
+    expect(form).toContain("disabled={!siteKey || !captchaToken}");
+    expect(actions).toContain('captchaToken: z.string().min(1');
+    expect(actions).toContain("captchaToken: parsed.data.captchaToken");
+  });
+
   it("keeps invitation and recovery flows server-bound and distinct", () => {
     const page = read("src/app/(auth)/update-password/page.tsx");
     const form = read("src/components/auth/password-forms.tsx");

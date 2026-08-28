@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "latest",
+    "@marsidev/react-turnstile": "^1.6.1",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
     "@tanstack/react-query": "latest",
