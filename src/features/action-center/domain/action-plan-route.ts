@@ -3,6 +3,14 @@ export function actionPlanPath(planId: string, workspaceId: string, from: "plans
   return `/dashboard/execute/plans/${encodeURIComponent(planId)}?${query.toString()}`;
 }
 
+export function decodeActionPlanPathId(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
 export function actionPlanBackPath(workspaceId: string, from: string|undefined) {
   const view = from === "actions" ? "all" : "plans";
   return `/dashboard/execute?${new URLSearchParams({ view, workspace: workspaceId }).toString()}`;
