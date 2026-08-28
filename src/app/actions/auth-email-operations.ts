@@ -15,17 +15,52 @@ const modeSchema = z.object({
   confirmation: z.literal("CONFIRM"),
 });
 
-export async function setPublicAuthModeAction(formData: FormData) {
+export type PublicAuthModeActionState = Readonly<{
+  status: "idle" | "success" | "version_conflict" | "rejected" | "validation_error";
+  code?: "VERSION_CONFLICT" | "COMMAND_REJECTED" | "VALIDATION_ERROR";
+  message?: string;
+  currentMode?: "closed" | "invite_only" | "broad_beta";
+  currentVersion?: number;
+  preservedReason?: string;
+}>;
+
+async function authoritativePublicAuthControl(client: Awaited<ReturnType<typeof createClient>>) {
+  const { data } = await client.from("auth_public_control").select("mode,version").eq("control_key", "public_auth").single();
+  return data as { mode: "closed" | "invite_only" | "broad_beta"; version: number } | null;
+}
+
+export async function setPublicAuthModeAction(
+  _previousState: PublicAuthModeActionState,
+  formData: FormData,
+): Promise<PublicAuthModeActionState> {
   await requireRole(["admin"]);
-  const input = modeSchema.parse(Object.fromEntries(formData));
+  const parsed = modeSchema.safeParse(Object.fromEntries(formData));
+  const preservedReason = String(formData.get("reason") ?? "").slice(0, 500);
+  if (!parsed.success) return { status: "validation_error", code: "VALIDATION_ERROR", message: "Review the required confirmation and reason before trying again.", preservedReason };
+  const input = parsed.data;
   const client = await createClient();
   const { data, error } = await client.rpc("set_public_auth_mode", {
     p_target_mode: input.targetMode, p_expected_version: input.expectedVersion, p_reason: input.reason,
     p_correlation_id: input.correlationId, p_idempotency_key: input.idempotencyKey,
   });
-  if (error) throw new Error("PUBLIC_AUTH_CONTROL_COMMAND_REJECTED");
+  if (error) {
+    const current = await authoritativePublicAuthControl(client);
+    if (error.message.includes("AUTH_PUBLIC_CONTROL_VERSION_CONFLICT")) {
+      revalidatePath("/admin/auth-email");
+      return {
+        status: "version_conflict",
+        code: "VERSION_CONFLICT",
+        message: "This setting changed while you were working. We refreshed the current state. Review it before trying again.",
+        currentMode: current?.mode,
+        currentVersion: current?.version,
+        preservedReason,
+      };
+    }
+    return { status: "rejected", code: "COMMAND_REJECTED", message: "The setting could not be changed. Review the current state and try again.", currentMode: current?.mode, currentVersion: current?.version, preservedReason };
+  }
   revalidatePath("/admin/auth-email");
-  return data;
+  const result = data as { mode: "closed" | "invite_only" | "broad_beta"; version: number };
+  return { status: "success", message: "Public authentication mode updated.", currentMode: result.mode, currentVersion: result.version };
 }
 
 export async function getAuthEmailOperations() {
