@@ -1,0 +1,14 @@
+{
+  "milestone": "PS-002",
+  "correlation": "83f50275-3423-417e-9225-f31a772088aa",
+  "candidate": "b026e90051ff09c36c491cfb7172a918b3dee65a",
+  "deployment_id": "dpl_6chCoxx4P69ZEh6GbRCnDnmiPbTq",
+  "production_url": "https://luxe-haven-collective-12h96bytl-luxe-haven-collective.vercel.app",
+  "aliases": [
+    "https://luxehavencollective.co",
+    "https://www.luxehavencollective.co"
+  ],
+  "disposition": "PS-002_BLOCKED_OUTLOOK_JUNK_PLACEMENT",
+  "completion_tag_created": false,
+  "sensitive_material_included": false
+}

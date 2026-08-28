@@ -4,6 +4,8 @@
 
 PS-002 connects persisted notification preferences to a scheduled, idempotent email-digest service and makes Action Plan navigation workspace-explicit. In-app notifications remain canonical and independent of email delivery.
 
+Final certification disposition: `PS-002_BLOCKED_OUTLOOK_JUNK_PLACEMENT`. The controlled Production digest was accepted and delivered by Resend, reconciled through signed sent/delivered webhooks, and its Action Plan deep link passed after the bounded route corrections. Outlook placed the message in Junk, so the milestone is not represented as fully complete and no completion tag was created.
+
 ## Notification digest contract
 
 - Email is considered only when the workspace preference is confirmed, its global email channel is enabled, and the individual category also includes the email channel.
@@ -19,14 +21,16 @@ The scheduler is `/api/internal/notifications/digests`, protected by `NOTIFICATI
 
 ## Action Plan navigation contract
 
-All live Action Plan links use the canonical workspace-aware route builder. The detail route resolves the requested workspace before loading a stable plan ID, returns a controlled non-enumerating unavailable state when no authorized plan is found, supports zero-action drafts, and preserves the originating Action Plans tab in Back navigation.
+All live Action Plan links use the canonical workspace-aware route builder. The detail route decodes the encoded stable plan ID once, resolves the requested workspace before loading it, returns a controlled non-enumerating unavailable state when no authorized plan is found, supports zero-action drafts, and exposes an explicit Return to Action Plans control that preserves the originating tab.
 
 ## Verification
 
 - Focused PS-002 and regression tests: passed.
-- Full suite: 817 files and 4,473 tests passed.
+- Full suite: 818 files and 4,476 tests passed.
 - Typecheck, lint, production build, migration lint/analyzer, clean migration reset, and `git diff --check`: passed.
-- Production deployment and the single controlled Outlook digest are recorded separately under the correlation-bound PS-002 evidence directory.
+- Production navigation verification passed on deployment `dpl_6chCoxx4P69ZEh6GbRCnDnmiPbTq` for candidate `b026e90051ff09c36c491cfb7172a918b3dee65a`.
+- The single controlled Outlook digest was provider-delivered but placed in Junk. This is retained as a failed organic-placement gate, not an Inbox pass.
+- All controlled database fixture records were removed after evidence capture; users, memberships, plans, and unrelated unread notifications returned to their baselines.
 
 ## Scope protections
 
