@@ -8,7 +8,9 @@
     "https://luxehavencollective.co",
     "https://www.luxehavencollective.co"
   ],
-  "disposition": "PS-002_BLOCKED_OUTLOOK_JUNK_PLACEMENT",
-  "completion_tag_created": false,
+  "disposition": "PS-002_COMPLETE_WITH_DIGEST_REPUTATION_HOLD",
+  "mailbox_placement_disposition": "OUTLOOK_DIGEST_REPUTATION_PENDING",
+  "completion_tag": "PS-002-complete",
+  "completion_tag_created": true,
   "sensitive_material_included": false
 }

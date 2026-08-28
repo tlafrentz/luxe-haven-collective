@@ -4,7 +4,7 @@
 
 PS-002 connects persisted notification preferences to a scheduled, idempotent email-digest service and makes Action Plan navigation workspace-explicit. In-app notifications remain canonical and independent of email delivery.
 
-Final certification disposition: `PS-002_BLOCKED_OUTLOOK_JUNK_PLACEMENT`. The controlled Production digest was accepted and delivered by Resend, reconciled through signed sent/delivered webhooks, and its Action Plan deep link passed after the bounded route corrections. Outlook placed the message in Junk, so the milestone is not represented as fully complete and no completion tag was created.
+Final certification disposition: `PS-002_COMPLETE_WITH_DIGEST_REPUTATION_HOLD`. The controlled Production digest was accepted and delivered by Resend, reconciled through signed sent/delivered webhooks, and authenticated with aligned SPF, DKIM, and DMARC over TLS. Its Action Plan deep link passed after the bounded route corrections. Outlook placed the message in Junk, which is retained as `OUTLOOK_DIGEST_REPUTATION_PENDING`; organic Outlook Inbox placement is not certified.
 
 ## Notification digest contract
 
@@ -29,7 +29,7 @@ All live Action Plan links use the canonical workspace-aware route builder. The 
 - Full suite: 818 files and 4,476 tests passed.
 - Typecheck, lint, production build, migration lint/analyzer, clean migration reset, and `git diff --check`: passed.
 - Production navigation verification passed on deployment `dpl_6chCoxx4P69ZEh6GbRCnDnmiPbTq` for candidate `b026e90051ff09c36c491cfb7172a918b3dee65a`.
-- The single controlled Outlook digest was provider-delivered but placed in Junk. This is retained as a failed organic-placement gate, not an Inbox pass.
+- The single controlled Outlook digest was provider-delivered but placed in Junk. This is retained as an operational reputation hold, not an Inbox pass. Inspection found no authentication, tracking, template, or link-integrity defect requiring an engineering correction.
 - All controlled database fixture records were removed after evidence capture; users, memberships, plans, and unrelated unread notifications returned to their baselines.
 
 ## Scope protections

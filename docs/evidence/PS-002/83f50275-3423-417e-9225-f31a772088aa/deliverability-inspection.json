@@ -1,0 +1,43 @@
+{
+  "inspection_type": "read_only",
+  "provider_status": "delivered",
+  "authentication": {
+    "spf": "pass",
+    "dkim": "pass",
+    "dmarc": "pass",
+    "alignment": "pass",
+    "tls": "TLS1.2"
+  },
+  "identity": {
+    "sender_domain": "luxehavenco.com",
+    "return_path_domain": "send.luxehavenco.com",
+    "message_id": "expected provider-generated identity confirmed through the reconciled Resend delivery"
+  },
+  "tracking": {
+    "click_tracking": "disabled",
+    "open_tracking": "disabled"
+  },
+  "content": {
+    "malformed_html": false,
+    "broken_links": false,
+    "excessive_promotional_content": false,
+    "unexpected_domains": false,
+    "canonical_action_plan_link": "passed"
+  },
+  "original_reconciliation_before_cleanup": {
+    "digest_requests": 1,
+    "provider_sends": 1,
+    "signed_delivery_webhook_events": 1,
+    "recipient_delivery_projections": 1
+  },
+  "post_evidence_cleanup": {
+    "controlled_digest_records": 0,
+    "test_identity_deleted": false,
+    "test_identity_disposition": "pre-existing controlled identity retained"
+  },
+  "mailbox_placement": "junk",
+  "classification": "OUTLOOK_DIGEST_REPUTATION_PENDING",
+  "engineering_correction_required": false,
+  "additional_email_sent": false,
+  "production_mode": "invite_only"
+}

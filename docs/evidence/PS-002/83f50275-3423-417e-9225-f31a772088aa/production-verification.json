@@ -5,7 +5,8 @@
     "signed_webhook_events": ["sent", "delivered"],
     "provider_delivery": "delivered",
     "outlook_placement": "junk",
-    "organic_inbox_gate": "failed",
+    "organic_inbox_gate": "not_certified",
+    "placement_disposition": "OUTLOOK_DIGEST_REPUTATION_PENDING",
     "duplicate_delivery_count": 0,
     "empty_digest_sent": false
   },
