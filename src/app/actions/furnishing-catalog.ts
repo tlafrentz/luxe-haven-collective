@@ -5,6 +5,7 @@ import { assertFurnishingCatalogMutationAllowed } from "./furnishing-catalog-act
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import ExcelJS from "exceljs";
+import { createHash } from "node:crypto";
 import { requireRole } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -300,7 +301,11 @@ const roomForLabel = (room: string) => {
   return "other";
 };
 const catalogHeader = (sheet: ExcelJS.Worksheet) => {
-  for (let rowNumber = 1; rowNumber <= Math.min(sheet.rowCount, 20); rowNumber++) {
+  for (
+    let rowNumber = 1;
+    rowNumber <= Math.min(sheet.rowCount, 20);
+    rowNumber++
+  ) {
     const values = sheet.getRow(rowNumber).values as ExcelJS.CellValue[];
     const names = values.map((value) => cellText(value).toLowerCase());
     const itemColumn = names.findIndex((value) => value === "item");
@@ -317,6 +322,10 @@ const catalogHeader = (sheet: ExcelJS.Worksheet) => {
         linkColumn,
         priceColumn,
         roomColumn: names.findIndex((value) => value === "room"),
+        quantityColumn: names.findIndex((value) => value === "quantity"),
+        extendedCostColumn: names.findIndex(
+          (value) => value === "extended cost",
+        ),
       };
   }
   return null;
@@ -337,6 +346,10 @@ const categoryHint = (name: string) => {
 export async function startCatalogImportAction(formData: FormData) {
   const { user, db } = await catalogAdmin();
   const workspaceId = text(formData, "workspaceId");
+  const correlationId = text(formData, "correlationId");
+  const idempotencyKey = text(formData, "idempotencyKey");
+  if (!/^[0-9a-f-]{36}$/i.test(correlationId) || idempotencyKey.length < 16)
+    throw new Error("FS008G_C3_MUTATION_WINDOW_INVALID");
   await assertFurnishingCatalogMutationAllowed(workspaceId);
   const file = formData.get("file");
   if (
@@ -346,8 +359,32 @@ export async function startCatalogImportAction(formData: FormData) {
     !/\.xlsx$/i.test(file.name)
   )
     throw new Error("CATALOG_IMPORT_FILE_INVALID");
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const sourceSha256 = createHash("sha256").update(bytes).digest("hex");
+  const rpcInput = {
+    actorId: user.id,
+    workspaceId,
+    sourceFilename: file.name,
+    sourceSha256,
+    correlationId,
+    idempotencyKey,
+  };
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(await file.arrayBuffer());
+  try {
+    await workbook.xlsx.load(
+      bytes as unknown as Parameters<typeof workbook.xlsx.load>[0],
+    );
+  } catch {
+    await db.rpc(
+      "fail_fs008g_c3_catalog_import" as never,
+      {
+        p_input: rpcInput,
+        p_failure_code: "FS008G_C3_WORKBOOK_INVALID",
+        p_safe_diagnostics: { stage: "xlsx_parse" },
+      } as never,
+    );
+    throw new Error("FS008G_C3_WORKBOOK_INVALID");
+  }
   const [{ data: categories }, { data: retailers }, { data: products }] =
     await Promise.all([
       db.from("furnishing_product_categories").select("id,slug"),
@@ -356,27 +393,23 @@ export async function startCatalogImportAction(formData: FormData) {
         .from("furnishing_products")
         .select("id,name,brand,manufacturer_part_number"),
     ]);
-  const { data: catalogImport, error } = await db
-    .from("furnishing_catalog_imports")
-    .insert({
-      workspace_id: workspaceId,
-      source_filename: file.name,
-      status: "parsing",
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
   const categoryBySlug = new Map(
     (categories ?? []).map((row) => [row.slug, row.id]),
   );
   const retailerRows = retailers ?? [],
     existing = products ?? [],
     proposals: Record<string, unknown>[] = [];
-  for (const sheet of workbook.worksheets) {
-    const mapping = catalogHeader(sheet);
-    if (!mapping) continue;
-    const { itemColumn, linkColumn, priceColumn, roomColumn } = mapping;
+  const sheet = workbook.getWorksheet("Catalog Review");
+  const mapping = sheet ? catalogHeader(sheet) : null;
+  if (sheet && mapping) {
+    const {
+      itemColumn,
+      linkColumn,
+      priceColumn,
+      roomColumn,
+      quantityColumn,
+      extendedCostColumn,
+    } = mapping;
     for (
       let rowNumber = mapping.rowNumber + 1;
       rowNumber <= sheet.rowCount;
@@ -386,7 +419,8 @@ export async function startCatalogImportAction(formData: FormData) {
         sourceItem = cellText(row.getCell(itemColumn).value);
       if (!sourceItem) continue;
       const rawUrl = cellText(row.getCell(linkColumn).value),
-        price = Number(cellText(row.getCell(priceColumn).value));
+        price = Number(cellText(row.getCell(priceColumn).value)),
+        quantity = Number(cellText(row.getCell(quantityColumn).value));
       let productUrl: string | null = null,
         domain = "";
       try {
@@ -403,7 +437,6 @@ export async function startCatalogImportAction(formData: FormData) {
           normalizeCatalogName(sourceItem),
       );
       proposals.push({
-        import_id: catalogImport.id,
         source_sheet: sheet.name,
         source_row: rowNumber,
         source_item: sourceItem,
@@ -430,41 +463,58 @@ export async function startCatalogImportAction(formData: FormData) {
         ],
         raw_source: {
           item: sourceItem,
-          room: sheet.name,
-          hasQuantityOrTotal: sheet.columnCount > 3,
+          room:
+            roomColumn > 0
+              ? cellText(row.getCell(roomColumn).value)
+              : sheet.name,
+          quantity: Number.isFinite(quantity) ? quantity : null,
+          canonicalExtendedCostMinor:
+            Number.isFinite(quantity) && Number.isFinite(price)
+              ? Math.round(quantity * price * 100)
+              : null,
+          cachedExtendedCostIgnored:
+            extendedCostColumn > 0 &&
+            Boolean(row.getCell(extendedCostColumn).value),
         },
       });
     }
   }
-  if (!proposals.length) {
-    await db
-      .from("furnishing_catalog_imports")
-      .update({ status: "failed", error_code: "CATALOG_IMPORT_NO_ROWS" })
-      .eq("id", catalogImport.id)
-      .eq("status", "parsing");
-    await db.from("furnishing_catalog_activity").insert({
-      workspace_id: workspaceId,
-      import_id: catalogImport.id,
-      event_type: "catalog_inventory_import_failed",
-      actor_id: user.id,
-      metadata: { code: "CATALOG_IMPORT_NO_ROWS" },
-    });
-    redirect(`/admin/furnishing/products/import/${catalogImport.id}`);
+  if (
+    !sheet ||
+    !mapping ||
+    mapping.rowNumber !== 4 ||
+    proposals.length !== 110 ||
+    sourceSha256 !==
+      "ba849761b7c54060a8e6a7c656c57e03a33a234dfe4233c1fb17902e1e304823"
+  ) {
+    const failed = await db.rpc(
+      "fail_fs008g_c3_catalog_import" as never,
+      {
+        p_input: rpcInput,
+        p_failure_code: "FS008G_C3_AUTHORITATIVE_WORKBOOK_MISMATCH",
+        p_safe_diagnostics: {
+          stage: "catalog_parse",
+          sheetFound: Boolean(sheet),
+          headerRow: mapping?.rowNumber ?? null,
+          rowCount: proposals.length,
+        },
+      } as never,
+    );
+    if (failed.error || !failed.data)
+      throw new Error("FS008G_C3_FAILURE_TERMINALIZATION_UNAVAILABLE");
+    redirect(
+      `/admin/furnishing/products/import/${(failed.data as { id: string }).id}`,
+    );
   }
-  if (proposals.length)
-    await db.from("furnishing_catalog_import_items").insert(proposals);
-  await db
-    .from("furnishing_catalog_imports")
-    .update({ status: "review_required", total_rows: proposals.length })
-    .eq("id", catalogImport.id);
-  await db.from("furnishing_catalog_activity").insert({
-    workspace_id: workspaceId,
-    import_id: catalogImport.id,
-    event_type: "catalog_inventory_import_started",
-    actor_id: user.id,
-    metadata: { rows: proposals.length },
-  });
-  redirect(`/admin/furnishing/products/import/${catalogImport.id}`);
+  const committed = await db.rpc(
+    "commit_fs008g_c3_catalog_import" as never,
+    { p_input: rpcInput, p_items: proposals } as never,
+  );
+  if (committed.error || !committed.data)
+    throw new Error("FS008G_C3_ATOMIC_COMMIT_UNAVAILABLE");
+  redirect(
+    `/admin/furnishing/products/import/${(committed.data as { id: string }).id}`,
+  );
 }
 
 export async function completeCatalogImportAction(formData: FormData) {
@@ -481,7 +531,9 @@ export async function completeCatalogImportAction(formData: FormData) {
     importTarget.status !== "review_required"
   )
     throw new Error("CATALOG_IMPORT_REVIEW_REQUIRED");
-  await assertFurnishingCatalogMutationAllowed(String(importTarget.workspace_id));
+  await assertFurnishingCatalogMutationAllowed(
+    String(importTarget.workspace_id),
+  );
   const { data: items, error } = await db
     .from("furnishing_catalog_import_items")
     .select("*")
