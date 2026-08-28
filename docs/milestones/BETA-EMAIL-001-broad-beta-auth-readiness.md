@@ -76,3 +76,17 @@ Candidate `ff3f9f9887a3a8ce53eda1b09f10c69e46be9af7`, deployed as `dpl_EWp1HP5PV
 Certification then stopped at `CONTROLLED_PUBLIC_SIGNUP_FAILED_AFTER_VALID_TURNSTILE`. The widget reported a successful challenge, but the single controlled public signup returned the sanitized failure state before any Auth user, membership, invitation, email-request record, or authentication email was created. No retry was performed. Production was returned to `closed` at version 7.
 
 The final disposition remains `BROAD_BETA_BLOCKED_ENGINEERING`. The stale-version defect is resolved, but broad and invite-only beta gates remain closed pending a separately reviewed diagnosis of the valid-Turnstile signup failure. Authentication-email usage remains `0/6`; no completion tag is created.
+
+## Final closure
+
+The Turnstile configuration mismatch was corrected and one controlled public signup subsequently passed with a fresh challenge. The confirmation reached the controlled Gmail Inbox, the mode returned to `invite_only`, and the controlled signup identity was removed after evidence capture.
+
+The final observability correction is deployed as candidate `6fcafa7053789d6f5b4b6775b0f596abc90a8e3f` in Production deployment `dpl_CVAzD1G6uAQe1reZiUkFLN2nvn6f`. Canonical Admin invitations now create a durable `auth_email_requests` record before Auth handoff. Exact command replay reuses that request without another send; deterministic success and failure transitions preserve request state, and delivery failure invokes the existing canonical invitation cleanup.
+
+The already-sent controlled Outlook invitation was reconciled without clicking, resending, or recreating it. One record was explicitly marked `legacy_reconciled`; this evidence does not claim the request existed at send time. Its exact sent and delivered receipts shared the canonical provider message ID and were linked to that request. No unrelated receipt was changed, no membership was created, and the Admin projection reported `delivered`.
+
+Canonical cleanup removed the controlled Outlook Auth identity and invalidated its invitation. The invitation row is retained as terminal `revoked` audit evidence, with zero pending invitations and no usable invitation link. The controlled Gmail signup identity was also removed. Final Production totals are 115 users, 118 memberships, four invitation evidence rows (the original baseline three plus the retained revoked controlled row), zero pending invitations, two authentication-email requests, 13 webhook receipts, and two active provider-fixture suppressions.
+
+Production is healthy, both aliases resolve to the Ready deployment, migration parity is exact through `20260828020000`, anonymous sign-in remains disabled, and the SMTP ceiling remains 30/hour. Authentication-email usage for this certification is `2/6`. Local gates passed: 813 test files and 4460 tests, typecheck, production build, migration lint, two clean resets, secret review, and `git diff --check`; lint has six pre-existing warnings and zero errors.
+
+The final certified disposition is `BROAD_BETA_HELD_GMAIL_REPUTATION`. Invite-only Production remains available in `invite_only` mode. Broad public beta remains held, and Gmail reputation moves to operational observation only. No further code, DNS, template, or artificial warm-up work is authorized under BETA-EMAIL-001.

@@ -1,0 +1,91 @@
+{
+  "milestone": "BETA-EMAIL-001",
+  "captured_at": "2026-08-28T03:05:00Z",
+  "final_disposition": "BROAD_BETA_HELD_GMAIL_REPUTATION",
+  "application": {
+    "correction_commit": "6db3a82389991ef8c7d3e74d2b27bb76ad8a9a67",
+    "deployed_candidate": "6fcafa7053789d6f5b4b6775b0f596abc90a8e3f",
+    "deployment_id": "dpl_CVAzD1G6uAQe1reZiUkFLN2nvn6f",
+    "deployment_status": "Ready",
+    "production_aliases": [
+      "luxehavencollective.co",
+      "www.luxehavencollective.co"
+    ],
+    "health": "three consecutive passes",
+    "recent_error_logs": "no errors found"
+  },
+  "migrations": {
+    "invitation_observability": {
+      "version": "20260828020000",
+      "sha256": "64526f03701e35999a9694071e29a693ae0fb0460211caf2f53c58d8539904a2",
+      "parity": "exact"
+    },
+    "history_reconciliation": {
+      "version": "20260828011000",
+      "sha256": "f8a504527f3ec3f69277f74109d2eadbff34e5ffe512811e84eff3f7b54f07cd",
+      "disposition": "Previously applied Production migration copied byte-identically into the isolated candidate for exact repository/remote parity; no SQL was reapplied."
+    }
+  },
+  "invitation_observability": {
+    "new_command_contract": "Durable invitation request is created before Auth handoff; exact replay returns the existing request without another send; delivery failure reaches a terminal request state and invokes canonical cleanup.",
+    "legacy_outlook_reconciliation": {
+      "classification": "legacy_reconciled",
+      "request_created_after_original_send": true,
+      "claim_of_send_time_existence": false,
+      "canonical_invitation_match": true,
+      "provider_message_match": true,
+      "sent_receipts_linked": 1,
+      "delivered_receipts_linked": 1,
+      "other_receipts_modified": 0,
+      "admin_projection": "delivered",
+      "new_email_sent": false
+    }
+  },
+  "delivery_certification": {
+    "outlook": "organic Inbox; delivered; authenticated provider signals passed",
+    "gmail": "controlled signup confirmation reached Inbox, but prior reputation evidence remains unresolved",
+    "new_authentication_email_usage": "2/6",
+    "smtp_hourly_ceiling": 30
+  },
+  "cleanup": {
+    "controlled_outlook_auth_identity": "removed",
+    "controlled_outlook_memberships": 0,
+    "controlled_outlook_entitlements": 0,
+    "controlled_outlook_invitation": "terminal revoked evidence row retained; no pending or usable link",
+    "controlled_gmail_signup_identity": "removed",
+    "pending_invitations": 0,
+    "controlled_sessions": "signed out or absent"
+  },
+  "final_reconciliation": {
+    "users": 115,
+    "memberships": 118,
+    "invitations_total": 4,
+    "invitations_explanation": "The baseline three invitations are unchanged; the fourth row is the terminal revoked controlled Outlook evidence row.",
+    "pending_invitations": 0,
+    "authentication_email_requests": 2,
+    "webhook_receipts": 13,
+    "active_suppressions": 2,
+    "public_auth_mode": "invite_only",
+    "anonymous_sign_in": false,
+    "smtp_hourly_ceiling": 30
+  },
+  "engineering_gates": {
+    "focused_tests": "pass",
+    "full_suite": "813 files; 4460 tests pass",
+    "typecheck": "pass",
+    "lint": "pass with six pre-existing warnings and zero errors",
+    "production_build": "pass",
+    "migration_lint": "pass",
+    "clean_migration_reset": "two passes",
+    "secret_review": "pass",
+    "git_diff_check": "pass"
+  },
+  "operational_state": {
+    "production_mode": "invite_only",
+    "invite_only_beta": "available",
+    "broad_public_beta": "held",
+    "gmail_reputation": "operational observation only",
+    "further_code_dns_template_or_warmup_changes_under_this_milestone": "not authorized"
+  },
+  "privacy": "No recipient address, provider secret, CAPTCHA token, Auth token, invitation token, password, raw cookie, message content, or complete action URL is retained."
+}
