@@ -11,7 +11,8 @@
   "identity": {
     "sender_domain": "luxehavenco.com",
     "return_path_domain": "send.luxehavenco.com",
-    "message_id": "expected provider-generated identity confirmed through the reconciled Resend delivery"
+    "message_id_domain": "email.amazonses.com",
+    "message_id_disposition": "expected provider-generated identity consistent with the reconciled Resend delivery"
   },
   "tracking": {
     "click_tracking": "disabled",
