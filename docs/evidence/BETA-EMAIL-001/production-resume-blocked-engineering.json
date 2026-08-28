@@ -1,0 +1,74 @@
+{
+  "milestone": "BETA-EMAIL-001",
+  "captured_at": "2026-08-28T01:36:00Z",
+  "correction_candidate": "ff3f9f9887a3a8ce53eda1b09f10c69e46be9af7",
+  "deployment_id": "dpl_EWp1HP5PVTzijeyDhED4aWkPDRvm",
+  "stale_version_correction": {
+    "status": "pass",
+    "admin_a_transition": "closed_to_invite_only_version_5",
+    "admin_b_stale_result": "VERSION_CONFLICT",
+    "generic_error_boundary_invoked": false,
+    "accessible_inline_notice": true,
+    "authoritative_refresh": "invite_only_version_5",
+    "reason_preserved": true,
+    "automatic_retry": false,
+    "rejected_command_effects": "zero",
+    "explicit_retry": "invite_only_to_broad_beta_version_6",
+    "success_audits_for_retry": 1
+  },
+  "local_gates": {
+    "focused_tests": "3 pass",
+    "full_suite": "812 files; 4456 tests pass",
+    "typecheck": "pass",
+    "lint": "pass with six pre-existing warnings and no new warnings",
+    "production_build": "pass",
+    "migration_lint": "pass; no findings",
+    "secret_review": "pass",
+    "git_diff_check": "pass"
+  },
+  "production_deployment": {
+    "ready": true,
+    "aliases": [
+      "luxehavencollective.co",
+      "www.luxehavencollective.co"
+    ],
+    "health": "three consecutive passes",
+    "migration_change": false,
+    "turnstile": "configured_and_enabled",
+    "resend_webhook": "receiving"
+  },
+  "new_failure": {
+    "classification": "BROAD_BETA_BLOCKED_ENGINEERING",
+    "code": "CONTROLLED_PUBLIC_SIGNUP_FAILED_AFTER_VALID_TURNSTILE",
+    "observed_behavior": "The Production Turnstile widget displayed a successful challenge, but the single controlled public signup returned the sanitized request-failure state.",
+    "provider_or_application_detail": "No raw provider error was exposed and no corresponding sanitized application error appeared in the deployment error log. Supabase Auth audit contained no accepted action.",
+    "effects": {
+      "user_created": false,
+      "membership_created": false,
+      "invitation_created": false,
+      "email_request_recorded": false,
+      "authentication_email_sent": false
+    }
+  },
+  "final_reconciliation": {
+    "public_auth_mode": "closed",
+    "control_version": 7,
+    "users": 115,
+    "memberships": 118,
+    "invitations": 3,
+    "authentication_email_requests": 0,
+    "new_authentication_emails": 0,
+    "certification_budget": "0/6",
+    "smtp_hourly_ceiling": 30,
+    "completion_tag_created": false
+  },
+  "not_executed_after_failure": [
+    "Outlook invitation certification",
+    "Gmail A and Gmail B placement certification",
+    "signup confirmation consumption",
+    "protected recovery certification",
+    "suppression release certification",
+    "final invite-only activation"
+  ],
+  "privacy": "No credentials, CAPTCHA tokens, webhook secrets, recipient addresses, passwords, Auth tokens, or complete action URLs are retained."
+}

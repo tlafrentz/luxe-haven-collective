@@ -68,3 +68,11 @@ Turnstile and the Resend webhook were configured successfully. Direct Production
 The final disposition is `BROAD_BETA_BLOCKED_ENGINEERING`. A stale expected-version control command was correctly rejected by PostgreSQL, but the Admin server action surfaced `PUBLIC_AUTH_CONTROL_COMMAND_REJECTED` as a generic server-error page instead of a controlled, accessible stale-version result. No stale mutation committed, no user was created, and no authentication email was sent. The emergency control returned Production to `closed` at version 4.
 
 Outlook, Gmail, signup, recovery, and remaining browser CAPTCHA certification were not executed after the failure. Authentication-email usage for this milestone remains `0/6`. No completion tag is authorized for this run.
+
+### Corrected-candidate resume
+
+Candidate `ff3f9f9887a3a8ce53eda1b09f10c69e46be9af7`, deployed as `dpl_EWp1HP5PVTzijeyDhED4aWkPDRvm`, corrected the stale-version boundary. Direct Production two-tab verification proved an accessible `VERSION_CONFLICT`, authoritative refresh to version 5, preserved reason, no automatic retry, zero rejected-command effects, and one explicit version-6 retry with one success audit.
+
+Certification then stopped at `CONTROLLED_PUBLIC_SIGNUP_FAILED_AFTER_VALID_TURNSTILE`. The widget reported a successful challenge, but the single controlled public signup returned the sanitized failure state before any Auth user, membership, invitation, email-request record, or authentication email was created. No retry was performed. Production was returned to `closed` at version 7.
+
+The final disposition remains `BROAD_BETA_BLOCKED_ENGINEERING`. The stale-version defect is resolved, but broad and invite-only beta gates remain closed pending a separately reviewed diagnosis of the valid-Turnstile signup failure. Authentication-email usage remains `0/6`; no completion tag is created.
