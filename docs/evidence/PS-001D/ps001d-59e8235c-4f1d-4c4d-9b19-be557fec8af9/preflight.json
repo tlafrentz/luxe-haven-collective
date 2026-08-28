@@ -1,0 +1,67 @@
+{
+  "milestone": "PS-001D",
+  "productionRunId": "ps001d-production-59e8235c-4f1d-4c4d-9b19-be557fec8af9",
+  "correlationId": "ps001d-59e8235c-4f1d-4c4d-9b19-be557fec8af9",
+  "result": "blocked-after-claim-before-consumption",
+  "candidate": {
+    "commit": "6f95ce7a69a08633c576d42fb816fc2d276c995a",
+    "deploymentId": "dpl_6Vva91Ym9zSefSmAZTfkZytZU6t7",
+    "deploymentUrl": "https://luxe-haven-collective-jej0btkhb-luxe-haven-collective.vercel.app",
+    "productionAlias": "https://luxehavencollective.co",
+    "deployedCommitMatches": true
+  },
+  "passed": {
+    "deploymentReadyAndPromoted": true,
+    "aliasAssigned": true,
+    "aliasHealthStatuses": [200, 200, 200],
+    "independentAliasMechanisms": ["resolved-edge-a", "resolved-edge-b", "node-fetch"],
+    "tlsVerification": "TLSv1.3 certificate verification OK",
+    "immutableDeploymentRedirect": "expected Vercel Authentication SSO redirect",
+    "probeRuntimeErrors": 0,
+    "migrationParityThrough": "20260824030000",
+    "controlledTenantId": "4abe0850-6ad7-40a0-89bb-b1fb5e6afe82",
+    "controlledTenantDesignation": "PS001D_VERIFICATION_ONLY_NON_CUSTOMER",
+    "controlledTenantApprovedAndUnexpired": true,
+    "customerRelationships": 0,
+    "automationRelationships": 0,
+    "furnishingCatalogProjectRelationships": 0,
+    "activeClaimConflictsBeforeAcquisition": 0,
+    "ledgerEntriesBeforeAcquisition": 0,
+    "operatorOrdinaryRole": "operator",
+    "operatorPropertyAccessMode": "selected",
+    "operatorCrossTenantMemberships": 0,
+    "operatorAuthenticatedAndActive": true,
+    "authorizationCount": 5
+  },
+  "claim": {
+    "id": "bd15e906-b6c7-4674-9bf4-6152097e57cb",
+    "acquiredAt": "2026-08-24T03:09:51.705989+00:00",
+    "completedAt": "2026-08-24T03:10:42.863659+00:00",
+    "status": "failed",
+    "mutationStartedAt": null,
+    "failureCode": "CONTROLLED_IDENTITY_SESSION_UNAVAILABLE",
+    "replayRejected": true,
+    "replayRejectionCode": "PS001D_IDENTITY_SET_INCOMPLETE"
+  },
+  "blocker": {
+    "code": "CONTROLLED_IDENTITY_SESSION_UNAVAILABLE",
+    "expected": "Approved ordinary Production sessions for owner, operator, and wrong-tenant personas, obtained without impersonation or auth-state changes.",
+    "observed": "The controlled identities use unrevealed random credentials and no approved browser session or credential material is available in the verification workspace.",
+    "failClosedReason": "Admin-generated sessions, magic links, password resets, or identity substitution would violate the no-impersonation and ordinary-authentication boundaries."
+  },
+  "reconciliation": {
+    "authorizationsRevoked": 5,
+    "ledgerEntries": 0,
+    "syntheticProperties": 0,
+    "syntheticBookings": 0,
+    "operatorPropertyAssignments": 0,
+    "businessDomainMutations": 0,
+    "cleanupRequired": false,
+    "correlationReusable": false
+  },
+  "auditReferences": [
+    "3202180a-5072-4243-8aa7-118a80085061",
+    "7aec3d19-d6d2-4b58-8459-90ec317b33f2"
+  ],
+  "sanitization": "No credentials, tokens, email addresses, customer content, or raw provider payloads are retained."
+}

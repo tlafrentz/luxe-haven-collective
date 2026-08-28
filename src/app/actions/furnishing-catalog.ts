@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import ExcelJS from "exceljs";
 import { createHash } from "node:crypto";
+import { resolveFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
 import { requireRole } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -345,11 +346,10 @@ const categoryHint = (name: string) => {
 
 export async function startCatalogImportAction(formData: FormData) {
   const { user, db } = await catalogAdmin();
-  const workspaceId = text(formData, "workspaceId");
-  const correlationId = text(formData, "correlationId");
-  const idempotencyKey = text(formData, "idempotencyKey");
-  if (!/^[0-9a-f-]{36}$/i.test(correlationId) || idempotencyKey.length < 16)
-    throw new Error("FS008G_C3_MUTATION_WINDOW_INVALID");
+  const context = await resolveFurnishingCommandContext(text(formData, "commandContextId"), { commandType: "catalog.import.parse", targetType: "workspace" });
+  const workspaceId = context.workspaceId;
+  const correlationId = context.correlationId;
+  const idempotencyKey = context.idempotencyKey;
   await assertFurnishingCatalogMutationAllowed(workspaceId);
   const file = formData.get("file");
   if (
@@ -520,126 +520,43 @@ export async function startCatalogImportAction(formData: FormData) {
 export async function completeCatalogImportAction(formData: FormData) {
   const { user, db } = await catalogAdmin();
   const importId = text(formData, "importId");
+  const context = await resolveFurnishingCommandContext(text(formData, "commandContextId"), { commandType: "catalog.import.apply", targetType: "import" });
+  if (context.targetId !== importId) throw new Error("FS008G_CONTEXT_TARGET_MISMATCH");
   const { data: importTarget, error: importTargetError } = await db
     .from("furnishing_catalog_imports")
-    .select("workspace_id,status")
+    .select("workspace_id,status,correlation_id,optimistic_version")
     .eq("id", importId)
     .maybeSingle();
   if (
     importTargetError ||
     !importTarget?.workspace_id ||
-    importTarget.status !== "review_required"
+    !["review_required", "complete"].includes(importTarget.status)
   )
     throw new Error("CATALOG_IMPORT_REVIEW_REQUIRED");
+  if (String(importTarget.workspace_id) !== context.workspaceId)
+    throw new Error("FS008G_C6_TARGET_MISMATCH");
+  const workspaceId = context.workspaceId;
+  const correlationId = String(importTarget.correlation_id);
+  const idempotencyKey = context.idempotencyKey;
+  const expectedVersion = Number(importTarget.optimistic_version);
   await assertFurnishingCatalogMutationAllowed(
     String(importTarget.workspace_id),
   );
-  const { data: items, error } = await db
-    .from("furnishing_catalog_import_items")
-    .select("*")
-    .eq("import_id", importId)
-    .order("source_sheet")
-    .order("source_row");
-  if (error) throw new Error(error.message);
-  await db
-    .from("furnishing_catalog_imports")
-    .update({ status: "importing" })
-    .eq("id", importId);
-  let created = 0,
-    matched = 0,
-    skipped = 0,
-    failed = 0;
-  for (const item of items ?? []) {
-    if (item.review_action === "skip") {
-      skipped++;
-      continue;
-    }
-    try {
-      let productId = item.matched_product_id as string | null;
-      if (!productId) {
-        const { data: product, error: productError } = await db
-          .from("furnishing_products")
-          .insert({
-            scope: "platform",
-            workspace_id: null,
-            name: item.proposed_name,
-            description: null,
-            product_type: "catalog_item",
-            category: "Imported",
-            category_id: item.proposed_category_id,
-            status: "draft",
-            created_by: user.id,
-            source_type: "xlsx",
-            source_import_id: importId,
-            source_sheet: item.source_sheet,
-            source_row: item.source_row,
-            imported_at: new Date().toISOString(),
-          })
-          .select("id")
-          .single();
-        if (productError) throw productError;
-        productId = product.id;
-        created++;
-        if (item.proposed_room_type_id)
-          await db.from("furnishing_product_room_compatibility").insert({
-            product_id: productId,
-            room_type_id: item.proposed_room_type_id,
-          });
-      } else matched++;
-      let offerId: string | null = null;
-      if (item.proposed_product_url && item.proposed_retailer_id) {
-        const { data: offer, error: offerError } = await db
-          .from("furnishing_product_offers")
-          .insert({
-            product_id: productId,
-            retailer_id: item.proposed_retailer_id,
-            product_url: item.proposed_product_url,
-            listed_price_minor: item.proposed_price_minor,
-            availability: "unknown",
-            status: "active",
-            source_type: "xlsx",
-            source_import_id: importId,
-            source_sheet: item.source_sheet,
-            source_row: item.source_row,
-            imported_at: new Date().toISOString(),
-          })
-          .select("id")
-          .single();
-        if (offerError) throw offerError;
-        offerId = offer.id;
-      }
-      await db
-        .from("furnishing_catalog_import_items")
-        .update({ imported_product_id: productId, imported_offer_id: offerId })
-        .eq("id", item.id);
-    } catch {
-      failed++;
-    }
-  }
-  const status = failed
-    ? created || matched
-      ? "partial_success"
-      : "failed"
-    : "complete";
-  await db
-    .from("furnishing_catalog_imports")
-    .update({
-      status,
-      created_count: created,
-      matched_count: matched,
-      skipped_count: skipped,
-      failed_count: failed,
-      completed_at: new Date().toISOString(),
-    })
-    .eq("id", importId);
-  await db.from("furnishing_catalog_activity").insert({
-    import_id: importId,
-    event_type: failed
-      ? "catalog_inventory_import_failed"
-      : "catalog_inventory_import_completed",
-    actor_id: user.id,
-    metadata: { created, matched, skipped, failed },
-  });
+  const applied = await db.rpc("apply_fs008g_c6_catalog_import" as never, {
+    p_input: {
+      actorId: user.id,
+      importId,
+      workspaceId,
+      correlationId,
+      idempotencyKey,
+      expectedVersion,
+    },
+  } as never);
+  if (applied.error || !applied.data)
+    throw new Error(
+      applied.error?.message.match(/FS008G_C6_[A-Z_]+/)?.[0] ??
+        "FS008G_C6_ATOMIC_APPLY_UNAVAILABLE",
+    );
   revalidatePath("/admin/furnishing/products");
   redirect(`/admin/furnishing/products/import/${importId}`);
 }

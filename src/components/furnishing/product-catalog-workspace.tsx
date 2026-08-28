@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { issueFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
 import {
   completeCatalogImportAction,
   createFurnishingProductAction,
@@ -619,7 +620,14 @@ export async function Retailers() {
   );
 }
 
-export function ImportInventory() {
+export function ImportInventory({
+  workspaceId,
+  commandContextId,
+}: {
+  workspaceId: string | null;
+  commandContextId: string | null;
+}) {
+  const resolved = Boolean(workspaceId && commandContextId);
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-5 py-8">
       <FurnishingHeader
@@ -638,16 +646,18 @@ export function ImportInventory() {
           XLSX files up to 25 MB. Quantities and totals remain project logic and
           are not imported as catalog quantities.
         </p>
-        <label className="mx-auto mt-6 block max-w-xl text-left text-sm font-semibold">
-          Controlled workspace ID
-          <input
-            required
-            type="text"
-            name="workspaceId"
-            className={`${field} mt-2`}
-            placeholder="Canonical controlled workspace UUID"
-          />
-        </label>
+        {resolved ? (
+          <div className="mx-auto mt-6 max-w-xl rounded-xl border bg-stone-50 p-4 text-left text-sm">
+            <p><strong>Controlled workspace:</strong> {workspaceId}</p>
+            <p className="mt-1"><strong>Command context:</strong> server resolved</p>
+            <p className="mt-1 break-all"><strong>Authoritative SHA-256:</strong> ba849761b7c54060a8e6a7c656c57e03a33a234dfe4233c1fb17902e1e304823</p>
+          </div>
+        ) : (
+          <p role="alert" className="mx-auto mt-6 max-w-xl rounded-xl border border-amber-300 bg-amber-50 p-4 text-left text-sm text-amber-900">
+            Import is unavailable until an authorized workspace and fresh correlation are bound in the server-issued URL.
+          </p>
+        )}
+        <input type="hidden" name="commandContextId" value={commandContextId ?? ""} />
         <input
           id="file"
           required
@@ -656,7 +666,7 @@ export function ImportInventory() {
           name="file"
           className="mx-auto mt-6 block max-w-full rounded-xl border p-3"
         />
-        <button className={`${button} mt-6`}>Parse and review</button>
+        <button disabled={!resolved} className={`${button} mt-6 disabled:cursor-not-allowed disabled:opacity-50`}>Parse and review 110 rows</button>
       </form>
     </main>
   );
@@ -664,6 +674,13 @@ export function ImportInventory() {
 
 export async function ImportReview({ importId }: { importId: string }) {
   const { catalogImport, items } = (await getCatalogImport(importId)) as Row;
+  const applyContext = catalogImport.status === "review_required" ? await issueFurnishingCommandContext({
+    workflow: "fs008g-finalization:catalog-import",
+    workspaceId: String(catalogImport.workspace_id),
+    commandType: "catalog.import.apply",
+    targetType: "import",
+    targetId: String(catalogImport.id),
+  }) : null;
   return (
     <main className="mx-auto max-w-[1480px] space-y-6 px-5 py-8">
       <FurnishingHeader
@@ -729,8 +746,9 @@ export async function ImportReview({ importId }: { importId: string }) {
         </div>
       </section>
       {catalogImport.status === "review_required" && items.length > 0 ? (
-        <form action={completeCatalogImportAction} className="flex justify-end">
-          <input type="hidden" name="importId" value={catalogImport.id} />
+         <form action={completeCatalogImportAction} className="flex justify-end">
+           <input type="hidden" name="importId" value={catalogImport.id} />
+           <input type="hidden" name="commandContextId" value={applyContext?.contextId ?? ""} />
           <button className={button}>
             Import {items.length} reviewed items
           </button>

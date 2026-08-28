@@ -6,6 +6,7 @@ import ExcelJS from "exceljs";
 import { requireRole } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
+import { resolveFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
 
 const value = (data: FormData, key: string) =>
   String(data.get(key) ?? "").trim();
@@ -198,9 +199,12 @@ export async function createRoomPackageAction(formData: FormData) {
 
 export async function addRoomPackageItemAction(formData: FormData) {
   assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    { commandType: "package.room.compose", targetType: "room_package_version" },
+  );
   const { db } = await packageAdmin();
-  const packageId = value(formData, "packageId"),
-    versionId = value(formData, "versionId"),
+  const versionId = command.targetId,
     requirementId = value(formData, "requirementId");
   const { data: editableVersion } = await db
     .from("furnishing_room_package_versions")
@@ -209,6 +213,12 @@ export async function addRoomPackageItemAction(formData: FormData) {
     .eq("lifecycle_status", "draft")
     .maybeSingle();
   if (!editableVersion) throw new Error("APPROVED_PACKAGE_VERSION_IMMUTABLE");
+  const { data: versionOwner } = await db
+    .from("furnishing_room_package_versions")
+    .select("room_package_id")
+    .eq("id", versionId)
+    .single();
+  const packageId = String(versionOwner?.room_package_id);
   const { data: req } = await db
     .from("furnishing_room_requirements")
     .select("key,furnishing_product_categories(name)")
@@ -244,9 +254,15 @@ export async function addRoomPackageItemAction(formData: FormData) {
 
 export async function addProductAlternativeAction(formData: FormData) {
   assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    {
+      commandType: "package.room.alternate.add",
+      targetType: "room_package_item",
+    },
+  );
   const { db } = await packageAdmin();
-  const packageId = value(formData, "packageId"),
-    itemId = value(formData, "itemId");
+  const itemId = command.targetId;
   const { data: editableItem } = await db
     .from("furnishing_room_package_items")
     .select("id,furnishing_room_package_versions!inner(lifecycle_status)")
@@ -254,6 +270,17 @@ export async function addProductAlternativeAction(formData: FormData) {
     .eq("furnishing_room_package_versions.lifecycle_status", "draft")
     .maybeSingle();
   if (!editableItem) throw new Error("APPROVED_PACKAGE_VERSION_IMMUTABLE");
+  const { data: owner } = await db
+    .from("furnishing_room_package_items")
+    .select("furnishing_room_package_versions(room_package_id)")
+    .eq("id", itemId)
+    .single();
+  const relation = owner?.furnishing_room_package_versions;
+  const packageId = String(
+    Array.isArray(relation)
+      ? relation[0]?.room_package_id
+      : (relation as unknown as Row | null)?.room_package_id,
+  );
   const { count } = await db
     .from("furnishing_package_product_alternatives")
     .select("id", { count: "exact", head: true })
@@ -272,17 +299,24 @@ export async function addProductAlternativeAction(formData: FormData) {
 
 export async function submitRoomPackageAction(formData: FormData) {
   assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    { commandType: "package.room.submit", targetType: "room_package_version" },
+  );
   const { db } = await packageAdmin();
-  const packageId = value(formData, "packageId"),
-    versionId = value(formData, "versionId"),
-    status = value(formData, "status");
-  if (!["in_review", "approved"].includes(status))
-    throw new Error("PACKAGE_STATUS_INVALID");
+  const versionId = command.targetId,
+    status = "in_review";
+  const { data: owner } = await db
+    .from("furnishing_room_package_versions")
+    .select("room_package_id")
+    .eq("id", versionId)
+    .single();
+  const packageId = String(owner?.room_package_id);
   const { error } = await db
     .from("furnishing_room_package_versions")
     .update({
       lifecycle_status: status,
-      approved_at: status === "approved" ? new Date().toISOString() : null,
+      approved_at: null,
     })
     .eq("id", versionId);
   if (error) throw new Error(error.message);
@@ -320,35 +354,39 @@ async function copyRoomPackageItems(
       .single();
     if (error) throw new Error(error.message);
     if (alternatives.length)
-      await db
-        .from("furnishing_package_product_alternatives")
-        .insert(
-          alternatives.map((alt) => ({
-            room_package_item_id: newItem.id,
-            product_id: alt.product_id,
-            rank: alt.rank,
-            status: alt.status,
-            notes: alt.notes,
-          })),
-        );
+      await db.from("furnishing_package_product_alternatives").insert(
+        alternatives.map((alt) => ({
+          room_package_item_id: newItem.id,
+          product_id: alt.product_id,
+          rank: alt.rank,
+          status: alt.status,
+          notes: alt.notes,
+        })),
+      );
   }
 }
 
 export async function createNextRoomPackageVersionAction(formData: FormData) {
   assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    {
+      commandType: "package.room.version.create",
+      targetType: "room_package_version",
+    },
+  );
   const { user, db } = await packageAdmin(),
-    packageId = value(formData, "packageId"),
-    sourceVersionId = value(formData, "versionId");
+    sourceVersionId = command.targetId;
   const { data: source, error } = await db
     .from("furnishing_room_package_versions")
     .select(
       "*,furnishing_room_package_items(*,furnishing_package_product_alternatives(*))",
     )
     .eq("id", sourceVersionId)
-    .eq("room_package_id", packageId)
     .single();
   if (error || !source)
     throw new Error(error?.message ?? "PACKAGE_VERSION_NOT_FOUND");
+  const packageId = String(source.room_package_id);
   const { data: max } = await db
     .from("furnishing_room_package_versions")
     .select("version_number")
@@ -385,8 +423,12 @@ export async function createNextRoomPackageVersionAction(formData: FormData) {
 
 export async function duplicateRoomPackageAction(formData: FormData) {
   assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    { commandType: "package.room.duplicate", targetType: "room_package" },
+  );
   const { user, db } = await packageAdmin(),
-    sourcePackageId = value(formData, "packageId"),
+    sourcePackageId = command.targetId,
     newName = value(formData, "name");
   const { data: source, error } = await db
     .from("furnishing_room_packages")
@@ -441,6 +483,10 @@ export async function duplicateRoomPackageAction(formData: FormData) {
 
 export async function createPropertyPackageAction(formData: FormData) {
   assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    { commandType: "package.create", targetType: "workspace" },
+  );
   const { db } = await packageAdmin();
   const tier = value(formData, "tier");
   const { data: pkg, error } = await db
@@ -455,6 +501,7 @@ export async function createPropertyPackageAction(formData: FormData) {
       status: "draft",
       tier,
       lifecycle_status: "draft",
+      workspace_id: command.workspaceId,
     })
     .select("id")
     .single();
@@ -508,10 +555,20 @@ export async function getPropertyPackage(packageId: string) {
 
 export async function addPropertyPackageRoomAction(formData: FormData) {
   assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    { commandType: "package.compose", targetType: "package_version" },
+  );
   const { db } = await packageAdmin();
-  const packageId = value(formData, "packageId"),
-    versionId = value(formData, "versionId"),
+  const versionId = command.targetId,
     roomVersionId = value(formData, "roomVersionId");
+  const { data: version } = await db
+    .from("furnishing_package_versions")
+    .select("furnishing_package_id")
+    .eq("id", versionId)
+    .single();
+  if (!version) throw new Error("FURNISHING_PACKAGE_VERSION_NOT_FOUND");
+  const packageId = String(version.furnishing_package_id);
   const { data: room } = await db
     .from("furnishing_room_package_versions")
     .select(
@@ -542,6 +599,41 @@ export async function addPropertyPackageRoomAction(formData: FormData) {
     });
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/furnishing/packages/${packageId}`);
+}
+
+export async function submitPropertyPackageAction(formData: FormData) {
+  assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    { commandType: "package.version.submit", targetType: "package_version" },
+  );
+  const { db } = await packageAdmin();
+  const { data: version } = await db
+    .from("furnishing_package_versions")
+    .select("furnishing_package_id,lifecycle_status")
+    .eq("id", command.targetId)
+    .single();
+  if (!version || version.lifecycle_status !== "draft")
+    throw new Error("FURNISHING_PACKAGE_VERSION_NOT_EDITABLE");
+  const { count } = await db
+    .from("furnishing_package_room_composition")
+    .select("id", { count: "exact", head: true })
+    .eq("furnishing_package_version_id", command.targetId);
+  if (!count) throw new Error("FURNISHING_PACKAGE_COMPOSITION_REQUIRED");
+  const { error } = await db
+    .from("furnishing_package_versions")
+    .update({ lifecycle_status: "in_review" })
+    .eq("id", command.targetId)
+    .eq("lifecycle_status", "draft");
+  if (error) throw new Error("FURNISHING_PACKAGE_SUBMIT_FAILED");
+  await db
+    .from("furnishing_packages")
+    .update({
+      lifecycle_status: "in_review",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", version.furnishing_package_id);
+  revalidatePath(`/admin/furnishing/packages/${version.furnishing_package_id}`);
 }
 
 const excelText = (cell: ExcelJS.CellValue) => {

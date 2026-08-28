@@ -14,9 +14,12 @@ import {
   getPropertyPackage,
   getRoomPackage,
   submitRoomPackageAction,
+  submitPropertyPackageAction,
   startPackageImportAction,
 } from "@/app/actions/furnishing-packages";
 import { approveFs008dPackage } from "@/app/actions/fs008d-governance";
+import { issueFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   estimatePackage,
   representativeOffer,
@@ -357,6 +360,54 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
         ),
       })),
     );
+  const roomContexts = pkg.workspace_id
+    ? Object.fromEntries(
+        await Promise.all(
+          ["compose", "submit", "version.create"].map(async (kind) => [
+            kind,
+            (
+              await issueFurnishingCommandContext({
+                workflow: "fs008g-finalization:package",
+                workspaceId: String(pkg.workspace_id),
+                commandType: `package.room.${kind}`,
+                targetType: "room_package_version",
+                targetId: String(version.id),
+              })
+            ).contextId,
+          ]),
+        ),
+      )
+    : {};
+  const alternateContexts = new Map(
+    pkg.workspace_id
+      ? await Promise.all(
+          items.map(
+            async (item) =>
+              [
+                String(item.id),
+                (
+                  await issueFurnishingCommandContext({
+                    workflow: "fs008g-finalization:package",
+                    workspaceId: String(pkg.workspace_id),
+                    commandType: "package.room.alternate.add",
+                    targetType: "room_package_item",
+                    targetId: String(item.id),
+                  })
+                ).contextId,
+              ] as const,
+          ),
+        )
+      : [],
+  );
+  const duplicateContext = pkg.workspace_id
+    ? await issueFurnishingCommandContext({
+        workflow: "fs008g-finalization:package",
+        workspaceId: String(pkg.workspace_id),
+        commandType: "package.room.duplicate",
+        targetType: "room_package",
+        targetId: String(pkg.id),
+      })
+    : null;
   return (
     <main className="mx-auto max-w-[1480px] space-y-6 px-5 py-8">
       <FurnishingHeader
@@ -442,8 +493,11 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
                         action={addProductAlternativeAction}
                         className="mt-2 flex gap-2"
                       >
-                        <input type="hidden" name="packageId" value={pkg.id} />
-                        <input type="hidden" name="itemId" value={item.id} />
+                        <input
+                          type="hidden"
+                          name="commandContextId"
+                          value={alternateContexts.get(String(item.id)) ?? ""}
+                        />
                         <select name="productId" className={field}>
                           {products
                             .filter(
@@ -472,8 +526,11 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
             action={addRoomPackageItemAction}
             className="mt-4 grid gap-3 md:grid-cols-5"
           >
-            <input type="hidden" name="packageId" value={pkg.id} />
-            <input type="hidden" name="versionId" value={version.id} />
+            <input
+              type="hidden"
+              name="commandContextId"
+              value={roomContexts.compose ?? ""}
+            />
             <select required name="requirementId" className={field}>
               <option value="">Requirement</option>
               {requirements
@@ -516,8 +573,11 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
       <div className="flex justify-end gap-3">
         {version.lifecycle_status === "approved" ? (
           <form action={createNextRoomPackageVersionAction}>
-            <input type="hidden" name="packageId" value={pkg.id} />
-            <input type="hidden" name="versionId" value={version.id} />
+            <input
+              type="hidden"
+              name="commandContextId"
+              value={roomContexts["version.create"] ?? ""}
+            />
             <button className={button}>
               Create editable v{version.version_number + 1}
             </button>
@@ -528,7 +588,11 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
             Duplicate
           </summary>
           <form action={duplicateRoomPackageAction} className="mt-3 flex gap-2">
-            <input type="hidden" name="packageId" value={pkg.id} />
+            <input
+              type="hidden"
+              name="commandContextId"
+              value={duplicateContext?.contextId ?? ""}
+            />
             <input
               required
               name="name"
@@ -540,21 +604,17 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
         </details>
         {version.lifecycle_status === "draft" ? (
           <form action={submitRoomPackageAction}>
-            <input type="hidden" name="packageId" value={pkg.id} />
-            <input type="hidden" name="versionId" value={version.id} />
-            <input type="hidden" name="status" value="in_review" />
+            <input
+              type="hidden"
+              name="commandContextId"
+              value={roomContexts.submit ?? ""}
+            />
             <button
               disabled={issues.length > 0}
               className={`${button} disabled:opacity-40`}
             >
               Submit for review
             </button>
-          </form>
-        ) : null}
-        {version.lifecycle_status === "in_review" ? (
-          <form action={async (formData) => { "use server"; await approveFs008dPackage({ packageVersionId: version.id, expectedVersion: 1, reason: String(formData.get("reason") ?? "Catalog readiness approved"), correlationId: `fs008d-approval:${version.id}`, idempotencyKey: `fs008d-approval:${version.id}` }); }} className="flex gap-2">
-            <input required name="reason" aria-label="Approval reason" placeholder="Approval reason" className={field} />
-            <button disabled={issues.length > 0} className={`${button} disabled:opacity-40`}>Approve v{version.version_number}</button>
           </form>
         ) : null}
       </div>
@@ -622,6 +682,24 @@ export async function QuantityRuleLibrary() {
 }
 
 export async function NewPropertyPackage() {
+  const db = createAdminClient();
+  const { data: workspace } = await db
+    .from("furnishing_activation_workspaces")
+    .select("workspace_id")
+    .eq("enabled", true)
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const createContext = workspace
+    ? await issueFurnishingCommandContext({
+        workflow: "fs008g-finalization:package",
+        workspaceId: String(workspace.workspace_id),
+        commandType: "package.create",
+        targetType: "workspace",
+        targetId: String(workspace.workspace_id),
+      })
+    : null;
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-5 py-8">
       <FurnishingHeader
@@ -633,6 +711,11 @@ export async function NewPropertyPackage() {
         action={createPropertyPackageAction}
         className={`${panel} grid gap-5 md:grid-cols-2`}
       >
+        <input
+          type="hidden"
+          name="commandContextId"
+          value={createContext?.contextId ?? ""}
+        />
         <label className="font-semibold">
           Name *
           <input
@@ -706,6 +789,35 @@ export async function PropertyPackageDetail({
     version = current(pkg, "furnishing_package_versions"),
     composition: Row[] = version.furnishing_package_room_composition ?? [],
     facts = { bedrooms: 3, bathrooms: 2 };
+  const approvalContext =
+    version.lifecycle_status === "in_review" && pkg.workspace_id
+      ? await issueFurnishingCommandContext({
+          workflow: "fs008g-finalization:package",
+          workspaceId: String(pkg.workspace_id),
+          commandType: "package.version.approve",
+          targetType: "package_version",
+          targetId: String(version.id),
+        })
+      : null;
+  const compositionContext = pkg.workspace_id
+    ? await issueFurnishingCommandContext({
+        workflow: "fs008g-finalization:package",
+        workspaceId: String(pkg.workspace_id),
+        commandType: "package.compose",
+        targetType: "package_version",
+        targetId: String(version.id),
+      })
+    : null;
+  const submitContext =
+    version.lifecycle_status === "draft" && pkg.workspace_id
+      ? await issueFurnishingCommandContext({
+          workflow: "fs008g-finalization:package",
+          workspaceId: String(pkg.workspace_id),
+          commandType: "package.version.submit",
+          targetType: "package_version",
+          targetId: String(version.id),
+        })
+      : null;
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-5 py-8">
       <FurnishingHeader
@@ -765,14 +877,72 @@ export async function PropertyPackageDetail({
           </tbody>
         </table>
       </section>
+      {version.lifecycle_status === "in_review" ? (
+        <section className={panel}>
+          <h2 className="text-lg font-semibold">Governed approval</h2>
+          {approvalContext ? (
+            <form
+              action={async (formData) => {
+                "use server";
+                await approveFs008dPackage({
+                  contextId: String(formData.get("commandContextId") ?? ""),
+                  reason: String(formData.get("reason") ?? ""),
+                });
+              }}
+              className="mt-4 flex gap-2"
+            >
+              <input
+                type="hidden"
+                name="commandContextId"
+                value={approvalContext.contextId}
+              />
+              <input
+                required
+                name="reason"
+                aria-label="Approval reason"
+                placeholder="Approval reason"
+                className={field}
+              />
+              <button className={button}>
+                Approve v{version.version_number}
+              </button>
+            </form>
+          ) : (
+            <p role="alert" className="mt-3 text-amber-800">
+              Approval is unavailable until this package is bound to the
+              controlled workspace.
+            </p>
+          )}
+        </section>
+      ) : null}
+      {version.lifecycle_status === "draft" ? (
+        <section className={panel}>
+          <h2 className="text-lg font-semibold">Validate and submit</h2>
+          <p className="mt-2 text-sm text-stone-600">
+            Server validation requires at least one approved room-package
+            composition.
+          </p>
+          <form action={submitPropertyPackageAction} className="mt-4">
+            <input
+              type="hidden"
+              name="commandContextId"
+              value={submitContext?.contextId ?? ""}
+            />
+            <button className={button}>Validate and submit for review</button>
+          </form>
+        </section>
+      ) : null}
       <section className={panel}>
         <h2 className="text-lg font-semibold">Add approved room package</h2>
         <form
           action={addPropertyPackageRoomAction}
           className="mt-4 grid gap-3 md:grid-cols-4"
         >
-          <input type="hidden" name="packageId" value={pkg.id} />
-          <input type="hidden" name="versionId" value={version.id} />
+          <input
+            type="hidden"
+            name="commandContextId"
+            value={compositionContext?.contextId ?? ""}
+          />
           <select required name="roomVersionId" className={field}>
             <option value="">Room package</option>
             {rooms.map((x: Row) => (

@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertFurnishingEntitlement } from "./furnishing-access";
 import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
+import { resolveFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
 import {
   minorUnits,
   representativeOffer,
@@ -404,12 +405,16 @@ const offerProjection = (offer: Row) => ({
   lastVerifiedAt: offer.last_verified_at ?? null,
 });
 export async function generateFurnishingPlanAction(formData: FormData) {
-  const { user, profile, db } = await context(),
-    projectId = value(formData, "projectId");
+  const { user } = await context(),
+    command = await resolveFurnishingCommandContext(
+      value(formData, "commandContextId"),
+      { commandType: "project.plan.generate", targetType: "project" },
+    ),
+    db = createAdminClient(),
+    projectId = command.targetId;
   const { project, packageVersion } = (await getProjectWorkspace(
     projectId,
   )) as Row;
-  await authorize(db, profile, project.workspace_id);
   if (project.current_plan_version_id)
     throw new Error("PLAN_ALREADY_GENERATED");
   if (!packageVersion) throw new Error("APPROVED_PACKAGE_REQUIRED");
@@ -556,16 +561,30 @@ async function editableSelection(
   if (error || !data) throw new Error("PLAN_CONFLICT_OR_IMMUTABLE");
   return data;
 }
+async function authoritativeSelection(formData: FormData, commandType: string) {
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    { commandType, targetType: "selection" },
+  );
+  const db = createAdminClient();
+  const { data } = await db
+    .from("furnishing_product_selections")
+    .select("revision")
+    .eq("id", command.targetId)
+    .single();
+  if (!data) throw new Error("PLAN_SELECTION_NOT_FOUND");
+  return { db, selectionId: command.targetId, revision: Number(data.revision) };
+}
 export async function replaceProjectSelectionAction(formData: FormData) {
-  const { user, profile, db } = await context(),
-    selectionId = value(formData, "selectionId"),
-    revision = Number(formData.get("expectedRevision")),
+  const { user } = await context(),
+    { db, selectionId, revision } = await authoritativeSelection(
+      formData,
+      "project.selection.replace",
+    ),
     productId = value(formData, "productId"),
     offerId = value(formData, "offerId") || null;
   const selection = await editableSelection(db, selectionId, revision),
-    plan = selection.furnishing_plans,
-    workspace = plan.furnishing_projects.workspace_id;
-  await authorize(db, profile, workspace);
+    plan = selection.furnishing_plans;
   const { data: product } = await db
     .from("furnishing_products")
     .select(
@@ -652,13 +671,13 @@ export async function replaceProjectSelectionAction(formData: FormData) {
   revalidatePath(`/admin/furnishing/projects/${plan.project_id}`);
 }
 export async function changeSelectionOfferAction(formData: FormData) {
-  const { profile, db } = await context(),
-    selectionId = value(formData, "selectionId"),
-    revision = Number(formData.get("expectedRevision")),
+  const { db, selectionId, revision } = await authoritativeSelection(
+      formData,
+      "project.selection.offer",
+    ),
     offerId = value(formData, "offerId");
   const selection = await editableSelection(db, selectionId, revision),
     plan = selection.furnishing_plans;
-  await authorize(db, profile, plan.furnishing_projects.workspace_id);
   const { data: offer } = await db
     .from("furnishing_product_offers")
     .select("id,product_id,listed_price_minor")
@@ -690,13 +709,14 @@ export async function changeSelectionOfferAction(formData: FormData) {
   revalidatePath(`/admin/furnishing/projects/${plan.project_id}`);
 }
 export async function markExistingInventoryAction(formData: FormData) {
-  const { user, profile, db } = await context(),
-    selectionId = value(formData, "selectionId"),
-    revision = Number(formData.get("expectedRevision")),
+  const { user } = await context(),
+    { db, selectionId, revision } = await authoritativeSelection(
+      formData,
+      "project.selection.inventory",
+    ),
     quantity = Number(formData.get("quantity"));
   const selection = await editableSelection(db, selectionId, revision),
     plan = selection.furnishing_plans;
-  await authorize(db, profile, plan.furnishing_projects.workspace_id);
   const purchase = Math.max(
       0,
       Number(selection.quantity_override ?? selection.resolved_quantity) -
@@ -732,13 +752,13 @@ export async function markExistingInventoryAction(formData: FormData) {
   revalidatePath(`/admin/furnishing/projects/${plan.project_id}`);
 }
 export async function overrideSelectionQuantityAction(formData: FormData) {
-  const { profile, db } = await context(),
-    selectionId = value(formData, "selectionId"),
-    revision = Number(formData.get("expectedRevision")),
+  const { db, selectionId, revision } = await authoritativeSelection(
+      formData,
+      "project.selection.quantity",
+    ),
     quantity = Number(formData.get("quantity"));
   const selection = await editableSelection(db, selectionId, revision),
     plan = selection.furnishing_plans;
-  await authorize(db, profile, plan.furnishing_projects.workspace_id);
   if (!value(formData, "reason"))
     throw new Error("QUANTITY_OVERRIDE_REASON_REQUIRED");
   const purchase = Math.max(0, quantity - Number(selection.existing_quantity)),
@@ -905,7 +925,10 @@ export async function completeProjectAction(formData: FormData) {
   if (blockingPunch) throw new Error("FS_PUNCH_LIST_OPEN");
   const { error } = await db
     .from("furnishing_projects")
-    .update({ lifecycle_status: "completed", completed_at: new Date().toISOString() })
+    .update({
+      lifecycle_status: "completed",
+      completed_at: new Date().toISOString(),
+    })
     .eq("id", projectId);
   if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   revalidatePath(`/dashboard/furnishing/projects/${projectId}`);
@@ -978,21 +1001,15 @@ async function serverValidation(
   return { plan, result };
 }
 export async function validateFurnishingPlanAction(formData: FormData) {
-  const { user, profile, db } = await context(),
-    projectId = value(formData, "projectId"),
-    planId = value(formData, "planId");
+  const { user } = await context(),
+    command = await resolveFurnishingCommandContext(
+      value(formData, "commandContextId"),
+      { commandType: "project.plan.validate", targetType: "plan" },
+    ),
+    db = createAdminClient(),
+    planId = command.targetId;
   const { plan, result } = await serverValidation(db, planId);
-  await authorize(
-    db,
-    profile,
-    (
-      await db
-        .from("furnishing_projects")
-        .select("workspace_id")
-        .eq("id", projectId)
-        .single()
-    ).data?.workspace_id,
-  );
+  const projectId = String(plan.project_id);
   await db.from("furnishing_plan_validation_runs").insert({
     furnishing_plan_id: planId,
     revision: plan.revision,
@@ -1008,17 +1025,20 @@ export async function validateFurnishingPlanAction(formData: FormData) {
   revalidatePath(`/admin/furnishing/projects/${projectId}`);
 }
 export async function submitOrApprovePlanAction(formData: FormData) {
-  const { user, profile, db } = await context(),
-    projectId = value(formData, "projectId"),
-    planId = value(formData, "planId"),
+  const { user } = await context(),
     mode = value(formData, "mode"),
+    command = await resolveFurnishingCommandContext(
+      value(formData, "commandContextId"),
+      {
+        commandType:
+          mode === "submit" ? "project.plan.submit" : "project.plan.approve",
+        targetType: "plan",
+      },
+    ),
+    db = createAdminClient(),
+    planId = command.targetId,
     { plan, result } = await serverValidation(db, planId);
-  const { data: project } = await db
-    .from("furnishing_projects")
-    .select("workspace_id")
-    .eq("id", projectId)
-    .single();
-  await authorize(db, profile, project?.workspace_id);
+  const projectId = String(plan.project_id);
   if (!result.ready) throw new Error("PLAN_HAS_BLOCKING_ERRORS");
   if (mode === "submit") {
     await db
@@ -1067,15 +1087,13 @@ export async function submitOrApprovePlanAction(formData: FormData) {
   revalidatePath(`/admin/furnishing/projects/${projectId}`);
 }
 export async function createPlanRevisionAction(formData: FormData) {
-  const { user, profile, db } = await context(),
-    projectId = value(formData, "projectId"),
-    sourceId = value(formData, "planId");
-  const { data: project } = await db
-    .from("furnishing_projects")
-    .select("workspace_id")
-    .eq("id", projectId)
-    .single();
-  await authorize(db, profile, project?.workspace_id);
+  const { user } = await context(),
+    command = await resolveFurnishingCommandContext(
+      value(formData, "commandContextId"),
+      { commandType: "project.plan.revise", targetType: "plan" },
+    ),
+    db = createAdminClient(),
+    sourceId = command.targetId;
   const { data: source, error } = await db
     .from("furnishing_plans")
     .select("*,furnishing_product_selections(*)")
@@ -1083,6 +1101,7 @@ export async function createPlanRevisionAction(formData: FormData) {
     .eq("status", "approved")
     .single();
   if (error) throw new Error("FURNISHING_OPERATION_FAILED");
+  const projectId = String(source.project_id);
   const { data: next, error: ne } = await db
     .from("furnishing_plans")
     .insert({

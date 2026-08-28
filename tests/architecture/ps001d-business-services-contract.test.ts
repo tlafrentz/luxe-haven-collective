@@ -50,7 +50,7 @@ describe("PS-001D Business and Services stabilization contract", () => {
     expect(workspace).toContain(
       "/properties/new?returnTo=%2Fdashboard%2Ffurnishing%2Fprojects%2Fnew",
     );
-    expect(workspace).toContain("customer ? <Link");
+    expect(workspace).toMatch(/customer\s*\?\s*\(\s*<Link/);
   });
 
   it("does not expose database error messages from customer Furnishing commands", () => {

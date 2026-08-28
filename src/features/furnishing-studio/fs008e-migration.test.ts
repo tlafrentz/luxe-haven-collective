@@ -35,11 +35,8 @@ describe("FS-008E governed procurement boundary", () => {
 
   it("leaves no direct production procurement inserts, updates, or deletes", () => {
     expect(actions).not.toMatch(/\.from\("furnishing_(?:procurement|purchase|project_procurement)[^"]*"\)\.(?:insert|update|delete)\(/);
-    expect(actions).toContain('.rpc("create_or_replay_procurement_baseline"');
-    expect(actions).toContain('.rpc("create_or_replay_procurement_batch"');
-    expect(actions).toContain('.rpc("record_external_retailer_order"');
-    expect(actions).toContain('.rpc("record_furnishing_procurement_receipt"');
-    expect(actions).toContain('.rpc("reconcile_furnishing_procurement_budget"');
+    for (const command of ["create_or_replay_procurement_baseline","create_or_replay_procurement_batch","record_external_retailer_order","record_furnishing_procurement_receipt","reconcile_furnishing_procurement_budget"])
+      expect(actions).toMatch(new RegExp(`\\.rpc\\(\\s*"${command}"`));
     expect(snapshotAction).toContain('source_kind: "catalog_snapshot"');
   });
 });

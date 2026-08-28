@@ -21,6 +21,7 @@ import {
 import { budgetStatus, planProgress } from "@/features/furnishing-studio";
 import { Badge, FurnishingHeader } from "./furnishing-navigation";
 import { createFs008dProjectSnapshot } from "@/app/actions/fs008d-governance";
+import { issueFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 const field =
@@ -64,10 +65,9 @@ export async function NewProjectWorkspace({
       <form action={createProjectWorkspaceAction} className="space-y-5">
         <Step n="1" title="Property">
           <p className="mb-3 text-sm text-stone-600">
-            Confirm the property this project furnishes. A material change
-            here (bedroom or bathroom count) can affect which packages are
-            eligible and their scope, so confirm details are accurate before
-            continuing.
+            Confirm the property this project furnishes. A material change here
+            (bedroom or bathroom count) can affect which packages are eligible
+            and their scope, so confirm details are accurate before continuing.
           </p>
           <select
             required
@@ -82,107 +82,116 @@ export async function NewProjectWorkspace({
               </option>
             ))}
           </select>
-          {customer ? <Link href="/properties/new?returnTo=%2Fdashboard%2Ffurnishing%2Fprojects%2Fnew" className="mt-4 inline-flex rounded-xl border px-4 py-2.5 text-sm font-semibold text-violet-700">+ Add new canonical property</Link> : <details className="mt-4 rounded-xl border p-4">
-            <summary className="cursor-pointer font-semibold text-violet-700">
+          {customer ? (
+            <Link
+              href="/properties/new?returnTo=%2Fdashboard%2Ffurnishing%2Fprojects%2Fnew"
+              className="mt-4 inline-flex rounded-xl border px-4 py-2.5 text-sm font-semibold text-violet-700"
+            >
               + Add new canonical property
-            </summary>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <select required name="workspaceId" className={field}>
-                <option value="">Workspace</option>
-                {data.workspaces.map((x: Row) => {
-                  const id = x.workspace_id ?? x.id;
-                  return (
-                    <option value={id} key={id}>
-                      {x.profiles?.full_name ?? x.profiles?.email ?? id}
-                    </option>
-                  );
-                })}
-              </select>
-              <input
-                required
-                name="propertyName"
-                className={field}
-                placeholder="Property name"
-              />
-              <input
-                required
-                name="address"
-                className={field}
-                placeholder="Address"
-              />
-              <input
-                required
-                name="city"
-                className={field}
-                placeholder="City"
-              />
-              <input
-                required
-                name="state"
-                className={field}
-                placeholder="State / region"
-              />
-              <input
-                required
-                name="postalCode"
-                className={field}
-                placeholder="Postal code"
-              />
-              <input name="country" defaultValue="US" className={field} />
-              <input
-                required
-                name="propertyType"
-                defaultValue="short_term_rental"
-                className={field}
-              />
-              <select
-                name="timezone"
-                className={field}
-                defaultValue="America/Phoenix"
-              >
-                <option value="America/Phoenix">
-                  Arizona Time (America/Phoenix)
-                </option>
-                <option value="America/Los_Angeles">Pacific Time</option>
-                <option value="America/Denver">Mountain Time</option>
-                <option value="America/Chicago">Central Time</option>
-                <option value="America/New_York">Eastern Time</option>
-              </select>
-              <input
-                name="propertyBedrooms"
-                type="number"
-                min="0"
-                className={field}
-                placeholder="Bedrooms"
-              />
-              <input
-                name="propertyBathrooms"
-                type="number"
-                min="0"
-                step=".5"
-                className={field}
-                placeholder="Bathrooms"
-              />
-              <input
-                name="propertyGuests"
-                type="number"
-                min="1"
-                className={field}
-                placeholder="Guest capacity"
-              />
-              <label className="flex gap-2 text-sm">
-                <input type="checkbox" name="createAnyway" />
-                Confirm creation if a matching address exists
-              </label>
-              <button
-                formAction={createFurnishingPropertyAction}
-                formNoValidate
-                className={button}
-              >
-                Save property
-              </button>
-            </div>
-          </details>}
+            </Link>
+          ) : (
+            <details className="mt-4 rounded-xl border p-4">
+              <summary className="cursor-pointer font-semibold text-violet-700">
+                + Add new canonical property
+              </summary>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <select required name="workspaceId" className={field}>
+                  <option value="">Workspace</option>
+                  {data.workspaces.map((x: Row) => {
+                    const id = x.workspace_id ?? x.id;
+                    return (
+                      <option value={id} key={id}>
+                        {x.profiles?.full_name ?? x.profiles?.email ?? id}
+                      </option>
+                    );
+                  })}
+                </select>
+                <input
+                  required
+                  name="propertyName"
+                  className={field}
+                  placeholder="Property name"
+                />
+                <input
+                  required
+                  name="address"
+                  className={field}
+                  placeholder="Address"
+                />
+                <input
+                  required
+                  name="city"
+                  className={field}
+                  placeholder="City"
+                />
+                <input
+                  required
+                  name="state"
+                  className={field}
+                  placeholder="State / region"
+                />
+                <input
+                  required
+                  name="postalCode"
+                  className={field}
+                  placeholder="Postal code"
+                />
+                <input name="country" defaultValue="US" className={field} />
+                <input
+                  required
+                  name="propertyType"
+                  defaultValue="short_term_rental"
+                  className={field}
+                />
+                <select
+                  name="timezone"
+                  className={field}
+                  defaultValue="America/Phoenix"
+                >
+                  <option value="America/Phoenix">
+                    Arizona Time (America/Phoenix)
+                  </option>
+                  <option value="America/Los_Angeles">Pacific Time</option>
+                  <option value="America/Denver">Mountain Time</option>
+                  <option value="America/Chicago">Central Time</option>
+                  <option value="America/New_York">Eastern Time</option>
+                </select>
+                <input
+                  name="propertyBedrooms"
+                  type="number"
+                  min="0"
+                  className={field}
+                  placeholder="Bedrooms"
+                />
+                <input
+                  name="propertyBathrooms"
+                  type="number"
+                  min="0"
+                  step=".5"
+                  className={field}
+                  placeholder="Bathrooms"
+                />
+                <input
+                  name="propertyGuests"
+                  type="number"
+                  min="1"
+                  className={field}
+                  placeholder="Guest capacity"
+                />
+                <label className="flex gap-2 text-sm">
+                  <input type="checkbox" name="createAnyway" />
+                  Confirm creation if a matching address exists
+                </label>
+                <button
+                  formAction={createFurnishingPropertyAction}
+                  formNoValidate
+                  className={button}
+                >
+                  Save property
+                </button>
+              </div>
+            </details>
+          )}
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <label>
               Bedrooms
@@ -243,9 +252,9 @@ export async function NewProjectWorkspace({
             Bedrooms and bathrooms generate editable canonical room instances.
             Living Room, Kitchen, and Dining Room are included. Package
             selection below determines exactly which rooms and quantities are
-            covered — rooms beyond your package&apos;s limits stay editable
-            here but will need an add-on or package upgrade to include in the
-            design plan.
+            covered — rooms beyond your package&apos;s limits stay editable here
+            but will need an add-on or package upgrade to include in the design
+            plan.
           </p>
           <label className="mt-3 flex gap-2">
             <input type="checkbox" name="includeOutdoor" />
@@ -255,8 +264,8 @@ export async function NewProjectWorkspace({
         <Step n="4" title="Package">
           <p className="mb-3 text-sm text-stone-600">
             This confirms the approved package version for your project.
-            Changing packages after design work has started requires an
-            order adjustment — it is not a free, direct edit.
+            Changing packages after design work has started requires an order
+            adjustment — it is not a free, direct edit.
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             {data.packages.map((x: Row) => (
@@ -306,10 +315,10 @@ export async function NewProjectWorkspace({
           <p className="mb-3 text-sm text-stone-600">
             This is your target <strong>furnishing budget</strong> — what you
             expect to spend on the actual furniture and décor. It is separate
-            from the design and project-management service fee you already
-            paid, and it is a planning target only: the real, itemized
-            estimate is generated in the next step and nothing is purchased
-            until you approve it.
+            from the design and project-management service fee you already paid,
+            and it is a planning target only: the real, itemized estimate is
+            generated in the next step and nothing is purchased until you
+            approve it.
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             <input
@@ -366,7 +375,9 @@ export async function CustomerProjectList({
   customer?: boolean;
 } = {}) {
   const projects = (await listProjectWorkspaces()) as Row[];
-  const base = customer ? "/dashboard/furnishing/projects" : "/admin/furnishing/projects";
+  const base = customer
+    ? "/dashboard/furnishing/projects"
+    : "/admin/furnishing/projects";
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-5 py-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -499,6 +510,71 @@ export async function ProjectWorkspace({
     target === null ? "target budget" : null,
   ].filter((value): value is string => Boolean(value));
   const canGeneratePlan = !plan && missingSetup.length === 0;
+  const snapshotContext =
+    plan?.status === "approved"
+      ? await issueFurnishingCommandContext({
+          workflow: "fs008g-finalization:project",
+          workspaceId: String(project.workspace_id),
+          commandType: "project.snapshot.create",
+          targetType: "project",
+          targetId: String(project.id),
+        })
+      : null;
+  const selectionContexts = new Map(
+    await Promise.all(
+      selections.map(
+        async (selection) =>
+          [
+            String(selection.id),
+            Object.fromEntries(
+              await Promise.all(
+                ["replace", "offer", "inventory", "quantity"].map(
+                  async (kind) => [
+                    kind,
+                    (
+                      await issueFurnishingCommandContext({
+                        workflow: "fs008g-finalization:project",
+                        workspaceId: String(project.workspace_id),
+                        commandType: `project.selection.${kind}`,
+                        targetType: "selection",
+                        targetId: String(selection.id),
+                      })
+                    ).contextId,
+                  ],
+                ),
+              ),
+            ),
+          ] as const,
+      ),
+    ),
+  );
+  const planContexts = plan
+    ? Object.fromEntries(
+        await Promise.all(
+          ["validate", "submit", "approve", "revise"].map(async (kind) => [
+            kind,
+            (
+              await issueFurnishingCommandContext({
+                workflow: "fs008g-finalization:project",
+                workspaceId: String(project.workspace_id),
+                commandType: `project.plan.${kind}`,
+                targetType: "plan",
+                targetId: String(plan.id),
+              })
+            ).contextId,
+          ]),
+        ),
+      )
+    : {};
+  const generateContext = canGeneratePlan
+    ? await issueFurnishingCommandContext({
+        workflow: "fs008g-finalization:project",
+        workspaceId: String(project.workspace_id),
+        commandType: "project.plan.generate",
+        targetType: "project",
+        targetId: String(project.id),
+      })
+    : null;
   const base = customer
     ? `/dashboard/furnishing/projects/${projectId}`
     : `/admin/furnishing/projects/${projectId}`;
@@ -536,15 +612,22 @@ export async function ProjectWorkspace({
           </span>
           {plan ? (
             <form action={validateFurnishingPlanAction}>
-              <input type="hidden" name="projectId" value={project.id} />
-              <input type="hidden" name="planId" value={plan.id} />
+              <input
+                type="hidden"
+                name="commandContextId"
+                value={planContexts.validate}
+              />
               <button className="rounded-xl border px-4 py-2 text-sm font-semibold">
                 Review plan
               </button>
             </form>
           ) : canGeneratePlan ? (
             <form action={generateFurnishingPlanAction}>
-              <input type="hidden" name="projectId" value={project.id} />
+              <input
+                type="hidden"
+                name="commandContextId"
+                value={generateContext?.contextId ?? ""}
+              />
               <button className={button}>Generate Plan v1</button>
             </form>
           ) : null}
@@ -576,7 +659,11 @@ export async function ProjectWorkspace({
             Missing: {missingSetup.join(", ")}.
           </p>
           <Link
-            href={customer ? "/dashboard/furnishing/projects" : "/admin/furnishing/projects"}
+            href={
+              customer
+                ? "/dashboard/furnishing/projects"
+                : "/admin/furnishing/projects"
+            }
             className="mt-6 inline-flex rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-950"
           >
             Return to projects
@@ -642,7 +729,11 @@ export async function ProjectWorkspace({
               {selectedRoom ? (
                 <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
                   <form action={acceptRoomDesignAction}>
-                    <input type="hidden" name="roomId" value={selectedRoom.id} />
+                    <input
+                      type="hidden"
+                      name="roomId"
+                      value={selectedRoom.id}
+                    />
                     <button
                       className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                       disabled={selectedRoom.status === "approved"}
@@ -695,6 +786,7 @@ export async function ProjectWorkspace({
                   key={selection.id}
                   selection={selection}
                   products={products}
+                  commandContexts={selectionContexts.get(String(selection.id))!}
                 />
               ))}
             </div>
@@ -744,6 +836,8 @@ export async function ProjectWorkspace({
               project={project}
               plan={plan}
               validation={validation}
+              snapshotContextId={snapshotContext?.contextId}
+              commandContexts={planContexts}
             />
           </aside>
         </div>
@@ -760,7 +854,10 @@ export async function ProjectWorkspace({
             {moodBoards.map((board: Row) => {
               const items: Row[] = board.furnishing_mood_board_items ?? [];
               return (
-                <div key={board.id} className="border-t pt-4 first:border-t-0 first:pt-0">
+                <div
+                  key={board.id}
+                  className="border-t pt-4 first:border-t-0 first:pt-0"
+                >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h3 className="font-semibold">{board.name}</h3>
@@ -810,7 +907,11 @@ export async function ProjectWorkspace({
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <form action={approveMoodBoardAction}>
-                      <input type="hidden" name="moodBoardId" value={board.id} />
+                      <input
+                        type="hidden"
+                        name="moodBoardId"
+                        value={board.id}
+                      />
                       <button
                         className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                         disabled={board.status === "approved"}
@@ -857,9 +958,11 @@ export async function ProjectWorkspace({
 function SelectionCard({
   selection,
   products,
+  commandContexts,
 }: {
   selection: Row;
   products: Row[];
+  commandContexts: Record<string, string>;
 }) {
   const offers: Row[] =
     selection.furnishing_products?.furnishing_product_offers ?? [];
@@ -900,11 +1003,10 @@ function SelectionCard({
             action={replaceProjectSelectionAction}
             className="mt-3 grid gap-2 sm:grid-cols-3"
           >
-            <input type="hidden" name="selectionId" value={selection.id} />
             <input
               type="hidden"
-              name="expectedRevision"
-              value={selection.revision}
+              name="commandContextId"
+              value={commandContexts.replace}
             />
             <select required name="productId" className={field}>
               <option value="">Product</option>
@@ -935,11 +1037,10 @@ function SelectionCard({
               action={changeSelectionOfferAction}
               className="mt-3 flex gap-2"
             >
-              <input type="hidden" name="selectionId" value={selection.id} />
               <input
                 type="hidden"
-                name="expectedRevision"
-                value={selection.revision}
+                name="commandContextId"
+                value={commandContexts.offer}
               />
               <select required name="offerId" className={field}>
                 {offers.map((o) => (
@@ -961,11 +1062,10 @@ function SelectionCard({
             action={markExistingInventoryAction}
             className="mt-3 flex flex-wrap gap-2"
           >
-            <input type="hidden" name="selectionId" value={selection.id} />
             <input
               type="hidden"
-              name="expectedRevision"
-              value={selection.revision}
+              name="commandContextId"
+              value={commandContexts.inventory}
             />
             <input
               required
@@ -995,11 +1095,10 @@ function SelectionCard({
             action={overrideSelectionQuantityAction}
             className="mt-3 flex flex-wrap gap-2"
           >
-            <input type="hidden" name="selectionId" value={selection.id} />
             <input
               type="hidden"
-              name="expectedRevision"
-              value={selection.revision}
+              name="commandContextId"
+              value={commandContexts.quantity}
             />
             <input
               required
@@ -1025,18 +1124,25 @@ function PlanActions({
   project,
   plan,
   validation,
+  snapshotContextId,
+  commandContexts,
 }: {
   project: Row;
   plan: Row;
   validation?: Row;
+  snapshotContextId?: string;
+  commandContexts: Record<string, string>;
 }) {
   return (
     <section className={panel}>
       <h2 className="font-semibold">Approval</h2>
       {plan.status === "draft" ? (
         <form action={submitOrApprovePlanAction} className="mt-3">
-          <input type="hidden" name="projectId" value={project.id} />
-          <input type="hidden" name="planId" value={plan.id} />
+          <input
+            type="hidden"
+            name="commandContextId"
+            value={commandContexts.submit}
+          />
           <input type="hidden" name="mode" value="submit" />
           <button
             disabled={!validation || validation.errors?.length}
@@ -1048,8 +1154,11 @@ function PlanActions({
       ) : null}
       {plan.status === "awaiting_approval" ? (
         <form action={submitOrApprovePlanAction} className="mt-3">
-          <input type="hidden" name="projectId" value={project.id} />
-          <input type="hidden" name="planId" value={plan.id} />
+          <input
+            type="hidden"
+            name="commandContextId"
+            value={commandContexts.approve}
+          />
           <input type="hidden" name="mode" value="approve" />
           <button className={`${button} w-full justify-center`}>
             Approve Plan v{plan.version_number}
@@ -1057,14 +1166,32 @@ function PlanActions({
         </form>
       ) : null}
       {plan.status === "approved" ? (
-        <form action={async () => { "use server"; if (!project.furnishing_package_version_id) throw new Error("PACKAGE_VERSION_REQUIRED"); await createFs008dProjectSnapshot({ projectId: project.id, packageVersionId: project.furnishing_package_version_id, snapshot: { planId: plan.id }, contentHash: `plan:${plan.id}:v${plan.version_number}`, correlationId: `fs008d-snapshot:${project.id}`, idempotencyKey: `fs008d-snapshot:${project.id}:v${plan.version_number}` }); }} className="mt-3">
-          <button className={`${button} w-full justify-center`}>Save immutable catalog snapshot</button>
+        <form
+          action={async (formData) => {
+            "use server";
+            await createFs008dProjectSnapshot({
+              contextId: String(formData.get("commandContextId") ?? ""),
+            });
+          }}
+          className="mt-3"
+        >
+          <input
+            type="hidden"
+            name="commandContextId"
+            value={snapshotContextId ?? ""}
+          />
+          <button className={`${button} w-full justify-center`}>
+            Save immutable catalog snapshot
+          </button>
         </form>
       ) : null}
       {plan.status === "approved" ? (
         <form action={createPlanRevisionAction} className="mt-3">
-          <input type="hidden" name="projectId" value={project.id} />
-          <input type="hidden" name="planId" value={plan.id} />
+          <input
+            type="hidden"
+            name="commandContextId"
+            value={commandContexts.revise}
+          />
           <button className={`${button} w-full justify-center`}>
             Create Plan v{plan.version_number + 1}
           </button>

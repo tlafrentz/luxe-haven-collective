@@ -10,6 +10,10 @@ const view = readFileSync(
   "src/components/furnishing/product-catalog-workspace.tsx",
   "utf8",
 );
+const importPage = readFileSync(
+  "src/app/(admin)/admin/furnishing/products/import/page.tsx",
+  "utf8",
+);
 const migration = readFileSync(
   "supabase/migrations/20260827030000_fs008g_catalog_authorization_boundary.sql",
   "utf8",
@@ -21,11 +25,20 @@ const c3 = readFileSync(
 
 describe("FS-008G controlled catalog mutation boundary", () => {
   it("requires the exact controlled workspace at the Admin import surface", () => {
-    expect(view).toContain("Controlled workspace ID");
-    expect(view).toContain('name="workspaceId"');
-    expect(view).toContain("Canonical controlled workspace UUID");
-    expect(catalog).toContain('text(formData, "workspaceId")');
-    expect(catalog).toContain("workspaceId,");
+    expect(view).toContain("Controlled workspace:");
+    expect(view).toContain('name="commandContextId"');
+    expect(importPage).toContain("params.workspaceId");
+    expect(catalog).toContain("context.workspaceId");
+  });
+
+  it("server-binds a fresh correlation and stable replay key before enabling import", () => {
+    expect(importPage).toContain("UUID.test(workspaceId)");
+    expect(importPage).toContain("issueFurnishingCommandContext");
+    expect(importPage).not.toContain("params.correlationId");
+    expect(view).toContain('type="hidden" name="commandContextId"');
+    expect(view).toContain("disabled={!resolved}");
+    expect(view).toContain("Authoritative SHA-256:");
+    expect(catalog).toContain("resolveFurnishingCommandContext");
   });
 
   it("revalidates every activation layer through ordinary authenticated reads", () => {
@@ -58,9 +71,11 @@ describe("FS-008G controlled catalog mutation boundary", () => {
       /startCatalogImportAction[\s\S]+assertFurnishingCatalogMutationAllowed\(workspaceId\)/,
     );
     expect(catalog).toMatch(
-      /completeCatalogImportAction[\s\S]+select\("workspace_id,status"\)[\s\S]+assertFurnishingCatalogMutationAllowed/,
+      /completeCatalogImportAction[\s\S]+select\("workspace_id,status,correlation_id,optimistic_version"\)[\s\S]+assertFurnishingCatalogMutationAllowed/,
     );
-    expect(catalog).toContain('importTarget.status !== "review_required"');
+    expect(catalog).toContain(
+      '!["review_required", "complete"].includes(importTarget.status)',
+    );
     expect(access).toContain(
       'throw new Error("FURNISHING_ACTIVATION_DISABLED")',
     );
