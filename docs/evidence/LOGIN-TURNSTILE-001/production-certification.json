@@ -1,0 +1,52 @@
+{
+  "milestone": "LOGIN-TURNSTILE-001",
+  "captured_at": "2026-08-28T03:43:00Z",
+  "status": "complete",
+  "candidate": "5b411c41f1ca239b1d9e21baf30c9c1ea97115e6",
+  "deployment": {
+    "id": "dpl_BBW8o7UqTty5TpGLE3PnoM3ux6qz",
+    "status": "Ready",
+    "apex_alias": "pass",
+    "www_alias": "pass",
+    "health": "three consecutive passes",
+    "recent_error_logs": "none"
+  },
+  "diagnosis": {
+    "application_mount_race": "corrected with deterministic API/container lifecycle",
+    "initial_provider_error": "Cloudflare 400020 invalid sitekey",
+    "provider_configuration": "Production site key corrected and compiled into a fresh deployment",
+    "csp_violation": false
+  },
+  "direct_production_verification": {
+    "apex_widget_initialization": "pass",
+    "www_widget_initialization": "pass",
+    "visible_failure_state": "pass",
+    "accessible_retry": "pass",
+    "troubleshoot_content": "pass",
+    "existing_admin_login": "pass",
+    "admin_customers_access": "pass"
+  },
+  "fail_closed_evidence": {
+    "missing_token": "covered by unchanged server boundary and regression suite",
+    "invalid_token": "covered by unchanged Supabase verification and regression suite",
+    "expired_token": "client clears token, disables submission, and requires retry"
+  },
+  "preserved_state": {
+    "public_auth_mode": "invite_only",
+    "smtp_hourly_ceiling": 30,
+    "anonymous_sign_in": false,
+    "authentication_emails_sent": 0,
+    "test_identities_created_or_deleted": 0,
+    "membership_or_invitation_mutations": 0,
+    "smtp_templates_invitation_and_recovery_protocols": "unchanged"
+  },
+  "local_gates": {
+    "focused_tests": "3 pass",
+    "full_suite": "814 files; 4463 tests pass",
+    "typecheck": "pass",
+    "lint": "pass with six pre-existing warnings and zero errors",
+    "production_build": "pass",
+    "git_diff_check": "pass"
+  },
+  "privacy": "No credentials, password, CAPTCHA token, Auth token, cookie, recipient data, or session material is retained."
+}
