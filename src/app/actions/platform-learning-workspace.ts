@@ -112,7 +112,7 @@ export async function getPlatformOutcomeReviewDetail(id: string, workspaceId?: s
     client.from("learning_measurement_plan_versions").select("id,title,source_action_id,source_action_plan_id,source_decision_id,property_id,created_at,activated_at")
       .eq("workspace_id",access.workspaceId).eq("id",measurementPlanVersionId).maybeSingle(),
   ]);
-  return Object.freeze({review:mapReview(row,new Map(summary?[[`${id}:${revision}`,summary as Row]]:[])),
+  return Object.freeze({workspaceId:access.workspaceId,review:mapReview(row,new Map(summary?[[`${id}:${revision}`,summary as Row]]:[])),
     expected:Object.freeze(array(row.expected_outcome_snapshots) as Row[]),
     evaluations:Object.freeze((evaluations??[]) as Row[]),measurements:Object.freeze((measurements??[]) as Row[]),
     evidence:Object.freeze(array(row.evidence_references) as Row[]),lessons:Object.freeze((lessons??[]) as Row[]),

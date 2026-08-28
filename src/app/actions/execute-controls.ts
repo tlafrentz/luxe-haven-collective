@@ -197,12 +197,12 @@ export async function transitionExecuteAction(
 }
 
 export async function getExecuteActionDetailAction(
-  input: Readonly<{ actionId: string }>,
+  input: Readonly<{ actionId: string; workspaceId?: string }>,
 ): Promise<
   | Readonly<{ ok: true; value: ExecuteActionDetail }>
   | Readonly<{ ok: false; code: string; message: string; retryable: boolean }>
 > {
-  const composed = await composeExecuteRuntime();
+  const composed = await composeExecuteRuntime(input.workspaceId);
   if (!composed.ok)
     return {
       ...composed,

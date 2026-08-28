@@ -36,12 +36,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ accepted: false, code: "WEBHOOK_SIGNATURE_INVALID" }, { status: 400 });
   }
   const recipient = event.data?.to?.[0]?.trim().toLowerCase();
-  const { data, error } = await createAdminClient().rpc("process_resend_auth_event", {
+  const admin = createAdminClient();
+  const payloadDigest = createHash("sha256").update(raw).digest("hex");
+  const { data: notificationResult, error: notificationError } = await admin.rpc("process_resend_notification_digest_event", {
+    p_event_id: id, p_event_type: event.type === "email.suppressed" ? "email.rejected" : event.type,
+    p_message_id: event.data?.email_id ?? null, p_event_at: event.created_at, p_payload_digest: payloadDigest,
+  });
+  if (notificationError) return NextResponse.json({ accepted: false, code: "NOTIFICATION_WEBHOOK_PROCESSING_FAILED" }, { status: 503 });
+  if ((notificationResult as {linked?:boolean}|null)?.linked) return NextResponse.json({accepted:true,notificationResult});
+  const { data, error } = await admin.rpc("process_resend_auth_event", {
     p_event_id: id,
     p_event_type: event.type === "email.suppressed" ? "email.rejected" : event.type,
     p_message_id: event.data?.email_id ?? null,
     p_event_at: event.created_at,
-    p_payload_digest: createHash("sha256").update(raw).digest("hex"),
+    p_payload_digest: payloadDigest,
     p_recipient_digest: recipient ? recipientDigest(recipient) : null,
     p_recipient_provider: recipient ? providerFor(recipient) : "other",
     p_bounce_type: event.data?.bounce?.type ?? null,

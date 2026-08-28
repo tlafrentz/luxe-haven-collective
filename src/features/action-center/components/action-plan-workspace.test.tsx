@@ -13,8 +13,8 @@ const plan: ActionPlanProps = {
 
 describe("PS-001C Action Plan customer contract", () => {
   it("makes every customer-visible plan card navigable", () => {
-    const html = renderToStaticMarkup(<ActionPlanQueue plans={[plan]} />);
-    expect(html).toContain('/dashboard/execute/plans/plan-decision-1');
+    const html = renderToStaticMarkup(<ActionPlanQueue plans={[plan]} workspaceId="workspace-1" />);
+    expect(html).toContain('/dashboard/execute/plans/plan-decision-1?workspace=workspace-1&amp;from=plans');
     expect(html).toContain("Open Action Plan");
   });
 

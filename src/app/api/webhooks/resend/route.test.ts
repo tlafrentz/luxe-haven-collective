@@ -19,16 +19,19 @@ function signedRequest(payload = body, date = new Date()) {
 }
 
 describe("Resend authentication-email webhook", () => {
-  beforeEach(() => { process.env.RESEND_WEBHOOK_SIGNING_SECRET = secret; rpc.mockReset().mockResolvedValue({ data: { status: "processed" }, error: null }); upsert.mockReset().mockResolvedValue({ error: null }); });
+  beforeEach(() => { process.env.RESEND_WEBHOOK_SIGNING_SECRET = secret; rpc.mockReset().mockImplementation((name:string)=>Promise.resolve({ data: name==="process_resend_notification_digest_event"?{linked:false}:{ status: "processed" }, error: null })); upsert.mockReset().mockResolvedValue({ error: null }); });
 
   it("accepts an officially signed Standard Webhooks fixture and passes only normalized data", async () => {
     const response = await POST(signedRequest(body, new Date()));
     expect({ status: response.status, body: await response.clone().json() }).toEqual({ status: 200, body: { accepted: true, result: { status: "processed" } } });
-    expect(rpc).toHaveBeenCalledOnce();
-    expect(rpc.mock.calls[0][0]).toBe("process_resend_auth_event");
-    expect(rpc.mock.calls[0][1]).toMatchObject({ p_event_id: "msg_fixture_001", p_event_type: "email.delivered", p_message_id: "email_fixture_001" });
-    expect(JSON.stringify(rpc.mock.calls[0][1])).not.toContain("controlled@example.invalid");
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc.mock.calls[0][0]).toBe("process_resend_notification_digest_event");
+    expect(rpc.mock.calls[1][0]).toBe("process_resend_auth_event");
+    expect(rpc.mock.calls[1][1]).toMatchObject({ p_event_id: "msg_fixture_001", p_event_type: "email.delivered", p_message_id: "email_fixture_001" });
+    expect(JSON.stringify(rpc.mock.calls[1][1])).not.toContain("controlled@example.invalid");
   });
+
+  it("keeps notification digest events out of authentication-email accounting",async()=>{rpc.mockImplementation((name:string)=>Promise.resolve({data:name==="process_resend_notification_digest_event"?{linked:true,requestId:"digest-1"}:{status:"processed"},error:null}));const response=await POST(signedRequest(body,new Date()));expect(response.status).toBe(200);expect(rpc).toHaveBeenCalledOnce();expect(rpc.mock.calls[0][0]).toBe("process_resend_notification_digest_event");});
 
   it("rejects an invalid signature before persistence", async () => {
     const request = signedRequest(body, new Date());
