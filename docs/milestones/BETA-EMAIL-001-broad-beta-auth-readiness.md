@@ -58,3 +58,13 @@ The ceiling stays 30/hour for certification. A later increase requires measured 
 Local implementation does not authorize Production changes. One subsequent authorization must cover reviewed migrations, exact candidate deployment, Turnstile and Resend webhook configuration, safe-closed verification, bounded Gmail/Outlook certification, suppression/cooldown/emergency-close tests, cleanup, and the final `BROAD_BETA_READY`, `BROAD_BETA_HELD_GMAIL_REPUTATION`, or `BROAD_BETA_BLOCKED_ENGINEERING` decision.
 
 Broad beta remains closed until two fresh controlled Gmail identities organically reach Inbox. Invite-only beta may open only when all security, provider, cleanup, and operational gates pass.
+
+## Production certification disposition
+
+The authorized Production run deployed candidate `79e66104cd2e6757569b3a2595d91171fce5acef` as deployment `dpl_NjtRXhvXt8uDmGMKwJY3zbLb4N9d`. Migration `20260828010000` required a history-only false-positive repair before it was applied normally; subsequent parity and schema checks passed.
+
+Turnstile and the Resend webhook were configured successfully. Direct Production checks passed for signed webhook verification, replay handling, unsupported events, provider-supported bounce/complaint fixtures, suppression and alert creation, missing/invalid CAPTCHA rejection, health, aliases, and the initial governed mode transitions.
+
+The final disposition is `BROAD_BETA_BLOCKED_ENGINEERING`. A stale expected-version control command was correctly rejected by PostgreSQL, but the Admin server action surfaced `PUBLIC_AUTH_CONTROL_COMMAND_REJECTED` as a generic server-error page instead of a controlled, accessible stale-version result. No stale mutation committed, no user was created, and no authentication email was sent. The emergency control returned Production to `closed` at version 4.
+
+Outlook, Gmail, signup, recovery, and remaining browser CAPTCHA certification were not executed after the failure. Authentication-email usage for this milestone remains `0/6`. No completion tag is authorized for this run.
