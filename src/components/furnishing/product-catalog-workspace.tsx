@@ -260,6 +260,24 @@ export async function NewProduct() {
           Product name *
           <input required name="name" className={`${field} mt-2`} />
         </label>
+        <label className="mx-auto mt-4 block max-w-xl text-left text-sm font-semibold">
+          Mutation correlation
+          <input
+            required
+            name="correlationId"
+            className={`${field} mt-2`}
+            placeholder="Fresh authorized correlation UUID"
+          />
+        </label>
+        <label className="mx-auto mt-4 block max-w-xl text-left text-sm font-semibold">
+          Replay key
+          <input
+            required
+            name="idempotencyKey"
+            className={`${field} mt-2`}
+            placeholder="Correlation-bound idempotency key"
+          />
+        </label>
         <label className="font-semibold">
           Category *
           <select required name="categoryId" className={`${field} mt-2`}>
