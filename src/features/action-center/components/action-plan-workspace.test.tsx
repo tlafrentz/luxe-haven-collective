@@ -19,7 +19,9 @@ describe("PS-001C Action Plan customer contract", () => {
   });
 
   it("uses canonical plan state for lineage, readiness, actions, and history", () => {
-    const html = renderToStaticMarkup(<ActionPlanWorkspace history={[]} plan={plan} />);
+    const html = renderToStaticMarkup(<ActionPlanWorkspace backContext="plans" history={[]} plan={plan} />);
+    expect(html).toContain("← Return to Action Plans");
+    expect(html).toContain("/dashboard/execute?view=plans&amp;workspace=workspace-1");
     expect(html).toContain("Decision decision-1");
     expect(html).toContain("View source decision");
     expect(html).toContain("Update pricing");
