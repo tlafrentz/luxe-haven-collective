@@ -220,73 +220,37 @@ export async function generateProcurementBaselineAction(formData: FormData) {
   const projectId = context.targetId,
     idempotencyKey = context.idempotencyKey;
   const { db } = await scope(projectId, true);
-  const [
-    { data: snapshots, error: snapshotError },
-    { data: plans, error: planError },
-    { data: onboarding },
-  ] = await Promise.all([
-    db
-      .from("fs008d_project_catalog_snapshots")
-      .select("id,package_version_id,snapshot,content_hash")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false })
-      .limit(2),
-    db
-      .from("furnishing_plans")
-      .select("id,version_number,approved_at,approval_snapshot")
-      .eq("project_id", projectId)
-      .eq("status", "approved")
-      .order("version_number", { ascending: false })
-      .limit(2),
-    db
-      .from("furnishing_onboarding_projects")
-      .select("offer_code")
-      .eq("project_id", projectId)
-      .maybeSingle(),
-  ]);
-  if (snapshotError || planError)
-    throw new Error("PROCUREMENT_SOURCE_RESOLUTION_FAILED");
+  const [{ data: snapshots, error: snapshotError }, { data: onboarding }] =
+    await Promise.all([
+      db
+        .from("fs008d_project_catalog_snapshots")
+        .select("id,approved_plan_id,plan_revision,content_hash")
+        .eq("project_id", projectId)
+        .is("archived_at", null)
+        .order("created_at", { ascending: false })
+        .limit(2),
+      db
+        .from("furnishing_onboarding_projects")
+        .select("offer_code")
+        .eq("project_id", projectId)
+        .maybeSingle(),
+    ]);
+  if (snapshotError) throw new Error("PROCUREMENT_SOURCE_RESOLUTION_FAILED");
   if (onboarding?.offer_code === "FS-CONSULT")
     throw new Error("PROCUREMENT_FS_CONSULT_DENIED");
-  const snapshot = snapshots?.[0],
-    plan = plans?.[0];
-  if ((snapshots?.length ?? 0) > 1 || (plans?.length ?? 0) > 1)
+  const snapshot = snapshots?.[0];
+  if ((snapshots?.length ?? 0) > 1)
     throw new Error("PROCUREMENT_SOURCE_RECONCILIATION_REQUIRED");
-  if (snapshot && plan) {
-    const snapshotPlanId = String(
-      (snapshot.snapshot as Row | null)?.planId ?? "",
-    );
-    if (!snapshotPlanId || snapshotPlanId !== String(plan.id))
-      throw new Error("PROCUREMENT_SOURCE_RECONCILIATION_REQUIRED");
-  }
-  if (!snapshot && (!plan || !plan.approved_at || !plan.approval_snapshot))
-    throw new Error("PROCUREMENT_SOURCE_NOT_READY");
+  if (!snapshot?.approved_plan_id || !snapshot.content_hash)
+    throw new Error("PROCUREMENT_AUTHORITATIVE_SNAPSHOT_REQUIRED");
   const client = await createClient();
-  const { data: packageVersion } = snapshot
-    ? await db
-        .from("furnishing_package_versions")
-        .select("version_number")
-        .eq("id", snapshot.package_version_id)
-        .single()
-    : { data: null };
-  if (snapshot && !packageVersion)
-    throw new Error("PROCUREMENT_SOURCE_RECONCILIATION_REQUIRED");
-  const source = snapshot
-    ? {
-        source_kind: "catalog_snapshot",
-        source_id: snapshot.id,
-        expected_source_version: packageVersion!.version_number,
-      }
-    : {
-        source_kind: "furnishing_plan",
-        source_id: plan!.id,
-        expected_source_version: plan!.version_number,
-      };
   const { data: baseline, error } = await client.rpc(
     "create_or_replay_procurement_baseline",
     {
       p_input: {
-        ...source,
+        source_kind: "catalog_snapshot",
+        source_id: snapshot.id,
+        expected_source_version: snapshot.plan_revision,
         correlation_id: context.correlationId,
         idempotency_key: idempotencyKey,
       },
