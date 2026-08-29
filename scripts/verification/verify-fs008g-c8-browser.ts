@@ -76,19 +76,30 @@ const results: Array<{
   refreshed: number;
   denialChecked: boolean;
 }> = [];
+const lifecycle = { importId: "", packageId: "", projectId: "" };
 
 async function login(page: Page, persona: "admin" | "owner") {
   const identity = credentials[persona];
-  await page.goto(`${origin}/login`, { waitUntil: "domcontentloaded" });
-  await page.getByLabel("Email").fill(identity.email);
-  await page.getByLabel("Password").fill(identity.password);
-  await page.locator('input[name="captchaToken"]').evaluate((node) => {
-    (node as HTMLInputElement).value = "local-browser-verification";
-    node.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent("public-auth-captcha", { detail: true })));
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL((value) => value.pathname !== "/login", { timeout: 30_000 });
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.goto(`${origin}/login`, { waitUntil: "domcontentloaded" });
+    await page.getByLabel("Email").fill(identity.email);
+    await page.getByLabel("Password").fill(identity.password);
+    await page.locator('input[name="captchaToken"]').evaluate((node) => {
+      (node as HTMLInputElement).value = "local-browser-verification";
+      node.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent("public-auth-captcha", { detail: true })));
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await Promise.race([
+      page.waitForURL((value) => value.pathname !== "/login", { timeout: 12_000 }).catch(() => undefined),
+      page.getByText("This service is temporarily unavailable.").waitFor({ timeout: 12_000 }).catch(() => undefined),
+    ]);
+    if (new URL(page.url()).pathname !== "/login") return;
+    const body = (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 800);
+    if (!body.includes("This service is temporarily unavailable.") || attempt === 3)
+      throw new Error(`LOGIN_FAILED:${persona}:${body}`);
+    await new Promise((resolve) => setTimeout(resolve, attempt * 2_000));
+  }
 }
 
 async function saveState(context: BrowserContext, path: string) {
@@ -99,9 +110,77 @@ async function saveState(context: BrowserContext, path: string) {
 function targetFor(step: Step) {
   return new URL(step.url.replace(runbook.productionOrigin, isolatedOrigin)
     .replaceAll("{workspaceId}", credentials.workspaceId)
-    .replaceAll("{projectId}", "00000000-0000-4000-8000-000000000008")
-    .replaceAll("{packageId}", "00000000-0000-4000-8000-000000000009")
-    .replaceAll("{importId}", "00000000-0000-4000-8000-000000000010"));
+    .replaceAll("{projectId}", lifecycle.projectId || "00000000-0000-4000-8000-000000000008")
+    .replaceAll("{packageId}", lifecycle.packageId || "00000000-0000-4000-8000-000000000009")
+    .replaceAll("{importId}", lifecycle.importId || "00000000-0000-4000-8000-000000000010"));
+}
+
+async function clickGovernedControl(page: Page, label: string) {
+  await page.getByLabel("Required reason").fill("FS-008G C8-D isolated browser lifecycle");
+  const control = page.getByRole("button", { name: label, exact: true });
+  await control.waitFor({ state: "visible" });
+  if (await control.isDisabled()) throw new Error(`activation:CONTROL_DISABLED:${label}`);
+  page.once("dialog", (dialog) => dialog.accept());
+  await control.click();
+  const status = page.getByRole("status");
+  try {
+    await status.filter({ hasText: `${label}: control updated.` }).waitFor({ timeout: 30_000 });
+  } catch {
+    throw new Error(`activation:CONTROL_FAILED:${label}:${await status.innerText()}`);
+  }
+  await page.reload({ waitUntil: "domcontentloaded" });
+}
+
+async function runActivation(context: BrowserContext, step: Step) {
+  const page = await context.newPage();
+  const response = await page.goto(targetFor(step).toString(), { waitUntil: "domcontentloaded" });
+  if (!response || response.status() >= 400) throw new Error("activation:ROUTE_FAILED");
+  const initial = await page.locator("body").innerText();
+  if (/Release state\s+internal/i.test(initial) && /Kill switch\s+lifted/i.test(initial)) {
+    await page.close();
+    return { status: response.status(), refreshed: 200 };
+  }
+  for (const label of [
+    "Create/grant controlled cohort",
+    "Enable controlled workspace",
+    "Enable catalog_viewing",
+    "Enable design_workspace",
+    "Enable budgeting",
+    "Enable procurement_readiness",
+    "Restore workspace kill switch",
+    "Set global state: internal",
+    "Lift global kill switch",
+  ]) await clickGovernedControl(page, label);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  const body = await page.locator("body").innerText();
+  if (!/Release state\s+internal/i.test(body) || !/Kill switch\s+lifted/i.test(body))
+    throw new Error("activation:AUTHORITATIVE_REFRESH_MISMATCH");
+  await page.close();
+  return { status: response.status(), refreshed: 200 };
+}
+
+async function runCatalogImport(context: BrowserContext, step: Step) {
+  const page = await context.newPage();
+  const response = await page.goto(targetFor(step).toString(), { waitUntil: "domcontentloaded" });
+  if (!response || response.status() >= 400) throw new Error("catalog-import:ROUTE_FAILED");
+  await page.getByLabel("Upload furnishing inventory").setInputFiles("docs/evidence/FS-008D/source/Catalog Review (1).xlsx");
+  await page.getByRole("button", { name: "Parse and review 110 rows" }).click();
+  await page.waitForURL(/\/admin\/furnishing\/products\/import\/[0-9a-f-]+$/, { timeout: 60_000 });
+  lifecycle.importId = new URL(page.url()).pathname.split("/").at(-1) ?? "";
+  if (!lifecycle.importId) throw new Error("catalog-import:IMPORT_ID_MISSING");
+  await page.getByText("110 detected rows", { exact: false }).waitFor();
+  const apply = page.getByRole("button", { name: /Import \d+ valid reviewed items/ });
+  const label = await apply.innerText();
+  if (label !== "Import 109 valid reviewed items")
+    throw new Error(`catalog-import:REVIEW_COUNT_MISMATCH:${label}`);
+  await apply.click();
+  await page.waitForLoadState("domcontentloaded");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  const body = await page.locator("body").innerText();
+  if (!/Status\s+complete/i.test(body) || !/Created\s+109/i.test(body) || !/Failed\s+0/i.test(body))
+    throw new Error("catalog-import:ATOMIC_APPLY_RECONCILIATION_FAILED");
+  await page.close();
+  return { status: response.status(), refreshed: 200 };
 }
 
 async function visit(context: BrowserContext, step: Step) {
@@ -127,6 +206,7 @@ async function visit(context: BrowserContext, step: Step) {
 
 try {
   await login(await bootstrapAdmin.newPage(), "admin");
+  await new Promise((resolve) => setTimeout(resolve, 1_000));
   await login(await bootstrapOwner.newPage(), "owner");
   await saveState(bootstrapAdmin, adminState);
   await saveState(bootstrapOwner, ownerState);
@@ -134,7 +214,11 @@ try {
   const controlledOwner = await browser.newContext({ storageState: ownerState });
   for (const step of runbook.steps) {
     const context = step.persona === "controlled-admin" ? controlledAdmin : controlledOwner;
-    const route = await visit(context, step);
+    const route = step.id === "activation"
+      ? await runActivation(context, step)
+      : step.id === "catalog-import"
+        ? await runCatalogImport(context, step)
+        : await visit(context, step);
     let denialChecked = false;
     if (
       step.persona === "controlled-owner" ||

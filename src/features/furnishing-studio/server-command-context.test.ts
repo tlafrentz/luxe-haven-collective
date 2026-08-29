@@ -5,6 +5,13 @@ const sql = readFileSync("supabase/migrations/20260828034000_fs008g_server_comma
 const boundary = readFileSync("src/features/furnishing-studio/server-command-context.ts", "utf8");
 
 describe("FS-008G Furnishing server command context", () => {
+  it("resolves workspace targets from the canonical owner aggregate", () => {
+    expect(boundary).toContain('.from("owners")');
+    expect(boundary).toContain('.select("id")');
+    expect(boundary).not.toContain(
+      '.from("furnishing_activation_workspaces")',
+    );
+  });
   it("binds candidate, workflow, tenant, target, command, actor and expiry", () => {
     for (const value of ["candidate_commit","workflow","workspace_id","actor_id","command_type","target_type","target_id","expires_at"]) expect(sql).toContain(value);
     expect(sql).toContain("binding_hash text not null unique");

@@ -31,6 +31,24 @@ create table public.furnishing_cleanup_runs(
  reconciliation jsonb not null,created_at timestamptz not null default now()
 );
 
+create or replace function public.provision_fs008g_c8_controlled_tenant(p_workspace_id uuid,p_admin_id uuid,p_owner_id uuid) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
+declare w public.owners%rowtype;a public.profiles%rowtype;o public.profiles%rowtype;
+begin
+ if auth.role()<>'service_role' then raise exception 'FS008G_FIXTURE_SERVICE_ROLE_REQUIRED' using errcode='42501';end if;
+ select * into w from public.owners where id=p_workspace_id for update;select * into a from public.profiles where id=p_admin_id;select * into o from public.profiles where id=p_owner_id;
+ if not found or w.profile_id<>p_owner_id or w.company_name not like 'FS008G C8 %' or a.role<>'admin' or o.role<>'owner' or a.email not like 'fs008g-c8-admin-%@example.invalid' or o.email not like 'fs008g-c8-owner-%@example.invalid' then raise exception 'FS008G_FIXTURE_IDENTITY_INVALID';end if;
+ if exists(select 1 from public.customer_accounts where tenant_id=p_workspace_id) or exists(select 1 from public.integration_connections where workspace_id=p_workspace_id) then raise exception 'FS008G_FIXTURE_SCOPE_INVALID';end if;
+ insert into public.ps001d_verification_tenants(tenant_id,designation,status,approved_by,expires_at,relationship_attestation) values(p_workspace_id,'PS001D_VERIFICATION_ONLY_NON_CUSTOMER','approved',p_admin_id,now()+interval '24 hours','{"automation":false,"catalog":false,"customer":false,"payment":false,"provider":false,"publication":false}'::jsonb) on conflict(tenant_id) do nothing;
+ return jsonb_build_object('status','provisioned','workspaceId',p_workspace_id);
+end$$;
+create or replace function public.cleanup_fs008g_c8_controlled_tenant(p_workspace_id uuid,p_admin_id uuid,p_owner_id uuid) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
+begin
+ if auth.role()<>'service_role' then raise exception 'FS008G_FIXTURE_SERVICE_ROLE_REQUIRED' using errcode='42501';end if;
+ if not exists(select 1 from public.owners w join public.profiles o on o.id=w.profile_id join public.profiles a on a.id=p_admin_id where w.id=p_workspace_id and w.profile_id=p_owner_id and w.company_name like 'FS008G C8 %' and o.email like 'fs008g-c8-owner-%@example.invalid' and a.email like 'fs008g-c8-admin-%@example.invalid') then raise exception 'FS008G_FIXTURE_IDENTITY_INVALID';end if;
+ delete from public.ps001d_verification_tenants where tenant_id=p_workspace_id;
+ return jsonb_build_object('status','cleaned','workspaceId',p_workspace_id);
+end$$;
+
 create or replace function public.assert_fs008g_procurement_mutation_enabled() returns void language plpgsql stable security definer set search_path=public,pg_temp as $$declare r record;begin
  if current_setting('app.fs008g_cleanup',true)='on' then return;end if;
  select * into r from public.furnishing_activation_releases where milestone='FS-008A';
@@ -95,4 +113,11 @@ alter table public.furnishing_procurement_discrepancy_history enable row level s
 create policy "Admins read discrepancy history" on public.furnishing_procurement_discrepancy_history for select to authenticated using(public.is_admin());create policy "Admins read adjustments" on public.furnishing_procurement_adjustments for select to authenticated using(public.is_admin());create policy "Admins read cleanup evidence" on public.furnishing_cleanup_runs for select to authenticated using(public.is_admin());
 revoke all on public.furnishing_procurement_discrepancy_history,public.furnishing_procurement_adjustments,public.furnishing_cleanup_runs from public,anon,authenticated;
 revoke all on function public.resolve_furnishing_procurement_discrepancy(jsonb),public.adjust_furnishing_procurement_budget(jsonb),public.get_furnishing_customer_procurement(uuid),public.cleanup_fs008g_synthetic_project(jsonb) from public,anon;grant execute on function public.resolve_furnishing_procurement_discrepancy(jsonb),public.adjust_furnishing_procurement_budget(jsonb),public.cleanup_fs008g_synthetic_project(jsonb) to authenticated;grant execute on function public.get_furnishing_customer_procurement(uuid) to authenticated;
+revoke all on function public.provision_fs008g_c8_controlled_tenant(uuid,uuid,uuid),public.cleanup_fs008g_c8_controlled_tenant(uuid,uuid,uuid) from public,anon,authenticated;
+grant execute on function public.provision_fs008g_c8_controlled_tenant(uuid,uuid,uuid),public.cleanup_fs008g_c8_controlled_tenant(uuid,uuid,uuid) to service_role;
+do $$declare t record;begin
+ for t in select schemaname,tablename from pg_tables where schemaname='public' and (tablename like 'furnishing\_%' escape '\' or tablename in('fs008d_project_catalog_snapshots','fs008d_snapshot_items')) loop
+  execute format('grant select,insert,update,delete on table %I.%I to service_role',t.schemaname,t.tablename);
+ end loop;
+end$$;
 commit;

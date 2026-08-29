@@ -43,6 +43,20 @@ describe("FS-008G-C8-C procurement and certification boundaries", () => {
       expect(sql).toContain(token);
   });
 
+  it("provides a service-role-only synthetic tenant boundary without widening table writes", () => {
+    expect(sql).toContain("provision_fs008g_c8_controlled_tenant");
+    expect(sql).toContain("cleanup_fs008g_c8_controlled_tenant");
+    expect(sql).toContain("FS008G_FIXTURE_SERVICE_ROLE_REQUIRED");
+    expect(sql).toContain("@example.invalid");
+    expect(sql).toContain("FS008G_FIXTURE_SCOPE_INVALID");
+    expect(sql).toContain(
+      "grant execute on function public.provision_fs008g_c8_controlled_tenant",
+    );
+    expect(sql).not.toContain(
+      "grant insert on public.ps001d_verification_tenants",
+    );
+  });
+
   it("exposes a narrow owner read model while all mutations remain admin-only", () => {
     expect(sql).toContain("get_furnishing_customer_procurement");
     expect(sql).toContain("PROCUREMENT_CUSTOMER_ACCESS_DENIED");
@@ -63,7 +77,9 @@ describe("FS-008G-C8-C procurement and certification boundaries", () => {
   });
 
   it("provides an executable isolated browser lifecycle bound to the runbook", () => {
-    expect(browser).toContain("chromium.launch({ headless: true })");
+    expect(browser).toContain("chromium.launch({");
+    expect(browser).toContain("runActivation");
+    expect(browser).toContain("runCatalogImport");
     expect(browser).toContain("FS008G_BROWSER_ISOLATED_ORIGIN_REQUIRED");
     expect(browser).toContain("page.reload");
     expect(browser).toContain("CUSTOMER_PROJECTION_LEAK");

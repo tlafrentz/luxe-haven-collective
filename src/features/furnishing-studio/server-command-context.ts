@@ -62,11 +62,11 @@ async function authoritativeWorkspace(
   const db = createAdminClient();
   if (targetType === "workspace" || targetType === "cleanup") {
     const { data } = await db
-      .from("furnishing_activation_workspaces")
-      .select("workspace_id")
-      .eq("workspace_id", targetId)
+      .from("owners")
+      .select("id")
+      .eq("id", targetId)
       .maybeSingle();
-    return data?.workspace_id ? String(data.workspace_id) : null;
+    return data?.id ? String(data.id) : null;
   }
   const direct: Partial<
     Record<FurnishingCommandTarget, readonly [string, string]>

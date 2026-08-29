@@ -107,6 +107,11 @@ async function provision() {
     { workspace_id: workspace.id, profile_id: credentials.owner.id, role: "owner", status: "active", property_access_mode: "all", joined_at: new Date().toISOString() },
     { workspace_id: workspace.id, profile_id: credentials.admin.id, role: "administrator", status: "active", property_access_mode: "all", joined_at: new Date().toISOString() },
   ], { onConflict: "workspace_id,profile_id" }), "WORKSPACE_MEMBERSHIPS");
+  await must(admin.rpc("provision_fs008g_c8_controlled_tenant", {
+    p_workspace_id: workspace.id,
+    p_admin_id: credentials.admin.id,
+    p_owner_id: credentials.owner.id,
+  }), "CONTROLLED_TENANT_DESIGNATION");
 
   credentials.wrongWorkspaceId = randomUUID();
 

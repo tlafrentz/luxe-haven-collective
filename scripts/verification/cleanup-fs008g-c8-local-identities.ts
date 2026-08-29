@@ -28,6 +28,12 @@ async function remove(table: string, column: string, value: string) {
 
 async function main() {
   const fixture = JSON.parse(await readFile(credentialPath, "utf8")) as Fixture;
+  const designation = await admin.rpc("cleanup_fs008g_c8_controlled_tenant", {
+    p_workspace_id: fixture.workspaceId,
+    p_admin_id: fixture.admin.id,
+    p_owner_id: fixture.owner.id,
+  });
+  if (designation.error) throw new Error(`CLEANUP_DESIGNATION:${designation.error.message}`);
   if (fixture.customerAccountId) {
     await remove("customer_account_memberships", "customer_account_id", fixture.customerAccountId);
     await remove("customer_accounts", "id", fixture.customerAccountId);
