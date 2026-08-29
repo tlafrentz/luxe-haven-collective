@@ -42,31 +42,9 @@ export async function createFs008dProjectSnapshot(
     commandType: "project.snapshot.create",
     targetType: "project",
   });
-  const admin = createAdminClient(),
-    { data: project } = await admin
-      .from("furnishing_projects")
-      .select("furnishing_package_version_id,current_plan_version_id")
-      .eq("id", context.targetId)
-      .single();
-  if (
-    !project?.furnishing_package_version_id ||
-    !project.current_plan_version_id
-  )
-    throw new Error("SNAPSHOT_SOURCE_NOT_READY");
-  const { data: plan } = await admin
-    .from("furnishing_plans")
-    .select("id,version_number")
-    .eq("id", project.current_plan_version_id)
-    .eq("project_id", context.targetId)
-    .eq("status", "approved")
-    .single();
-  if (!plan) throw new Error("SNAPSHOT_SOURCE_NOT_READY");
   const db = await createClient();
   return createFs008dProjectCatalogSnapshot(db, {
     projectId: context.targetId,
-    packageVersionId: String(project.furnishing_package_version_id),
-    snapshot: { planId: plan.id },
-    contentHash: `plan:${plan.id}:v${plan.version_number}`,
     correlationId: context.correlationId,
     idempotencyKey: context.idempotencyKey,
   });

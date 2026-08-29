@@ -2,8 +2,9 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth/session";
+import { requireRole, requireUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { assertFurnishingEntitlement } from "./furnishing-access";
 import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 import { resolveFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
@@ -76,14 +77,22 @@ export async function getProjectSetup() {
     const workspaceId = (workspaceRows?.[0] as Row | undefined)?.workspace_id;
     properties = properties.eq("owner_id", workspaceId);
   }
+  const ownerWorkspaceId =
+    profile?.role === "admin"
+      ? null
+      : String((workspaceRows?.[0] as Row | undefined)?.workspace_id ?? "");
   const [propertyRows, packages, styles] = await Promise.all([
     properties,
-    db
-      .from("furnishing_package_versions")
-      .select(
-        "id,version_number,estimated_budget_low_minor,estimated_budget_high_minor,bedroom_min,bedroom_max,bathroom_min,bathroom_max,guest_min,guest_max,furnishing_packages!furnishing_package_versions_furnishing_package_id_fkey(id,name,description,tier,property_type)",
-      )
-      .eq("lifecycle_status", "approved"),
+    profile?.role === "admin"
+      ? db
+          .from("furnishing_package_versions")
+          .select(
+            "id,version_number,estimated_budget_low_minor,estimated_budget_high_minor,bedroom_min,bedroom_max,bathroom_min,bathroom_max,guest_min,guest_max,furnishing_packages!furnishing_package_versions_furnishing_package_id_fkey(id,name,description,tier,property_type)",
+          )
+          .eq("lifecycle_status", "approved")
+      : db.rpc("discover_furnishing_owner_packages", {
+          p_workspace_id: ownerWorkspaceId,
+        }),
     db
       .from("furnishing_style_system_versions")
       .select(
@@ -95,7 +104,21 @@ export async function getProjectSetup() {
   if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   return {
     properties: propertyRows.data ?? [],
-    packages: packages.data ?? [],
+    packages:
+      profile?.role === "admin"
+        ? (packages.data ?? [])
+        : ((packages.data ?? []) as Row[]).map((pkg) => ({
+            id: pkg.package_version_id,
+            version_number: pkg.version_number,
+            estimated_budget_low_minor: pkg.estimated_budget_low_minor,
+            estimated_budget_high_minor: pkg.estimated_budget_high_minor,
+            furnishing_packages: {
+              name: pkg.name,
+              description: pkg.description,
+              tier: pkg.tier,
+              property_type: pkg.property_type,
+            },
+          })),
     styles: styles.data ?? [],
     workspaces: workspaceRows ?? [],
   };
@@ -124,6 +147,15 @@ export async function listProjectWorkspaces() {
   const { data, error } = await query;
   if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   return data ?? [];
+}
+export async function getOwnerProjectProjection(projectId: string) {
+  await requireUser();
+  const db = await createClient(),
+    { data, error } = await db.rpc("get_furnishing_owner_plan", {
+      p_project_id: projectId,
+    });
+  if (error || !data) throw new Error("FURNISHING_PROJECT_ACCESS_DENIED");
+  return data;
 }
 const suggestedRooms = (bedrooms: number, bathrooms: number) => [
   { name: "Living Room", room_type: "living_room", ordinal: null },
@@ -212,6 +244,20 @@ export async function createProjectWorkspaceAction(formData: FormData) {
   const target = value(formData, "targetBudget"),
     packageVersionId = value(formData, "packageVersionId"),
     styleVersionId = value(formData, "styleVersionId");
+  if (profile?.role !== "admin") {
+    const ownerDb = await createClient(),
+      { data: eligiblePackages, error: eligibilityError } = await ownerDb.rpc(
+        "discover_furnishing_owner_packages",
+        { p_workspace_id: property.owner_id },
+      );
+    if (
+      eligibilityError ||
+      !(eligiblePackages as Row[] | null)?.some(
+        (pkg) => String(pkg.package_version_id) === packageVersionId,
+      )
+    )
+      throw new Error("FURNISHING_PACKAGE_ACCESS_DENIED");
+  }
   const { data: project, error } = await db
     .from("furnishing_projects")
     .insert({
@@ -391,7 +437,7 @@ export async function getProjectWorkspace(projectId: string) {
     moodBoards: moodBoards ?? [],
   };
 }
-const offerProjection = (offer: Row) => ({
+const offerProjection = (offer: Row, preferredOfferId?: string | null) => ({
   id: String(offer.id),
   status: offer.status,
   availability: offer.availability,
@@ -403,6 +449,7 @@ const offerProjection = (offer: Row) => ({
         }
       : null,
   lastVerifiedAt: offer.last_verified_at ?? null,
+  preferred: offer.id === preferredOfferId,
 });
 export async function generateFurnishingPlanAction(formData: FormData) {
   const { user } = await context(),
@@ -415,8 +462,16 @@ export async function generateFurnishingPlanAction(formData: FormData) {
   const { project, packageVersion } = (await getProjectWorkspace(
     projectId,
   )) as Row;
-  if (project.current_plan_version_id)
-    throw new Error("PLAN_ALREADY_GENERATED");
+  if (project.current_plan_version_id) {
+    const { data: existing } = await db
+      .from("furnishing_plans")
+      .select("id")
+      .eq("id", project.current_plan_version_id)
+      .eq("project_id", projectId)
+      .maybeSingle();
+    if (existing) return;
+    throw new Error("PLAN_GENERATION_CONFLICT");
+  }
   if (!packageVersion) throw new Error("APPROVED_PACKAGE_REQUIRED");
   const rooms: Row[] = project.furnishing_rooms ?? [],
     facts = {
@@ -483,7 +538,9 @@ export async function generateFurnishingPlanAction(formData: FormData) {
         product = item.furnishing_products,
         offer = product
           ? representativeOffer(
-              (product.furnishing_product_offers ?? []).map(offerProjection),
+              (product.furnishing_product_offers ?? []).map((candidate: Row) =>
+                offerProjection(candidate, product.preferred_offer_id),
+              ),
             )
           : null,
         unit = offer?.listedPrice?.amountMinor ?? null,
@@ -584,20 +641,28 @@ export async function replaceProjectSelectionAction(formData: FormData) {
     productId = value(formData, "productId"),
     offerId = value(formData, "offerId") || null;
   const selection = await editableSelection(db, selectionId, revision),
-    plan = selection.furnishing_plans;
+    plan = selection.furnishing_plans,
+    projectRelation = plan.furnishing_projects,
+    workspaceId = String(
+      Array.isArray(projectRelation)
+        ? projectRelation[0]?.workspace_id
+        : projectRelation?.workspace_id,
+    );
   const { data: product } = await db
     .from("furnishing_products")
     .select(
-      "id,furnishing_product_offers!furnishing_product_offers_product_id_fkey(*)",
+      "id,preferred_offer_id,furnishing_product_offers!furnishing_product_offers_product_id_fkey(*)",
     )
     .eq("id", productId)
+    .eq("workspace_id", workspaceId)
+    .eq("status", "approved")
     .single();
   const offer = offerId
     ? (product?.furnishing_product_offers ?? []).find(
         (x: Row) => x.id === offerId,
       )
-    : representativeOffer(
-        (product?.furnishing_product_offers ?? []).map(offerProjection),
+    : (product?.furnishing_product_offers ?? []).find(
+        (candidate: Row) => candidate.id === product?.preferred_offer_id,
       );
   const rawOffer =
       typeof offer?.listedPrice === "object"
@@ -635,6 +700,16 @@ export async function replaceProjectSelectionAction(formData: FormData) {
       : { data: null },
     compatibility = styleAssignment?.compatibility ?? null,
     exceptionReason = value(formData, "exceptionReason");
+  const { data: governedAssignment } = await db
+    .from("furnishing_product_offer_assignments")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("product_id", productId)
+    .eq("offer_id", rawOffer?.id ?? offerId)
+    .is("revoked_at", null)
+    .maybeSingle();
+  if (!product || !rawOffer || !governedAssignment)
+    throw new Error("PRODUCT_OFFER_INVALID");
   if ((compatibility === null || compatibility === "avoid") && !exceptionReason)
     throw new Error("DESIGN_EXCEPTION_REASON_REQUIRED");
   const { error } = await db
@@ -677,7 +752,22 @@ export async function changeSelectionOfferAction(formData: FormData) {
     ),
     offerId = value(formData, "offerId");
   const selection = await editableSelection(db, selectionId, revision),
-    plan = selection.furnishing_plans;
+    plan = selection.furnishing_plans,
+    projectRelation = plan.furnishing_projects,
+    workspaceId = String(
+      Array.isArray(projectRelation)
+        ? projectRelation[0]?.workspace_id
+        : projectRelation?.workspace_id,
+    );
+  const { data: assignment } = await db
+    .from("furnishing_product_offer_assignments")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("product_id", selection.product_id)
+    .eq("offer_id", offerId)
+    .is("revoked_at", null)
+    .maybeSingle();
+  if (!assignment) throw new Error("PRODUCT_OFFER_INVALID");
   const { data: offer } = await db
     .from("furnishing_product_offers")
     .select("id,product_id,listed_price_minor")
@@ -752,33 +842,38 @@ export async function markExistingInventoryAction(formData: FormData) {
   revalidatePath(`/admin/furnishing/projects/${plan.project_id}`);
 }
 export async function overrideSelectionQuantityAction(formData: FormData) {
-  const { db, selectionId, revision } = await authoritativeSelection(
-      formData,
-      "project.selection.quantity",
+  await requireUser();
+  const command = await resolveFurnishingCommandContext(
+      value(formData, "commandContextId"),
+      { commandType: "project.selection.quantity", targetType: "selection" },
     ),
-    quantity = Number(formData.get("quantity"));
-  const selection = await editableSelection(db, selectionId, revision),
-    plan = selection.furnishing_plans;
+    admin = createAdminClient(),
+    { data: selection } = await admin
+      .from("furnishing_product_selections")
+      .select("furnishing_plans!inner(revision,project_id)")
+      .eq("id", command.targetId)
+      .single();
+  if (!selection) throw new Error("PLAN_SELECTION_NOT_FOUND");
   if (!value(formData, "reason"))
     throw new Error("QUANTITY_OVERRIDE_REASON_REQUIRED");
-  const purchase = Math.max(0, quantity - Number(selection.existing_quantity)),
-    estimated =
-      selection.estimated_unit_price_minor === null
-        ? null
-        : Math.round(Number(selection.estimated_unit_price_minor) * purchase);
-  await db
-    .from("furnishing_product_selections")
-    .update({
-      quantity_override: quantity,
-      quantity_override_reason: value(formData, "reason"),
-      purchase_quantity: purchase,
-      estimated_total_minor: estimated,
-      revision: revision + 1,
-    })
-    .eq("id", selectionId)
-    .eq("revision", revision);
-  await recalculatePlan(db, plan.id);
+  const plan = Array.isArray(selection.furnishing_plans)
+      ? selection.furnishing_plans[0]
+      : selection.furnishing_plans,
+    db = await createClient(),
+    { error } = await db.rpc("save_furnishing_selection_delivery", {
+      p_input: {
+        selection_id: command.targetId,
+        expected_revision: Number(plan.revision),
+        quantity: Number(formData.get("quantity")),
+        delivery_minor: minorUnits(value(formData, "delivery") || "0")
+          .amountMinor,
+        correlation_id: command.correlationId,
+        idempotency_key: command.idempotencyKey,
+      },
+    });
+  if (error) throw new Error("OWNER_SELECTION_SAVE_FAILED");
   revalidatePath(`/admin/furnishing/projects/${plan.project_id}`);
+  revalidatePath(`/dashboard/furnishing/projects/${plan.project_id}`);
 }
 export async function acceptRoomDesignAction(formData: FormData) {
   const { user, profile, db } = await context(),
@@ -1010,14 +1105,17 @@ export async function validateFurnishingPlanAction(formData: FormData) {
     planId = command.targetId;
   const { plan, result } = await serverValidation(db, planId);
   const projectId = String(plan.project_id);
-  await db.from("furnishing_plan_validation_runs").insert({
-    furnishing_plan_id: planId,
-    revision: plan.revision,
-    errors: result.errors,
-    warnings: result.warnings,
-    estimated_total_minor: result.estimatedTotalMinor,
-    created_by: user.id,
-  });
+  await db.from("furnishing_plan_validation_runs").upsert(
+    {
+      furnishing_plan_id: planId,
+      revision: plan.revision,
+      errors: result.errors,
+      warnings: result.warnings,
+      estimated_total_minor: result.estimatedTotalMinor,
+      created_by: user.id,
+    },
+    { onConflict: "furnishing_plan_id,revision", ignoreDuplicates: true },
+  );
   await db
     .from("furnishing_plans")
     .update({ validation_snapshot: result })
@@ -1025,8 +1123,10 @@ export async function validateFurnishingPlanAction(formData: FormData) {
   revalidatePath(`/admin/furnishing/projects/${projectId}`);
 }
 export async function submitOrApprovePlanAction(formData: FormData) {
+  const mode = value(formData, "mode");
+  if (mode === "approve") await requireRole(["admin"]);
+  else if (mode !== "submit") throw new Error("PLAN_TRANSITION_INVALID");
   const { user } = await context(),
-    mode = value(formData, "mode"),
     command = await resolveFurnishingCommandContext(
       value(formData, "commandContextId"),
       {
@@ -1040,50 +1140,28 @@ export async function submitOrApprovePlanAction(formData: FormData) {
     { plan, result } = await serverValidation(db, planId);
   const projectId = String(plan.project_id);
   if (!result.ready) throw new Error("PLAN_HAS_BLOCKING_ERRORS");
-  if (mode === "submit") {
-    await db
-      .from("furnishing_plans")
-      .update({ status: "awaiting_approval", validation_snapshot: result })
-      .eq("id", planId)
-      .eq("status", "draft");
-    await db
-      .from("furnishing_projects")
-      .update({
-        plan_status: "awaiting_approval",
-        lifecycle_status: "awaiting_approval",
-      })
-      .eq("id", projectId);
-  } else {
-    if (plan.status !== "awaiting_approval")
-      throw new Error("PLAN_NOT_AWAITING_APPROVAL");
-    const { data: selections } = await db
-      .from("furnishing_product_selections")
-      .select("*")
-      .eq("furnishing_plan_id", planId);
-    await db
-      .from("furnishing_plans")
-      .update({
-        status: "approved",
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-        approval_snapshot: { approvedAt: new Date().toISOString(), selections },
-        validation_snapshot: result,
-      })
-      .eq("id", planId);
-    await db
-      .from("furnishing_product_selections")
-      .update({ selection_status: "approved" })
-      .eq("furnishing_plan_id", planId)
-      .in("selection_status", ["selected", "recommended", "replaced"]);
-    await db
-      .from("furnishing_projects")
-      .update({
-        plan_status: "approved",
-        lifecycle_status: "approved",
-        phase: "selections",
-      })
-      .eq("id", projectId);
-  }
+  await db.from("furnishing_plan_validation_runs").upsert(
+    {
+      furnishing_plan_id: planId,
+      revision: plan.revision,
+      errors: result.errors,
+      warnings: result.warnings,
+      estimated_total_minor: result.estimatedTotalMinor,
+      created_by: user.id,
+    },
+    { onConflict: "furnishing_plan_id,revision", ignoreDuplicates: true },
+  );
+  const authenticated = await createClient(),
+    { error } = await authenticated.rpc("transition_furnishing_owner_plan", {
+      p_input: {
+        plan_id: planId,
+        expected_revision: Number(plan.revision),
+        transition: mode,
+        correlation_id: command.correlationId,
+        idempotency_key: command.idempotencyKey,
+      },
+    });
+  if (error) throw new Error("PLAN_TRANSITION_FAILED");
   revalidatePath(`/admin/furnishing/projects/${projectId}`);
 }
 export async function createPlanRevisionAction(formData: FormData) {
@@ -1102,6 +1180,18 @@ export async function createPlanRevisionAction(formData: FormData) {
     .single();
   if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   const projectId = String(source.project_id);
+  const { data: replay } = await db
+    .from("furnishing_plans")
+    .select("id")
+    .eq("based_on_plan_id", source.id)
+    .maybeSingle();
+  if (replay) {
+    await db
+      .from("furnishing_projects")
+      .update({ current_plan_version_id: replay.id })
+      .eq("id", projectId);
+    return;
+  }
   const { data: next, error: ne } = await db
     .from("furnishing_plans")
     .insert({

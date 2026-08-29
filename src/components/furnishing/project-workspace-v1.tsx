@@ -1113,6 +1113,14 @@ function SelectionCard({
               className={field}
               placeholder="Reason required"
             />
+            <input
+              required
+              name="delivery"
+              inputMode="decimal"
+              className={field}
+              placeholder="Delivery allocation (USD)"
+              defaultValue="0"
+            />
             <button className={button}>Apply</button>
           </form>
         </details>

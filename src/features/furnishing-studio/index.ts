@@ -1,6 +1,7 @@
 export * from "./schema";
 export * from "./catalog";
 export * from "./catalog-package-governance";
+export * from "./owner-selection";
 export * from "./packages";
 export * from "./design";
 export * from "./project-plan";
