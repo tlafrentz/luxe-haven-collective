@@ -14,6 +14,7 @@ import {
   minorUnits,
   normalizeCatalogName,
 } from "@/features/furnishing-studio";
+import { normalizeOfferTarget } from "@/features/furnishing-studio/catalog-offer-normalization";
 
 async function catalogAdmin() {
   const { user } = await requireRole(["admin"]);
@@ -388,7 +389,7 @@ export async function startCatalogImportAction(formData: FormData) {
   const [{ data: categories }, { data: retailers }, { data: products }] =
     await Promise.all([
       db.from("furnishing_product_categories").select("id,slug"),
-      db.from("furnishing_retailers").select("id,domain"),
+      db.from("furnishing_retailers").select("id,name,domain").eq("status", "active"),
       db
         .from("furnishing_products")
         .select("id,name,brand,manufacturer_part_number"),
@@ -397,6 +398,11 @@ export async function startCatalogImportAction(formData: FormData) {
     (categories ?? []).map((row) => [row.slug, row.id]),
   );
   const retailerRows = retailers ?? [],
+    amazon = retailerRows.find((retailer) => retailer.name === "Amazon"),
+    retailerTargets = [
+      ...retailerRows.flatMap((retailer) => retailer.domain ? [{ retailerId: retailer.id, hostname: retailer.domain, provenance: "retailer_domain" as const }] : []),
+      ...(amazon ? [{ retailerId: amazon.id, hostname: "amzn.to", provenance: "allowlisted_alias" as const }] : []),
+    ],
     existing = products ?? [],
     proposals: Record<string, unknown>[] = [];
   const sheet = workbook.getWorksheet("Catalog Review");
@@ -421,16 +427,7 @@ export async function startCatalogImportAction(formData: FormData) {
       const rawUrl = cellText(row.getCell(linkColumn).value),
         price = Number(cellText(row.getCell(priceColumn).value)),
         quantity = Number(cellText(row.getCell(quantityColumn).value));
-      let productUrl: string | null = null,
-        domain = "";
-      try {
-        productUrl = rawUrl ? canonicalizeRetailerUrl(rawUrl) : null;
-        domain = productUrl
-          ? new URL(productUrl).hostname.replace(/^www\./, "")
-          : "";
-      } catch {
-        productUrl = null;
-      }
+      const offer = normalizeOfferTarget(rawUrl, retailerTargets, canonicalizeRetailerUrl);
       const duplicate = existing.find(
         (product) =>
           normalizeCatalogName(product.name) ===
@@ -447,18 +444,15 @@ export async function startCatalogImportAction(formData: FormData) {
           roomColumn > 0
             ? roomForLabel(cellText(row.getCell(roomColumn).value))
             : roomForSheet(sheet.name),
-        proposed_retailer_id:
-          retailerRows.find((retailer) =>
-            domain.endsWith(retailer.domain ?? "--"),
-          )?.id ?? null,
-        proposed_product_url: productUrl,
+        proposed_retailer_id: offer.retailerId,
+        proposed_product_url: offer.productUrl,
         proposed_price_minor:
           Number.isFinite(price) && price > 0 ? Math.round(price * 100) : null,
         duplicate_product_id: duplicate?.id ?? null,
-        review_action: duplicate ? "match" : "create",
+        review_action: offer.status === "needs_review" ? "review" : duplicate ? "match" : "create",
         matched_product_id: duplicate?.id ?? null,
         validation_issues: [
-          ...(!productUrl ? ["Missing or invalid URL"] : []),
+          ...(offer.status === "needs_review" ? ["OFFER_TARGET_INVALID: retailer could not be resolved from the allowlisted hostname"] : []),
           ...(!(price > 0) ? ["Missing price"] : []),
         ],
         raw_source: {
@@ -475,6 +469,14 @@ export async function startCatalogImportAction(formData: FormData) {
           cachedExtendedCostIgnored:
             extendedCostColumn > 0 &&
             Boolean(row.getCell(extendedCostColumn).value),
+          offerNormalization: {
+            version: "FS-008G-C7",
+            status: offer.status,
+            hostname: offer.hostname,
+            provenance: offer.provenance,
+            retailerId: offer.retailerId,
+            productUrl: offer.productUrl,
+          },
         },
       });
     }
@@ -542,7 +544,7 @@ export async function completeCatalogImportAction(formData: FormData) {
   await assertFurnishingCatalogMutationAllowed(
     String(importTarget.workspace_id),
   );
-  const applied = await db.rpc("apply_fs008g_c6_catalog_import" as never, {
+  const applied = await db.rpc("apply_fs008g_c7_catalog_import" as never, {
     p_input: {
       actorId: user.id,
       importId,
@@ -554,8 +556,8 @@ export async function completeCatalogImportAction(formData: FormData) {
   } as never);
   if (applied.error || !applied.data)
     throw new Error(
-      applied.error?.message.match(/FS008G_C6_[A-Z_]+/)?.[0] ??
-        "FS008G_C6_ATOMIC_APPLY_UNAVAILABLE",
+      applied.error?.message.match(/(?:FS008G_C7_|OFFER_)[A-Z_]+/)?.[0] ??
+        "FS008G_C7_ATOMIC_APPLY_UNAVAILABLE",
     );
   revalidatePath("/admin/furnishing/products");
   redirect(`/admin/furnishing/products/import/${importId}`);

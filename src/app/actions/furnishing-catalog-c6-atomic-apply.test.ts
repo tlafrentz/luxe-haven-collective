@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 
 const action = readFileSync("src/app/actions/furnishing-catalog.ts", "utf8");
 const view = readFileSync("src/components/furnishing/product-catalog-workspace.tsx", "utf8");
-const sql = readFileSync("supabase/migrations/20260828023000_fs008g_c6_atomic_catalog_apply.sql", "utf8");
+const sql = readFileSync("supabase/migrations/20260829010000_fs008g_c7_offer_normalization.sql", "utf8");
 
-describe("FS-008G-C6 atomic reviewed catalog apply", () => {
+describe("FS-008G-C7 atomic reviewed catalog apply", () => {
   it("replaces browser row mutation with one canonical transaction", () => {
     const completion = action.slice(action.indexOf("export async function completeCatalogImportAction"), action.indexOf("export async function getCatalogImport"));
-    expect(completion).toContain("apply_fs008g_c6_catalog_import");
+    expect(completion).toContain("apply_fs008g_c7_catalog_import");
     expect(completion).not.toContain("for (const item");
     expect(sql).toContain("for update");
     expect(sql).toContain("for item in select");
@@ -21,7 +21,7 @@ describe("FS-008G-C6 atomic reviewed catalog apply", () => {
     expect(action).toContain("context.idempotencyKey");
     expect(action).toContain("Number(importTarget.optimistic_version)");
     for (const rejection of ["TARGET_MISMATCH", "VERSION_CONFLICT", "CORRELATION_MISMATCH", "REPLAY_CONFLICT"])
-      expect(sql).toContain(`FS008G_C6_${rejection}`);
+      expect(sql).toContain(`FS008G_C7_${rejection}`);
     expect(sql).toContain("apply_fingerprint");
     expect(sql).toContain("optimistic_version=optimistic_version+1");
   });
@@ -31,12 +31,13 @@ describe("FS-008G-C6 atomic reviewed catalog apply", () => {
     expect(sql).toContain("ba849761b7c54060a8e6a7c656c57e03a33a234dfe4233c1fb17902e1e304823");
     expect(sql).toContain("run.total_rows<>110");
     expect(sql).toContain("count(*)");
-    expect(sql).toContain("FS008G_C6_UNRESOLVED_REVIEW_ITEM");
+    expect(sql).toContain("FS008G_C7_UNRESOLVED_REVIEW_ITEM");
   });
 
   it("fails closed for non-Admin, wrong state, invalid matches and offers", () => {
-    for (const rejection of ["ADMIN_REQUIRED", "REVIEW_REQUIRED", "MATCH_TARGET_INVALID", "CREATE_TARGET_INVALID", "OFFER_TARGET_INVALID"])
-      expect(sql).toContain(`FS008G_C6_${rejection}`);
+    for (const rejection of ["ADMIN_REQUIRED", "REVIEW_REQUIRED", "MATCH_TARGET_INVALID", "CREATE_TARGET_INVALID"])
+      expect(sql).toContain(`FS008G_C7_${rejection}`);
+    expect(sql).toContain("raise exception 'OFFER_TARGET_INVALID'");
     expect(sql).toContain("security definer");
     expect(sql).toContain("revoke all on function");
   });

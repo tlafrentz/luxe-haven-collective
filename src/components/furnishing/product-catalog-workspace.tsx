@@ -737,7 +737,9 @@ export async function ImportReview({ importId }: { importId: string }) {
                     {x.duplicate_product_id ? " existing" : ""}
                   </td>
                   <td className="text-amber-700">
-                    {x.validation_issues?.join(", ") || "Ready"}
+                    {x.review_action === "review"
+                      ? x.validation_issues?.join(", ") || "Needs review"
+                      : x.validation_issues?.join(", ") || "Ready"}
                   </td>
                 </tr>
               ))}
@@ -750,7 +752,7 @@ export async function ImportReview({ importId }: { importId: string }) {
            <input type="hidden" name="importId" value={catalogImport.id} />
            <input type="hidden" name="commandContextId" value={applyContext?.contextId ?? ""} />
           <button className={button}>
-            Import {items.length} reviewed items
+            Import {items.filter((item: Row) => item.review_action !== "review").length} valid reviewed items
           </button>
         </form>
       ) : (
