@@ -28,6 +28,9 @@
     "migration:adoption": "tsx scripts/platform-migration/cli.ts adoption",
     "migration:features": "tsx scripts/platform-migration/cli.ts features",
     "migration:lint": "tsx scripts/platform-migration/cli.ts lint"
+    ,"verify:fs008g:c8:provision-local": "tsx scripts/verification/provision-fs008g-c8-local-identities.ts"
+    ,"verify:fs008g:c8:browser": "tsx scripts/verification/verify-fs008g-c8-browser.ts"
+    ,"verify:fs008g:c8:cleanup-local": "tsx scripts/verification/cleanup-fs008g-c8-local-identities.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "latest",
