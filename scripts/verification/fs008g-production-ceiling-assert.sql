@@ -2,6 +2,7 @@
 do $$begin
  if (select count(*) from public.furnishing_products where scope='platform' and workspace_id is null and status='draft')<>109 then raise exception 'EXPECTED_109_PLATFORM_DRAFTS';end if;
  if exists(select 1 from public.furnishing_products where scope='workspace') then raise exception 'MIGRATION_MANUFACTURED_WORKSPACE_PRODUCT';end if;
+ if (select count(*) from public.furnishing_catalog_imports)<>3 or (select count(*) from public.furnishing_catalog_import_items)<>220 then raise exception 'EXPECTED_EXISTING_IMPORT_LEDGER_COUNTS';end if;
  if (select count(*) from public.furnishing_packages where governance_scope='legacy_ambiguous' and workspace_id is null and lifecycle_status='draft' and current_version_id is null)<>3 then raise exception 'LEGACY_PACKAGE_CLASSIFICATION_MISMATCH';end if;
  if exists(select 1 from public.furnishing_packages where governance_scope='legacy_ambiguous' and id not in('4d162594-f9a7-45e9-881e-adba36cd7406','c196e39c-5d10-4f9a-a8ea-48045da3fa10','a7e0d9cd-3f94-4ccb-9be4-c218bd0a1a96')) then raise exception 'UNAPPROVED_LEGACY_CLASSIFICATION';end if;
 end$$;

@@ -22,4 +22,13 @@ insert into public.furnishing_catalog_imports(
 insert into public.furnishing_products(scope,workspace_id,name,product_type,category,status,created_by,source_type,source_import_id,source_sheet,source_row,imported_at)
 select 'platform',null,'Production-derived platform draft '||n,'catalog_item','Imported','draft','10000000-0000-4000-8000-000000000001','xlsx','30000000-0000-4000-8000-000000000001','Inventory',n,now()
 from generate_series(1,109) n;
+insert into public.furnishing_catalog_imports(id,workspace_id,source_filename,status,total_rows,created_count,matched_count,skipped_count,failed_count,created_by,source_sha256,correlation_id,idempotency_key,optimistic_version)
+values
+('30000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000001','Legacy review.xlsx','review_required',55,0,0,0,0,'10000000-0000-4000-8000-000000000001',repeat('2',64),'40000000-0000-4000-8000-000000000002','production-derived-import-2',0),
+('30000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000001','Legacy failed.xlsx','failed',55,0,0,0,55,'10000000-0000-4000-8000-000000000001',repeat('3',64),'40000000-0000-4000-8000-000000000003','production-derived-import-3',0);
+insert into public.furnishing_catalog_import_items(import_id,source_sheet,source_row,source_item,proposed_name,review_action,validation_issues,raw_source)
+select case when n<=110 then '30000000-0000-4000-8000-000000000001'::uuid when n<=165 then '30000000-0000-4000-8000-000000000002'::uuid else '30000000-0000-4000-8000-000000000003'::uuid end,
+ 'Inventory',case when n<=110 then n when n<=165 then n-110 else n-165 end,
+ 'Production-derived import item '||n,'Production-derived import item '||n,'review','{}','{}'::jsonb
+from generate_series(1,220) n;
 commit;

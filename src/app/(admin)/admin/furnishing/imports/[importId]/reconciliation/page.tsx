@@ -1,9 +1,13 @@
 import { InventoryImportWorkflow } from "@/components/furnishing/inventory-import-workflow";
-export const dynamic = "force-dynamic";
 export default async function Page({
   params,
 }: {
   params: Promise<{ importId: string }>;
 }) {
-  return <InventoryImportWorkflow importId={(await params).importId} />;
+  return (
+    <InventoryImportWorkflow
+      importId={(await params).importId}
+      stage="reconciliation"
+    />
+  );
 }

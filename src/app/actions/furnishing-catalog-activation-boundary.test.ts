@@ -14,6 +14,10 @@ const importPage = readFileSync(
   "src/app/(admin)/admin/furnishing/products/import/page.tsx",
   "utf8",
 );
+const canonicalImportPage = readFileSync(
+  "src/app/(admin)/admin/furnishing/imports/new/page.tsx",
+  "utf8",
+);
 const migration = readFileSync(
   "supabase/migrations/20260827030000_fs008g_catalog_authorization_boundary.sql",
   "utf8",
@@ -32,12 +36,12 @@ describe("FS-008G controlled catalog mutation boundary", () => {
   });
 
   it("server-binds a fresh correlation and stable replay key before enabling import", () => {
-    expect(importPage).toContain("UUID.test(workspaceId)");
-    expect(importPage).toContain("issueFurnishingCommandContext");
-    expect(importPage).not.toContain("params.correlationId");
-    expect(view).toContain('type="hidden" name="commandContextId"');
-    expect(view).toContain("disabled={!resolved}");
-    expect(view).toContain("Authoritative SHA-256:");
+    expect(importPage).toContain("permanentRedirect");
+    expect(canonicalImportPage).toContain("UUID.test(workspace)");
+    expect(canonicalImportPage).toContain("issueFurnishingCommandContext");
+    expect(canonicalImportPage).not.toContain("params.correlationId");
+    expect(canonicalImportPage).toContain('name="commandContextId"');
+    expect(canonicalImportPage).toContain("Platform drafts only.");
     expect(catalog).toContain("resolveFurnishingCommandContext");
   });
 
