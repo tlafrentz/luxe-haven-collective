@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 const url = required("NEXT_PUBLIC_SUPABASE_URL");
 const serviceRoleKey = required("SUPABASE_SERVICE_ROLE_KEY");
 const outputDirectory = required("FS008G_BROWSER_SECRET_DIR");
+const candidateCommit = required("FS008G_CANDIDATE_COMMIT");
 const parsed = new URL(url);
 if (!["127.0.0.1", "localhost"].includes(parsed.hostname))
   throw new Error("FS008G_LOCAL_SUPABASE_REQUIRED");
@@ -30,6 +31,10 @@ const credentials = {
   customerAccountId: "",
   propertyId: "",
   styleVersionId: "",
+  controlledRunId: randomUUID(),
+  controlledCorrelationId: randomUUID(),
+  controlledDesignationId: "",
+  candidateCommit,
 };
 
 function required(name: string) {
@@ -120,6 +125,18 @@ async function provision() {
     p_admin_id: credentials.admin.id,
     p_owner_id: credentials.owner.id,
   }), "CONTROLLED_TENANT_DESIGNATION");
+  const designation = await must(admin.rpc("designate_fs008g_controlled_project", {
+    p_input: {
+      workspace_id: workspace.id,
+      controlled_run_id: credentials.controlledRunId,
+      correlation_id: credentials.controlledCorrelationId,
+      candidate_commit: candidateCommit,
+      purpose: "FS-008G C8 controlled lifecycle verification",
+      created_by: credentials.owner.id,
+      expires_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+    },
+  }), "CONTROLLED_RUN_CREATE") as { designationId: string };
+  credentials.controlledDesignationId = designation.designationId;
   const customerAccount = await must(admin.from("customer_accounts").insert({
     tenant_id: workspace.id,
     account_type: "owner",

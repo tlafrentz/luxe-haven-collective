@@ -9,5 +9,20 @@ describe("FS-UX-002 governed catalog lifecycle", () => {
   it("governs review, concurrency and retirement without deletion", () => { expect(sql).toContain("transition_furnishing_product_review"); expect(sql).toContain("CATALOG_PRODUCT_VERSION_STALE"); expect(sql).toContain("retirement_reason"); expect(sql).not.toMatch(/delete from public\.furnishing_products/); });
   it("updates drafts but proposes approved revisions without rewriting live history", () => { expect(sql).toContain("edit_furnishing_product"); expect(sql).toContain("product.status='draft'"); expect(sql).toContain("'catalog_product_update_proposed'"); expect(sql).toContain("CATALOG_REVISION_ALREADY_OPEN"); expect(sql).toContain("furnishing_product_versions"); });
   it("approves a proposed version with optimistic concurrency", () => { expect(sql).toContain("approve_furnishing_product_revision"); expect(sql).toContain("base_version=expected"); expect(sql).toContain("lifecycle_status='superseded'"); expect(sql).toContain("revision=proposal.version"); });
+  it("uses one canonical identity boundary for manual creation, adoption, offers, and revision approval", () => {
+    expect(sql).toContain("canonical_furnishing_product_identity");
+    expect(sql).toContain("claim_furnishing_workspace_product_identity");
+    expect(sql).toContain("furnishing_workspace_product_identity_enforced");
+    expect(sql).toContain("enforce_furnishing_workspace_offer_identity");
+    expect(sql).toContain("pg_advisory_xact_lock(hashtextextended('furnishing-product-identity:'");
+    expect(sql).toContain("perform public.claim_furnishing_workspace_product_identity(product.id,product.family_product_id,proposal.product_snapshot)");
+  });
+  it("does not let null commercial fields or retirement bypass workspace identity enforcement", () => {
+    expect(sql).toContain("coalesce(p_retailer_id::text,'<null>')");
+    expect(sql).toContain("coalesce(p_sku,'')");
+    expect(sql).toContain("CATALOG_RETIRED_IDENTITY_REQUIRES_REPLACEMENT");
+    expect(sql).toContain("retired_at=coalesce(retired_at,now())");
+    expect(sql).toContain("unique(workspace_id,identity_kind,identity_key)");
+  });
   it("does not introduce external effects or activation changes", () => { expect(sql).toContain("'externalEffects',false"); expect(sql).not.toMatch(/update public\.furnishing_activation_/); expect(sql).not.toMatch(/insert into public\.(?:furnishing_procurement_orders|notification_deliveries|payment)/); });
 });

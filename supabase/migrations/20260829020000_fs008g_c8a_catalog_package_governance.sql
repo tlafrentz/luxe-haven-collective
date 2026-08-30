@@ -11,8 +11,28 @@ alter table public.furnishing_products
   add constraint furnishing_product_scope_consistent
   check ((scope='platform' and workspace_id is null) or (scope='workspace' and workspace_id is not null)) not valid;
 alter table public.furnishing_packages
-  add constraint furnishing_property_package_workspace_required
-  check (workspace_id is not null) not valid;
+  add column if not exists governance_scope text not null default 'workspace'
+    check(governance_scope in('workspace','platform','legacy_ambiguous'));
+update public.furnishing_packages set governance_scope='legacy_ambiguous'
+where id in(
+  '4d162594-f9a7-45e9-881e-adba36cd7406'::uuid,
+  'c196e39c-5d10-4f9a-a8ea-48045da3fa10'::uuid,
+  'a7e0d9cd-3f94-4ccb-9be4-c218bd0a1a96'::uuid
+) and workspace_id is null and lifecycle_status='draft' and current_version_id is null;
+alter table public.furnishing_packages
+  add constraint furnishing_property_package_scope_consistent
+  check(
+    (governance_scope='workspace' and workspace_id is not null)
+    or (governance_scope='platform' and workspace_id is null)
+    or (governance_scope='legacy_ambiguous' and workspace_id is null and lifecycle_status='draft' and current_version_id is null)
+  ) not valid;
+create or replace function public.prevent_new_ambiguous_furnishing_package()
+returns trigger language plpgsql set search_path=public,pg_temp as $$begin
+ if new.governance_scope='legacy_ambiguous' and (tg_op='INSERT' or old.governance_scope<>'legacy_ambiguous') then raise exception 'FURNISHING_PACKAGE_LEGACY_SCOPE_RESERVED';end if;
+ if tg_op='UPDATE' and old.governance_scope='legacy_ambiguous' and (new.workspace_id is not null or new.lifecycle_status<>'draft' or new.current_version_id is not null) then raise exception 'FURNISHING_PACKAGE_LEGACY_REVIEW_REQUIRED';end if;
+ return new;
+end$$;
+create trigger prevent_new_ambiguous_furnishing_package before insert or update on public.furnishing_packages for each row execute function public.prevent_new_ambiguous_furnishing_package();
 
 create table public.furnishing_catalog_approvals(
   id uuid primary key default gen_random_uuid(), workspace_id uuid not null references public.owners(id),

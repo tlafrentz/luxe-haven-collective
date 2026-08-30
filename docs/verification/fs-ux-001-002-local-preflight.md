@@ -1,6 +1,8 @@
 # FS-UX-001/002 local completion and migration preflight
 
-Status: **LOCAL GATES COMPLETE — DO NOT MIGRATE OR DEPLOY**
+Status: **HELD PENDING CORRECTED FS-008G PREDECESSOR — DO NOT MIGRATE OR DEPLOY**
+
+Authoritative predecessor correction runbook: `docs/verification/fs008g-corrected-predecessor-local-hold-point.md`.
 
 Candidate classification: FS-UX-001 implemented pending combined production reconciliation; FS-UX-002 core and versioned edit implemented pending controlled production verification. Production and capability state were not accessed or changed.
 
@@ -31,8 +33,8 @@ Candidate classification: FS-UX-001 implemented pending combined production reco
 
 ## Migration preflight for `20260830090000_fs_ux_002_catalog_lifecycle.sql`
 
-- Local forward-only ceiling: `20260829051000_fs008g_c8d_requirement_review_state.sql`; the candidate is ordered after it at `20260830090000`.
-- Exact production ceiling: **NOT YET CAPTURED**. Deployment remains blocked until the controlled window records the production migration ledger and proves it equals the expected predecessor or documents every intervening migration.
+- Local forward-only predecessor: `20260829051000_fs008g_c8d_requirement_review_state.sql`; FS-UX follows at `20260830090000` only after a separate FS-008G Window A certification.
+- Exact Production ceiling: `20260829010000`. Production commit `87ea1f9dff01b64cdf99457b6764b2a6f8feb192` is internally consistent with that ceiling. No Production mutation occurred.
 - Existing-row compatibility: the migration adds nullable/defaulted columns and new evidence tables. It does not rewrite product scope, workspace, lifecycle, approval, retirement, or activation state.
 - Imported platform drafts remain valid (`scope=platform`, `workspace_id=null`, `status=draft`). Direct controlled approval remains workspace-only; adoption creates a distinct workspace draft.
 - Duplicate analysis: the migration aborts before creating the active governed-identity index if duplicate active `(workspace_id, family_product_id)` rows exist. Those records must be listed for governed review; they are never silently merged.

@@ -62,7 +62,9 @@ describe("FS-008G-C8-C procurement and certification boundaries", () => {
     expect(sql).toContain("PROCUREMENT_CUSTOMER_ACCESS_DENIED");
     expect(
       sql.match(/PROCUREMENT_ADMIN_REQUIRED/g)?.length,
-    ).toBeGreaterThanOrEqual(4);
+    ).toBeGreaterThanOrEqual(3);
+    expect(sql).toContain("designate_fs008g_controlled_project");
+    expect(sql).toContain("auth.role()<>'service_role'");
     const projection = sql.slice(
       sql.indexOf(
         "create or replace function public.get_furnishing_customer_procurement",

@@ -1,5 +1,6 @@
--- FS-008G-C8-D: workspace-native controlled catalog import.
--- Historical platform products/offers and completed imports are not rewritten.
+-- FS-008G-C8-D: controlled platform-library catalog import.
+-- Import creates reusable platform drafts. Workspace use requires the separately
+-- governed FS-UX-002 adoption transaction.
 begin;
 
 alter table public.furnishing_command_contexts
@@ -73,13 +74,7 @@ begin
   select * into run from public.furnishing_catalog_imports where id=target_import for update;
   if not found then raise exception 'FS008G_C7_IMPORT_NOT_FOUND'; end if;
   if run.workspace_id is null or run.workspace_id is distinct from target_workspace then raise exception 'FS008G_C7_TARGET_MISMATCH'; end if;
-  if not exists(select 1 from public.ps001d_verification_tenants controlled where controlled.tenant_id=run.workspace_id and controlled.designation='PS001D_VERIFICATION_ONLY_NON_CUSTOMER' and controlled.status='approved' and controlled.revoked_at is null and controlled.expires_at>now()) then raise exception 'FURNISHING_CATALOG_TARGET_FORBIDDEN';end if;
-  select r.* into release from public.furnishing_activation_releases r where r.milestone='FS-008A';
-  if not found or release.global_state<>'internal' or release.global_kill_switch or not release.configuration_valid then raise exception 'FURNISHING_ACTIVATION_DISABLED';end if;
-  select w.* into controlled_workspace from public.furnishing_activation_workspaces w where w.release_id=release.id and w.workspace_id=run.workspace_id;
-  if not found or not controlled_workspace.enabled or controlled_workspace.kill_switch or controlled_workspace.cohort<>'internal' or controlled_workspace.revoked_at is not null or(controlled_workspace.expires_at is not null and controlled_workspace.expires_at<=now()) then raise exception 'FURNISHING_ACTIVATION_DISABLED';end if;
-  if not exists(select 1 from public.furnishing_activation_capabilities c where c.release_id=release.id and c.capability='catalog_viewing' and c.enabled) then raise exception 'FURNISHING_ACTIVATION_DISABLED';end if;
-  fingerprint:=encode(digest(concat_ws(':','C8D-workspace',run.id,run.workspace_id,run.source_sha256,run.correlation_id,run.total_rows),'sha256'),'hex');
+  fingerprint:=encode(digest(concat_ws(':','C8D-platform',run.id,run.workspace_id,run.source_sha256,run.correlation_id,run.total_rows),'sha256'),'hex');
   if run.status='complete' then
     if run.apply_idempotency_key=supplied_key and run.correlation_id=supplied_correlation then
       if run.apply_fingerprint=fingerprint or exists(select 1 from public.furnishing_products p where p.source_import_id=run.id and p.scope='platform' and p.workspace_id is null) then
@@ -88,6 +83,12 @@ begin
     end if;
     raise exception 'FS008G_C7_REPLAY_CONFLICT';
   end if;
+  if not exists(select 1 from public.ps001d_verification_tenants controlled where controlled.tenant_id=run.workspace_id and controlled.designation='PS001D_VERIFICATION_ONLY_NON_CUSTOMER' and controlled.status='approved' and controlled.revoked_at is null and controlled.expires_at>now()) then raise exception 'FURNISHING_CATALOG_TARGET_FORBIDDEN';end if;
+  select r.* into release from public.furnishing_activation_releases r where r.milestone='FS-008A';
+  if not found or release.global_state<>'internal' or release.global_kill_switch or not release.configuration_valid then raise exception 'FURNISHING_ACTIVATION_DISABLED';end if;
+  select w.* into controlled_workspace from public.furnishing_activation_workspaces w where w.release_id=release.id and w.workspace_id=run.workspace_id;
+  if not found or not controlled_workspace.enabled or controlled_workspace.kill_switch or controlled_workspace.cohort<>'internal' or controlled_workspace.revoked_at is not null or(controlled_workspace.expires_at is not null and controlled_workspace.expires_at<=now()) then raise exception 'FURNISHING_ACTIVATION_DISABLED';end if;
+  if not exists(select 1 from public.furnishing_activation_capabilities c where c.release_id=release.id and c.capability='catalog_viewing' and c.enabled) then raise exception 'FURNISHING_ACTIVATION_DISABLED';end if;
   if run.status<>'review_required' then raise exception 'FS008G_C7_REVIEW_REQUIRED'; end if;
   if run.optimistic_version<>expected_version then raise exception 'FS008G_C7_VERSION_CONFLICT'; end if;
   if run.correlation_id<>supplied_correlation then raise exception 'FS008G_C7_CORRELATION_MISMATCH'; end if;
@@ -105,24 +106,24 @@ begin
 
     product_id:=item.matched_product_id;
     if item.review_action='match' then
-      if product_id is null or not exists(select 1 from public.furnishing_products p where p.id=product_id and p.scope='workspace' and p.workspace_id=run.workspace_id) then raise exception 'FS008G_C8D_MATCH_SCOPE_INVALID';end if;
+      if product_id is null or not exists(select 1 from public.furnishing_products p where p.id=product_id and p.scope='platform' and p.workspace_id is null) then raise exception 'FS008G_C8D_MATCH_SCOPE_INVALID';end if;
       v_matched:=v_matched+1;
     else
       if product_id is not null then raise exception 'FS008G_C7_CREATE_TARGET_INVALID';end if;
       insert into public.furnishing_products(scope,workspace_id,name,description,product_type,category,category_id,status,created_by,source_type,source_import_id,source_sheet,source_row,imported_at)
-      values('workspace',run.workspace_id,item.proposed_name,null,'catalog_item','Imported',item.proposed_category_id,'draft',actor,'xlsx',run.id,item.source_sheet,item.source_row,now()) returning id into product_id;
+      values('platform',null,item.proposed_name,null,'catalog_item','Imported',item.proposed_category_id,'draft',actor,'xlsx',run.id,item.source_sheet,item.source_row,now()) returning id into product_id;
       v_created:=v_created+1;
       if item.proposed_room_type_id is not null then insert into public.furnishing_product_room_compatibility(product_id,room_type_id) values(product_id,item.proposed_room_type_id);end if;
     end if;
     if norm_status='resolved' then
       insert into public.furnishing_product_offers(workspace_id,product_id,retailer_id,product_url,listed_price_minor,availability,status,source_type,source_import_id,source_sheet,source_row,imported_at)
-      values(run.workspace_id,product_id,item.proposed_retailer_id,item.proposed_product_url,item.proposed_price_minor,'unknown','active','xlsx',run.id,item.source_sheet,item.source_row,now()) returning id into offer_id;
+      values(null,product_id,item.proposed_retailer_id,item.proposed_product_url,item.proposed_price_minor,'unknown','active','xlsx',run.id,item.source_sheet,item.source_row,now()) returning id into offer_id;
     end if;
     update public.furnishing_catalog_import_items set imported_product_id=product_id,imported_offer_id=offer_id where id=item.id;
   end loop;
   update public.furnishing_catalog_imports set status='complete',created_count=v_created,matched_count=v_matched,skipped_count=v_skipped,failed_count=0,completed_at=now(),apply_idempotency_key=supplied_key,apply_fingerprint=fingerprint,optimistic_version=optimistic_version+1 where id=run.id returning * into run;
-  insert into public.furnishing_catalog_activity(workspace_id,import_id,event_type,actor_id,metadata) values(run.workspace_id,run.id,'catalog_inventory_import_completed',actor,jsonb_build_object('correlationId',run.correlation_id,'idempotencyKey',supplied_key,'fingerprint',fingerprint,'normalization','FS-008G-C8D','scope','workspace','version',run.optimistic_version,'created',v_created,'matched',v_matched,'skipped',v_skipped,'failed',0,'externalEffects',false));
-  return jsonb_build_object('status','complete','id',run.id,'version',run.optimistic_version,'created',v_created,'matched',v_matched,'skipped',v_skipped,'failed',0,'scope','workspace','workspaceId',run.workspace_id);
+  insert into public.furnishing_catalog_activity(workspace_id,import_id,event_type,actor_id,metadata) values(run.workspace_id,run.id,'catalog_inventory_import_completed',actor,jsonb_build_object('correlationId',run.correlation_id,'idempotencyKey',supplied_key,'fingerprint',fingerprint,'normalization','FS-008G-C8D','scope','platform','destinationWorkspaceId',run.workspace_id,'version',run.optimistic_version,'created',v_created,'matched',v_matched,'skipped',v_skipped,'failed',0,'externalEffects',false));
+  return jsonb_build_object('status','complete','id',run.id,'version',run.optimistic_version,'created',v_created,'matched',v_matched,'skipped',v_skipped,'failed',0,'scope','platform','workspaceId',null);
 end $$;
 
 revoke all on function public.apply_fs008g_c7_catalog_import(jsonb) from public,anon,authenticated;

@@ -561,22 +561,3 @@ export async function adjustProcurementBudgetAction(formData: FormData) {
   if (error) throw new Error(commandError(error, "PROCUREMENT_ADJUSTMENT_FAILED"));
   revalidatePath(`/admin/furnishing/projects/${baseline.project_id}/procurement`);
 }
-
-export async function cleanupSyntheticFurnishingProjectAction(formData: FormData) {
-  const command = await resolveFurnishingCommandContext(
-    text(formData, "commandContextId"),
-    { commandType: "procurement.cleanup", targetType: "cleanup" },
-  );
-  await scope(command.targetId, true);
-  const client = await createClient();
-  const { error } = await client.rpc("cleanup_fs008g_synthetic_project", {
-    p_input: {
-      project_id: command.targetId,
-      reason: text(formData, "reason"),
-      correlation_id: command.correlationId,
-      idempotency_key: command.idempotencyKey,
-    },
-  });
-  if (error) throw new Error(commandError(error, "CLEANUP_FAILED"));
-  revalidatePath(`/admin/furnishing/projects/${command.targetId}/procurement`);
-}

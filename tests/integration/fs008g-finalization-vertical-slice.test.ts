@@ -44,7 +44,8 @@ describe("FS-008G activation-through-cleanup vertical slice", () => {
     ]) {
       const step = runbook.steps.find((x) => x.id === id);
       expect(step, id).toBeTruthy();
-      expect(step?.url).toMatch(/^https:\/\/luxehavencollective\.co\//);
+      if (id === "kill-switch-cleanup") expect(step?.url).toBe("service-only");
+      else expect(step?.url).toMatch(/^https:\/\/luxehavencollective\.co\//);
       for (const field of [
         "persona",
         "control",

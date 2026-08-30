@@ -21,7 +21,9 @@ describe("FS-008G-C8-A forward migration", () => {
     expect(sql).toContain("furnishing_package_governance_approvals");
     expect(sql).toContain("package_kind in('room','property')");
     expect(sql).toContain("composition_hash");
-    expect(sql).toContain("furnishing_property_package_workspace_required");
+    expect(sql).toContain("furnishing_property_package_scope_consistent");
+    expect(sql).toContain("governance_scope in('workspace','platform','legacy_ambiguous')");
+    expect(sql).toContain("FURNISHING_PACKAGE_LEGACY_REVIEW_REQUIRED");
     expect(sql).toContain("validate_controlled_furnishing_package");
     expect(sql).toContain("approve_controlled_furnishing_package");
     expect(sql).toContain("PACKAGE_VALIDATION_REQUIRED");

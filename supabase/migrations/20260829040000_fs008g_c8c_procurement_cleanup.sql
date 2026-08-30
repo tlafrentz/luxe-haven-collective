@@ -30,6 +30,43 @@ create table public.furnishing_cleanup_runs(
  actor_id uuid not null references public.profiles(id),reason text not null,correlation_id uuid not null,idempotency_key text not null unique,
  reconciliation jsonb not null,created_at timestamptz not null default now()
 );
+create table public.furnishing_controlled_fixture_designations(
+ id uuid primary key default gen_random_uuid(),project_id uuid references public.furnishing_projects(id),workspace_id uuid not null references public.owners(id),
+ controlled_customer_account_id uuid references public.customer_accounts(id),controlled_property_id uuid references public.properties(id),
+ tenant_id uuid not null references public.owners(id),controlled_run_id uuid not null,candidate_commit text not null check(length(candidate_commit) between 7 and 64),
+ correlation_id uuid not null,purpose text not null check(length(trim(purpose))>=3),created_by uuid not null references public.profiles(id),created_at timestamptz not null default now(),
+ expires_at timestamptz not null check(expires_at>created_at),revoked_at timestamptz,cleaned_at timestamptz,unique(controlled_run_id,correlation_id)
+);
+create unique index furnishing_controlled_fixture_project_once on public.furnishing_controlled_fixture_designations(project_id) where project_id is not null;
+
+create or replace function public.designate_fs008g_controlled_project(p_input jsonb) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
+declare workspace uuid;run_id uuid;correlation uuid;actor uuid;candidate text;purpose text;expiry timestamptz;d public.furnishing_controlled_fixture_designations%rowtype;
+begin
+ if auth.role()<>'service_role' then raise exception 'FS008G_FIXTURE_SERVICE_ROLE_REQUIRED' using errcode='42501';end if;
+ begin workspace:=(p_input->>'workspace_id')::uuid;run_id:=(p_input->>'controlled_run_id')::uuid;correlation:=(p_input->>'correlation_id')::uuid;actor:=(p_input->>'created_by')::uuid;expiry:=(p_input->>'expires_at')::timestamptz;exception when others then raise exception 'FS008G_FIXTURE_DESIGNATION_INVALID';end;
+ candidate:=trim(p_input->>'candidate_commit');purpose:=trim(p_input->>'purpose');if length(candidate)<7 or length(purpose)<3 or expiry<=now() or expiry>now()+interval '24 hours' then raise exception 'FS008G_FIXTURE_DESIGNATION_INVALID';end if;
+ if not exists(select 1 from public.ps001d_verification_tenants v where v.tenant_id=workspace and v.designation='PS001D_VERIFICATION_ONLY_NON_CUSTOMER' and v.status='approved' and v.revoked_at is null and v.expires_at>now()) then raise exception 'FS008G_FIXTURE_TENANT_REQUIRED';end if;
+ if exists(select 1 from public.customer_accounts where tenant_id=workspace) or exists(select 1 from public.integration_connections where workspace_id=workspace) then raise exception 'FS008G_FIXTURE_CUSTOMER_DEPENDENCY';end if;
+ insert into public.furnishing_controlled_fixture_designations(workspace_id,tenant_id,controlled_run_id,candidate_commit,correlation_id,purpose,created_by,expires_at) values(workspace,workspace,run_id,candidate,correlation,purpose,actor,expiry) returning * into d;
+ return jsonb_build_object('status','created','designationId',d.id,'controlledRunId',run_id);
+end$$;
+
+create or replace function public.bind_fs008g_controlled_project(p_input jsonb) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
+declare designation_id uuid;v_project_id uuid;account_id uuid;property_id uuid;run_id uuid;correlation uuid;actor uuid;candidate text;d public.furnishing_controlled_fixture_designations%rowtype;p public.furnishing_projects%rowtype;
+begin
+ if auth.role()<>'service_role' then raise exception 'FS008G_FIXTURE_SERVICE_ROLE_REQUIRED' using errcode='42501';end if;
+ begin designation_id:=(p_input->>'designation_id')::uuid;v_project_id:=(p_input->>'project_id')::uuid;account_id:=(p_input->>'customer_account_id')::uuid;property_id:=(p_input->>'property_id')::uuid;run_id:=(p_input->>'controlled_run_id')::uuid;correlation:=(p_input->>'correlation_id')::uuid;actor:=(p_input->>'created_by')::uuid;exception when others then raise exception 'FS008G_FIXTURE_BINDING_INVALID';end;
+ candidate:=trim(p_input->>'candidate_commit');
+ select * into d from public.furnishing_controlled_fixture_designations where id=designation_id for update;
+ if not found or d.project_id is not null or d.revoked_at is not null or d.cleaned_at is not null or d.expires_at<=now() or d.controlled_run_id<>run_id or d.correlation_id<>correlation or d.created_by<>actor or d.candidate_commit<>candidate then raise exception 'FS008G_FIXTURE_BINDING_INVALID';end if;
+ select * into p from public.furnishing_projects where id=v_project_id and workspace_id=d.workspace_id for update;
+ if not found or p.created_by<>actor or p.created_at<d.created_at or p.property_id<>property_id or p.name not like 'C8-D Isolated Furnishing Lifecycle%' then raise exception 'FS008G_FIXTURE_PROJECT_INVALID';end if;
+ if not exists(select 1 from public.properties x where x.id=property_id and x.owner_id=d.workspace_id and x.created_at>=d.created_at and x.name like 'FS008G C8 Isolated Property%') then raise exception 'FS008G_FIXTURE_PROPERTY_INVALID';end if;
+ if not exists(select 1 from public.customer_accounts x join public.customer_account_memberships m on m.customer_account_id=x.id and m.tenant_id=x.tenant_id where x.id=account_id and x.tenant_id=d.workspace_id and x.created_at>=d.created_at and m.profile_id=actor and m.status='active') then raise exception 'FS008G_FIXTURE_CUSTOMER_ACCOUNT_INVALID';end if;
+ if exists(select 1 from public.customer_accounts where tenant_id=d.workspace_id and id<>account_id) or exists(select 1 from public.integration_connections where workspace_id=d.workspace_id) then raise exception 'FS008G_FIXTURE_CUSTOMER_DEPENDENCY';end if;
+ update public.furnishing_controlled_fixture_designations set project_id=v_project_id,controlled_customer_account_id=account_id,controlled_property_id=property_id where id=d.id returning * into d;
+ return jsonb_build_object('status','bound','designationId',d.id,'projectId',d.project_id);
+end$$;
 
 create or replace function public.provision_fs008g_c8_controlled_tenant(p_workspace_id uuid,p_admin_id uuid,p_owner_id uuid) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare w public.owners%rowtype;a public.profiles%rowtype;o public.profiles%rowtype;
@@ -100,19 +137,116 @@ create or replace function public.get_furnishing_customer_procurement(p_project_
 create or replace function public.prevent_fs008d_snapshot_mutation() returns trigger language plpgsql set search_path=public as $$begin if current_setting('app.fs008g_cleanup',true)='on' and old.archived_at is null and new.archived_at is not null then return new;end if;raise exception 'FS008D_SNAPSHOT_IMMUTABLE';end$$;
 create or replace function public.prevent_fs008d_snapshot_item_mutation() returns trigger language plpgsql set search_path=public as $$begin if current_setting('app.fs008g_cleanup',true)='on' and old.archived_at is null and new.archived_at is not null then return new;end if;raise exception 'FS008D_SNAPSHOT_ITEM_IMMUTABLE';end$$;
 
-create or replace function public.cleanup_fs008g_synthetic_project(p_input jsonb) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
-declare a uuid:=auth.uid();v_project_id uuid;v_workspace_id uuid;correlation uuid;command_key text:=left(trim(p_input->>'idempotency_key'),200);why text:=left(trim(p_input->>'reason'),500);recon jsonb;run public.furnishing_cleanup_runs%rowtype;
-begin if a is null or not public.is_admin() then raise exception 'PROCUREMENT_ADMIN_REQUIRED' using errcode='42501';end if;begin v_project_id:=(p_input->>'project_id')::uuid;correlation:=(p_input->>'correlation_id')::uuid;exception when others then raise exception 'CLEANUP_COMMAND_INVALID';end;if length(why)<3 or length(command_key)<8 then raise exception 'CLEANUP_REASON_REQUIRED';end if;
- select x.* into run from public.furnishing_cleanup_runs x where x.idempotency_key=command_key;if found then return jsonb_build_object('status','replayed','id',run.id,'reconciliation',run.reconciliation);end if;select p.workspace_id into v_workspace_id from public.furnishing_projects p where p.id=v_project_id for update;if v_workspace_id is null then raise exception 'CLEANUP_PROJECT_NOT_FOUND';end if;perform set_config('app.fs008g_cleanup','on',true);
- if exists(select 1 from public.furnishing_procurement_exceptions e join public.furnishing_procurement_baselines b on b.id=e.baseline_id where b.project_id=v_project_id and e.status<>'resolved') then raise exception 'CLEANUP_OPEN_DISCREPANCY';end if;
- update public.furnishing_procurement_orders set status=case when status in('cancelled','refunded','delivered') then status else 'cancelled' end,archived_at=now() where furnishing_procurement_orders.project_id=v_project_id and archived_at is null;update public.furnishing_purchase_batch_lines set archived_at=now() where batch_id in(select x.id from public.furnishing_purchase_batches x join public.furnishing_procurement_baselines b on b.id=x.baseline_id where b.project_id=v_project_id);update public.furnishing_purchase_batches set status=case when status='ordered' then 'cancelled' else status end,archived_at=now() where baseline_id in(select id from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id);update public.furnishing_procurement_receipts set archived_at=now() where baseline_id in(select id from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id);update public.furnishing_procurement_exceptions set archived_at=now() where baseline_id in(select id from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id);update public.furnishing_project_procurement_budgets set archived_at=now() where project_id=v_project_id;update public.furnishing_procurement_adjustments set archived_at=now() where baseline_id in(select id from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id);update public.furnishing_procurement_lines set archived_at=now() where baseline_id in(select id from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id);update public.furnishing_procurement_baselines set status='closed',archived_at=now() where furnishing_procurement_baselines.project_id=v_project_id;update public.fs008d_snapshot_items set archived_at=now() where fs008d_snapshot_items.project_id=v_project_id;update public.fs008d_project_catalog_snapshots set archived_at=now() where fs008d_project_catalog_snapshots.project_id=v_project_id;update public.furnishing_plans set status='superseded' where furnishing_plans.project_id=v_project_id and status<>'superseded';update public.furnishing_projects set lifecycle_status='archived',plan_status='approved' where id=v_project_id;
- select jsonb_build_object('activeSnapshots',(select count(*) from public.fs008d_project_catalog_snapshots where fs008d_project_catalog_snapshots.project_id=v_project_id and archived_at is null),'activeBaselines',(select count(*) from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id and archived_at is null),'activeLines',(select count(*) from public.furnishing_procurement_lines l join public.furnishing_procurement_baselines b on b.id=l.baseline_id where b.project_id=v_project_id and l.archived_at is null),'activeBatches',(select count(*) from public.furnishing_purchase_batches x join public.furnishing_procurement_baselines b on b.id=x.baseline_id where b.project_id=v_project_id and x.archived_at is null),'activeOrders',(select count(*) from public.furnishing_procurement_orders where furnishing_procurement_orders.project_id=v_project_id and archived_at is null),'openDiscrepancies',(select count(*) from public.furnishing_procurement_exceptions e join public.furnishing_procurement_baselines b on b.id=e.baseline_id where b.project_id=v_project_id and e.status<>'resolved'),'retainedAuditEvents',(select count(*) from public.furnishing_procurement_events e where e.project_id=v_project_id),'retainedCatalogResources',(select count(*) from public.furnishing_products p where p.workspace_id=v_workspace_id and p.status='approved')) into recon;
- if (recon->>'activeSnapshots')::int+(recon->>'activeBaselines')::int+(recon->>'activeLines')::int+(recon->>'activeBatches')::int+(recon->>'activeOrders')::int+(recon->>'openDiscrepancies')::int<>0 then raise exception 'CLEANUP_RECONCILIATION_FAILED';end if;insert into public.furnishing_cleanup_runs(workspace_id,project_id,actor_id,reason,correlation_id,idempotency_key,reconciliation) values(v_workspace_id,v_project_id,a,why,correlation,command_key,recon) returning * into run;return jsonb_build_object('status','clean','id',run.id,'reconciliation',recon);end$$;
+create or replace function public.assert_fs008g_cleanup_dependencies(p_designation_id uuid,p_lock boolean default false)
+returns void language plpgsql security definer set search_path=public,pg_temp as $$
+declare d public.furnishing_controlled_fixture_designations%rowtype;
+begin
+ select * into d from public.furnishing_controlled_fixture_designations where id=p_designation_id;
+ if not found or d.project_id is null then raise exception 'CLEANUP_DESIGNATION_INVALID';end if;
+ if p_lock then
+   perform 1 from public.furnishing_plans where project_id=d.project_id for update;
+   perform 1 from public.furnishing_budgets where project_id=d.project_id for update;
+   perform 1 from public.furnishing_procurement_items where project_id=d.project_id for update;
+   perform 1 from public.fs008d_project_catalog_snapshots where project_id=d.project_id for update;
+   perform 1 from public.fs008d_snapshot_items where project_id=d.project_id for update;
+   perform 1 from public.furnishing_procurement_baselines where project_id=d.project_id for update;
+   perform 1 from public.furnishing_project_procurement_budgets where project_id=d.project_id for update;
+   perform 1 from public.furnishing_procurement_orders where project_id=d.project_id for update;
+   perform 1 from public.furnishing_installation_projects where project_id=d.project_id for update;
+   perform 1 from public.notifications where workspace_id=d.workspace_id and (subject_id=d.project_id::text or action_url like '%'||d.project_id::text||'%') for update;
+   perform 1 from public.commerce_payments where workspace_id=d.workspace_id for update;
+ end if;
+ if exists(select 1 from public.customer_accounts where tenant_id=d.workspace_id and id is distinct from d.controlled_customer_account_id)
+   or not exists(select 1 from public.customer_accounts where id=d.controlled_customer_account_id and tenant_id=d.workspace_id)
+   or exists(select 1 from public.integration_connections where workspace_id=d.workspace_id)
+ then raise exception 'CLEANUP_CUSTOMER_OR_PROVIDER_DEPENDENCY';end if;
+ if exists(select 1 from public.notifications where workspace_id=d.workspace_id and (subject_id=d.project_id::text or action_url like '%'||d.project_id::text||'%')) then raise exception 'CLEANUP_NOTIFICATION_DEPENDENCY';end if;
+ if exists(select 1 from public.commerce_payments where workspace_id=d.workspace_id) then raise exception 'CLEANUP_PAYMENT_DEPENDENCY';end if;
+ if exists(select 1 from public.furnishing_procurement_orders where project_id=d.project_id and (external_order_id is not null or status in('ordered','partially_fulfilled','shipped','delivered','returned','refunded'))) then raise exception 'CLEANUP_RETAILER_ORDER_DEPENDENCY';end if;
+ if exists(select 1 from public.furnishing_installation_projects where project_id=d.project_id)
+   or exists(select 1 from public.furnishing_installation_tasks where project_id=d.project_id and status not in('pending','cancelled','not_required'))
+ then raise exception 'CLEANUP_INSTALLATION_DEPENDENCY';end if;
+ if exists(select 1 from public.furnishing_procurement_items where project_id=d.project_id and status<>'not_ordered')
+   or exists(select 1 from public.furnishing_procurement_exceptions e join public.furnishing_procurement_baselines b on b.id=e.baseline_id where b.project_id=d.project_id and e.status<>'resolved')
+ then raise exception 'CLEANUP_NON_CONTROLLED_PROCUREMENT_DEPENDENCY';end if;
+ if exists(select 1 from public.furnishing_plans where project_id=d.project_id and created_at<d.created_at)
+   or exists(select 1 from public.furnishing_budgets where project_id=d.project_id and created_at<d.created_at)
+   or exists(select 1 from public.fs008d_project_catalog_snapshots where project_id=d.project_id and created_at<d.created_at)
+ then raise exception 'CLEANUP_NON_CONTROLLED_LIFECYCLE_DEPENDENCY';end if;
+end$$;
 
-alter table public.furnishing_procurement_discrepancy_history enable row level security;alter table public.furnishing_procurement_adjustments enable row level security;alter table public.furnishing_cleanup_runs enable row level security;
+create or replace function public.prevent_archived_furnishing_project_dependency()
+returns trigger language plpgsql set search_path=public,pg_temp as $$
+declare target uuid;
+begin
+ target:=case tg_table_name
+   when 'furnishing_plans' then new.project_id
+   when 'furnishing_budgets' then new.project_id
+   when 'furnishing_procurement_items' then new.project_id
+   when 'furnishing_procurement_baselines' then new.project_id
+   when 'furnishing_project_procurement_budgets' then new.project_id
+   when 'furnishing_procurement_orders' then new.project_id
+   when 'furnishing_installation_projects' then new.project_id
+   when 'fs008d_project_catalog_snapshots' then new.project_id
+   else null end;
+ if target is not null and exists(select 1 from public.furnishing_projects where id=target and lifecycle_status='archived') then raise exception 'FURNISHING_PROJECT_ARCHIVED_DEPENDENCY_DENIED';end if;
+ return new;
+end$$;
+do $$declare t text;begin foreach t in array array['furnishing_plans','furnishing_budgets','furnishing_procurement_items','furnishing_procurement_baselines','furnishing_project_procurement_budgets','furnishing_procurement_orders','furnishing_installation_projects','fs008d_project_catalog_snapshots'] loop execute format('drop trigger if exists prevent_archived_furnishing_project_dependency on public.%I',t);execute format('create trigger prevent_archived_furnishing_project_dependency before insert or update on public.%I for each row execute function public.prevent_archived_furnishing_project_dependency()',t);end loop;end$$;
+
+create or replace function public.lock_fs008g_controlled_fixture_dependency()
+returns trigger language plpgsql set search_path=public,pg_temp as $$
+declare workspace uuid;d public.furnishing_controlled_fixture_designations%rowtype;p public.furnishing_projects%rowtype;
+begin
+ if tg_table_name='customer_accounts' then workspace:=new.tenant_id;
+ elsif tg_table_name='integration_connections' then workspace:=new.workspace_id;
+ elsif tg_table_name='notifications' then workspace:=new.workspace_id;
+ elsif tg_table_name='commerce_payments' then workspace:=new.workspace_id;
+ else raise exception 'FS008G_CONTROLLED_FIXTURE_DEPENDENCY_TABLE_INVALID';end if;
+ if workspace is null then return new;end if;
+ select * into d from public.furnishing_controlled_fixture_designations where workspace_id=workspace and project_id is not null order by created_at desc limit 1;
+ if not found then return new;end if;
+ select * into p from public.furnishing_projects where id=d.project_id for key share;
+ if not found or p.lifecycle_status='archived' or d.cleaned_at is not null or d.revoked_at is not null then raise exception 'FS008G_CONTROLLED_FIXTURE_DEPENDENCY_CLOSED';end if;
+ return new;
+end$$;
+do $$declare t text;begin foreach t in array array['customer_accounts','integration_connections','notifications','commerce_payments'] loop execute format('drop trigger if exists lock_fs008g_controlled_fixture_dependency on public.%I',t);execute format('create trigger lock_fs008g_controlled_fixture_dependency before insert or update on public.%I for each row execute function public.lock_fs008g_controlled_fixture_dependency()',t);end loop;end$$;
+
+create or replace function public.cleanup_fs008g_synthetic_project(p_input jsonb) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
+declare a uuid;designation_id uuid;v_project_id uuid;v_workspace_id uuid;correlation uuid;candidate text;controlled_run uuid;command_key text:=left(trim(p_input->>'idempotency_key'),200);why text:=left(trim(p_input->>'reason'),500);before_counts jsonb;recon jsonb;run public.furnishing_cleanup_runs%rowtype;d public.furnishing_controlled_fixture_designations%rowtype;
+begin if auth.role()<>'service_role' then raise exception 'FS008G_FIXTURE_SERVICE_ROLE_REQUIRED' using errcode='42501';end if;begin designation_id:=(p_input->>'designation_id')::uuid;v_project_id:=(p_input->>'project_id')::uuid;v_workspace_id:=(p_input->>'workspace_id')::uuid;controlled_run:=(p_input->>'controlled_run_id')::uuid;correlation:=(p_input->>'correlation_id')::uuid;a:=(p_input->>'actor_id')::uuid;exception when others then raise exception 'CLEANUP_COMMAND_INVALID';end;candidate:=trim(p_input->>'candidate_commit');if length(why)<3 or length(command_key)<8 or length(candidate)<7 then raise exception 'CLEANUP_REASON_REQUIRED';end if;
+	 select x.* into run from public.furnishing_cleanup_runs x where x.idempotency_key=command_key;if found then select * into d from public.furnishing_controlled_fixture_designations where id=designation_id;if not found or run.project_id<>v_project_id or run.workspace_id<>v_workspace_id or run.actor_id<>a or run.correlation_id<>correlation or d.project_id<>v_project_id or d.controlled_run_id<>controlled_run or d.candidate_commit<>candidate or d.correlation_id<>correlation or d.created_by<>a or d.cleaned_at is null then raise exception 'CLEANUP_REPLAY_CONFLICT';end if;return jsonb_build_object('status','already_cleaned','id',run.id,'designationId',d.id,'reconciliation',run.reconciliation);end if;
+ select * into d from public.furnishing_controlled_fixture_designations where id=designation_id for update;if not found or d.revoked_at is not null or d.cleaned_at is not null or d.expires_at<=now() or d.project_id<>v_project_id or d.workspace_id<>v_workspace_id or d.tenant_id<>v_workspace_id or d.controlled_run_id<>controlled_run or d.candidate_commit<>candidate or d.correlation_id<>correlation or d.created_by<>a then raise exception 'CLEANUP_DESIGNATION_INVALID';end if;
+	 perform public.assert_fs008g_cleanup_dependencies(d.id,false);
+	 perform 1 from public.furnishing_projects p where p.id=v_project_id and p.workspace_id=v_workspace_id and p.created_by=a and p.created_at>=d.created_at and p.name like 'C8-D Isolated Furnishing Lifecycle%' for update;if not found then raise exception 'CLEANUP_PROJECT_NOT_CONTROLLED';end if;
+	 select * into d from public.furnishing_controlled_fixture_designations where id=designation_id for update;if d.revoked_at is not null or d.cleaned_at is not null or d.expires_at<=now() then raise exception 'CLEANUP_DESIGNATION_INVALID';end if;
+	 perform public.assert_fs008g_cleanup_dependencies(d.id,true);
+	 select jsonb_build_object(
+	  'snapshots',(select count(*) from public.fs008d_project_catalog_snapshots where project_id=v_project_id and archived_at is null),
+	  'snapshotItems',(select count(*) from public.fs008d_snapshot_items where project_id=v_project_id and archived_at is null),
+	  'baselines',(select count(*) from public.furnishing_procurement_baselines where project_id=v_project_id and archived_at is null),
+	  'lines',(select count(*) from public.furnishing_procurement_lines l join public.furnishing_procurement_baselines b on b.id=l.baseline_id where b.project_id=v_project_id and l.archived_at is null),
+	  'batches',(select count(*) from public.furnishing_purchase_batches x join public.furnishing_procurement_baselines b on b.id=x.baseline_id where b.project_id=v_project_id and x.archived_at is null),
+	  'batchLines',(select count(*) from public.furnishing_purchase_batch_lines x join public.furnishing_purchase_batches pb on pb.id=x.batch_id join public.furnishing_procurement_baselines b on b.id=pb.baseline_id where b.project_id=v_project_id and x.archived_at is null),
+	  'orders',(select count(*) from public.furnishing_procurement_orders where project_id=v_project_id and archived_at is null),
+	  'receipts',(select count(*) from public.furnishing_procurement_receipts r join public.furnishing_procurement_baselines b on b.id=r.baseline_id where b.project_id=v_project_id and r.archived_at is null),
+	  'exceptions',(select count(*) from public.furnishing_procurement_exceptions e join public.furnishing_procurement_baselines b on b.id=e.baseline_id where b.project_id=v_project_id and e.archived_at is null),
+	  'budgets',(select count(*) from public.furnishing_project_procurement_budgets where project_id=v_project_id and archived_at is null),
+	  'adjustments',(select count(*) from public.furnishing_procurement_adjustments x join public.furnishing_procurement_baselines b on b.id=x.baseline_id where b.project_id=v_project_id and x.archived_at is null),
+	  'plans',(select count(*) from public.furnishing_plans where project_id=v_project_id and status<>'superseded'),
+	  'projects',(select count(*) from public.furnishing_projects where id=v_project_id and lifecycle_status<>'archived')
+	 ) into before_counts;
+ perform set_config('app.fs008g_cleanup','on',true);
+ update public.furnishing_procurement_orders set status=case when status in('cancelled','refunded','delivered') then status else 'cancelled' end,archived_at=now() where furnishing_procurement_orders.project_id=v_project_id and archived_at is null;update public.furnishing_purchase_batch_lines set archived_at=now() where batch_id in(select x.id from public.furnishing_purchase_batches x join public.furnishing_procurement_baselines b on b.id=x.baseline_id where b.project_id=v_project_id);update public.furnishing_purchase_batches set status=case when status='ordered' then 'cancelled' else status end,archived_at=now() where baseline_id in(select id from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id);update public.furnishing_procurement_receipts set archived_at=now() where baseline_id in(select id from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id);update public.furnishing_procurement_exceptions set archived_at=now() where baseline_id in(select id from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id);update public.furnishing_project_procurement_budgets set archived_at=now() where project_id=v_project_id;update public.furnishing_procurement_adjustments set archived_at=now() where baseline_id in(select id from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id);update public.furnishing_procurement_lines set archived_at=now() where baseline_id in(select id from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id);update public.furnishing_procurement_baselines set status='closed',archived_at=now() where furnishing_procurement_baselines.project_id=v_project_id;update public.fs008d_snapshot_items set archived_at=now() where fs008d_snapshot_items.project_id=v_project_id;update public.fs008d_project_catalog_snapshots set archived_at=now() where fs008d_project_catalog_snapshots.project_id=v_project_id;update public.furnishing_plans set status='superseded' where furnishing_plans.project_id=v_project_id and status<>'superseded';update public.furnishing_projects set lifecycle_status='archived',plan_status='approved' where id=v_project_id;
+	 select jsonb_build_object('archivedCounts',before_counts,'activeSnapshots',(select count(*) from public.fs008d_project_catalog_snapshots where fs008d_project_catalog_snapshots.project_id=v_project_id and archived_at is null),'activeBaselines',(select count(*) from public.furnishing_procurement_baselines where furnishing_procurement_baselines.project_id=v_project_id and archived_at is null),'activeLines',(select count(*) from public.furnishing_procurement_lines l join public.furnishing_procurement_baselines b on b.id=l.baseline_id where b.project_id=v_project_id and l.archived_at is null),'activeBatches',(select count(*) from public.furnishing_purchase_batches x join public.furnishing_procurement_baselines b on b.id=x.baseline_id where b.project_id=v_project_id and x.archived_at is null),'activeOrders',(select count(*) from public.furnishing_procurement_orders where furnishing_procurement_orders.project_id=v_project_id and archived_at is null),'openDiscrepancies',(select count(*) from public.furnishing_procurement_exceptions e join public.furnishing_procurement_baselines b on b.id=e.baseline_id where b.project_id=v_project_id and e.status<>'resolved'),'retainedAuditEvents',(select count(*) from public.furnishing_procurement_events e where e.project_id=v_project_id),'retainedCatalogResources',(select count(*) from public.furnishing_products p where p.workspace_id=v_workspace_id and p.status='approved')) into recon;
+	 if (recon->>'activeSnapshots')::int+(recon->>'activeBaselines')::int+(recon->>'activeLines')::int+(recon->>'activeBatches')::int+(recon->>'activeOrders')::int+(recon->>'openDiscrepancies')::int<>0 then raise exception 'CLEANUP_RECONCILIATION_FAILED';end if;insert into public.furnishing_cleanup_runs(workspace_id,project_id,actor_id,reason,correlation_id,idempotency_key,reconciliation) values(v_workspace_id,v_project_id,a,why,correlation,command_key,recon) returning * into run;update public.furnishing_controlled_fixture_designations set cleaned_at=now(),revoked_at=now() where id=d.id;return jsonb_build_object('status','clean','id',run.id,'designationId',d.id,'reconciliation',recon);end$$;
+
+alter table public.furnishing_procurement_discrepancy_history enable row level security;alter table public.furnishing_procurement_adjustments enable row level security;alter table public.furnishing_cleanup_runs enable row level security;alter table public.furnishing_controlled_fixture_designations enable row level security;
 create policy "Admins read discrepancy history" on public.furnishing_procurement_discrepancy_history for select to authenticated using(public.is_admin());create policy "Admins read adjustments" on public.furnishing_procurement_adjustments for select to authenticated using(public.is_admin());create policy "Admins read cleanup evidence" on public.furnishing_cleanup_runs for select to authenticated using(public.is_admin());
-revoke all on public.furnishing_procurement_discrepancy_history,public.furnishing_procurement_adjustments,public.furnishing_cleanup_runs from public,anon,authenticated;
-revoke all on function public.resolve_furnishing_procurement_discrepancy(jsonb),public.adjust_furnishing_procurement_budget(jsonb),public.get_furnishing_customer_procurement(uuid),public.cleanup_fs008g_synthetic_project(jsonb) from public,anon;grant execute on function public.resolve_furnishing_procurement_discrepancy(jsonb),public.adjust_furnishing_procurement_budget(jsonb),public.cleanup_fs008g_synthetic_project(jsonb) to authenticated;grant execute on function public.get_furnishing_customer_procurement(uuid) to authenticated;
+create policy "Admins read controlled fixture designations" on public.furnishing_controlled_fixture_designations for select to authenticated using(public.is_admin() and public.active_workspace_role(workspace_id) is not null);
+revoke all on public.furnishing_procurement_discrepancy_history,public.furnishing_procurement_adjustments,public.furnishing_cleanup_runs,public.furnishing_controlled_fixture_designations from public,anon,authenticated;
+grant select on public.furnishing_procurement_discrepancy_history,public.furnishing_procurement_adjustments,public.furnishing_cleanup_runs,public.furnishing_controlled_fixture_designations to authenticated;
+revoke all on function public.resolve_furnishing_procurement_discrepancy(jsonb),public.adjust_furnishing_procurement_budget(jsonb),public.get_furnishing_customer_procurement(uuid),public.cleanup_fs008g_synthetic_project(jsonb),public.designate_fs008g_controlled_project(jsonb),public.bind_fs008g_controlled_project(jsonb),public.assert_fs008g_cleanup_dependencies(uuid,boolean) from public,anon,authenticated;grant execute on function public.resolve_furnishing_procurement_discrepancy(jsonb),public.adjust_furnishing_procurement_budget(jsonb) to authenticated;grant execute on function public.get_furnishing_customer_procurement(uuid) to authenticated;grant execute on function public.cleanup_fs008g_synthetic_project(jsonb),public.designate_fs008g_controlled_project(jsonb),public.bind_fs008g_controlled_project(jsonb) to service_role;
 revoke all on function public.provision_fs008g_c8_controlled_tenant(uuid,uuid,uuid),public.cleanup_fs008g_c8_controlled_tenant(uuid,uuid,uuid) from public,anon,authenticated;
 grant execute on function public.provision_fs008g_c8_controlled_tenant(uuid,uuid,uuid),public.cleanup_fs008g_c8_controlled_tenant(uuid,uuid,uuid) to service_role;
 do $$declare t record;begin

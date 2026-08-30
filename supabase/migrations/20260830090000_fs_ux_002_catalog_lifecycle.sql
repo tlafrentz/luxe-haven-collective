@@ -58,16 +58,114 @@ create table public.furnishing_product_versions(
   unique(product_id,version)
 );
 
-do $$ begin
-  if exists(
-    select 1 from public.furnishing_products
-    where scope='workspace' and family_product_id is not null and status not in('discontinued','archived')
-    group by workspace_id,family_product_id having count(*)>1
-  ) then raise exception 'FSUX002_DUPLICATE_ACTIVE_WORKSPACE_IDENTITY_REVIEW_REQUIRED'; end if;
+create table public.furnishing_product_identity_claims(
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.owners(id),
+  product_id uuid not null references public.furnishing_products(id),
+  identity_kind text not null check(identity_kind in('platform_source','normalized_product','retailer_sku')),
+  identity_key text not null,
+  lifecycle_status text not null,
+  claimed_at timestamptz not null default now(),
+  retired_at timestamptz,
+  unique(workspace_id,identity_kind,identity_key),
+  unique(product_id,identity_kind,identity_key)
+);
+
+create or replace function public.canonical_furnishing_product_identity(
+  p_kind text,p_source_product_id uuid,p_name text,p_brand text,p_manufacturer_part_number text,
+  p_retailer_id uuid,p_sku text,p_variant jsonb
+) returns text language sql immutable set search_path=public,extensions,pg_temp as $$
+ select encode(digest(concat_ws('|','fs-product-identity-v1',p_kind,
+   coalesce(p_source_product_id::text,'<null>'),lower(regexp_replace(trim(coalesce(p_name,'')),'\s+',' ','g')),
+   lower(regexp_replace(trim(coalesce(p_brand,'')),'\s+',' ','g')),
+   lower(regexp_replace(trim(coalesce(p_manufacturer_part_number,'')),'\s+',' ','g')),
+   coalesce(p_retailer_id::text,'<null>'),lower(regexp_replace(trim(coalesce(p_sku,'')),'\s+',' ','g')),
+   coalesce(p_variant,'{}'::jsonb)::text),'sha256'),'hex')
+$$;
+
+create or replace function public.claim_furnishing_workspace_product_identity(
+  p_product_id uuid,p_source_product_id uuid default null,p_snapshot jsonb default null
+) returns void language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+declare p public.furnishing_products%rowtype; o record; snap jsonb; variant jsonb; identity text; conflict record;
+begin
+ select * into p from public.furnishing_products where id=p_product_id and scope='workspace' and workspace_id is not null for update;
+ if not found then raise exception 'CATALOG_IDENTITY_TARGET_INVALID'; end if;
+ perform pg_advisory_xact_lock(hashtextextended('furnishing-product-identity:'||p.workspace_id::text,0));
+ snap:=coalesce(p_snapshot,to_jsonb(p));
+ variant:=jsonb_strip_nulls(jsonb_build_object('color',snap->'color','material',snap->'material','finish',snap->'finish','dimensions',snap->'dimensions'));
+ delete from public.furnishing_product_identity_claims where product_id=p.id and identity_kind in('normalized_product','retailer_sku');
+ identity:=public.canonical_furnishing_product_identity('normalized_product',null,snap->>'name',snap->>'brand',snap->>'manufacturer_part_number',null,null,variant);
+ select c.*,x.status as product_status into conflict from public.furnishing_product_identity_claims c join public.furnishing_products x on x.id=c.product_id where c.workspace_id=p.workspace_id and c.identity_kind='normalized_product' and c.identity_key=identity and c.product_id<>p.id;
+ if found then
+   if conflict.retired_at is not null or conflict.product_status in('discontinued','archived') then raise exception 'CATALOG_RETIRED_IDENTITY_REQUIRES_REPLACEMENT'; end if;
+   raise exception 'CATALOG_WORKSPACE_IDENTITY_CONFLICT';
+ end if;
+ insert into public.furnishing_product_identity_claims(workspace_id,product_id,identity_kind,identity_key,lifecycle_status)
+ values(p.workspace_id,p.id,'normalized_product',identity,p.status)
+ on conflict(product_id,identity_kind,identity_key) do update set lifecycle_status=excluded.lifecycle_status;
+ if p_source_product_id is not null then
+   identity:=public.canonical_furnishing_product_identity('platform_source',p_source_product_id,null,null,null,null,null,'{}');
+   select c.*,x.status as product_status into conflict from public.furnishing_product_identity_claims c join public.furnishing_products x on x.id=c.product_id where c.workspace_id=p.workspace_id and c.identity_kind='platform_source' and c.identity_key=identity and c.product_id<>p.id;
+   if found then
+     if conflict.retired_at is not null or conflict.product_status in('discontinued','archived') then raise exception 'CATALOG_RETIRED_IDENTITY_REQUIRES_REPLACEMENT'; end if;
+     raise exception 'CATALOG_PLATFORM_SOURCE_ALREADY_ADOPTED';
+   end if;
+   insert into public.furnishing_product_identity_claims(workspace_id,product_id,identity_kind,identity_key,lifecycle_status)
+   values(p.workspace_id,p.id,'platform_source',identity,p.status)
+   on conflict(product_id,identity_kind,identity_key) do update set lifecycle_status=excluded.lifecycle_status;
+ end if;
+ for o in select retailer_id,sku from public.furnishing_product_offers where product_id=p.id and status<>'archived' loop
+   identity:=public.canonical_furnishing_product_identity('retailer_sku',null,null,null,null,o.retailer_id,o.sku,variant);
+   select c.*,x.status as product_status into conflict from public.furnishing_product_identity_claims c join public.furnishing_products x on x.id=c.product_id where c.workspace_id=p.workspace_id and c.identity_kind='retailer_sku' and c.identity_key=identity and c.product_id<>p.id;
+   if found then
+     if conflict.retired_at is not null or conflict.product_status in('discontinued','archived') then raise exception 'CATALOG_RETIRED_IDENTITY_REQUIRES_REPLACEMENT'; end if;
+     raise exception 'CATALOG_RETAILER_SKU_IDENTITY_CONFLICT';
+   end if;
+   insert into public.furnishing_product_identity_claims(workspace_id,product_id,identity_kind,identity_key,lifecycle_status)
+   values(p.workspace_id,p.id,'retailer_sku',identity,p.status)
+   on conflict(product_id,identity_kind,identity_key) do update set lifecycle_status=excluded.lifecycle_status;
+ end loop;
 end $$;
-create unique index furnishing_active_adopted_identity
-  on public.furnishing_products(workspace_id,family_product_id)
-  where scope='workspace' and family_product_id is not null and status not in('discontinued','archived');
+
+create or replace function public.enforce_furnishing_workspace_product_identity()
+returns trigger language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+begin
+ if new.scope<>'workspace' or new.workspace_id is null then return new; end if;
+ if new.status in('discontinued','archived') then
+   update public.furnishing_product_identity_claims set lifecycle_status=new.status,retired_at=coalesce(retired_at,now()) where product_id=new.id;
+ else
+   perform public.claim_furnishing_workspace_product_identity(new.id,new.family_product_id,to_jsonb(new));
+ end if;
+ return new;
+end $$;
+create trigger furnishing_workspace_product_identity_enforced
+after insert or update of workspace_id,scope,status,name,brand,manufacturer_part_number,color,material,finish,dimensions,family_product_id
+on public.furnishing_products for each row execute function public.enforce_furnishing_workspace_product_identity();
+
+create or replace function public.enforce_furnishing_workspace_offer_identity()
+returns trigger language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+declare target uuid; p public.furnishing_products%rowtype;
+begin
+ target:=case when tg_op='DELETE' then old.product_id else new.product_id end;
+ select * into p from public.furnishing_products where id=target;
+ if found and p.scope='workspace' and p.workspace_id is not null then perform public.claim_furnishing_workspace_product_identity(p.id,p.family_product_id,to_jsonb(p)); end if;
+ if tg_op='DELETE' then return old; end if;
+ return new;
+end $$;
+create trigger furnishing_workspace_offer_identity_insert_delete
+after insert or delete on public.furnishing_product_offers
+for each row execute function public.enforce_furnishing_workspace_offer_identity();
+create trigger furnishing_workspace_offer_identity_update
+after update of product_id,retailer_id,sku,status on public.furnishing_product_offers
+for each row execute function public.enforce_furnishing_workspace_offer_identity();
+
+do $$ declare p record; begin
+ for p in select id,family_product_id from public.furnishing_products where scope='workspace' and workspace_id is not null loop
+   perform public.claim_furnishing_workspace_product_identity(p.id,p.family_product_id,null);
+ end loop;
+exception when unique_violation then raise exception 'FSUX002_DUPLICATE_ACTIVE_WORKSPACE_IDENTITY_REVIEW_REQUIRED';
+end $$;
+
 create index furnishing_product_adoptions_source_idx on public.furnishing_product_adoptions(source_product_id,workspace_id);
 create index furnishing_product_review_queue_idx on public.furnishing_product_review_events(workspace_id,event_type,occurred_at desc);
 create index furnishing_product_versions_history_idx on public.furnishing_product_versions(product_id,version desc);
@@ -90,6 +188,7 @@ begin
  if nullif(trim(changes->>'name'),'') is null then raise exception 'CATALOG_PRODUCT_NAME_REQUIRED';end if;
  next_snapshot:=to_jsonb(product)||jsonb_build_object('name',trim(changes->>'name'),'description',changes->'description','brand',changes->'brand','category_id',changes->'category_id','color',changes->'color','material',changes->'material','finish',changes->'finish','assembly_required',changes->'assembly_required');
  if product.status='draft' then
+   if product.scope='workspace' then perform public.claim_furnishing_workspace_product_identity(product.id,product.family_product_id,next_snapshot); end if;
    update public.furnishing_products set name=next_snapshot->>'name',description=next_snapshot->>'description',brand=next_snapshot->>'brand',category_id=nullif(next_snapshot->>'category_id','')::uuid,color=next_snapshot->>'color',material=next_snapshot->>'material',finish=next_snapshot->>'finish',assembly_required=case when next_snapshot ? 'assembly_required' then (next_snapshot->>'assembly_required')::boolean else assembly_required end,revision=revision+1,updated_by=actor,updated_at=now() where id=product.id returning * into product;
    insert into public.furnishing_catalog_activity(workspace_id,product_id,event_type,actor_id,metadata) values(product.workspace_id,product.id,'catalog_product_draft_updated',actor,jsonb_build_object('revision',product.revision,'correlationId',correlation,'idempotencyKey',command_key,'externalEffects',false));
    insert into public.furnishing_product_versions(product_id,workspace_id,version,lifecycle_status,product_snapshot,base_version,change_reason,correlation_id,idempotency_key,created_by)
@@ -119,6 +218,7 @@ begin
  select * into product from public.furnishing_products where id=target and ((workspace is not null and scope='workspace' and workspace_id=workspace) or (workspace is null and scope='platform' and workspace_id is null)) for update;if not found then raise exception 'CATALOG_REVISION_TARGET_SCOPE_INVALID';end if;
  if product.revision<>expected then raise exception 'CATALOG_PRODUCT_VERSION_STALE';end if;
  select * into proposal from public.furnishing_product_versions where id=proposal_id and product_id=target and workspace_id is not distinct from workspace and lifecycle_status='proposed' and base_version=expected for update;if not found then raise exception 'CATALOG_REVISION_NOT_REVIEWABLE';end if;
+ if product.scope='workspace' then perform public.claim_furnishing_workspace_product_identity(product.id,product.family_product_id,proposal.product_snapshot); end if;
  update public.furnishing_product_versions set lifecycle_status='superseded' where product_id=target and lifecycle_status='approved';
  update public.furnishing_product_versions set lifecycle_status='approved',approved_by=actor,approved_at=now() where id=proposal.id;
  update public.furnishing_products set name=proposal.product_snapshot->>'name',description=proposal.product_snapshot->>'description',brand=proposal.product_snapshot->>'brand',category_id=nullif(proposal.product_snapshot->>'category_id','')::uuid,color=proposal.product_snapshot->>'color',material=proposal.product_snapshot->>'material',finish=proposal.product_snapshot->>'finish',assembly_required=case when proposal.product_snapshot ? 'assembly_required' then (proposal.product_snapshot->>'assembly_required')::boolean else assembly_required end,revision=proposal.version,status='approved',updated_by=actor,updated_at=now() where id=target returning * into product;
@@ -138,6 +238,7 @@ begin
  command_key:=left(trim(p_input->>'idempotency_key'),200);overrides:=coalesce(p_input->'workspace_overrides','{}'::jsonb);
  if length(command_key)<8 or jsonb_typeof(overrides)<>'object' or overrides-'name'-'description'-'category_id'-'tags'-'style_tags'<>'{}'::jsonb then raise exception 'CATALOG_ADOPTION_COMMAND_INVALID';end if;
  perform public.authorize_controlled_furnishing_catalog_mutation(workspace);
+ perform pg_advisory_xact_lock(hashtextextended('furnishing-product-identity:'||workspace::text,0));
  select * into adoption from public.furnishing_product_adoptions where idempotency_key=command_key;
  if found then
    if adoption.workspace_id<>workspace or adoption.source_product_id<>source_id then raise exception 'CATALOG_ADOPTION_REPLAY_CONFLICT';end if;
@@ -156,6 +257,7 @@ begin
    insert into public.furnishing_product_offers(workspace_id,product_id,retailer_id,retailer_product_id,sku,product_url,listed_price_minor,shipping_price_minor,currency,availability,affiliate_url,last_verified_at,status,notes,source_type,source_import_id,source_sheet,source_row,imported_at)
    values(workspace,destination.id,source_offer.retailer_id,source_offer.retailer_product_id,source_offer.sku,source_offer.product_url,source_offer.listed_price_minor,source_offer.shipping_price_minor,source_offer.currency,source_offer.availability,source_offer.affiliate_url,source_offer.last_verified_at,source_offer.status,source_offer.notes,'platform_adoption',source_offer.source_import_id,source_offer.source_sheet,source_offer.source_row,source_offer.imported_at) returning id into new_offer;
  end loop;
+ perform public.claim_furnishing_workspace_product_identity(destination.id,source.id,to_jsonb(destination));
  insert into public.furnishing_product_adoptions(workspace_id,source_product_id,workspace_product_id,source_revision,source_digest,adopted_fields,workspace_overrides,idempotency_key,correlation_id,adopted_by) values(workspace,source.id,destination.id,source.revision,digest,snapshot,overrides,command_key,correlation,actor) returning * into adoption;
  insert into public.furnishing_catalog_activity(workspace_id,product_id,event_type,actor_id,metadata) values(workspace,destination.id,'catalog_platform_product_adopted',actor,jsonb_build_object('sourceProductId',source.id,'sourceRevision',source.revision,'sourceDigest',digest,'adoptionId',adoption.id,'correlationId',correlation,'externalEffects',false));
  return jsonb_build_object('status','adopted','workspaceProductId',destination.id,'adoptionId',adoption.id,'sourceDigest',digest);
@@ -211,12 +313,15 @@ end $$;
 alter table public.furnishing_product_adoptions enable row level security;
 alter table public.furnishing_product_review_events enable row level security;
 alter table public.furnishing_product_versions enable row level security;
+alter table public.furnishing_product_identity_claims enable row level security;
 create policy "Internal cohort reads product adoptions" on public.furnishing_product_adoptions for select to authenticated using(public.fs008g_internal_catalog_visible(workspace_id));
 create policy "Internal cohort reads product reviews" on public.furnishing_product_review_events for select to authenticated using(public.fs008g_internal_catalog_visible(workspace_id));
 create policy "Internal cohort reads product versions" on public.furnishing_product_versions for select to authenticated using(workspace_id is not null and public.fs008g_internal_catalog_visible(workspace_id));
-revoke all on public.furnishing_product_adoptions,public.furnishing_product_review_events,public.furnishing_product_versions from public,anon;
-revoke insert,update,delete on public.furnishing_product_adoptions,public.furnishing_product_review_events,public.furnishing_product_versions from authenticated;
-grant select on public.furnishing_product_adoptions,public.furnishing_product_review_events,public.furnishing_product_versions to authenticated;
+create policy "Internal cohort reads product identity claims" on public.furnishing_product_identity_claims for select to authenticated using(public.fs008g_internal_catalog_visible(workspace_id));
+revoke all on public.furnishing_product_adoptions,public.furnishing_product_review_events,public.furnishing_product_versions,public.furnishing_product_identity_claims from public,anon;
+revoke insert,update,delete on public.furnishing_product_adoptions,public.furnishing_product_review_events,public.furnishing_product_versions,public.furnishing_product_identity_claims from authenticated;
+grant select on public.furnishing_product_adoptions,public.furnishing_product_review_events,public.furnishing_product_versions,public.furnishing_product_identity_claims to authenticated;
+revoke all on function public.canonical_furnishing_product_identity(text,uuid,text,text,text,uuid,text,jsonb),public.claim_furnishing_workspace_product_identity(uuid,uuid,jsonb) from public,anon,authenticated;
 revoke all on function public.adopt_furnishing_platform_product(jsonb),public.transition_furnishing_product_review(jsonb),public.edit_furnishing_product(jsonb),public.approve_furnishing_product_revision(jsonb) from public,anon;
 grant execute on function public.adopt_furnishing_platform_product(jsonb),public.transition_furnishing_product_review(jsonb),public.edit_furnishing_product(jsonb),public.approve_furnishing_product_revision(jsonb) to authenticated;
 commit;

@@ -7,20 +7,20 @@ const sql = readFileSync(
 );
 const action = readFileSync("src/app/actions/furnishing-catalog.ts", "utf8");
 
-describe("FS-008G-C8-D workspace-native import", () => {
-  it("derives workspace product and offer lineage from the locked import", () => {
-    expect(sql).toContain("values('workspace',run.workspace_id");
-    expect(sql).toContain("values(run.workspace_id,product_id");
-    expect(sql).toContain("scope','workspace'");
+describe("FS-008G-C8-D platform-library import", () => {
+  it("creates platform drafts and leaves workspace transition to adoption", () => {
+    expect(sql).toContain("values('platform',null");
+    expect(sql).toContain("values(null,product_id");
+    expect(sql).toContain("'scope','platform'");
     expect(sql).not.toMatch(/p_input->>'scope'/);
     expect(action).not.toMatch(/formData\.get\(["'](?:scope|workspaceId)["']\)/);
   });
 
-  it("preserves legacy platform rows and rejects cross-workspace matches", () => {
+  it("preserves platform rows and rejects workspace match targets", () => {
     expect(sql).not.toMatch(/update public\.furnishing_products set scope/);
     expect(sql).toContain("p.scope='platform' and p.workspace_id is null");
     expect(sql).toContain("FS008G_C8D_MATCH_SCOPE_INVALID");
-    expect(sql).toContain("p.workspace_id=run.workspace_id");
+    expect(sql).toContain("p.scope='platform' and p.workspace_id is null");
   });
 
   it("keeps the 110-row transaction atomic with one governed skip", () => {

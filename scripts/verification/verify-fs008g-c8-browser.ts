@@ -33,6 +33,10 @@ const credentials = JSON.parse(await readFile(credentialPath, "utf8")) as {
   owner: { email: string; password: string; id: string };
   workspaceId: string;
   wrongWorkspaceId: string;
+  controlledDesignationId: string;
+  controlledRunId: string;
+  controlledCorrelationId: string;
+  candidateCommit: string;
 };
 
 const runbook = JSON.parse(
@@ -464,8 +468,6 @@ async function runProcurement(context: BrowserContext, step: Step) {
     await clickForm(page, "Submit batch for authorization");
     await page.reload({ waitUntil: "networkidle" });
     await clickForm(page, "Authorize batch");
-    await page.goto(`${origin}/admin/furnishing/projects/${lifecycle.projectId}/procurement?view=orders`, { waitUntil: "networkidle" });
-    await clickForm(page, "Record external order", { externalOrderId: "C8D-SYNTHETIC-ORDER", orderDate: "2026-08-29" });
   }
   if (step.id === "receiving") {
     const first = page.getByRole("button", { name: "Record", exact: true }).first();
@@ -511,9 +513,6 @@ async function runKillSwitchCleanup(admin: BrowserContext, owner: BrowserContext
   await historical.close();
   await clickGovernedControl(page, "Set global state: internal");
   await clickGovernedControl(page, "Lift global kill switch");
-  await page.goto(`${origin}/admin/furnishing/projects/${lifecycle.projectId}/procurement?view=activity`, { waitUntil: "networkidle" });
-  await clickForm(page, "Archive synthetic lifecycle", { reason: "C8-D governed zero-resource cleanup" });
-  await page.reload({ waitUntil: "networkidle" });
   await page.close();
   return { status: response?.status() ?? 200, refreshed: 200 };
 }
@@ -593,6 +592,7 @@ try {
         mode: "isolated-browser",
         steps: results.length,
         externalEffects: 0,
+        lifecycle,
         results,
       },
       null,
