@@ -1,10 +1,13 @@
 import Link from "next/link";
 import {
   authorizePurchaseBatchAction,
+  adjustProcurementBudgetAction,
+  cleanupSyntheticFurnishingProjectAction,
   generateProcurementBaselineAction,
   getProcurementWorkspace,
   recordExternalOrderAction,
   recordReceivingAction,
+  resolveProcurementDiscrepancyAction,
   saveProcurementBudgetAction,
   submitPurchaseBatchAction,
 } from "@/app/actions/furnishing-procurement";
@@ -44,7 +47,7 @@ export async function ProcurementWorkspace({
   const workspaceId = String(project.workspace_id),
     issue = (
       commandType: string,
-      targetType: "project" | "baseline" | "batch" | "line",
+      targetType: "project" | "baseline" | "batch" | "line" | "discrepancy" | "cleanup",
       targetId: string,
     ) =>
       issueFurnishingCommandContext({
@@ -111,10 +114,12 @@ export async function ProcurementWorkspace({
       </main>
     );
   }
-  const [budgetContext, batchContext, batchContexts, lineContexts] = customer
-    ? ([null, null, [], []] as const)
+  const [budgetContext, adjustmentContext, cleanupContext, batchContext, batchContexts, lineContexts, exceptionContexts] = customer
+    ? ([null, null, null, null, [], [], []] as const)
     : await Promise.all([
         issue("procurement.budget.reconcile", "baseline", String(baseline.id)),
+        issue("procurement.budget.adjust", "baseline", String(baseline.id)),
+        issue("procurement.cleanup", "cleanup", String(project.id)),
         issue("procurement.batch.create", "baseline", String(baseline.id)),
         Promise.all(
           batches.map(
@@ -145,9 +150,11 @@ export async function ProcurementWorkspace({
               ] as const,
           ),
         ),
+        Promise.all(exceptions.filter((x) => x.status !== "resolved").map(async (x) => [String(x.id), await issue("procurement.discrepancy.resolve", "discrepancy", String(x.id))] as const)),
       ]);
   const batchContextById = new Map(batchContexts),
-    lineContextById = new Map(lineContexts);
+    lineContextById = new Map(lineContexts),
+    exceptionContextById = new Map(exceptionContexts);
   const currency = String(baseline.currency ?? "USD"),
     plan = Number(baseline.estimated_total_minor ?? 0),
     approved =
@@ -280,6 +287,14 @@ export async function ProcurementWorkspace({
                 label="Status"
                 value={budget ? title(budget.status) : "Setup required"}
               />
+              {!customer ? (
+                <form action={adjustProcurementBudgetAction} className="mt-4 grid gap-2">
+                  <input type="hidden" name="commandContextId" value={adjustmentContext?.contextId ?? ""} />
+                  <Field name="amount" label="Reasoned adjustment" defaultValue="0.00" />
+                  <input required name="reason" minLength={3} className="rounded-md border px-3 py-2" placeholder="Admin reason" />
+                  <button className="rounded-md border px-4 py-2">Record reasoned adjustment</button>
+                </form>
+              ) : null}
             </Panel>
           </div>
         )}
@@ -634,18 +649,26 @@ export async function ProcurementWorkspace({
           />
         )}
         {view === "returns" && (
-          <EmptyOrList
-            title="Returns & exceptions"
-            empty="No current returns or procurement exceptions."
-            rows={exceptions}
-          />
+          <div className="mt-6"><Panel title="Returns & exceptions">
+            {!exceptions.length ? <p>No current returns or procurement exceptions.</p> : exceptions.map((x) => (
+              <div key={String(x.id)} className="border-b py-3">
+                <p>{title(x.status)} discrepancy</p>
+                {!customer && x.status !== "resolved" ? <form action={resolveProcurementDiscrepancyAction} className="mt-2 flex gap-2">
+                  <input type="hidden" name="commandContextId" value={exceptionContextById.get(String(x.id))?.contextId ?? ""} />
+                  <input required name="reason" minLength={3} className="rounded-md border px-3 py-2" placeholder="Resolution reason" />
+                  <button className="rounded-md border px-3 py-2">Resolve discrepancy</button>
+                </form> : null}
+              </div>
+            ))}
+          </Panel></div>
         )}
         {view === "activity" && (
-          <EmptyOrList
-            title="Immutable activity"
-            empty="No procurement events recorded."
-            rows={events}
-          />
+          <><EmptyOrList title="Immutable activity" empty="No procurement events recorded." rows={events} />
+          {!customer ? <div className="mt-6"><Panel title="Governed cleanup"><form action={cleanupSyntheticFurnishingProjectAction} className="flex gap-2">
+            <input type="hidden" name="commandContextId" value={cleanupContext?.contextId ?? ""} />
+            <input required name="reason" minLength={3} className="rounded-md border px-3 py-2" placeholder="Cleanup reason" />
+            <button className="rounded-md border border-red-700 px-3 py-2 text-red-800">Archive synthetic lifecycle</button>
+          </form></Panel></div> : null}</>
         )}
       </div>
     </main>

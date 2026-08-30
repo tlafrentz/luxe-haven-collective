@@ -35,6 +35,7 @@ async function main() {
   });
   if (designation.error) throw new Error(`CLEANUP_DESIGNATION:${designation.error.message}`);
   if (fixture.customerAccountId) {
+    await remove("commercial_entitlements", "customer_account_id", fixture.customerAccountId);
     await remove("customer_account_memberships", "customer_account_id", fixture.customerAccountId);
     await remove("customer_accounts", "id", fixture.customerAccountId);
   }

@@ -1,0 +1,2 @@
+import { FurnishingUnavailable } from "@/components/furnishing/furnishing-states";
+export default function Page() { return <FurnishingUnavailable title="Budget detail" description="Review furnishing allocation and variance." prerequisite="Dedicated budget detail is not activated. Open the associated Design Workspace to review current budget context." href="/admin/furnishing/workspaces" hrefLabel="Open Design Workspaces" />; }

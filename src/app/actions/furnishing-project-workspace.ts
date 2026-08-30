@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { assertFurnishingEntitlement } from "./furnishing-access";
 import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 import { resolveFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
+import { assertFurnishingCatalogMutationAllowed } from "./furnishing-catalog-activation";
 import {
   minorUnits,
   representativeOffer,
@@ -231,7 +232,11 @@ export async function createFurnishingPropertyAction(formData: FormData) {
   redirect(`${prefix}/furnishing/projects/new?property=${property.id}`);
 }
 export async function createProjectWorkspaceAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    { commandType: "project.create", targetType: "workspace" },
+  );
+  await assertFurnishingCatalogMutationAllowed(command.workspaceId);
   const { user, profile, db } = await context(),
     propertyId = value(formData, "propertyId");
   const { data: property } = await db
@@ -240,6 +245,8 @@ export async function createProjectWorkspaceAction(formData: FormData) {
     .eq("id", propertyId)
     .single();
   if (!property) throw new Error("PROPERTY_REQUIRED");
+  if (String(property.owner_id) !== command.workspaceId)
+    throw new Error("FURNISHING_PROJECT_CONTEXT_MISMATCH");
   await authorize(db, profile, property.owner_id);
   const target = value(formData, "targetBudget"),
     packageVersionId = value(formData, "packageVersionId"),

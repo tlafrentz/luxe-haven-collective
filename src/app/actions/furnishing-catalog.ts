@@ -34,11 +34,19 @@ export async function getFurnishingCatalog(
     )
     .neq("status", "archived")
     .order("updated_at", { ascending: false })
-    .limit(100);
-  if (filters.q) products = products.ilike("name", `%${filters.q}%`);
+    .limit(50);
+  const view = filters.view ?? (filters.workspace && /^[0-9a-f-]{36}$/i.test(filters.workspace) ? "workspace" : "platform");
+  if (view === "workspace") {
+    products = products.eq("scope", "workspace");
+    if (filters.workspace && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(filters.workspace)) products = products.eq("workspace_id", filters.workspace);
+  } else if (view === "platform") products = products.eq("scope", "platform");
+  else if (view === "review") products = products.in("status", ["draft", "in_review"]);
+  else if (view === "retired") products = products.in("status", ["discontinued", "archived"]);
+  if (filters.q) products = products.or(`name.ilike.%${filters.q.replaceAll("%", "")}%,brand.ilike.%${filters.q.replaceAll("%", "")}%,manufacturer_part_number.ilike.%${filters.q.replaceAll("%", "")}%`);
   if (filters.status) products = products.eq("status", filters.status);
   if (filters.scope) products = products.eq("scope", filters.scope);
   if (filters.category) products = products.eq("category_id", filters.category);
+  if (filters.retailer) products = products.eq("furnishing_product_offers.retailer_id", filters.retailer);
   const [productRows, categories, retailers, roomTypes, imports] =
     await Promise.all([
       products,
@@ -120,9 +128,34 @@ export async function getFurnishingProduct(productId: string) {
   };
 }
 
+export async function getFurnishingProductEditContext(productId: string) {
+  const { db } = await catalogAdmin();
+  const [{ data: product, error }, { data: categories }, { data: packageItems }, { data: selections }, { data: procurementItems }, { data: versions }] = await Promise.all([
+    db.from("furnishing_products").select("id,name,description,brand,category_id,color,material,finish,assembly_required,scope,workspace_id,status,revision,updated_at").eq("id", productId).single(),
+    db.from("furnishing_product_categories").select("id,name,group_name").eq("status", "active").order("sort_order"),
+    db.from("furnishing_room_package_items").select("id,requirement_key,room_package_version_id").eq("recommended_product_id", productId).limit(100),
+    db.from("furnishing_product_selections").select("id,furnishing_plan_id,selection_status,furnishing_plans!inner(project_id,furnishing_projects!inner(id,name,workspace_id))").eq("product_id", productId).limit(100),
+    db.from("furnishing_procurement_items").select("id,project_id,status").eq("product_id", productId).limit(100),
+    db.from("furnishing_product_versions").select("id,version,lifecycle_status,base_version,change_reason,product_snapshot,created_at,created_by,approved_at").eq("product_id", productId).order("version", { ascending: false }).limit(25),
+  ]);
+  if (error || !product) throw new Error("CATALOG_PRODUCT_NOT_FOUND");
+  const projects = new Map<string,string>();
+  for (const selection of selections ?? []) { const project = (selection.furnishing_plans as unknown as { furnishing_projects?: { id?: string; name?: string } })?.furnishing_projects; if (project?.id) projects.set(project.id, project.name ?? "Design workspace"); }
+  const projectIds = [...projects.keys()];
+  const { data: budgets } = projectIds.length ? await db.from("furnishing_budgets").select("id,project_id,status,target_amount_minor,currency").in("project_id", projectIds) : { data: [] };
+  return { product, categories: categories ?? [], usage: { packageItems: packageItems ?? [], designWorkspaces: [...projects].map(([id,name])=>({id,name})), budgets: budgets ?? [], procurementItems: procurementItems ?? [] }, versions: versions ?? [] };
+}
+
 export async function createFurnishingProductAction(formData: FormData) {
   assertFurnishingActivationMutationDisabled();
   const { user, db } = await catalogAdmin();
+  const scope = text(formData, "scope") === "workspace" ? "workspace" : "platform";
+  let workspaceId: string | null = null;
+  if (scope === "workspace") {
+    const context = await resolveFurnishingCommandContext(text(formData, "commandContextId"), { commandType: "catalog.product.create", targetType: "workspace" });
+    workspaceId = context.workspaceId;
+    await assertFurnishingCatalogMutationAllowed(workspaceId);
+  }
   const name = text(formData, "name"),
     categoryId = text(formData, "categoryId");
   if (!name || !categoryId) throw new Error("PRODUCT_NAME_CATEGORY_REQUIRED");
@@ -141,8 +174,8 @@ export async function createFurnishingProductAction(formData: FormData) {
   const { data: product, error } = await db
     .from("furnishing_products")
     .insert({
-      workspace_id: null,
-      scope: "platform",
+      workspace_id: workspaceId,
+      scope,
       name,
       description: text(formData, "description") || null,
       product_type: text(formData, "productType") || "furnishing",
@@ -176,13 +209,14 @@ export async function createFurnishingProductAction(formData: FormData) {
         rooms.map((room) => ({ product_id: product.id, room_type_id: room })),
       );
   await db.from("furnishing_catalog_activity").insert({
+    workspace_id: workspaceId,
     product_id: product.id,
     event_type: "furnishing_product_created",
     actor_id: user.id,
     metadata: {},
   });
-  revalidatePath("/admin/furnishing/products");
-  redirect(`/admin/furnishing/products/${product.id}`);
+  revalidatePath("/admin/furnishing/catalog");
+  redirect(`/admin/furnishing/catalog/${product.id}${workspaceId ? `?workspace=${workspaceId}` : ""}`);
 }
 
 export async function createProductOfferAction(formData: FormData) {

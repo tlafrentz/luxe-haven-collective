@@ -12,6 +12,7 @@ import {
   setPreferredProductOfferAction,
   startCatalogImportAction,
 } from "@/app/actions/furnishing-catalog";
+import { adoptPlatformProductAction } from "@/app/actions/furnishing-catalog-governance";
 import {
   catalogAttention,
   offerFreshness,
@@ -21,6 +22,8 @@ import { Badge, FurnishingHeader } from "./furnishing-navigation";
 import {
   CatalogApprovalControl,
   OfferAssignmentControl,
+  CreateControlledAlternateOfferControl,
+  ProductReviewControl,
 } from "./catalog-governance-controls";
 
 // Supabase projections are intentionally dynamic until generated FS-002 database types land.
@@ -249,8 +252,10 @@ export async function ProductCatalog({
   );
 }
 
-export async function NewProduct() {
+export async function NewProduct({ workspaceId }: { workspaceId?: string } = {}) {
   const data = await getFurnishingCatalog();
+  const controlledWorkspace = workspaceId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(workspaceId) ? workspaceId : null;
+  const createContext = controlledWorkspace ? await issueFurnishingCommandContext({ workflow: "fs008g-finalization:catalog-governance", workspaceId: controlledWorkspace, commandType: "catalog.product.create", targetType: "workspace", targetId: controlledWorkspace }) : null;
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-5 py-8">
       <FurnishingHeader
@@ -262,6 +267,8 @@ export async function NewProduct() {
         action={createFurnishingProductAction}
         className={`${panel} grid gap-5 md:grid-cols-2`}
       >
+        <input type="hidden" name="commandContextId" value={createContext?.contextId ?? ""}/>
+        <label className="font-semibold">Destination scope<select name="scope" defaultValue={controlledWorkspace ? "workspace" : "platform"} className={`${field} mt-2`}><option value="workspace" disabled={!controlledWorkspace}>Current workspace</option><option value="platform">Platform library</option></select><span className="mt-1 block text-xs font-normal text-stone-500">{controlledWorkspace ? `Workspace ${controlledWorkspace}` : "Select a controlled workspace in the platform context to create a workspace draft."}</span></label>
         <label className="font-semibold">
           Product name *
           <input required name="name" className={`${field} mt-2`} />
@@ -379,7 +386,7 @@ export async function NewProduct() {
   );
 }
 
-export async function ProductDetail({ productId }: { productId: string }) {
+export async function ProductDetail({ productId, workspaceId }: { productId: string; workspaceId?: string }) {
   const { product, retailers, roomTypes, activity } =
     (await getFurnishingProduct(productId)) as Row;
   const offers: Row[] = product.furnishing_product_offers ?? [],
@@ -387,6 +394,9 @@ export async function ProductDetail({ productId }: { productId: string }) {
       offers.map((offer) => asOffer(offer, product.preferred_offer_id)),
     );
   const roomNames = new Map(roomTypes.map((x: Row) => [x.id, x.name]));
+  const controlledWorkspace = workspaceId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(workspaceId) ? workspaceId : null;
+  const { data: existingAdoption } = product.scope === "platform" && controlledWorkspace ? await createAdminClient().from("furnishing_product_adoptions").select("workspace_product_id").eq("workspace_id", controlledWorkspace).eq("source_product_id", product.id).maybeSingle() : { data: null };
+  const adoptionContext = product.scope === "platform" && controlledWorkspace && !existingAdoption ? await issueFurnishingCommandContext({ workflow: "fs008g-finalization:catalog-governance", workspaceId: controlledWorkspace, commandType: "catalog.product.adopt", targetType: "workspace", targetId: controlledWorkspace }) : null;
   const governedIds = [String(product.id), ...offers.map((offer) => String(offer.id))];
   const [{ data: approvals }, { data: assignments }] = product.workspace_id
     ? await Promise.all([
@@ -403,6 +413,14 @@ export async function ProductDetail({ productId }: { productId: string }) {
             workflow: "fs008g-finalization:catalog-governance",
             workspaceId: String(product.workspace_id),
             commandType: "catalog.product.approve",
+            targetType: "product",
+            targetId: String(product.id),
+          }),
+          review: product.status === "draft" ? await issueFurnishingCommandContext({ workflow: "fs008g-finalization:catalog-governance", workspaceId: String(product.workspace_id), commandType: "catalog.product.submit", targetType: "product", targetId: String(product.id) }) : product.status === "in_review" ? await issueFurnishingCommandContext({ workflow: "fs008g-finalization:catalog-governance", workspaceId: String(product.workspace_id), commandType: "catalog.product.changes_requested", targetType: "product", targetId: String(product.id) }) : product.status === "approved" ? await issueFurnishingCommandContext({ workflow: "fs008g-finalization:catalog-governance", workspaceId: String(product.workspace_id), commandType: "catalog.product.retire", targetType: "product", targetId: String(product.id) }) : null,
+          alternateCreate: await issueFurnishingCommandContext({
+            workflow: "fs008g-finalization:catalog-governance",
+            workspaceId: String(product.workspace_id),
+            commandType: "catalog.offer.alternate.create",
             targetType: "product",
             targetId: String(product.id),
           }),
@@ -467,6 +485,7 @@ export async function ProductDetail({ productId }: { productId: string }) {
           </dl>
         </section>
         <div className="space-y-6">
+          {product.scope === "platform" ? <section className={panel}><h2 className="text-lg font-semibold">Platform library governance</h2><p className="mt-2 text-sm text-stone-600">Platform products cannot be approved directly for a controlled workspace. Adopt this version to create a separate workspace draft with preserved lineage.</p>{existingAdoption ? <Link href={`/admin/furnishing/catalog/${existingAdoption.workspace_product_id}?workspace=${controlledWorkspace}`} className="mt-4 inline-flex min-h-11 items-center font-semibold text-emerald-800">Open existing workspace product →</Link> : adoptionContext ? <form action={adoptPlatformProductAction} className="mt-4"><input type="hidden" name="commandContextId" value={adoptionContext.contextId}/><input type="hidden" name="sourceProductId" value={product.id}/><button className={button}>Add to workspace catalog</button><p className="mt-2 text-xs text-stone-500">Destination workspace: {controlledWorkspace}</p></form> : <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Select an authoritative controlled workspace to adopt this product.</p>}</section> : null}
           {governed ? (
             <section className={panel} data-testid="catalog-governance">
               <h2 className="text-lg font-semibold">Controlled governance</h2>
@@ -474,7 +493,10 @@ export async function ProductDetail({ productId }: { productId: string }) {
                 Approval and offer assignment are bound to server-issued command contexts.
               </p>
               <div className="mt-4 space-y-3">
-                {!approvedTargets.has(String(product.id)) ? <CatalogApprovalControl contextId={governed.product.contextId} targetType="product" label="Approve controlled product" /> : <p className="text-sm font-semibold text-emerald-700">Controlled product approved</p>}
+                {product.status === "draft" && governed.review ? <ProductReviewControl operation="submit" contextId={governed.review.contextId} revision={Number(product.revision ?? 1)}/> : null}
+                {product.status === "in_review" && !approvedTargets.has(String(product.id)) ? <><CatalogApprovalControl contextId={governed.product.contextId} targetType="product" label="Approve controlled product" />{governed.review ? <ProductReviewControl operation="changes_requested" contextId={governed.review.contextId} revision={Number(product.revision ?? 1)}/> : null}</> : null}
+                {product.status === "approved" ? <>{<p className="text-sm font-semibold text-emerald-700">Controlled product approved</p>}{governed.review ? <details><summary className="cursor-pointer text-sm font-semibold text-red-800">Retire product</summary><div className="mt-3"><ProductReviewControl operation="retire" contextId={governed.review.contextId} revision={Number(product.revision ?? 1)}/></div></details> : null}</> : null}
+                {offers.length === 1 ? <CreateControlledAlternateOfferControl contextId={governed.alternateCreate.contextId} /> : null}
                 {governed.offers.map((offer) => (
                   <div className="space-y-2" key={offer.id}>
                     {!approvedTargets.has(offer.id) ? <CatalogApprovalControl contextId={offer.approval.contextId} targetType="offer" label="Approve controlled offer" /> : <p className="text-sm font-semibold text-emerald-700">Controlled offer approved</p>}

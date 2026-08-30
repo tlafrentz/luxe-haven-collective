@@ -82,14 +82,19 @@ async function login(page: Page, persona: "admin" | "owner") {
   const identity = credentials[persona];
   for (let attempt = 1; attempt <= 3; attempt++) {
     await page.goto(`${origin}/login`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Sign in" }).waitFor({ state: "visible" });
     await page.getByLabel("Email").fill(identity.email);
     await page.getByLabel("Password").fill(identity.password);
+    const signIn = page.getByRole("button", { name: "Sign in" });
+    for (let readyAttempt = 0; readyAttempt < 5 && await signIn.isDisabled(); readyAttempt++) {
+      await page.waitForTimeout(300);
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent("public-auth-captcha", { detail: true })));
+    }
+    if (await signIn.isDisabled()) throw new Error(`LOGIN_CAPTCHA_NOT_READY:${persona}`);
     await page.locator('input[name="captchaToken"]').evaluate((node) => {
       (node as HTMLInputElement).value = "local-browser-verification";
-      node.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    await page.evaluate(() => window.dispatchEvent(new CustomEvent("public-auth-captcha", { detail: true })));
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await signIn.click();
     await Promise.race([
       page.waitForURL((value) => value.pathname !== "/login", { timeout: 12_000 }).catch(() => undefined),
       page.getByText("This service is temporarily unavailable.").waitFor({ timeout: 12_000 }).catch(() => undefined),
@@ -202,33 +207,70 @@ async function clickForm(page: Page, buttonName: string, fill?: Record<string, s
   const form = button.locator("xpath=ancestor::form");
   for (const [name, value] of Object.entries(fill ?? {}))
     await form.locator(`[name="${name}"]`).fill(value);
-  await button.click();
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST"),
+    button.click(),
+  ]);
   await page.waitForLoadState("networkidle");
+}
+
+async function clickClientForm(page: Page, button: ReturnType<Page["getByRole"]>, success: string) {
+  const label = await button.innerText();
+  const form = button.locator("xpath=ancestor::form");
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST"),
+    button.click(),
+  ]);
+  const status = form.getByRole("status");
+  try {
+    await Promise.race([
+      status.filter({ hasText: success }).waitFor({ timeout: 30_000 }),
+      button.waitFor({ state: "detached", timeout: 30_000 }),
+    ]);
+  } catch {
+    if (await button.count() === 0) return;
+    const message = await status.count() ? await status.innerText() : "ACTION_CONFIRMATION_MISSING";
+    throw new Error(`UI_ACTION_FAILED:${label}:${message}`);
+  }
 }
 
 async function runCatalogGovernance(context: BrowserContext, step: Step) {
   const page = await context.newPage();
   const response = await page.goto(targetFor(step).toString(), { waitUntil: "networkidle" });
   if (!response || response.status() >= 400) throw new Error("catalog-reconciliation:ROUTE_FAILED");
-  const productLinks = await page.locator('a[href^="/admin/furnishing/products/"]').evaluateAll((nodes) =>
-    [...new Set(nodes.map((node) => (node as HTMLAnchorElement).href).filter((href) => /\/admin\/furnishing\/products\/[0-9a-f-]{36}$/.test(new URL(href).pathname)))].sort().slice(0, 2),
-  );
-  if (productLinks.length < 2) throw new Error("catalog-reconciliation:CONTROLLED_PRODUCTS_MISSING");
+  const productLinks: string[] = [];
+  for (const productName of ["55 inch Smart TV", "TV Mount", "Sofa"]) {
+    await page.goto(`${origin}/admin/furnishing/products?q=${encodeURIComponent(productName)}&scope=workspace`, { waitUntil: "networkidle" });
+    const link = page.locator('a[href^="/admin/furnishing/products/"]').filter({ hasText: productName }).first();
+    if (await link.count()) productLinks.push(new URL(await link.getAttribute("href") ?? "", origin).toString());
+  }
+  if (productLinks.length < 3) throw new Error("catalog-reconciliation:TV_MOUNT_DURABLE_PRODUCTS_MISSING");
   for (const href of productLinks) {
     await page.goto(href, { waitUntil: "networkidle" });
-    const needsGovernance = await page.getByRole("button", { name: "Approve controlled product", exact: true }).count() > 0;
-    if (!needsGovernance) continue;
-    await clickForm(page, "Approve controlled product", { reason: "C8-D controlled product approval" });
+    const createAlternate = page.getByRole("button", { name: "Create controlled alternate offer", exact: true });
+    if (await createAlternate.count()) {
+      await clickClientForm(page, createAlternate, "Controlled alternate offer created");
+      await page.reload({ waitUntil: "networkidle" });
+    }
+    if (await page.getByRole("button", { name: "Approve controlled product", exact: true }).count())
+      await clickForm(page, "Approve controlled product", { reason: "C8-D controlled product approval" });
     await page.reload({ waitUntil: "networkidle" });
-    await clickForm(page, "Approve controlled offer", { reason: "C8-D controlled offer approval" });
-    await page.reload({ waitUntil: "networkidle" });
-    const assignment = page.getByRole("button", { name: "Assign governed offer", exact: true }).first();
-    const assignmentForm = assignment.locator("xpath=ancestor::form");
-    await assignmentForm.locator('[name="role"]').selectOption(productLinks.indexOf(href) === 0 ? "preferred" : "alternate");
-    await assignmentForm.locator('[name="rank"]').fill(productLinks.indexOf(href) === 0 ? "1" : "2");
-    await assignment.click();
-    await page.waitForLoadState("networkidle");
-    await page.reload({ waitUntil: "networkidle" });
+    while (await page.getByRole("button", { name: "Approve controlled offer", exact: true }).count()) {
+      await clickForm(page, "Approve controlled offer", { reason: "C8-D controlled offer approval" });
+      await page.reload({ waitUntil: "networkidle" });
+    }
+    const assignmentContextIds = await page.getByRole("button", { name: "Assign governed offer", exact: true })
+      .locator("xpath=ancestor::form").locator('[name="commandContextId"]').evaluateAll(nodes => nodes.map(node => (node as HTMLInputElement).value));
+    for (const [index, role] of (["preferred", "alternate"] as const).entries()) {
+      const contextId = assignmentContextIds[index];
+      if (!contextId) break;
+      const assignmentForm = page.locator(`form:has(input[name="commandContextId"][value="${contextId}"])`);
+      const assignment = assignmentForm.getByRole("button", { name: "Assign governed offer", exact: true });
+      await assignmentForm.locator('[name="role"]').selectOption(role);
+      await assignmentForm.locator('[name="rank"]').fill(String(index + 1));
+      await clickClientForm(page, assignment, "offer assigned");
+      await page.reload({ waitUntil: "networkidle" });
+    }
   }
   await page.close();
   return { status: response.status(), refreshed: 200 };
@@ -243,51 +285,75 @@ async function createRequirement(page: Page, name: string, roomLabel: RegExp) {
     const rooms = await form.locator('[name="roomType"] option').allTextContents();
     const roomIndex = Math.max(1, rooms.findIndex((label) => roomLabel.test(label)));
     await form.locator('[name="roomType"]').selectOption({ index: roomIndex });
-    await form.getByRole("button", { name: "Create requirement" }).click();
-    await page.waitForLoadState("networkidle");
+    await Promise.all([
+      page.waitForResponse((response) => response.request().method() === "POST"),
+      form.getByRole("button", { name: "Create requirement" }).click(),
+    ]);
     await page.reload({ waitUntil: "networkidle" });
   }
   const submit = page.getByRole("button", { name: "Submit for review", exact: true }).first();
   if (await submit.count()) {
-    await submit.click();
-    await page.waitForLoadState("networkidle");
+    await clickClientForm(page, submit, "Requirement submitted for review");
     await page.reload({ waitUntil: "networkidle" });
   }
   const approve = page.getByRole("button", { name: "Approve requirement", exact: true }).first();
   if (!await approve.count()) return;
   const review = approve.locator("xpath=ancestor::form");
   await review.locator('[name="reason"]').fill("C8-D controlled requirement approval");
-  await approve.click();
-  await page.waitForLoadState("networkidle");
+  await clickClientForm(page, approve, "Requirement approved");
+  await page.reload({ waitUntil: "networkidle" });
 }
 
 async function runPackageCreate(context: BrowserContext, step: Step) {
   const page = await context.newPage();
-  await createRequirement(page, "C8-D Living Room Seating", /living/i);
+  await createRequirement(page, "C8-D Living Room Television", /living/i);
+  await createRequirement(page, "C8-D Living Room Mount", /living/i);
   await createRequirement(page, "C8-D Bedroom Sleeping", /bed/i);
   await page.goto(`${origin}/admin/furnishing/packages/rooms/new`, { waitUntil: "networkidle" });
   await page.locator('[name="name"]').fill("C8-D Controlled Living and Bedroom");
-  await page.locator('[name="roomType"]').selectOption({ index: 1 });
+  const roomTypeOptions = await page.locator('[name="roomType"] option').allTextContents();
+  await page.locator('[name="roomType"]').selectOption({ index: Math.max(1, roomTypeOptions.findIndex((label) => /living/i.test(label))) });
   await page.getByRole("button", { name: "Create draft package" }).click();
   await page.waitForURL(/\/admin\/furnishing\/packages\/rooms\/[0-9a-f-]+$/, { timeout: 30_000 });
   const roomPackageId = new URL(page.url()).pathname.split("/").at(-1) ?? "";
-  for (let index = 0; index < 2; index++) {
+  for (const [requirementPattern, productPattern] of [[/Television/i, /55 inch Smart TV/i], [/Mount/i, /TV Mount/i]] as const) {
     const form = page.getByRole("heading", { name: "Add requirement" }).locator("xpath=following-sibling::form");
-    await form.locator('[name="requirementId"]').selectOption({ index: 1 });
+    const requirementOptions = await form.locator('[name="requirementId"] option').allTextContents();
+    const requirementIndex = requirementOptions.findIndex((label) => requirementPattern.test(label));
+    if (requirementIndex < 1) throw new Error(`package-create:REQUIREMENT_OPTION_MISSING:${requirementPattern}`);
+    await form.locator('[name="requirementId"]').selectOption({ index: requirementIndex });
     await form.locator('[name="quantityRuleId"]').selectOption({ index: 1 });
-    await form.locator('[name="productId"]').selectOption({ index: index + 1 });
-    await form.getByRole("button", { name: "Add requirement" }).click();
-    await page.waitForLoadState("networkidle");
+    const productOptions = await form.locator('[name="productId"] option').allTextContents();
+    const productIndex = productOptions.findIndex((label) => productPattern.test(label));
+    if (productIndex < 1) throw new Error(`package-create:PRODUCT_OPTION_MISSING:${productPattern}`);
+    await form.locator('[name="productId"]').selectOption({ index: productIndex });
+    await form.locator('[name="priority"]').selectOption("required");
+    await Promise.all([
+      page.waitForResponse((response) => response.request().method() === "POST"),
+      form.getByRole("button", { name: "Add requirement" }).click(),
+    ]);
+    await form.getByRole("status").filter({ hasText: "Composition item added" }).waitFor({ timeout: 30_000 });
     await page.reload({ waitUntil: "networkidle" });
   }
-  await page.getByRole("button", { name: "Submit for review" }).click();
-  await page.waitForLoadState("networkidle");
+  const alternate = page.locator("details").filter({ hasText: "Add" }).first();
+  await alternate.locator("summary").click();
+  const alternateOptions = await alternate.locator('[name="productId"] option').allTextContents();
+  const sofaIndex = alternateOptions.findIndex((label) => /^Sofa$/i.test(label.trim()));
+  if (sofaIndex < 0) throw new Error("package-create:ALTERNATE_PRODUCT_MISSING");
+  await alternate.locator('[name="productId"]').selectOption({ index: sofaIndex });
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST"),
+    alternate.getByRole("button", { name: "Add", exact: true }).click(),
+  ]);
   await page.reload({ waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Validate governed package" }).click();
-  await page.getByRole("status").filter({ hasText: "validation passed" }).waitFor({ timeout: 30_000 });
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST"),
+    page.getByRole("button", { name: "Submit for review" }).click(),
+  ]);
+  await page.goto(`${page.url()}?authoritative=${Date.now()}`, { waitUntil: "networkidle" });
+  await clickClientForm(page, page.getByRole("button", { name: "Validate governed package" }), "validation passed");
   await page.locator('[name="reason"]').filter({ visible: true }).last().fill("C8-D room package approval");
-  await page.getByRole("button", { name: "Approve governed package" }).click();
-  await page.getByRole("status").filter({ hasText: "Package approved" }).waitFor({ timeout: 30_000 });
+  await clickClientForm(page, page.getByRole("button", { name: "Approve governed package" }), "Package approved");
   await page.goto(targetFor(step).toString(), { waitUntil: "networkidle" });
   await page.locator('[name="name"]').fill("C8-D Controlled Property Package");
   await page.locator('[name="propertyType"]').fill("short_term_rental");
@@ -305,21 +371,151 @@ async function runPackageReview(context: BrowserContext, step: Step) {
   if (!response || response.status() >= 400) throw new Error("package-review:ROUTE_FAILED");
   const composition = page.getByRole("heading", { name: "Add approved room package" }).locator("xpath=following-sibling::form");
   await composition.locator('[name="roomVersionId"]').selectOption({ index: 1 });
-  await composition.getByRole("button", { name: "Add" }).click();
-  await page.waitForLoadState("networkidle");
-  await page.reload({ waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Validate and submit for review" }).click();
-  await page.waitForLoadState("networkidle");
-  await page.reload({ waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Validate governed package" }).click();
-  await page.getByRole("status").filter({ hasText: "validation passed" }).waitFor({ timeout: 30_000 });
+  await composition.locator('[name="quantityRuleId"]').selectOption({ index: 1 });
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST"),
+    composition.getByRole("button", { name: "Add" }).click(),
+  ]);
+  await page.goto(`${page.url()}?compositionRefresh=${Date.now()}`, { waitUntil: "networkidle" });
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST"),
+    page.getByRole("button", { name: "Validate and submit for review" }).click(),
+  ]);
+  await page.goto(`${page.url().split("?")[0]}?reviewRefresh=${Date.now()}`, { waitUntil: "networkidle" });
+  await clickClientForm(page, page.getByRole("button", { name: "Validate governed package" }), "validation passed");
   await page.locator('[name="reason"]').filter({ visible: true }).first().fill("C8-D property package approval");
-  await page.getByRole("button", { name: "Approve governed package" }).click();
-  await page.getByRole("status").filter({ hasText: "Package approved" }).waitFor({ timeout: 30_000 });
+  await clickClientForm(page, page.getByRole("button", { name: "Approve governed package" }), "Package approved");
   await page.reload({ waitUntil: "networkidle" });
   if (!/approved/i.test(await page.locator("body").innerText())) throw new Error("package-review:AUTHORITATIVE_APPROVAL_MISSING");
   await page.close();
   return { status: response.status(), refreshed: 200 };
+}
+
+async function runOwnerProject(owner: BrowserContext, admin: BrowserContext, step: Step) {
+  const page = await owner.newPage();
+  const response = await page.goto(`${origin}/dashboard/furnishing/projects/new`, { waitUntil: "networkidle" });
+  if (!response || response.status() >= 400) throw new Error("owner-project:DISCOVERY_ROUTE_FAILED");
+  await page.getByRole("link", { name: "Let's get started" }).click();
+  await page.waitForURL(/\/dashboard\/furnishing\/projects\/new\?step=setup$/);
+  const form = page.getByRole("button", { name: "Create project workspace" }).locator("xpath=ancestor::form");
+  await form.locator('[name="propertyId"]').selectOption({ index: 1 });
+  await form.locator('[name="name"]').fill("C8-D Isolated Furnishing Lifecycle");
+  await form.locator('[name="bedrooms"]').fill("1");
+  await form.locator('[name="bathrooms"]').fill("0");
+  await form.locator('[name="guests"]').fill("2");
+  await form.locator('[name="packageVersionId"]').first().check();
+  await form.locator('[name="styleVersionId"]').first().check();
+  await form.locator('[name="targetBudget"]').fill("25000");
+  await form.getByRole("button", { name: "Create project workspace" }).click();
+  await page.waitForURL(/\/dashboard\/furnishing\/projects\/[0-9a-f-]{36}$/, { timeout: 30_000 });
+  lifecycle.projectId = new URL(page.url()).pathname.split("/").at(-1) ?? "";
+  if (!lifecycle.projectId) throw new Error("owner-project:PROJECT_ID_MISSING");
+  const generate = page.getByRole("button", { name: "Generate Plan v1" });
+  if (await generate.count()) { await clickForm(page, "Generate Plan v1"); await page.reload({ waitUntil: "networkidle" }); }
+  const offer = page.getByRole("button", { name: "Use offer" }).first();
+  if (await offer.count()) {
+    const offerForm = offer.locator("xpath=ancestor::form");
+    await offerForm.locator('[name="offerId"]').selectOption({ index: 1 });
+    await Promise.all([page.waitForResponse(r => r.request().method() === "POST"), offer.click()]);
+    await page.reload({ waitUntil: "networkidle" });
+  }
+  await clickForm(page, "Review plan");
+  await page.reload({ waitUntil: "networkidle" });
+  const submit = page.getByRole("button", { name: "Submit for approval" });
+  if (await submit.isDisabled()) throw new Error("owner-project:PLAN_VALIDATION_BLOCKED");
+  await Promise.all([page.waitForResponse(r => r.request().method() === "POST"), submit.click()]);
+  await page.reload({ waitUntil: "networkidle" });
+  if (await page.getByRole("button", { name: /Approve Plan/ }).count()) throw new Error("owner-project:ADMIN_APPROVAL_EXPOSED_TO_OWNER");
+  const adminPage = await admin.newPage();
+  await adminPage.goto(`${origin}/admin/furnishing/projects/${lifecycle.projectId}`, { waitUntil: "networkidle" });
+  await clickForm(adminPage, await adminPage.getByRole("button", { name: /Approve Plan/ }).innerText());
+  await adminPage.reload({ waitUntil: "networkidle" });
+  if (!/approved/i.test(await adminPage.locator("body").innerText())) throw new Error("owner-project:ADMIN_APPROVAL_MISSING");
+  await adminPage.close();
+  await page.reload({ waitUntil: "networkidle" });
+  await page.close();
+  return { status: response.status(), refreshed: 200 };
+}
+
+async function runSnapshot(owner: BrowserContext, step: Step) {
+  const page = await owner.newPage();
+  const response = await page.goto(targetFor(step).toString(), { waitUntil: "networkidle" });
+  if (!response || response.status() >= 400) throw new Error("snapshot:ROUTE_FAILED");
+  await clickForm(page, "Save immutable catalog snapshot");
+  await page.reload({ waitUntil: "networkidle" });
+  await clickForm(page, "Save immutable catalog snapshot");
+  await page.reload({ waitUntil: "networkidle" });
+  await page.close();
+  return { status: response.status(), refreshed: 200 };
+}
+
+async function runProcurement(context: BrowserContext, step: Step) {
+  const page = await context.newPage();
+  const response = await page.goto(targetFor(step).toString(), { waitUntil: "networkidle" });
+  if (!response || response.status() >= 400) throw new Error(`${step.id}:ROUTE_FAILED`);
+  if (step.id === "procurement-baseline") await clickForm(page, "Start procurement");
+  if (step.id === "budget") {
+    await clickForm(page, "Submit budget for approval");
+    await page.reload({ waitUntil: "networkidle" });
+    await clickForm(page, "Record reasoned adjustment", { amount: "10.00", reason: "C8-D planned versus actual reconciliation" });
+  }
+  if (step.id === "batch-order") {
+    await page.locator('[name="retailerId"]').selectOption({ index: 1 });
+    await clickForm(page, "Submit batch for authorization");
+    await page.reload({ waitUntil: "networkidle" });
+    await clickForm(page, "Authorize batch");
+    await page.goto(`${origin}/admin/furnishing/projects/${lifecycle.projectId}/procurement?view=orders`, { waitUntil: "networkidle" });
+    await clickForm(page, "Record external order", { externalOrderId: "C8D-SYNTHETIC-ORDER", orderDate: "2026-08-29" });
+  }
+  if (step.id === "receiving") {
+    const first = page.getByRole("button", { name: "Record", exact: true }).first();
+    const receipt = first.locator("xpath=ancestor::form");
+    await receipt.locator('[name="receivedQuantity"]').fill("1");
+    await receipt.locator('[name="acceptedQuantity"]').fill("0");
+    await receipt.locator('[name="condition"]').selectOption("damaged");
+    await Promise.all([page.waitForResponse(r => r.request().method() === "POST"), first.click()]);
+    await page.goto(`${origin}/admin/furnishing/projects/${lifecycle.projectId}/procurement?view=returns`, { waitUntil: "networkidle" });
+    await clickForm(page, "Resolve discrepancy", { reason: "Synthetic damaged unit reconciled" });
+    await page.goto(targetFor(step).toString(), { waitUntil: "networkidle" });
+    for (const record of await page.getByRole("button", { name: "Record", exact: true }).all()) {
+      const f = record.locator("xpath=ancestor::form"), quantity = await f.locator('[name="receivedQuantity"]').inputValue();
+      await f.locator('[name="acceptedQuantity"]').fill(quantity);
+      await Promise.all([page.waitForResponse(r => r.request().method() === "POST"), record.click()]);
+      await page.reload({ waitUntil: "networkidle" });
+    }
+  }
+  await page.reload({ waitUntil: "networkidle" });
+  await page.close();
+  return { status: response.status(), refreshed: 200 };
+}
+
+async function runOwnerProjection(context: BrowserContext, step: Step) {
+  const result = await visit(context, step), page = await context.newPage();
+  await page.goto(targetFor(step).toString(), { waitUntil: "networkidle" });
+  const body = await page.locator("body").innerText();
+  if (/Admin reason|Resolve discrepancy|Record external order|Authorize batch|Governed cleanup|Immutable activity/i.test(body)) throw new Error("owner-projection:ADMIN_INTERNALS_EXPOSED");
+  await page.close(); return result;
+}
+
+async function runKillSwitchCleanup(admin: BrowserContext, owner: BrowserContext, step: Step) {
+  const page = await admin.newPage();
+  const response = await page.goto(targetFor(step).toString(), { waitUntil: "networkidle" });
+  await clickGovernedControl(page, "Engage global kill switch");
+  const blocked = await admin.newPage();
+  await blocked.goto(`${origin}/admin/furnishing/projects/${lifecycle.projectId}/procurement?view=budget`, { waitUntil: "networkidle" });
+  await clickForm(blocked, "Record reasoned adjustment", { amount: "1.00", reason: "must fail while disabled" }).then(() => { throw new Error("kill-switch-cleanup:MUTATION_ALLOWED"); }).catch(error => { if (String(error).includes("MUTATION_ALLOWED")) throw error; });
+  await blocked.close();
+  const historical = await owner.newPage();
+  const read = await historical.goto(`${origin}/dashboard/furnishing/projects/${lifecycle.projectId}/procurement`, { waitUntil: "networkidle" });
+  if (!read || read.status() >= 400) throw new Error("kill-switch-cleanup:HISTORICAL_READ_DENIED");
+  await historical.close();
+  await clickGovernedControl(page, "Set global state: internal");
+  await clickGovernedControl(page, "Lift global kill switch");
+  await page.goto(`${origin}/admin/furnishing/projects/${lifecycle.projectId}/procurement?view=activity`, { waitUntil: "networkidle" });
+  await clickForm(page, "Archive synthetic lifecycle", { reason: "C8-D governed zero-resource cleanup" });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.close();
+  return { status: response?.status() ?? 200, refreshed: 200 };
 }
 
 async function visit(context: BrowserContext, step: Step) {
@@ -352,6 +548,7 @@ try {
   const controlledAdmin = await browser.newContext({ storageState: adminState });
   const controlledOwner = await browser.newContext({ storageState: ownerState });
   for (const step of runbook.steps) {
+    process.stderr.write(`FS008G_BROWSER_STAGE_START:${step.id}\n`);
     const context = step.persona === "controlled-admin" ? controlledAdmin : controlledOwner;
     const route = step.id === "activation"
       ? await runActivation(context, step)
@@ -363,7 +560,17 @@ try {
             ? await runPackageCreate(context, step)
             : step.id === "package-review"
               ? await runPackageReview(context, step)
-        : await visit(context, step);
+              : step.id === "owner-project"
+                ? await runOwnerProject(controlledOwner, controlledAdmin, step)
+                : step.id === "snapshot"
+                  ? await runSnapshot(controlledOwner, step)
+                  : ["procurement-baseline", "budget", "batch-order", "receiving"].includes(step.id)
+                    ? await runProcurement(controlledAdmin, step)
+                    : step.id === "owner-projection"
+                      ? await runOwnerProjection(controlledOwner, step)
+                      : step.id === "kill-switch-cleanup"
+                        ? await runKillSwitchCleanup(controlledAdmin, controlledOwner, step)
+                        : await visit(context, step);
     let denialChecked = false;
     if (
       step.persona === "controlled-owner" ||

@@ -44,6 +44,12 @@ export async function NewProjectWorkspace({
   selectedPropertyId?: string;
 }) {
   const data = await getProjectSetup();
+  const workspaceId = customer
+    ? String((data.workspaces[0] as Row | undefined)?.workspace_id ?? "")
+    : "";
+  const createContext = workspaceId
+    ? await issueFurnishingCommandContext({ workflow: "fs008g-finalization:project", workspaceId, commandType: "project.create", targetType: "workspace", targetId: workspaceId })
+    : null;
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-5 py-8">
       {customer ? (
@@ -63,6 +69,7 @@ export async function NewProjectWorkspace({
         />
       )}
       <form action={createProjectWorkspaceAction} className="space-y-5">
+        <input type="hidden" name="commandContextId" value={createContext?.contextId ?? ""} />
         <Step n="1" title="Property">
           <p className="mb-3 text-sm text-stone-600">
             Confirm the property this project furnishes. A material change here
@@ -836,6 +843,7 @@ export async function ProjectWorkspace({
               project={project}
               plan={plan}
               validation={validation}
+              customer={customer}
               snapshotContextId={snapshotContext?.contextId}
               commandContexts={planContexts}
             />
@@ -1134,12 +1142,14 @@ function PlanActions({
   validation,
   snapshotContextId,
   commandContexts,
+  customer,
 }: {
   project: Row;
   plan: Row;
   validation?: Row;
   snapshotContextId?: string;
   commandContexts: Record<string, string>;
+  customer: boolean;
 }) {
   return (
     <section className={panel}>
@@ -1160,7 +1170,7 @@ function PlanActions({
           </button>
         </form>
       ) : null}
-      {plan.status === "awaiting_approval" ? (
+      {plan.status === "awaiting_approval" && !customer ? (
         <form action={submitOrApprovePlanAction} className="mt-3">
           <input
             type="hidden"

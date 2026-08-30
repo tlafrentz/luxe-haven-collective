@@ -28,6 +28,8 @@ const credentials = {
   workspaceId: "",
   wrongWorkspaceId: "",
   customerAccountId: "",
+  propertyId: "",
+  styleVersionId: "",
 };
 
 function required(name: string) {
@@ -103,6 +105,12 @@ async function provision() {
   ) as { id: string };
   credentials.workspaceId = workspace.id;
 
+  const wrongWorkspace = await must(
+    admin.from("owners").insert({ profile_id: credentials.admin.id, company_name: `FS008G C8 Nonmember ${suffix}` }).select("id").single(),
+    "WRONG_WORKSPACE_CREATE",
+  ) as { id: string };
+  credentials.wrongWorkspaceId = wrongWorkspace.id;
+
   await must(admin.from("workspace_memberships").upsert([
     { workspace_id: workspace.id, profile_id: credentials.owner.id, role: "owner", status: "active", property_access_mode: "all", joined_at: new Date().toISOString() },
     { workspace_id: workspace.id, profile_id: credentials.admin.id, role: "administrator", status: "active", property_access_mode: "all", joined_at: new Date().toISOString() },
@@ -112,8 +120,70 @@ async function provision() {
     p_admin_id: credentials.admin.id,
     p_owner_id: credentials.owner.id,
   }), "CONTROLLED_TENANT_DESIGNATION");
-
-  credentials.wrongWorkspaceId = randomUUID();
+  const customerAccount = await must(admin.from("customer_accounts").insert({
+    tenant_id: workspace.id,
+    account_type: "owner",
+    status: "active",
+  }).select("id").single(), "CUSTOMER_ACCOUNT_FIXTURE") as { id: string };
+  credentials.customerAccountId = customerAccount.id;
+  await must(admin.from("customer_account_memberships").insert({
+    tenant_id: workspace.id,
+    customer_account_id: customerAccount.id,
+    profile_id: credentials.owner.id,
+    status: "active",
+  }), "CUSTOMER_ACCOUNT_MEMBERSHIP_FIXTURE");
+  const release = await must(admin.from("furnishing_activation_releases")
+    .select("id,global_state,global_kill_switch,configuration_valid")
+    .eq("milestone", "FS-008A").single(), "ACTIVATION_BASELINE_LOOKUP") as {
+      id: string; global_state: string; global_kill_switch: boolean; configuration_valid: boolean;
+    };
+  await must(admin.from("furnishing_activation_releases").update({
+    global_state: "internal", global_kill_switch: false, configuration_valid: true,
+  }).eq("id", release.id), "LOCAL_ENTITLEMENT_WINDOW_OPEN");
+  try {
+    await must(admin.from("commercial_entitlements").insert({
+      tenant_id: workspace.id,
+      customer_account_id: customerAccount.id,
+      capability_code: "furnishing.project.access",
+      resource_scope_type: "workspace",
+      resource_scope_id: workspace.id,
+      source: "migration",
+      source_reference_id: `fs008g-c8-local-${suffix}`,
+      offer_code: "FS-DESIGN",
+      offer_version: 1,
+      status: "active",
+      effective_from: new Date().toISOString(),
+    }), "FURNISHING_ENTITLEMENT_FIXTURE");
+  } finally {
+    await must(admin.from("furnishing_activation_releases").update({
+      global_state: release.global_state,
+      global_kill_switch: release.global_kill_switch,
+      configuration_valid: release.configuration_valid,
+    }).eq("id", release.id), "LOCAL_ENTITLEMENT_WINDOW_RESTORE");
+  }
+  const property = await must(admin.from("properties").insert({
+    owner_id: workspace.id,
+    name: `FS008G C8 Isolated Property ${suffix}`,
+    slug: `fs008g-c8-${suffix}`,
+    description: "Isolated browser fixture",
+    address_line_1: "800 Local Test Way",
+    city: "Austin",
+    state: "TX",
+    postal_code: "78701",
+    country: "US",
+    property_type: "short_term_rental",
+    timezone: "America/Chicago",
+    bedrooms: 2,
+    bathrooms: 2,
+    max_guests: 6,
+    status: "draft",
+    source: "manual",
+  }).select("id").single(), "PROPERTY_FIXTURE") as { id: string };
+  credentials.propertyId = property.id;
+  const style = await must(admin.from("furnishing_style_systems").insert({ workspace_id: workspace.id, name: "C8-D Controlled Style", slug: `c8d-${suffix}`, description: "Isolated fixture", scope: "workspace", lifecycle_status: "approved", created_by: credentials.admin.id }).select("id").single(), "STYLE_FIXTURE") as { id: string };
+  const styleVersion = await must(admin.from("furnishing_style_system_versions").insert({ style_system_id: style.id, version_number: 1, lifecycle_status: "approved", design_principles: ["durable"], mood_tags: ["controlled"], created_by: credentials.admin.id, approved_by: credentials.admin.id, approved_at: new Date().toISOString() }).select("id").single(), "STYLE_VERSION_FIXTURE") as { id: string };
+  credentials.styleVersionId = styleVersion.id;
+  await must(admin.from("furnishing_style_systems").update({ current_version_id: styleVersion.id }).eq("id", style.id), "STYLE_CURRENT_VERSION");
 
   const path = `${outputDirectory}/credentials.json`;
   await writeFile(path, `${JSON.stringify(credentials)}\n`, { mode: 0o600 });

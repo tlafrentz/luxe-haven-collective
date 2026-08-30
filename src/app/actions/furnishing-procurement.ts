@@ -499,3 +499,84 @@ export async function saveProcurementBudgetAction(formData: FormData) {
   revalidatePath(`/dashboard/furnishing/projects/${projectId}/procurement`);
   revalidatePath(`/admin/furnishing/projects/${projectId}/procurement`);
 }
+
+export async function resolveProcurementDiscrepancyAction(formData: FormData) {
+  const command = await resolveFurnishingCommandContext(
+    text(formData, "commandContextId"),
+    { commandType: "procurement.discrepancy.resolve", targetType: "discrepancy" },
+  );
+  const admin = createAdminClient();
+  const { data: exception } = await admin
+    .from("furnishing_procurement_exceptions")
+    .select("baseline_id")
+    .eq("id", command.targetId)
+    .single();
+  if (!exception) throw new Error("DISCREPANCY_NOT_FOUND");
+  const { data: baseline } = await admin
+    .from("furnishing_procurement_baselines")
+    .select("project_id")
+    .eq("id", exception.baseline_id)
+    .single();
+  if (!baseline) throw new Error("PROCUREMENT_BASELINE_NOT_FOUND");
+  await scope(String(baseline.project_id), true);
+  const client = await createClient();
+  const { error } = await client.rpc("resolve_furnishing_procurement_discrepancy", {
+    p_input: {
+      exception_id: command.targetId,
+      reason: text(formData, "reason"),
+      correlation_id: command.correlationId,
+      idempotency_key: command.idempotencyKey,
+    },
+  });
+  if (error) throw new Error(commandError(error, "DISCREPANCY_RESOLUTION_FAILED"));
+  revalidatePath(`/admin/furnishing/projects/${baseline.project_id}/procurement`);
+}
+
+export async function adjustProcurementBudgetAction(formData: FormData) {
+  const command = await resolveFurnishingCommandContext(
+    text(formData, "commandContextId"),
+    { commandType: "procurement.budget.adjust", targetType: "baseline" },
+  );
+  const admin = createAdminClient();
+  const { data: baseline } = await admin
+    .from("furnishing_procurement_baselines")
+    .select("project_id,version")
+    .eq("id", command.targetId)
+    .single();
+  if (!baseline) throw new Error("PROCUREMENT_BASELINE_NOT_FOUND");
+  await scope(String(baseline.project_id), true);
+  const amount = Math.round(Number(text(formData, "amount")) * 100);
+  if (!Number.isSafeInteger(amount)) throw new Error("PROCUREMENT_ADJUSTMENT_AMOUNT_INVALID");
+  const client = await createClient();
+  const { error } = await client.rpc("adjust_furnishing_procurement_budget", {
+    p_input: {
+      baseline_id: command.targetId,
+      expected_version: baseline.version,
+      amount_minor: amount,
+      reason: text(formData, "reason"),
+      correlation_id: command.correlationId,
+      idempotency_key: command.idempotencyKey,
+    },
+  });
+  if (error) throw new Error(commandError(error, "PROCUREMENT_ADJUSTMENT_FAILED"));
+  revalidatePath(`/admin/furnishing/projects/${baseline.project_id}/procurement`);
+}
+
+export async function cleanupSyntheticFurnishingProjectAction(formData: FormData) {
+  const command = await resolveFurnishingCommandContext(
+    text(formData, "commandContextId"),
+    { commandType: "procurement.cleanup", targetType: "cleanup" },
+  );
+  await scope(command.targetId, true);
+  const client = await createClient();
+  const { error } = await client.rpc("cleanup_fs008g_synthetic_project", {
+    p_input: {
+      project_id: command.targetId,
+      reason: text(formData, "reason"),
+      correlation_id: command.correlationId,
+      idempotency_key: command.idempotencyKey,
+    },
+  });
+  if (error) throw new Error(commandError(error, "CLEANUP_FAILED"));
+  revalidatePath(`/admin/furnishing/projects/${command.targetId}/procurement`);
+}

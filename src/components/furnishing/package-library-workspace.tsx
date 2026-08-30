@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   addProductAlternativeAction,
   addPropertyPackageRoomAction,
-  addRoomPackageItemAction,
   createPropertyPackageAction,
   createNextRoomPackageVersionAction,
   createRoomPackageAction,
@@ -20,6 +19,7 @@ import {
 import { approveFs008dPackage } from "@/app/actions/fs008d-governance";
 import { issueFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
 import { PackageGovernanceControl, RequirementGovernanceControl } from "./catalog-governance-controls";
+import { RoomPackageCompositionControl } from "./room-package-composition-control";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   estimatePackage,
@@ -556,52 +556,10 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
       {version.lifecycle_status === "draft" ? (
         <section className={panel}>
           <h2 className="text-lg font-semibold">Add requirement</h2>
-          <form
-            action={addRoomPackageItemAction}
-            className="mt-4 grid gap-3 md:grid-cols-5"
-          >
-            <input
-              type="hidden"
-              name="commandContextId"
-              value={roomContexts.compose ?? ""}
-            />
-            <select required name="requirementId" className={field}>
-              <option value="">Requirement</option>
-              {requirements
-                .filter(
-                  (r: Row) =>
-                    !items.some((i) => i.room_requirement_id === r.id),
-                )
-                .map((r: Row) => (
-                  <option value={r.id} key={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-            </select>
-            <select required name="quantityRuleId" className={field}>
-              <option value="">Quantity rule</option>
-              {rules.map((r: Row) => (
-                <option value={r.id} key={r.id}>
-                  {r.multiplier} × {r.rule_type.replaceAll("_", " ")}
-                </option>
-              ))}
-            </select>
-            <select name="priority" className={field}>
-              {["essential", "recommended", "optional"].map((x) => (
-                <option key={x}>{x}</option>
-              ))}
-            </select>
-            <select name="productId" className={field}>
-              <option value="">No product yet</option>
-              {products.map((p: Row) => (
-                <option value={p.id} key={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <input type="hidden" name="substitutionPolicy" value="allowed" />
-            <button className={button}>Add requirement</button>
-          </form>
+          <RoomPackageCompositionControl contextId={roomContexts.compose ?? ""}
+            requirements={requirements.filter((r: Row) => !items.some((i) => i.room_requirement_id === r.id)).map((r: Row) => ({ id: String(r.id), label: String(r.name) }))}
+            rules={rules.map((r: Row) => ({ id: String(r.id), label: `${r.multiplier} × ${r.rule_type.replaceAll("_", " ")}` }))}
+            products={products.map((p: Row) => ({ id: String(p.id), label: String(p.name) }))} />
         </section>
       ) : null}
       <div className="flex justify-end gap-3">

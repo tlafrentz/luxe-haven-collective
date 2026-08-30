@@ -11,6 +11,10 @@ import {
   approveRoomPackageAction,
   validatePropertyPackageAction,
   validateRoomPackageAction,
+  createControlledAlternateOfferAction,
+  submitProductReviewAction,
+  requestProductChangesAction,
+  retireProductAction,
   type FurnishingGovernanceState,
 } from "@/app/actions/furnishing-catalog-governance";
 
@@ -19,6 +23,11 @@ const field = "rounded-xl border px-3 py-2 text-sm";
 
 function Status({ state }: { state: FurnishingGovernanceState }) {
   return <p role="status" aria-live="polite" className={`min-h-5 text-sm ${state.ok === false ? "text-red-700" : "text-emerald-700"}`}>{state.message ?? ""}</p>;
+}
+
+export function CreateControlledAlternateOfferControl({ contextId }: Readonly<{ contextId: string }>) {
+  const [state, action, pending] = useActionState(createControlledAlternateOfferAction, {});
+  return <form action={action} className="space-y-2"><input type="hidden" name="commandContextId" value={contextId}/><button className={button} disabled={pending}>{pending ? "Creating…" : "Create controlled alternate offer"}</button><Status state={state}/></form>;
 }
 
 export function PackageGovernanceControl({ kind, validationContextId, approvalContextId }: Readonly<{ kind: "room" | "property"; validationContextId: string; approvalContextId: string }>) {
@@ -46,6 +55,14 @@ export function CatalogApprovalControl({ contextId, targetType, label }: Readonl
     <button className={button} disabled={pending}>{pending ? "Approving…" : label}</button>
     <Status state={state} />
   </form>;
+}
+
+export function ProductReviewControl({ operation, contextId, revision }: { operation: "submit" | "changes_requested" | "retire"; contextId: string; revision: number }) {
+  const serverAction = operation === "submit" ? submitProductReviewAction : operation === "retire" ? retireProductAction : requestProductChangesAction;
+  const [state, action, pending] = useActionState(serverAction, {});
+  const needsReason = operation !== "submit";
+  const label = operation === "submit" ? "Submit for review" : operation === "retire" ? "Retire product" : "Request changes";
+  return <form action={action} className="space-y-2"><input type="hidden" name="commandContextId" value={contextId}/><input type="hidden" name="revision" value={revision}/>{needsReason ? <label className="block text-sm font-medium">Reason<input required minLength={3} name="reason" className={`${field} mt-1 w-full`} /></label> : null}<button className={`${button} ${operation === "retire" ? "border-red-300 text-red-800" : ""}`} disabled={pending}>{pending ? "Saving…" : label}</button><Status state={state}/></form>;
 }
 
 export function OfferAssignmentControl({ contextId }: Readonly<{ contextId: string }>) {

@@ -214,7 +214,11 @@ export async function addRoomPackageItemAction(formData: FormData) {
   await assertFurnishingCatalogMutationAllowed(command.workspaceId);
   const { db } = await packageAdmin();
   const versionId = command.targetId,
-    requirementId = value(formData, "requirementId");
+    requirementId = value(formData, "requirementId"),
+    priorityInput = value(formData, "priority"),
+    priority = priorityInput === "required" ? "essential" : priorityInput;
+  if (!["essential", "recommended", "optional"].includes(priority))
+    throw new Error("ROOM_PACKAGE_PRIORITY_INVALID");
   const { data: editableVersion } = await db
     .from("furnishing_room_package_versions")
     .select("id")
@@ -232,7 +236,26 @@ export async function addRoomPackageItemAction(formData: FormData) {
     .from("furnishing_room_requirements")
     .select("key,furnishing_product_categories(name)")
     .eq("id", requirementId)
-    .single();
+    .eq("workspace_id", command.workspaceId)
+    .eq("scope", "workspace")
+    .eq("lifecycle_status", "approved")
+    .maybeSingle();
+  if (!req) throw new Error("ROOM_PACKAGE_REQUIREMENT_SCOPE_INVALID");
+  const productId = value(formData, "productId") || null;
+  if (productId) {
+    const { data: governedProduct } = await db
+      .from("furnishing_products")
+      .select("id,furnishing_product_offer_assignments!inner(id)")
+      .eq("id", productId)
+      .eq("workspace_id", command.workspaceId)
+      .eq("scope", "workspace")
+      .eq("status", "approved")
+      .eq("furnishing_product_offer_assignments.workspace_id", command.workspaceId)
+      .eq("furnishing_product_offer_assignments.role", "preferred")
+      .is("furnishing_product_offer_assignments.revoked_at", null)
+      .maybeSingle();
+    if (!governedProduct) throw new Error("ROOM_PACKAGE_PRODUCT_NOT_GOVERNED");
+  }
   const { count } = await db
     .from("furnishing_room_package_items")
     .select("id", { count: "exact", head: true })
@@ -244,16 +267,31 @@ export async function addRoomPackageItemAction(formData: FormData) {
           name?: string;
         } | null
       )?.name;
+  const proposed = {
+    room_requirement_id: requirementId,
+    quantity_rule_id: value(formData, "quantityRuleId"),
+    recommended_product_id: productId,
+    required: priority === "essential",
+    priority,
+    substitution_policy: "allowed",
+  };
+  const { data: existing } = await db
+    .from("furnishing_room_package_items")
+    .select("room_requirement_id,quantity_rule_id,recommended_product_id,required,priority,substitution_policy")
+    .eq("room_package_version_id", versionId)
+    .eq("room_requirement_id", requirementId)
+    .maybeSingle();
+  if (existing) {
+    if (Object.entries(proposed).some(([key, next]) => (existing as Row)[key] !== next))
+      throw new Error("ROOM_PACKAGE_COMPOSITION_REPLAY_CONFLICT");
+    revalidatePath(`/admin/furnishing/packages/rooms/${packageId}`);
+    return;
+  }
   const { error } = await db.from("furnishing_room_package_items").insert({
     room_package_version_id: versionId,
-    room_requirement_id: requirementId,
     requirement_key: req?.key ?? requirementId,
     category: category ?? "Other",
-    quantity_rule_id: value(formData, "quantityRuleId"),
-    recommended_product_id: value(formData, "productId") || null,
-    required: value(formData, "priority") === "essential",
-    priority: value(formData, "priority"),
-    substitution_policy: value(formData, "substitutionPolicy"),
+    ...proposed,
     sort_order: count ?? 0,
     notes: value(formData, "notes") || null,
   });
@@ -279,6 +317,16 @@ export async function addProductAlternativeAction(formData: FormData) {
     .eq("furnishing_room_package_versions.lifecycle_status", "draft")
     .maybeSingle();
   if (!editableItem) throw new Error("APPROVED_PACKAGE_VERSION_IMMUTABLE");
+  const alternateProductId = value(formData, "productId");
+  const { data: governedAlternate } = await db
+    .from("furnishing_products")
+    .select("id")
+    .eq("id", alternateProductId)
+    .eq("workspace_id", command.workspaceId)
+    .eq("scope", "workspace")
+    .eq("status", "approved")
+    .maybeSingle();
+  if (!governedAlternate) throw new Error("ROOM_PACKAGE_ALTERNATE_NOT_GOVERNED");
   const { data: owner } = await db
     .from("furnishing_room_package_items")
     .select("furnishing_room_package_versions(room_package_id)")
@@ -298,7 +346,7 @@ export async function addProductAlternativeAction(formData: FormData) {
     .from("furnishing_package_product_alternatives")
     .insert({
       room_package_item_id: itemId,
-      product_id: value(formData, "productId"),
+      product_id: alternateProductId,
       rank: (count ?? 0) + 1,
       status: "approved",
     });
@@ -315,6 +363,12 @@ export async function submitRoomPackageAction(formData: FormData) {
   const { db } = await packageAdmin();
   const versionId = command.targetId,
     status = "in_review";
+  const { data: composition } = await db
+    .from("furnishing_room_package_items")
+    .select("id,required,room_requirement_id,quantity_rule_id,recommended_product_id")
+    .eq("room_package_version_id", versionId);
+  if (!composition?.length || composition.some((item) => item.required && (!item.room_requirement_id || !item.quantity_rule_id || !item.recommended_product_id)))
+    throw new Error("ROOM_PACKAGE_REQUIRED_COMPOSITION_INCOMPLETE");
   const { data: owner } = await db
     .from("furnishing_room_package_versions")
     .select("room_package_id")
@@ -507,7 +561,6 @@ export async function createPropertyPackageAction(formData: FormData) {
       style: value(formData, "style") || "custom",
       budget_tier: tier === "elevated" ? "premium" : tier,
       starting_budget: 0,
-      status: "draft",
       tier,
       lifecycle_status: "draft",
       workspace_id: command.workspaceId,
