@@ -5,6 +5,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export type FurnishingCommandTarget =
   | "workspace"
   | "import"
+  | "product"
+  | "offer"
+  | "requirement"
   | "package"
   | "package_version"
   | "room_package"
@@ -72,6 +75,9 @@ async function authoritativeWorkspace(
     Record<FurnishingCommandTarget, readonly [string, string]>
   > = {
     import: ["furnishing_catalog_imports", "workspace_id"],
+    product: ["furnishing_products", "workspace_id"],
+    offer: ["furnishing_product_offers", "workspace_id"],
+    requirement: ["furnishing_room_requirements", "workspace_id"],
     package: ["furnishing_packages", "workspace_id"],
     room_package: ["furnishing_room_packages", "workspace_id"],
     project: ["furnishing_projects", "workspace_id"],

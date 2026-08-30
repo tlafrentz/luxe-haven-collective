@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { issueFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   completeCatalogImportAction,
   createFurnishingProductAction,
@@ -17,6 +18,10 @@ import {
   representativeOffer,
 } from "@/features/furnishing-studio";
 import { Badge, FurnishingHeader } from "./furnishing-navigation";
+import {
+  CatalogApprovalControl,
+  OfferAssignmentControl,
+} from "./catalog-governance-controls";
 
 // Supabase projections are intentionally dynamic until generated FS-002 database types land.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -382,6 +387,46 @@ export async function ProductDetail({ productId }: { productId: string }) {
       offers.map((offer) => asOffer(offer, product.preferred_offer_id)),
     );
   const roomNames = new Map(roomTypes.map((x: Row) => [x.id, x.name]));
+  const governedIds = [String(product.id), ...offers.map((offer) => String(offer.id))];
+  const [{ data: approvals }, { data: assignments }] = product.workspace_id
+    ? await Promise.all([
+        createAdminClient().from("furnishing_catalog_approvals").select("target_id,target_type,status").eq("workspace_id", product.workspace_id).eq("status", "approved").in("target_id", governedIds),
+        createAdminClient().from("furnishing_product_offer_assignments").select("offer_id").eq("workspace_id", product.workspace_id).is("revoked_at", null),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const approvedTargets = new Set((approvals ?? []).map((row: Row) => String(row.target_id)));
+  const assignedOffers = new Set((assignments ?? []).map((row: Row) => String(row.offer_id)));
+  const governed =
+    product.scope === "workspace" && product.workspace_id
+      ? {
+          product: await issueFurnishingCommandContext({
+            workflow: "fs008g-finalization:catalog-governance",
+            workspaceId: String(product.workspace_id),
+            commandType: "catalog.product.approve",
+            targetType: "product",
+            targetId: String(product.id),
+          }),
+          offers: await Promise.all(
+            offers.map(async (offer) => ({
+              id: String(offer.id),
+              approval: await issueFurnishingCommandContext({
+                workflow: "fs008g-finalization:catalog-governance",
+                workspaceId: String(product.workspace_id),
+                commandType: "catalog.offer.approve",
+                targetType: "offer",
+                targetId: String(offer.id),
+              }),
+              assignment: await issueFurnishingCommandContext({
+                workflow: "fs008g-finalization:catalog-governance",
+                workspaceId: String(product.workspace_id),
+                commandType: "catalog.offer.assign",
+                targetType: "offer",
+                targetId: String(offer.id),
+              }),
+            })),
+          ),
+        }
+      : null;
   return (
     <main className="mx-auto max-w-[1320px] space-y-6 px-5 py-8">
       <FurnishingHeader
@@ -422,6 +467,23 @@ export async function ProductDetail({ productId }: { productId: string }) {
           </dl>
         </section>
         <div className="space-y-6">
+          {governed ? (
+            <section className={panel} data-testid="catalog-governance">
+              <h2 className="text-lg font-semibold">Controlled governance</h2>
+              <p className="mt-1 text-sm text-stone-500">
+                Approval and offer assignment are bound to server-issued command contexts.
+              </p>
+              <div className="mt-4 space-y-3">
+                {!approvedTargets.has(String(product.id)) ? <CatalogApprovalControl contextId={governed.product.contextId} targetType="product" label="Approve controlled product" /> : <p className="text-sm font-semibold text-emerald-700">Controlled product approved</p>}
+                {governed.offers.map((offer) => (
+                  <div className="space-y-2" key={offer.id}>
+                    {!approvedTargets.has(offer.id) ? <CatalogApprovalControl contextId={offer.approval.contextId} targetType="offer" label="Approve controlled offer" /> : <p className="text-sm font-semibold text-emerald-700">Controlled offer approved</p>}
+                    {!assignedOffers.has(offer.id) ? <OfferAssignmentControl contextId={offer.assignment.contextId} /> : <p className="text-sm font-semibold text-emerald-700">Governed offer assigned</p>}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
           <section className={panel}>
             <div className="flex justify-between">
               <div>

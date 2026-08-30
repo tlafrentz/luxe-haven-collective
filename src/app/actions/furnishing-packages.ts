@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import ExcelJS from "exceljs";
 import { requireRole } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertFurnishingCatalogMutationAllowed } from "./furnishing-catalog-activation";
 import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 import { resolveFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
 
@@ -132,7 +133,11 @@ export async function getRoomPackage(packageId: string) {
 }
 
 export async function createRoomRequirementAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    { commandType: "catalog.requirement.create", targetType: "workspace" },
+  );
+  await assertFurnishingCatalogMutationAllowed(command.workspaceId);
   const { user, db } = await packageAdmin();
   const name = value(formData, "name"),
     key =
@@ -142,8 +147,8 @@ export async function createRoomRequirementAction(formData: FormData) {
         .replace(/[^a-z0-9]+/g, "_")
         .replace(/^_|_$/g, "");
   const { error } = await db.from("furnishing_room_requirements").insert({
-    workspace_id: null,
-    scope: "platform",
+    workspace_id: command.workspaceId,
+    scope: "workspace",
     key,
     name,
     description: value(formData, "description") || null,
@@ -158,13 +163,17 @@ export async function createRoomRequirementAction(formData: FormData) {
 }
 
 export async function createRoomPackageAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
+  const command = await resolveFurnishingCommandContext(
+    value(formData, "commandContextId"),
+    { commandType: "package.room.create", targetType: "workspace" },
+  );
+  await assertFurnishingCatalogMutationAllowed(command.workspaceId);
   const { user, db } = await packageAdmin();
   const { data: pkg, error } = await db
     .from("furnishing_room_packages")
     .insert({
-      workspace_id: null,
-      scope: "platform",
+      workspace_id: command.workspaceId,
+      scope: "workspace",
       name: value(formData, "name"),
       room_type: value(formData, "roomType"),
       tier: value(formData, "tier"),
@@ -198,11 +207,11 @@ export async function createRoomPackageAction(formData: FormData) {
 }
 
 export async function addRoomPackageItemAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
   const command = await resolveFurnishingCommandContext(
     value(formData, "commandContextId"),
     { commandType: "package.room.compose", targetType: "room_package_version" },
   );
+  await assertFurnishingCatalogMutationAllowed(command.workspaceId);
   const { db } = await packageAdmin();
   const versionId = command.targetId,
     requirementId = value(formData, "requirementId");
@@ -242,7 +251,7 @@ export async function addRoomPackageItemAction(formData: FormData) {
     category: category ?? "Other",
     quantity_rule_id: value(formData, "quantityRuleId"),
     recommended_product_id: value(formData, "productId") || null,
-    required: value(formData, "priority") === "required",
+    required: value(formData, "priority") === "essential",
     priority: value(formData, "priority"),
     substitution_policy: value(formData, "substitutionPolicy"),
     sort_order: count ?? 0,
@@ -253,7 +262,6 @@ export async function addRoomPackageItemAction(formData: FormData) {
 }
 
 export async function addProductAlternativeAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
   const command = await resolveFurnishingCommandContext(
     value(formData, "commandContextId"),
     {
@@ -261,6 +269,7 @@ export async function addProductAlternativeAction(formData: FormData) {
       targetType: "room_package_item",
     },
   );
+  await assertFurnishingCatalogMutationAllowed(command.workspaceId);
   const { db } = await packageAdmin();
   const itemId = command.targetId;
   const { data: editableItem } = await db
@@ -298,11 +307,11 @@ export async function addProductAlternativeAction(formData: FormData) {
 }
 
 export async function submitRoomPackageAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
   const command = await resolveFurnishingCommandContext(
     value(formData, "commandContextId"),
     { commandType: "package.room.submit", targetType: "room_package_version" },
   );
+  await assertFurnishingCatalogMutationAllowed(command.workspaceId);
   const { db } = await packageAdmin();
   const versionId = command.targetId,
     status = "in_review";
@@ -482,11 +491,11 @@ export async function duplicateRoomPackageAction(formData: FormData) {
 }
 
 export async function createPropertyPackageAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
   const command = await resolveFurnishingCommandContext(
     value(formData, "commandContextId"),
     { commandType: "package.create", targetType: "workspace" },
   );
+  await assertFurnishingCatalogMutationAllowed(command.workspaceId);
   const { db } = await packageAdmin();
   const tier = value(formData, "tier");
   const { data: pkg, error } = await db
@@ -554,11 +563,11 @@ export async function getPropertyPackage(packageId: string) {
 }
 
 export async function addPropertyPackageRoomAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
   const command = await resolveFurnishingCommandContext(
     value(formData, "commandContextId"),
     { commandType: "package.compose", targetType: "package_version" },
   );
+  await assertFurnishingCatalogMutationAllowed(command.workspaceId);
   const { db } = await packageAdmin();
   const versionId = command.targetId,
     roomVersionId = value(formData, "roomVersionId");
@@ -602,11 +611,11 @@ export async function addPropertyPackageRoomAction(formData: FormData) {
 }
 
 export async function submitPropertyPackageAction(formData: FormData) {
-  assertFurnishingActivationMutationDisabled();
   const command = await resolveFurnishingCommandContext(
     value(formData, "commandContextId"),
     { commandType: "package.version.submit", targetType: "package_version" },
   );
+  await assertFurnishingCatalogMutationAllowed(command.workspaceId);
   const { db } = await packageAdmin();
   const { data: version } = await db
     .from("furnishing_package_versions")

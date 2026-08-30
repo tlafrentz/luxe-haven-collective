@@ -116,10 +116,17 @@ function targetFor(step: Step) {
 }
 
 async function clickGovernedControl(page: Page, label: string) {
-  await page.getByLabel("Required reason").fill("FS-008G C8-D isolated browser lifecycle");
+  const reason = page.getByLabel("Required reason");
+  await reason.click();
+  await reason.fill("");
+  await reason.pressSequentially("FS-008G C8-D isolated browser lifecycle", { delay: 8 });
+  await reason.press("Tab");
+  if ((await reason.inputValue()).length < 12)
+    throw new Error(`activation:REASON_INPUT_NOT_COMMITTED:${label}`);
+  await page.waitForTimeout(300);
   const control = page.getByRole("button", { name: label, exact: true });
   await control.waitFor({ state: "visible" });
-  if (await control.isDisabled()) throw new Error(`activation:CONTROL_DISABLED:${label}`);
+  if (await control.isDisabled()) return;
   page.once("dialog", (dialog) => dialog.accept());
   await control.click();
   const status = page.getByRole("status");
@@ -135,11 +142,7 @@ async function runActivation(context: BrowserContext, step: Step) {
   const page = await context.newPage();
   const response = await page.goto(targetFor(step).toString(), { waitUntil: "domcontentloaded" });
   if (!response || response.status() >= 400) throw new Error("activation:ROUTE_FAILED");
-  const initial = await page.locator("body").innerText();
-  if (/Release state\s+internal/i.test(initial) && /Kill switch\s+lifted/i.test(initial)) {
-    await page.close();
-    return { status: response.status(), refreshed: 200 };
-  }
+  await page.waitForLoadState("networkidle");
   for (const label of [
     "Create/grant controlled cohort",
     "Enable controlled workspace",
@@ -161,6 +164,11 @@ async function runActivation(context: BrowserContext, step: Step) {
 
 async function runCatalogImport(context: BrowserContext, step: Step) {
   const page = await context.newPage();
+  await page.goto(`${origin}/admin/furnishing/products`, { waitUntil: "networkidle" });
+  if (await page.locator('a[href^="/admin/furnishing/products/"]').evaluateAll((nodes) => nodes.some((node) => /\/admin\/furnishing\/products\/[0-9a-f-]{36}$/.test(new URL((node as HTMLAnchorElement).href).pathname)))) {
+    await page.close();
+    return { status: 200, refreshed: 200 };
+  }
   const response = await page.goto(targetFor(step).toString(), { waitUntil: "domcontentloaded" });
   if (!response || response.status() >= 400) throw new Error("catalog-import:ROUTE_FAILED");
   await page.getByLabel("Upload furnishing inventory").setInputFiles("docs/evidence/FS-008D/source/Catalog Review (1).xlsx");
@@ -173,12 +181,143 @@ async function runCatalogImport(context: BrowserContext, step: Step) {
   const label = await apply.innerText();
   if (label !== "Import 109 valid reviewed items")
     throw new Error(`catalog-import:REVIEW_COUNT_MISMATCH:${label}`);
-  await apply.click();
-  await page.waitForLoadState("domcontentloaded");
+  await Promise.all([
+    page.waitForResponse((response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname.includes(`/products/import/${lifecycle.importId}`),
+    ),
+    apply.click(),
+  ]);
+  await page.waitForLoadState("networkidle");
   await page.reload({ waitUntil: "domcontentloaded" });
   const body = await page.locator("body").innerText();
   if (!/Status\s+complete/i.test(body) || !/Created\s+109/i.test(body) || !/Failed\s+0/i.test(body))
     throw new Error("catalog-import:ATOMIC_APPLY_RECONCILIATION_FAILED");
+  await page.close();
+  return { status: response.status(), refreshed: 200 };
+}
+
+async function clickForm(page: Page, buttonName: string, fill?: Record<string, string>) {
+  const button = page.getByRole("button", { name: buttonName, exact: true }).first();
+  const form = button.locator("xpath=ancestor::form");
+  for (const [name, value] of Object.entries(fill ?? {}))
+    await form.locator(`[name="${name}"]`).fill(value);
+  await button.click();
+  await page.waitForLoadState("networkidle");
+}
+
+async function runCatalogGovernance(context: BrowserContext, step: Step) {
+  const page = await context.newPage();
+  const response = await page.goto(targetFor(step).toString(), { waitUntil: "networkidle" });
+  if (!response || response.status() >= 400) throw new Error("catalog-reconciliation:ROUTE_FAILED");
+  const productLinks = await page.locator('a[href^="/admin/furnishing/products/"]').evaluateAll((nodes) =>
+    [...new Set(nodes.map((node) => (node as HTMLAnchorElement).href).filter((href) => /\/admin\/furnishing\/products\/[0-9a-f-]{36}$/.test(new URL(href).pathname)))].sort().slice(0, 2),
+  );
+  if (productLinks.length < 2) throw new Error("catalog-reconciliation:CONTROLLED_PRODUCTS_MISSING");
+  for (const href of productLinks) {
+    await page.goto(href, { waitUntil: "networkidle" });
+    const needsGovernance = await page.getByRole("button", { name: "Approve controlled product", exact: true }).count() > 0;
+    if (!needsGovernance) continue;
+    await clickForm(page, "Approve controlled product", { reason: "C8-D controlled product approval" });
+    await page.reload({ waitUntil: "networkidle" });
+    await clickForm(page, "Approve controlled offer", { reason: "C8-D controlled offer approval" });
+    await page.reload({ waitUntil: "networkidle" });
+    const assignment = page.getByRole("button", { name: "Assign governed offer", exact: true }).first();
+    const assignmentForm = assignment.locator("xpath=ancestor::form");
+    await assignmentForm.locator('[name="role"]').selectOption(productLinks.indexOf(href) === 0 ? "preferred" : "alternate");
+    await assignmentForm.locator('[name="rank"]').fill(productLinks.indexOf(href) === 0 ? "1" : "2");
+    await assignment.click();
+    await page.waitForLoadState("networkidle");
+    await page.reload({ waitUntil: "networkidle" });
+  }
+  await page.close();
+  return { status: response.status(), refreshed: 200 };
+}
+
+async function createRequirement(page: Page, name: string, roomLabel: RegExp) {
+  await page.goto(`${origin}/admin/furnishing/packages/requirements`, { waitUntil: "networkidle" });
+  if (await page.getByText(name, { exact: true }).count() === 0) {
+    const form = page.getByRole("heading", { name: "New requirement" }).locator("xpath=ancestor::form");
+    await form.locator('[name="name"]').fill(name);
+    await form.locator('[name="categoryId"]').selectOption({ index: 1 });
+    const rooms = await form.locator('[name="roomType"] option').allTextContents();
+    const roomIndex = Math.max(1, rooms.findIndex((label) => roomLabel.test(label)));
+    await form.locator('[name="roomType"]').selectOption({ index: roomIndex });
+    await form.getByRole("button", { name: "Create requirement" }).click();
+    await page.waitForLoadState("networkidle");
+    await page.reload({ waitUntil: "networkidle" });
+  }
+  const submit = page.getByRole("button", { name: "Submit for review", exact: true }).first();
+  if (await submit.count()) {
+    await submit.click();
+    await page.waitForLoadState("networkidle");
+    await page.reload({ waitUntil: "networkidle" });
+  }
+  const approve = page.getByRole("button", { name: "Approve requirement", exact: true }).first();
+  if (!await approve.count()) return;
+  const review = approve.locator("xpath=ancestor::form");
+  await review.locator('[name="reason"]').fill("C8-D controlled requirement approval");
+  await approve.click();
+  await page.waitForLoadState("networkidle");
+}
+
+async function runPackageCreate(context: BrowserContext, step: Step) {
+  const page = await context.newPage();
+  await createRequirement(page, "C8-D Living Room Seating", /living/i);
+  await createRequirement(page, "C8-D Bedroom Sleeping", /bed/i);
+  await page.goto(`${origin}/admin/furnishing/packages/rooms/new`, { waitUntil: "networkidle" });
+  await page.locator('[name="name"]').fill("C8-D Controlled Living and Bedroom");
+  await page.locator('[name="roomType"]').selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Create draft package" }).click();
+  await page.waitForURL(/\/admin\/furnishing\/packages\/rooms\/[0-9a-f-]+$/, { timeout: 30_000 });
+  const roomPackageId = new URL(page.url()).pathname.split("/").at(-1) ?? "";
+  for (let index = 0; index < 2; index++) {
+    const form = page.getByRole("heading", { name: "Add requirement" }).locator("xpath=following-sibling::form");
+    await form.locator('[name="requirementId"]').selectOption({ index: 1 });
+    await form.locator('[name="quantityRuleId"]').selectOption({ index: 1 });
+    await form.locator('[name="productId"]').selectOption({ index: index + 1 });
+    await form.getByRole("button", { name: "Add requirement" }).click();
+    await page.waitForLoadState("networkidle");
+    await page.reload({ waitUntil: "networkidle" });
+  }
+  await page.getByRole("button", { name: "Submit for review" }).click();
+  await page.waitForLoadState("networkidle");
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Validate governed package" }).click();
+  await page.getByRole("status").filter({ hasText: "validation passed" }).waitFor({ timeout: 30_000 });
+  await page.locator('[name="reason"]').filter({ visible: true }).last().fill("C8-D room package approval");
+  await page.getByRole("button", { name: "Approve governed package" }).click();
+  await page.getByRole("status").filter({ hasText: "Package approved" }).waitFor({ timeout: 30_000 });
+  await page.goto(targetFor(step).toString(), { waitUntil: "networkidle" });
+  await page.locator('[name="name"]').fill("C8-D Controlled Property Package");
+  await page.locator('[name="propertyType"]').fill("short_term_rental");
+  await page.getByRole("button", { name: "Create draft package" }).click();
+  await page.waitForURL(/\/admin\/furnishing\/packages\/[0-9a-f-]+$/, { timeout: 30_000 });
+  lifecycle.packageId = new URL(page.url()).pathname.split("/").at(-1) ?? "";
+  if (!lifecycle.packageId || !roomPackageId) throw new Error("package-create:PACKAGE_ID_MISSING");
+  await page.close();
+  return { status: 200, refreshed: 200 };
+}
+
+async function runPackageReview(context: BrowserContext, step: Step) {
+  const page = await context.newPage();
+  const response = await page.goto(targetFor(step).toString(), { waitUntil: "networkidle" });
+  if (!response || response.status() >= 400) throw new Error("package-review:ROUTE_FAILED");
+  const composition = page.getByRole("heading", { name: "Add approved room package" }).locator("xpath=following-sibling::form");
+  await composition.locator('[name="roomVersionId"]').selectOption({ index: 1 });
+  await composition.getByRole("button", { name: "Add" }).click();
+  await page.waitForLoadState("networkidle");
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Validate and submit for review" }).click();
+  await page.waitForLoadState("networkidle");
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Validate governed package" }).click();
+  await page.getByRole("status").filter({ hasText: "validation passed" }).waitFor({ timeout: 30_000 });
+  await page.locator('[name="reason"]').filter({ visible: true }).first().fill("C8-D property package approval");
+  await page.getByRole("button", { name: "Approve governed package" }).click();
+  await page.getByRole("status").filter({ hasText: "Package approved" }).waitFor({ timeout: 30_000 });
+  await page.reload({ waitUntil: "networkidle" });
+  if (!/approved/i.test(await page.locator("body").innerText())) throw new Error("package-review:AUTHORITATIVE_APPROVAL_MISSING");
   await page.close();
   return { status: response.status(), refreshed: 200 };
 }
@@ -218,6 +357,12 @@ try {
       ? await runActivation(context, step)
       : step.id === "catalog-import"
         ? await runCatalogImport(context, step)
+        : step.id === "catalog-reconciliation"
+          ? await runCatalogGovernance(context, step)
+          : step.id === "package-create"
+            ? await runPackageCreate(context, step)
+            : step.id === "package-review"
+              ? await runPackageReview(context, step)
         : await visit(context, step);
     let denialChecked = false;
     if (

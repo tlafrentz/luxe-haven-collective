@@ -19,6 +19,7 @@ import {
 } from "@/app/actions/furnishing-packages";
 import { approveFs008dPackage } from "@/app/actions/fs008d-governance";
 import { issueFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
+import { PackageGovernanceControl, RequirementGovernanceControl } from "./catalog-governance-controls";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   estimatePackage,
@@ -42,6 +43,18 @@ const dollars = (minor: unknown) =>
         currency: "USD",
       }).format(minor / 100)
     : "Price unavailable";
+async function controlledWorkspaceId() {
+  const { data } = await createAdminClient()
+    .from("furnishing_activation_workspaces")
+    .select("workspace_id")
+    .eq("enabled", true)
+    .eq("cohort", "internal")
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.workspace_id ? String(data.workspace_id) : null;
+}
 const current = (row: Row, key: string) =>
   row[key]?.find((x: Row) => x.id === row.current_version_id) ??
   row[key]?.at(-1);
@@ -248,6 +261,16 @@ function Empty({
 
 export async function NewRoomPackage() {
   const data = await getPackageLibrary();
+  const workspaceId = await controlledWorkspaceId();
+  const createContext = workspaceId
+    ? await issueFurnishingCommandContext({
+        workflow: "fs008g-finalization:package",
+        workspaceId,
+        commandType: "package.room.create",
+        targetType: "workspace",
+        targetId: workspaceId,
+      })
+    : null;
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-5 py-8">
       <FurnishingHeader
@@ -259,6 +282,7 @@ export async function NewRoomPackage() {
         action={createRoomPackageAction}
         className={`${panel} grid gap-5 md:grid-cols-2`}
       >
+        <input type="hidden" name="commandContextId" value={createContext?.contextId ?? ""} />
         <label className="font-semibold">
           Package name *
           <input
@@ -363,7 +387,7 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
   const roomContexts = pkg.workspace_id
     ? Object.fromEntries(
         await Promise.all(
-          ["compose", "submit", "version.create"].map(async (kind) => [
+          ["compose", "submit", "version.create", "validate", "approve"].map(async (kind) => [
             kind,
             (
               await issueFurnishingCommandContext({
@@ -519,6 +543,16 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
           </tbody>
         </table>
       </section>
+      {version.lifecycle_status === "in_review" && pkg.workspace_id ? (
+        <section className={panel}>
+          <h2 className="mb-4 text-lg font-semibold">Governed room-package review</h2>
+          <PackageGovernanceControl
+            kind="room"
+            validationContextId={roomContexts.validate ?? ""}
+            approvalContextId={roomContexts.approve ?? ""}
+          />
+        </section>
+      ) : null}
       {version.lifecycle_status === "draft" ? (
         <section className={panel}>
           <h2 className="text-lg font-semibold">Add requirement</h2>
@@ -553,7 +587,7 @@ export async function RoomPackageDetail({ packageId }: { packageId: string }) {
               ))}
             </select>
             <select name="priority" className={field}>
-              {["required", "recommended", "optional"].map((x) => (
+              {["essential", "recommended", "optional"].map((x) => (
                 <option key={x}>{x}</option>
               ))}
             </select>
@@ -808,6 +842,13 @@ export async function PropertyPackageDetail({
         targetId: String(version.id),
       })
     : null;
+  const governedPropertyContexts =
+    version.lifecycle_status === "in_review" && pkg.workspace_id
+      ? {
+          validate: await issueFurnishingCommandContext({ workflow: "fs008g-finalization:package", workspaceId: String(pkg.workspace_id), commandType: "package.property.validate", targetType: "package_version", targetId: String(version.id) }),
+          approve: await issueFurnishingCommandContext({ workflow: "fs008g-finalization:package", workspaceId: String(pkg.workspace_id), commandType: "package.property.approve", targetType: "package_version", targetId: String(version.id) }),
+        }
+      : null;
   const submitContext =
     version.lifecycle_status === "draft" && pkg.workspace_id
       ? await issueFurnishingCommandContext({
@@ -880,6 +921,11 @@ export async function PropertyPackageDetail({
       {version.lifecycle_status === "in_review" ? (
         <section className={panel}>
           <h2 className="text-lg font-semibold">Governed approval</h2>
+          {governedPropertyContexts ? (
+            <div className="mt-4">
+              <PackageGovernanceControl kind="property" validationContextId={governedPropertyContexts.validate.contextId} approvalContextId={governedPropertyContexts.approve.contextId} />
+            </div>
+          ) : null}
           {approvalContext ? (
             <form
               action={async (formData) => {
@@ -982,6 +1028,29 @@ export async function PropertyPackageDetail({
 
 export async function RequirementLibrary() {
   const data = await getPackageLibrary();
+  const workspaceId = await controlledWorkspaceId();
+  const createContext = workspaceId
+    ? await issueFurnishingCommandContext({
+        workflow: "fs008g-finalization:catalog-governance",
+        workspaceId,
+        commandType: "catalog.requirement.create",
+        targetType: "workspace",
+        targetId: workspaceId,
+      })
+    : null;
+  const requirementContexts = new Map(
+    await Promise.all(
+      data.requirements
+        .filter((requirement: Row) => requirement.scope === "workspace" && requirement.workspace_id === workspaceId)
+        .map(async (requirement: Row) => [
+          String(requirement.id),
+          {
+            submit: await issueFurnishingCommandContext({ workflow: "fs008g-finalization:catalog-governance", workspaceId: String(workspaceId), commandType: "catalog.requirement.submit", targetType: "requirement", targetId: String(requirement.id) }),
+            approve: await issueFurnishingCommandContext({ workflow: "fs008g-finalization:catalog-governance", workspaceId: String(workspaceId), commandType: "catalog.requirement.approve", targetType: "requirement", targetId: String(requirement.id) }),
+          },
+        ] as const),
+    ),
+  );
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-5 py-8">
       <FurnishingHeader
@@ -993,7 +1062,7 @@ export async function RequirementLibrary() {
         <section className={panel}>
           <ul className="divide-y">
             {data.requirements.map((r: Row) => (
-              <li className="flex justify-between py-3 text-sm" key={r.id}>
+              <li className="flex items-center justify-between gap-3 py-3 text-sm" key={r.id}>
                 <span>
                   <strong>{r.name}</strong>
                   <small className="ml-2 text-stone-500">
@@ -1001,6 +1070,7 @@ export async function RequirementLibrary() {
                   </small>
                 </span>
                 <Badge value={r.lifecycle_status} />
+                {requirementContexts.get(String(r.id)) ? <RequirementGovernanceControl submitContextId={requirementContexts.get(String(r.id))!.submit.contextId} approvalContextId={requirementContexts.get(String(r.id))!.approve.contextId} status={String(r.lifecycle_status)} /> : null}
               </li>
             ))}
           </ul>
@@ -1009,6 +1079,7 @@ export async function RequirementLibrary() {
           action={createRoomRequirementAction}
           className={`${panel} space-y-3`}
         >
+          <input type="hidden" name="commandContextId" value={createContext?.contextId ?? ""} />
           <h2 className="text-lg font-semibold">New requirement</h2>
           <input
             required
