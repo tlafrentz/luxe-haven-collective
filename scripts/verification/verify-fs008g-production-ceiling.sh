@@ -18,7 +18,8 @@ for migration in \
   supabase/migrations/20260830100000_fs_ux_003_inventory_import_workflow.sql \
   supabase/migrations/20260830110000_fs_ux_004_room_packages.sql \
   supabase/migrations/20260830120000_fs_ux_005_design_workspaces_budgets.sql \
-  supabase/migrations/20260830130000_fs_ux_006_procurement_readiness.sql
+  supabase/migrations/20260830130000_fs_ux_006_procurement_readiness.sql \
+  supabase/migrations/20260830140000_fs_ux_007_delivery_installation_tracking.sql
 do
   psql_local < "${migration}"
 done
@@ -28,3 +29,9 @@ psql_local < scripts/verification/fs-ux-003-database-matrix.sql
 psql_local < scripts/verification/fs-ux-004-database-matrix.sql
 psql_local < scripts/verification/fs-ux-005-database-matrix.sql
 psql_local < scripts/verification/fs-ux-006-database-matrix.sql
+{ printf '\\set FSUX7_CONTINUE 1\n'; cat scripts/verification/fs-ux-006-database-matrix.sql; cat scripts/verification/fs-ux-007-database-matrix.sql; } | psql_local
+psql_local < scripts/verification/fs008g-cleanup-negative-matrix.sql
+psql_local < scripts/verification/fs-ux-007-cleanup-matrix.sql
+bash scripts/verification/verify-fs-ux-007-concurrency.sh
+psql_local < scripts/verification/fs-ux-007-authorization-matrix.sql
+bash scripts/verification/verify-fs-ux-007-cleanup-concurrency.sh

@@ -2,6 +2,9 @@
 begin;
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+\if :{?FSUX7_CONTINUE}
+update public.furnishing_activation_releases set global_state='internal',global_kill_switch=false,configuration_valid=true where milestone='FS-008A';
+\endif
 
 insert into public.properties(id,owner_id,name,slug,description,city,state,bedrooms,bathrooms,max_guests,property_type,timezone,source,product_participation)
 values('94000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','FSUX6 controlled property','fsux6-controlled-property','Controlled local fixture','Austin','TX',2,2,6,'home','America/Chicago','manual',array['furnishing_project']);
@@ -45,5 +48,8 @@ do $$begin
  perform set_config('request.jwt.claim.sub','',true);perform set_config('request.jwt.claim.role','anon',true);
  begin perform public.fsux6_create_project('94000000-0000-4000-8000-000000000099','anonymous-denied','94000000-0000-4000-8000-000000000098');raise exception 'FSUX6_ANON_ALLOWED';exception when insufficient_privilege then null;when others then if sqlerrm not like '%permission denied%' and sqlerrm not like '%PROCUREMENT_ACCESS_DENIED%' then raise;end if;end;
 end$$;
+\if :{?FSUX7_CONTINUE}
+\else
 rollback;
 select 'FS_UX_006_DATABASE_MATRIX_PASS' as result;
+\endif

@@ -1,0 +1,38 @@
+\set ON_ERROR_STOP on
+begin;
+select set_config('request.jwt.claim.role','service_role',true);
+
+create or replace function pg_temp.fsux7_cleanup_fixture(tag text, evidence_class text default 'controlled_test') returns jsonb language plpgsql as $$
+declare d jsonb;b jsonb;did uuid;run_id uuid:=gen_random_uuid();correlation uuid:=gen_random_uuid();account_id uuid:=gen_random_uuid();property_id uuid:=gen_random_uuid();project_id uuid:=gen_random_uuid();plan_id uuid:=gen_random_uuid();baseline_id uuid:=gen_random_uuid();installation_id uuid:=gen_random_uuid();order_id uuid:=gen_random_uuid();
+begin
+ d:=public.designate_fs008g_controlled_project(jsonb_build_object('workspace_id','20000000-0000-4000-8000-000000000001','controlled_run_id',run_id,'correlation_id',correlation,'candidate_commit','fsux7-local-candidate','purpose','FSUX7 cleanup '||tag,'created_by','10000000-0000-4000-8000-000000000001','expires_at',now()+interval '2 hours'));did:=(d->>'designationId')::uuid;
+ insert into public.customer_accounts(id,tenant_id,account_type,status)values(account_id,'20000000-0000-4000-8000-000000000001','owner','active');
+ insert into public.customer_account_memberships(tenant_id,customer_account_id,profile_id,status)values('20000000-0000-4000-8000-000000000001',account_id,'10000000-0000-4000-8000-000000000001','active');
+ insert into public.properties(id,owner_id,name,slug,description,city,state,status,source)values(property_id,'20000000-0000-4000-8000-000000000001','FS008G C8 Isolated Property '||tag,'fsux7-'||replace(project_id::text,'-',''),'Controlled cleanup fixture','Austin','TX','draft','manual');
+ insert into public.furnishing_projects(id,property_id,workspace_id,name,created_by,lifecycle_status)values(project_id,property_id,'20000000-0000-4000-8000-000000000001','C8-D Isolated Furnishing Lifecycle '||tag,'10000000-0000-4000-8000-000000000001','draft');
+ insert into public.furnishing_plans(id,project_id,version_number,status,created_by)values(plan_id,project_id,1,'draft','10000000-0000-4000-8000-000000000001');
+ b:=public.bind_fs008g_controlled_project(jsonb_build_object('designation_id',did,'project_id',project_id,'customer_account_id',account_id,'property_id',property_id,'controlled_run_id',run_id,'correlation_id',correlation,'created_by','10000000-0000-4000-8000-000000000001','candidate_commit','fsux7-local-candidate'));
+ insert into public.furnishing_procurement_baselines(id,workspace_id,property_id,project_id,source_plan_id,source_plan_version,source_snapshot,source_hash,currency,status,idempotency_key,created_by)values(baseline_id,'20000000-0000-4000-8000-000000000001',property_id,project_id,plan_id,1,'{}','fixture','USD','draft','fsux7-cleanup-'||run_id,'10000000-0000-4000-8000-000000000001');
+ insert into public.furnishing_installation_projects(id,workspace_id,property_id,project_id,procurement_baseline_id,status,tracking_status,timezone,source_snapshot,source_hash,idempotency_key,created_by)values(installation_id,'20000000-0000-4000-8000-000000000001',property_id,project_id,baseline_id,'planning','awaiting_order_evidence','America/Chicago','{}','fixture','fsux7-install-'||run_id,'10000000-0000-4000-8000-000000000001');
+ insert into public.furnishing_procurement_orders(id,project_id,baseline_id,workspace_id,po_number,vendor,status,items,total,order_date,installation_project_id,evidence_class,verification_state,recording_actor_id,ordering_party)values(order_id,project_id,baseline_id,'20000000-0000-4000-8000-000000000001','FSUX7-'||left(run_id::text,8),'Controlled retailer','ordered','[]',0,current_date,installation_id,evidence_class,case when evidence_class='controlled_test'then'verified'else'reported_unverified'end,'10000000-0000-4000-8000-000000000001','External controlled purchaser');
+ insert into public.fsux7_order_evidence(installation_project_id,procurement_order_id,evidence_class,verification_state,ordering_party,recording_actor,correlation_id,idempotency_key)values(installation_id,order_id,evidence_class,case when evidence_class='controlled_test'then'verified'else'reported_unverified'end,'External controlled purchaser','10000000-0000-4000-8000-000000000001',correlation,'evidence-'||run_id);
+ insert into public.fsux7_tracking_exceptions(installation_project_id,category,severity,description,required_resolution,status,evidence)values(installation_id,'controlled_test','informational','Controlled cleanup exception','Archive fixture','resolved','{}');
+ insert into public.fsux7_inspections(installation_project_id,inspection_type,template_version,result,checks,evidence,recording_actor,correlation_id,idempotency_key)values(installation_id,'property','fs-ux-007-v1','passed','{}','{}','10000000-0000-4000-8000-000000000001',correlation,'inspection-'||run_id);
+ return jsonb_build_object('designation',did,'run',run_id,'correlation',correlation,'project',project_id,'installation',installation_id);
+end$$;
+
+create or replace function pg_temp.fsux7_cleanup_command(f jsonb)returns jsonb language sql as $$select jsonb_build_object('designation_id',f->>'designation','project_id',f->>'project','workspace_id','20000000-0000-4000-8000-000000000001','controlled_run_id',f->>'run','correlation_id',f->>'correlation','actor_id','10000000-0000-4000-8000-000000000001','candidate_commit','fsux7-local-candidate','reason','FSUX7 controlled cleanup','idempotency_key','cleanup-'||(f->>'run'))$$;
+
+do $$declare f jsonb;failure text;begin
+ begin f:=pg_temp.fsux7_cleanup_fixture('external','customer_reported');begin perform public.cleanup_fs008g_synthetic_project(pg_temp.fsux7_cleanup_command(f));raise exception 'EXPECTED_DENIAL';exception when others then failure:=sqlerrm;if failure='EXPECTED_DENIAL'or failure not like '%CLEANUP_EXTERNAL_EVIDENCE_PROHIBITED%'then raise;end if;end;if(select archived_at from public.furnishing_installation_projects where id=(f->>'installation')::uuid)is not null or exists(select 1 from public.fsux7_order_evidence where installation_project_id=(f->>'installation')::uuid and archived_at is not null)then raise exception 'FSUX7_EXTERNAL_DENIAL_MUTATED';end if;raise exception 'ROLLBACK_SCENARIO';exception when others then if sqlerrm<>'ROLLBACK_SCENARIO'then raise;end if;end;
+end$$;
+
+do $$declare f jsonb;c jsonb;r jsonb;m jsonb;begin
+ f:=pg_temp.fsux7_cleanup_fixture('manifest');c:=public.cleanup_fs008g_synthetic_project(pg_temp.fsux7_cleanup_command(f));r:=public.cleanup_fs008g_synthetic_project(pg_temp.fsux7_cleanup_command(f));m:=c->'reconciliation'->'fsux7';
+ if c->>'status'<>'clean'or r->>'status'<>'already_cleaned'or r->>'id'<>c->>'id'or r->'reconciliation'is distinct from c->'reconciliation'then raise exception 'FSUX7_CLEANUP_REPLAY_MISMATCH';end if;
+ if (m->>'orders')::int<>1 or(m->>'exceptions')::int<>1 or(m->>'inspections')::int<>1 then raise exception 'FSUX7_CLEANUP_MANIFEST_MISMATCH:%',m;end if;
+ if exists(select 1 from public.fsux7_order_evidence where installation_project_id=(f->>'installation')::uuid and archived_at is null)or exists(select 1 from public.fsux7_tracking_exceptions where installation_project_id=(f->>'installation')::uuid and archived_at is null)or exists(select 1 from public.fsux7_inspections where installation_project_id=(f->>'installation')::uuid and archived_at is null)then raise exception 'FSUX7_CLEANUP_ARCHIVE_MISMATCH';end if;
+ if not exists(select 1 from public.fsux7_cleanup_manifests where designation_id=(f->>'designation')::uuid)or not exists(select 1 from public.furnishing_cleanup_runs where id=(c->>'id')::uuid)then raise exception 'FSUX7_CLEANUP_IMMUTABLE_EVIDENCE_MISSING';end if;
+end$$;
+rollback;
+select 'FS_UX_007_CLEANUP_MATRIX_PASS' as result;

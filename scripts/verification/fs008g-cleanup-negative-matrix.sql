@@ -56,7 +56,7 @@ do $$declare scenario text;f jsonb;command jsonb;baseline_id uuid;commerce_custo
     baseline_id:=gen_random_uuid();
     insert into public.furnishing_procurement_baselines(id,workspace_id,property_id,project_id,source_plan_id,source_plan_version,source_snapshot,source_hash,currency,status,idempotency_key,created_by) values(baseline_id,'20000000-0000-4000-8000-000000000001',(f->>'propertyId')::uuid,(f->>'projectId')::uuid,(f->>'planId')::uuid,1,'{}','fixture','USD','draft','baseline-'||(f->>'runId'),'10000000-0000-4000-8000-000000000001');
     if scenario='procurement' then insert into public.furnishing_procurement_exceptions(baseline_id,exception_type,severity,status) values(baseline_id,'controlled_dependency','blocking','open');
-    else insert into public.furnishing_installation_projects(workspace_id,property_id,project_id,procurement_baseline_id,status,timezone,source_snapshot,source_hash,idempotency_key,created_by) values('20000000-0000-4000-8000-000000000001',(f->>'propertyId')::uuid,(f->>'projectId')::uuid,baseline_id,'planning','America/Chicago','{}','fixture','installation-'||(f->>'runId'),'10000000-0000-4000-8000-000000000001');end if;
+    else insert into public.furnishing_installation_projects(workspace_id,property_id,project_id,procurement_baseline_id,status,timezone,source_snapshot,source_hash,idempotency_key,created_by) values('20000000-0000-4000-8000-000000000001',(f->>'propertyId')::uuid,(f->>'projectId')::uuid,baseline_id,'planning','America/Chicago','{}','fixture','installation-'||(f->>'runId'),'10000000-0000-4000-8000-000000000001');insert into public.furnishing_installation_tasks(project_id,room,item_name,status,installer)values((f->>'projectId')::uuid,'Controlled room','Externally consequential installation','in_progress','Real external installer');end if;
    end if;
    begin perform public.cleanup_fs008g_synthetic_project(command);raise exception 'EXPECTED_CLEANUP_DENIAL';exception when others then failure:=sqlerrm;if failure='EXPECTED_CLEANUP_DENIAL' then raise;end if;end;
    if (select lifecycle_status from public.furnishing_projects where id=(f->>'projectId')::uuid)<>'draft' or (select status from public.furnishing_plans where id=(f->>'planId')::uuid)<>'draft' or exists(select 1 from public.furnishing_cleanup_runs where project_id=(f->>'projectId')::uuid) then raise exception 'CLEANUP_DENIAL_MUTATED:%',scenario;end if;
@@ -99,5 +99,5 @@ do $$declare command jsonb:='{}'::jsonb;begin
  begin perform public.cleanup_fs008g_synthetic_project(command);raise exception 'ANON_CLEANUP_ALLOWED';exception when insufficient_privilege then null;when others then if sqlerrm not like '%FS008G_FIXTURE_SERVICE_ROLE_REQUIRED%' then raise;end if;end;
  perform set_config('request.jwt.claim.role','service_role',true);
 end$$;
-commit;
+rollback;
 select 'FS008G_CLEANUP_NEGATIVE_MATRIX_PASS' as result;

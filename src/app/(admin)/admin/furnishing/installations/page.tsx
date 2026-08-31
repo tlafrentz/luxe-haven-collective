@@ -1,2 +1,3 @@
-import { FurnishingUnavailable } from "@/components/furnishing/furnishing-states";
-export default function Page() { return <FurnishingUnavailable title="Installations" description="Coordinate delivery, site readiness, and room completion." prerequisite="Installation tracking becomes available from an authorized Design Workspace after procurement prerequisites are satisfied." href="/admin/furnishing/workspaces" hrefLabel="Open Design Workspaces" />; }
+import { TrackingLibrary } from "@/components/furnishing/delivery-installation-v2";
+export const dynamic="force-dynamic";
+export default function Page(){return <TrackingLibrary/>}

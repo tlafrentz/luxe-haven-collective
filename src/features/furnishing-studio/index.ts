@@ -7,5 +7,6 @@ export * from "./design";
 export * from "./project-plan";
 export * from "./design-workspaces";
 export * from "./procurement-readiness";
+export * from "./delivery-installation";
 export * from "./procurement";
 export * from "./installation";
