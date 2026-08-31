@@ -1,3 +1,3 @@
-import { ProjectWorkspace } from "@/components/furnishing/project-workspace-v1";
+import { DesignWorkspaceDetail } from "@/components/furnishing/design-workspaces-v2";
 export const dynamic = "force-dynamic";
-export default async function Page({ params }: { params: Promise<{ workspaceId: string }> }) { return <ProjectWorkspace projectId={(await params).workspaceId} customer={false} />; }
+export default async function Page({ params }: { params: Promise<{ workspaceId: string }> }) { return <DesignWorkspaceDetail id={(await params).workspaceId} />; }

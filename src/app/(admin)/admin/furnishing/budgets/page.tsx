@@ -1,2 +1,3 @@
-import { FurnishingUnavailable } from "@/components/furnishing/furnishing-states";
-export default function Page() { return <FurnishingUnavailable title="Budgets" description="Track furnishing targets and room-level variance." prerequisite="Dedicated budget management will arrive in a later milestone. Budget context remains available inside authorized Design Workspaces." href="/admin/furnishing/workspaces" hrefLabel="Open Design Workspaces" />; }
+import { BudgetLibrary } from "@/components/furnishing/design-workspaces-v2";
+export const dynamic = "force-dynamic";
+export default function Page() { return <BudgetLibrary />; }

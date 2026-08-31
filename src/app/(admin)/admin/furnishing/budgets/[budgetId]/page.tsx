@@ -1,2 +1,3 @@
-import { FurnishingUnavailable } from "@/components/furnishing/furnishing-states";
-export default function Page() { return <FurnishingUnavailable title="Budget detail" description="Review furnishing allocation and variance." prerequisite="Dedicated budget detail is not activated. Open the associated Design Workspace to review current budget context." href="/admin/furnishing/workspaces" hrefLabel="Open Design Workspaces" />; }
+import { BudgetDetail } from "@/components/furnishing/design-workspaces-v2";
+export const dynamic = "force-dynamic";
+export default async function Page({ params }: { params: Promise<{ budgetId: string }> }) { return <BudgetDetail id={(await params).budgetId} />; }

@@ -1,3 +1,3 @@
-import { CustomerProjectList } from "@/components/furnishing/project-workspace-v1";
+import { DesignWorkspaceLibrary } from "@/components/furnishing/design-workspaces-v2";
 export const dynamic = "force-dynamic";
-export default function Page() { return <CustomerProjectList customer={false} />; }
+export default function Page() { return <DesignWorkspaceLibrary />; }
