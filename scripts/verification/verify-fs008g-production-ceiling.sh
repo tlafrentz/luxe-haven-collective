@@ -20,7 +20,8 @@ for migration in \
   supabase/migrations/20260830120000_fs_ux_005_design_workspaces_budgets.sql \
   supabase/migrations/20260830130000_fs_ux_006_procurement_readiness.sql \
   supabase/migrations/20260830140000_fs_ux_007_delivery_installation_tracking.sql \
-  supabase/migrations/20260830150000_fs_ux_008_release_controls.sql
+  supabase/migrations/20260830150000_fs_ux_008_release_controls.sql \
+  supabase/migrations/20260830151000_fs_ux_008_control_orchestration.sql
 do
   psql_local < "${migration}"
 done
@@ -37,3 +38,5 @@ bash scripts/verification/verify-fs-ux-007-concurrency.sh
 psql_local < scripts/verification/fs-ux-007-authorization-matrix.sql
 bash scripts/verification/verify-fs-ux-007-cleanup-concurrency.sh
 psql_local < scripts/verification/fs-ux-008-database-matrix.sql
+psql_local < scripts/verification/fs-ux-008-authorization-matrix.sql
+bash scripts/verification/verify-fs-ux-008-concurrency.sh

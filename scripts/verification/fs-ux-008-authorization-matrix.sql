@@ -1,0 +1,26 @@
+\set ON_ERROR_STOP on
+begin;
+select set_config('request.jwt.claim.role','authenticated',true);
+do $$
+declare admin_id uuid:='10000000-0000-4000-8000-000000000001'; operator_id uuid:='83000000-0000-4000-8000-000000000001'; denied_id uuid:='83000000-0000-4000-8000-000000000002'; suspended_id uuid:='83000000-0000-4000-8000-000000000003'; w uuid:='20000000-0000-4000-8000-000000000001'; wrong_w uuid:='20000000-0000-4000-8000-000000000002'; p text; before_release bigint; before_events bigint;
+begin
+ insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at,raw_app_meta_data,raw_user_meta_data) values(operator_id,'authenticated','authenticated','fsux8-matrix-operator@example.invalid','',now(),now(),now(),'{}','{}'),(denied_id,'authenticated','authenticated','fsux8-matrix-denied@example.invalid','',now(),now(),now(),'{}','{}'),(suspended_id,'authenticated','authenticated','fsux8-matrix-suspended@example.invalid','',now(),now(),now(),'{}','{}') on conflict(id) do nothing;
+ insert into public.profiles(id,email,role) values(operator_id,'fsux8-matrix-operator@example.invalid','owner'),(denied_id,'fsux8-matrix-denied@example.invalid','owner'),(suspended_id,'fsux8-matrix-suspended@example.invalid','owner') on conflict(id) do nothing;
+ delete from public.fsux8_release_permissions where actor_id=admin_id and permission in('workspace_recover','global_recover');
+ foreach p in array array['view','control','verify','workspace_suspend','workspace_recover','cohort_control'] loop insert into public.fsux8_release_permissions(actor_id,workspace_id,permission,status,granted_by,reason,expires_at) values(operator_id,w,p,'active',admin_id,'FSUX8 direct authorization matrix',now()+interval '1 day') on conflict(actor_id,workspace_id,permission) do update set status='active',expires_at=excluded.expires_at; end loop;
+ foreach p in array array['global_suspend','global_recover','release_mode'] loop insert into public.fsux8_release_permissions(actor_id,workspace_id,permission,status,granted_by,reason,expires_at) values(operator_id,null,p,'active',admin_id,'FSUX8 direct authorization matrix',now()+interval '1 day') on conflict(actor_id,workspace_id,permission) do update set status='active',expires_at=excluded.expires_at; end loop;
+ insert into public.fsux8_release_permissions(actor_id,workspace_id,permission,status,granted_by,reason,expires_at) values(suspended_id,w,'control','suspended',admin_id,'FSUX8 suspended actor matrix',now()+interval '1 day') on conflict(actor_id,workspace_id,permission) do update set status='suspended';
+ foreach p in array array['view','control','verify','workspace_suspend','workspace_recover','cohort_control'] loop if not public.fsux8_has_release_permission(operator_id,p,w) then raise exception 'FSUX8_OPERATOR_PERMISSION_MISSING %',p; end if; end loop;
+ foreach p in array array['global_suspend','global_recover','release_mode'] loop if not public.fsux8_has_release_permission(operator_id,p,null) then raise exception 'FSUX8_OPERATOR_GLOBAL_PERMISSION_MISSING %',p; end if; end loop;
+ if public.fsux8_has_release_permission(denied_id,'view',w) or public.fsux8_has_release_permission(denied_id,'control',w) or public.fsux8_has_release_permission(operator_id,'control',wrong_w) or public.fsux8_has_release_permission(suspended_id,'control',w) then raise exception 'FSUX8_PERMISSION_DENIAL_FAILED'; end if;
+ if not public.fsux8_has_release_permission(admin_id,'control',w) or public.fsux8_has_release_permission(admin_id,'global_recover',null) then raise exception 'FSUX8_SEPARATE_RECOVERY_AUTHORITY_FAILED'; end if;
+ if has_table_privilege('authenticated','public.fsux8_release_suspensions','INSERT') or has_table_privilege('authenticated','public.fsux8_capability_verification_runs','UPDATE') or has_table_privilege('anon','public.furnishing_activation_audit_events','SELECT') then raise exception 'FSUX8_IMMUTABLE_EVIDENCE_GRANT_FAILED'; end if;
+ select optimistic_version into before_release from public.furnishing_activation_releases where milestone='FS-008A'; select count(*) into before_events from public.furnishing_activation_audit_events;
+ perform set_config('request.jwt.claim.sub',denied_id::text,true);
+ begin perform public.fsux8_apply_control_v2('suspend_global',null,null,before_release,before_release,'fs008a-v1','production','Denied actor cannot suspend release','fsux8-denied-global','fsux8-denied-global',null); raise exception 'FSUX8_DENIED_MUTATION_ALLOWED'; exception when others then if sqlerrm='FSUX8_DENIED_MUTATION_ALLOWED' then raise; end if; end;
+ if (select optimistic_version from public.furnishing_activation_releases where milestone='FS-008A')<>before_release or (select count(*) from public.furnishing_activation_audit_events)<>before_events then raise exception 'FSUX8_DENIAL_MUTATED_STATE'; end if;
+ perform set_config('request.jwt.claim.sub','',true);
+ begin perform public.fsux8_apply_control_v2('suspend_global',null,null,before_release,before_release,'fs008a-v1','production','Anonymous actor cannot suspend release','fsux8-anon-global','fsux8-anon-global',null); raise exception 'FSUX8_ANONYMOUS_MUTATION_ALLOWED'; exception when others then if sqlerrm='FSUX8_ANONYMOUS_MUTATION_ALLOWED' then raise; end if; end;
+end $$;
+rollback;
+select 'FS_UX_008_DIRECT_AUTHORIZATION_MATRIX_PASS' as result;

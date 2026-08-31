@@ -4,51 +4,60 @@ Status: `FS-UX-008_LOCAL_IMPLEMENTATION_COMPLETE_PENDING_FINAL_PROGRAM_RECONCILI
 
 ## Candidate boundary
 
-- Starting candidate: `a32f48ed9ccc3fa48d1ddf3cf760a56d4ee2ccef`.
-- Forward migration: `20260830150000_fs_ux_008_release_controls.sql`.
-- Production remains unchanged at migration ceiling `20260829010000`.
-- The migration is state-neutral: it enables no capability, creates no cohort, changes no release mode, and lifts no safety control.
+- Required starting point: `a32f48ed9ccc3fa48d1ddf3cf760a56d4ee2ccef`.
+- Intermediate implementation commit: `98101b498d19c155ddaa77228f47cc588fc0feaa`.
+- Original migration: `20260830150000_fs_ux_008_release_controls.sql` (`9eca483b7977c30e910074ae138e7c79287b882bb51081ac2c26efc60d62b75f`).
+- Forward correction: `20260830151000_fs_ux_008_control_orchestration.sql` (`f06aad6d71f31f3c76ea46c6c8b2d902a4509b5707b1310de492c7eb7fe7089a`).
+- The original migration is unchanged. The corrective digest is new because the intermediate commit lacked governed recovery, server verification, delegated RLS alignment, and serialized suspension precedence.
+- Production remains unchanged at ceiling `20260829010000`.
 
-## Delivered routes
+## Routes and controls
 
-- `/admin/furnishing/release-controls`
-- `/admin/furnishing/release-controls/workspaces/:workspaceId`
-- `/admin/furnishing/release-controls/workspaces/:workspaceId/capabilities/:capability`
-- `/admin/furnishing/release-controls/history`
-- `/admin/furnishing/release-controls/history/:eventId`
-- `/admin/furnishing/activation` redirects to the canonical console.
+Delivered routes are `/admin/furnishing/release-controls`, `/workspaces/:workspaceId`, `/workspaces/:workspaceId/capabilities/:capability`, `/history`, and `/history/:eventId`; the legacy activation URL redirects to the console. Arbitrary workspace entry is absent.
 
-The overview removes free-form workspace identity. Operators choose a row from the authoritative controlled-workspace projection. All pages require the internal Admin boundary; direct dynamic identifiers are resolved server-side and fail closed.
+The sequence remains Catalog viewing → Design Workspace → Budgeting → Procurement readiness. Enabled steps default to View details or Verify. Capability detail exposes **Prepare rollback** only when authorized. The database enforces Procurement readiness → Budgeting → Design Workspace → Catalog viewing rollback, preserves evidence, and makes replay idempotent.
 
-## Control contract
+## Governed recovery
 
-The policy sequence remains Catalog viewing → Design Workspace → Budgeting → Procurement readiness. Database enforcement requires every predecessor to be enabled and verified. Rollback is enforced in reverse order. Enablement resets verification evidence; verification is a separate, idempotent, immutable-audited transaction. Every mutation requires a 12–500 character plain-text reason, current version, correlation, and idempotency identity.
+Workspace and global suspension create distinct immutable suspension/audit records. Recovery requires separately assigned recovery permission, current policy/version, an active suspension, meaningful reason, and risk resolution. Workspace recovery validates the cohort. Global recovery returns to protected Internal state with the global safety control engaged. Recovery enables no capability; capabilities require deliberate reverification. Missing suspension, stale version, unresolved risk, inactive cohort, unauthorized or anonymous actor, and conflicting global suspension fail with zero mutation. Replay returns the canonical result.
 
-The console presents Internal, Protected, Suspended, and unavailable states in operator language. An engaged global safety control is represented as intentionally protected. Capability activation is explicitly non-executing. Delivery and Installation Tracking is not appended to FS-008A.
+## Server verification
 
-## Database proof
+`fsux8_verify_capability_v2` accepts no client success assertion. It serializes on the control lock, validates actor/workspace/cohort/policy/version/suspension, runs capability checks, snapshots lifecycle/external-effect counts, and persists a run plus individual checks. Failed required checks cannot become verified.
 
-`scripts/verification/fs-ux-008-database-matrix.sql` executes the sequence guard, rejects out-of-order activation with zero mutation, records and replays verification idempotently, reconciles one immutable evidence event, blocks forward-order rollback, and restores the safe disabled capability baseline inside a rolled-back fixture transaction.
+- Catalog: governed read/denial boundaries and zero catalog mutation.
+- Design Workspace: bounded projection and zero property/workspace/package application.
+- Budgeting: fixed-minor-unit and snapshot compatibility with zero approval/payment/customer effect.
+- Procurement readiness: readiness projection, fail-closed execution, and zero retailer/cart/order/payment/notification/delivery/installation effect.
 
-The full Production-ceiling harness applies the corrected FS-008G sequence followed by FS-UX-002 through FS-UX-008 and then executes the FS-UX-008 database matrix. The new trigger and verification function use fixed empty `search_path`; anonymous execution is revoked; authenticated invocation still requires `auth.uid()` and `is_admin()`. Authenticated direct writes to activation state and evidence remain revoked by the frozen foundation.
+The legacy client-directed verification RPC is revoked from authenticated callers.
 
-## Safety and external effects
+## Authorization
 
-Release controls update only canonical activation state and immutable activation evidence. They do not create products, imports, packages, Design Workspaces, budgets, procurement projects, orders, payments, notifications, delivery records, installation records, or completion evidence. Retailer and provider execution remain unavailable. Production activation and kill-switch state were not read or mutated during local implementation.
+Permissions separate view, control, verification, workspace/global suspension, workspace/global recovery, cohort control, and release-mode authority. Recovery is not inherited from Admin status. The direct matrix proves assigned operator access, ordinary Admin control, separate recovery authority, wrong-workspace, unassigned, suspended-assignment, and anonymous denial, plus immutable-evidence write denial. Projection RLS and the resolver use the same authority function.
 
-## Verification results
+## Database and concurrency proof
 
-- Migration SHA-256: `9eca483b7977c30e910074ae138e7c79287b882bb51081ac2c26efc60d62b75f`.
-- Focused Release Controls tests: 21/21 passed.
-- Full suite: 4,630/4,630 passed across 846 files.
+The lifecycle matrix executes ordered enable/verification for all capabilities, invalid order and rollback denials, reverse rollback, reenabling, workspace suspension/recovery, global suspension/recovery, replay, history reconciliation, and zero effects.
+
+Independent PostgreSQL sessions prove global suspension versus enable, enable versus enable with one stale loser, workspace suspension versus verification, cohort expiration versus verification, and forced audit-persistence failure. Suspension/expiration wins its race, no partial transition or fabricated verification persists, and forced audit failure rolls state back atomically. Lock ordering uses one deterministic advisory transaction lock and projections are reread from the database.
+
+## Local baseline
+
+The lifecycle ends at Internal and Protected, active controlled cohort, global safety control engaged, capabilities requiring deliberate verification, external execution unavailable, exact audit reconciliation, and zero created lifecycle or external-effect rows.
+
+## Final gates
+
+- Focused tests: 25/25 across 3 files.
+- Full suite: 4,634/4,634 across 847 files.
 - Typecheck: passed.
-- Full lint: passed with zero errors (nine unchanged repository warnings).
+- Full lint: passed with zero errors and nine unchanged warnings.
 - Migration lint: passed with no findings.
-- Production build: passed; all five canonical Release Controls routes were emitted.
+- Production build: passed; all five routes emitted.
 - `git diff --check`: passed.
-- Production-ceiling sequence: passed from `20260829010000` through corrected FS-008G and FS-UX-002–008; all prior database matrices and the FS-UX-008 transition matrix passed.
-- Designated database lifecycle: out-of-order activation denial, ordered activation, distinct verification, idempotent replay, reverse rollback, immutable history, and safe-baseline restoration passed.
+- Migration sequence: passed from `20260829010000` through corrected FS-008G, FS-UX-002–007, `20260830150000`, and `20260830151000`.
+- Lifecycle, direct authorization, concurrency, stale-state, and audit-atomicity matrices: passed.
 
-## Production stop conditions
+## Stop conditions
 
-No Production migration or deployment is authorized. Stop if the predecessor ceiling, candidate SHA, migration digest, policy, controlled designation, safety state, RLS/grants, or zero-external-effect boundary differs from this evidence. FS-UX-008 remains a local candidate pending final program reconciliation.
+No Production migration or deployment occurred. Stop if the ceiling, final candidate SHA, migration digests, policy, controlled designation, safety state, RLS/grants, or zero-effect boundary differs. Production activation, kill switches, furnishing records, procurement, retailer, payment, notification, delivery, and installation state remain unchanged.

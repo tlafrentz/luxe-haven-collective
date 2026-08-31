@@ -3,36 +3,367 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldAlert, X } from "lucide-react";
-import { submitFurnishingActivationCommand, verifyFurnishingReleaseCapability } from "../../../activation/actions";
-import { RELEASE_CAPABILITIES, capabilityLabel, contextualActionFor, prerequisiteFor, stateLabel, validateControlReason, type CapabilityProjection, type ReleaseCapability, type ReleaseContext } from "@/features/furnishing-studio/release-controls";
+import {
+  submitReleaseControlV2,
+  verifyFurnishingReleaseCapability,
+} from "../../../activation/actions";
+import {
+  RELEASE_CAPABILITIES,
+  capabilityLabel,
+  contextualActionFor,
+  prerequisiteFor,
+  stateLabel,
+  validateControlReason,
+  type CapabilityProjection,
+  type ReleaseCapability,
+  type ReleaseContext,
+} from "@/features/furnishing-studio/release-controls";
+import ControlAction from "./control-action";
 
-type Workspace = Readonly<{ enabled: boolean; killSwitch: boolean; cohort?: string | null; expiresAt?: string | null; revokedAt?: string | null; version: number }>;
-type PendingAction = Readonly<{ action: "enable" | "disable" | "verify"; capability: ReleaseCapability; version: number }> | Readonly<{ action: "suspend"; capability?: never; version: number }>;
+type Workspace = Readonly<{
+  enabled: boolean;
+  killSwitch: boolean;
+  cohort?: string | null;
+  expiresAt?: string | null;
+  revokedAt?: string | null;
+  version: number;
+}>;
+type PendingAction =
+  | Readonly<{
+      action: "enable" | "disable" | "verify";
+      capability: ReleaseCapability;
+      version: number;
+    }>
+  | Readonly<{ action: "suspend"; capability?: never; version: number }>;
 
-export default function ReleaseSequence({ workspaceId, workspaceName, workspace, capabilities }: { workspaceId: string; workspaceName: string; workspace: Workspace; capabilities: readonly CapabilityProjection[] }) {
-  const router = useRouter(), [busy, startTransition] = useTransition(), [pending, setPending] = useState<PendingAction | null>(null), [message, setMessage] = useState("");
-  const cohortActive = workspace.cohort === "internal" && !workspace.revokedAt && (!workspace.expiresAt || new Date(workspace.expiresAt) > new Date());
-  const context: ReleaseContext = { cohortActive, suspended: workspace.killSwitch && workspace.enabled, policyCurrent: true, versionCurrent: true, workspaceValid: true, capabilities };
+export default function ReleaseSequence({
+  workspaceId,
+  workspaceName,
+  release,
+  workspace,
+  capabilities,
+}: {
+  workspaceId: string;
+  workspaceName: string;
+  release: Readonly<{
+    version: number;
+    policyVersion: string;
+    suspended: boolean;
+    protected: boolean;
+  }>;
+  workspace: Workspace;
+  capabilities: readonly CapabilityProjection[];
+}) {
+  const router = useRouter(),
+    [busy, startTransition] = useTransition(),
+    [pending, setPending] = useState<PendingAction | null>(null),
+    [message, setMessage] = useState("");
+  const cohortActive =
+    workspace.cohort === "internal" &&
+    !workspace.revokedAt &&
+    (!workspace.expiresAt || new Date(workspace.expiresAt) > new Date());
+  const context: ReleaseContext = {
+    cohortActive,
+    suspended: release.suspended || (workspace.killSwitch && workspace.enabled),
+    policyCurrent: true,
+    versionCurrent: true,
+    workspaceValid: true,
+    capabilities,
+  };
   async function apply(reason: string) {
-    if (!pending) return; const reasonError = validateControlReason(reason); if (reasonError) { setMessage(reasonError); return; }
-    const correlationId = crypto.randomUUID(), idempotencyKey = crypto.randomUUID();
+    if (!pending) return;
+    const reasonError = validateControlReason(reason);
+    if (reasonError) {
+      setMessage(reasonError);
+      return;
+    }
+    const correlationId = crypto.randomUUID(),
+      idempotencyKey = crypto.randomUUID();
     if (pending.action === "verify") {
-      const result = await verifyFurnishingReleaseCapability({ workspaceId, capability: pending.capability, expectedVersion: pending.version, reason, correlationId, idempotencyKey });
-      setMessage(result.ok ? "Capability verified with zero lifecycle and external effects." : `${result.code}: ${result.message}`);
-      if (result.ok) { setPending(null); startTransition(() => router.refresh()); } return;
+      const result = await verifyFurnishingReleaseCapability({
+        workspaceId,
+        capability: pending.capability,
+        expectedVersion: pending.version,
+        reason,
+        correlationId,
+        idempotencyKey,
+      });
+      setMessage(
+        result.ok
+          ? "Capability verified with zero lifecycle and external effects."
+          : `${result.code}: ${result.message}`,
+      );
+      if (result.ok) {
+        setPending(null);
+        startTransition(() => router.refresh());
+      }
+      return;
     }
     const suspension = pending.action === "suspend";
-    const result = await submitFurnishingActivationCommand({ command: suspension ? "workspace-kill-switch" : "capability-state", target: suspension ? "workspace" : "capability", targetId: suspension ? workspaceId : pending.capability, state: pending.action === "enable" ? "internal" : "disabled", expectedVersion: pending.version, reason, actorId: "authenticated-admin", actorRole: "admin", tenantId: workspaceId, correlationId, idempotencyKey });
-    setMessage(result.ok ? "Authoritative release state updated." : `${result.code}: ${result.message}`);
-    if (result.ok) { setPending(null); startTransition(() => router.refresh()); }
+    const result = await submitReleaseControlV2({
+      action: suspension ? "suspend_workspace" : pending.action,
+      workspaceId,
+      ...(!suspension ? { capability: pending.capability } : {}),
+      expectedReleaseVersion: release.version,
+      expectedTargetVersion: pending.version,
+      policyVersion: release.policyVersion,
+      reason,
+      correlationId,
+      idempotencyKey,
+    });
+    setMessage(
+      result.ok
+        ? "Authoritative release state updated."
+        : `${result.code}: ${result.message}`,
+    );
+    if (result.ok) {
+      setPending(null);
+      startTransition(() => router.refresh());
+    }
   }
-  return <><section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]"><div><h2 className="text-2xl font-semibold">Activation sequence</h2><ol className="mt-4 space-y-4">{RELEASE_CAPABILITIES.map((capability, index) => {
-    const item = capabilities.find((entry) => entry.capability === capability)!; const prerequisite = prerequisiteFor(capability, context), action = contextualActionFor(item, context), label = stateLabel(item, context);
-    return <li key={capability} className="rounded-2xl border bg-white p-5"><div className="flex gap-4"><span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-stone-100 font-bold">{index + 1}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-lg font-semibold">{capabilityLabel(capability)}</h3><span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold">{label}</span></div>{prerequisite ? <p className="mt-2 text-sm text-amber-900">Unavailable: {prerequisite}</p> : <p className="mt-2 text-sm text-stone-600">Prerequisites satisfied. Activation remains non-executing and independently verified.</p>}<div className="mt-4">{action === "enable" ? <button className="min-h-11 rounded-xl bg-emerald-800 px-4 font-semibold text-white" onClick={() => setPending({ action: "enable", capability, version: item.version })}>Enable {capabilityLabel(capability)}</button> : action === "verify" ? <button className="min-h-11 rounded-xl border px-4 font-semibold" onClick={() => setPending({ action: "verify", capability, version: item.version })}>Verify capability</button> : action === "view" ? <Link className="inline-flex min-h-11 items-center rounded-xl border px-4 font-semibold" href={`/admin/furnishing/release-controls/workspaces/${workspaceId}/capabilities/${capability}`}>View details</Link> : action === "review_recovery" ? <span className="text-sm font-semibold">Review recovery requirements below.</span> : null}</div></div></div></li>;
-  })}</ol></div><aside><section className="rounded-2xl border bg-white p-5"><h2 className="text-xl font-semibold">Release checks</h2><ul className="mt-4 space-y-3 text-sm"><Check label="Controlled workspace valid" pass/><Check label="Cohort active" pass={cohortActive}/><Check label="Policy current" pass/><Check label="Authoritative version current" pass/><Check label="Procurement execution disabled" pass/><Check label="Audit capture available" pass/><Check label="Rollback path available" pass/></ul></section><section className="mt-6 rounded-2xl border border-red-300 bg-red-50 p-5"><ShieldAlert aria-hidden="true" className="h-6 w-6 text-red-800"/><h2 className="mt-3 text-xl font-semibold">Emergency controls</h2><p className="mt-2 text-sm">Immediately suspend this controlled workspace when isolation, catalog, financial, or external-effect risk is detected.</p><button onClick={() => setPending({ action: "suspend", version: workspace.version })} className="mt-4 min-h-11 rounded-xl bg-red-800 px-4 font-semibold text-white">Suspend controlled release…</button></section></aside></section><p role="status" aria-live="polite" className="min-h-6">{busy ? "Refreshing authoritative state…" : message}</p>{pending ? <Confirmation action={pending} workspaceName={workspaceName} close={() => setPending(null)} apply={apply}/> : null}</>;
+  return (
+    <>
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div>
+          <h2 className="text-2xl font-semibold">Activation sequence</h2>
+          <ol className="mt-4 space-y-4">
+            {RELEASE_CAPABILITIES.map((capability, index) => {
+              const item = capabilities.find(
+                (entry) => entry.capability === capability,
+              )!;
+              const prerequisite = prerequisiteFor(capability, context),
+                action = contextualActionFor(item, context),
+                label = stateLabel(item, context);
+              return (
+                <li
+                  key={capability}
+                  className="rounded-2xl border bg-white p-5"
+                >
+                  <div className="flex gap-4">
+                    <span
+                      aria-hidden="true"
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-stone-100 font-bold"
+                    >
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="text-lg font-semibold">
+                          {capabilityLabel(capability)}
+                        </h3>
+                        <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold">
+                          {label}
+                        </span>
+                      </div>
+                      {prerequisite ? (
+                        <p className="mt-2 text-sm text-amber-900">
+                          Unavailable: {prerequisite}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm text-stone-600">
+                          Prerequisites satisfied. Activation remains
+                          non-executing and independently verified.
+                        </p>
+                      )}
+                      <div className="mt-4">
+                        {action === "enable" ? (
+                          <button
+                            className="min-h-11 rounded-xl bg-emerald-800 px-4 font-semibold text-white"
+                            onClick={() =>
+                              setPending({
+                                action: "enable",
+                                capability,
+                                version: item.version,
+                              })
+                            }
+                          >
+                            Enable {capabilityLabel(capability)}
+                          </button>
+                        ) : action === "verify" ? (
+                          <button
+                            className="min-h-11 rounded-xl border px-4 font-semibold"
+                            onClick={() =>
+                              setPending({
+                                action: "verify",
+                                capability,
+                                version: item.version,
+                              })
+                            }
+                          >
+                            Verify capability
+                          </button>
+                        ) : action === "view" ? (
+                          <Link
+                            className="inline-flex min-h-11 items-center rounded-xl border px-4 font-semibold"
+                            href={`/admin/furnishing/release-controls/workspaces/${workspaceId}/capabilities/${capability}`}
+                          >
+                            View details
+                          </Link>
+                        ) : action === "review_recovery" ? (
+                          <span className="text-sm font-semibold">
+                            Review recovery requirements below.
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+        <aside>
+          <section className="rounded-2xl border bg-white p-5">
+            <h2 className="text-xl font-semibold">Release checks</h2>
+            <ul className="mt-4 space-y-3 text-sm">
+              <Check label="Controlled workspace valid" pass />
+              <Check label="Cohort active" pass={cohortActive} />
+              <Check label="Policy current" pass />
+              <Check label="Authoritative version current" pass />
+              <Check label="Procurement execution disabled" pass />
+              <Check label="Audit capture available" pass />
+              <Check label="Rollback path available" pass />
+            </ul>
+          </section>
+          <section className="mt-6 rounded-2xl border border-red-300 bg-red-50 p-5">
+            <ShieldAlert aria-hidden="true" className="h-6 w-6 text-red-800" />
+            <h2 className="mt-3 text-xl font-semibold">Emergency controls</h2>
+            <p className="mt-2 text-sm">
+              Immediately suspend this controlled workspace when isolation,
+              catalog, financial, or external-effect risk is detected.
+            </p>
+            <div className="mt-4">
+              {workspace.killSwitch && workspace.enabled ? (
+                <ControlAction
+                  action="recover_workspace"
+                  workspaceId={workspaceId}
+                  releaseVersion={release.version}
+                  targetVersion={workspace.version}
+                  policyVersion={release.policyVersion}
+                  disabledReason={
+                    release.suspended
+                      ? "Global suspension must be recovered first."
+                      : null
+                  }
+                />
+              ) : (
+                <button
+                  onClick={() =>
+                    setPending({
+                      action: "suspend",
+                      version: workspace.version,
+                    })
+                  }
+                  className="min-h-11 rounded-xl bg-red-800 px-4 font-semibold text-white"
+                >
+                  Suspend controlled release…
+                </button>
+              )}
+            </div>
+          </section>
+        </aside>
+      </section>
+      <p role="status" aria-live="polite" className="min-h-6">
+        {busy ? "Refreshing authoritative state…" : message}
+      </p>
+      {pending ? (
+        <Confirmation
+          action={pending}
+          workspaceName={workspaceName}
+          close={() => setPending(null)}
+          apply={apply}
+        />
+      ) : null}
+    </>
+  );
 }
-function Check({ label, pass }: { label: string; pass: boolean }) { return <li className="flex items-center justify-between gap-3"><span>{label}</span><strong>{pass ? "Passed" : "Failed"}</strong></li>; }
-function Confirmation({ action, workspaceName, close, apply }: { action: PendingAction; workspaceName: string; close: () => void; apply: (reason: string) => Promise<void> }) {
-  const [reason, setReason] = useState(""), cancel = useRef<HTMLButtonElement>(null); const verb = action.action === "enable" ? "Enable" : action.action === "verify" ? "Verify" : action.action === "disable" ? "Disable" : "Suspend controlled release for"; const label = action.action === "suspend" ? `${verb} ${workspaceName}` : `${verb} ${capabilityLabel(action.capability)} for ${workspaceName}`;
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="confirmation-title" onKeyDown={(event) => { if (event.key === "Escape") close(); }}><section className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"><div className="flex justify-between gap-4"><h2 id="confirmation-title" className="text-xl font-semibold">{label}</h2><button aria-label="Close confirmation" onClick={close} className="grid h-11 w-11 place-items-center rounded-xl"><X/></button></div><p className="mt-3 text-sm text-stone-600">Existing work and immutable evidence remain preserved. No lifecycle record or external effect is created by this action.</p><label className="mt-5 block font-semibold" htmlFor="release-reason">Required reason</label><textarea id="release-reason" value={reason} onChange={(event) => setReason(event.target.value)} minLength={12} maxLength={500} className="mt-2 min-h-28 w-full rounded-xl border p-3"/><div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button ref={cancel} onClick={close} className="min-h-11 rounded-xl border px-4 font-semibold">Cancel</button><button onClick={() => apply(reason)} className={`min-h-11 rounded-xl px-4 font-semibold text-white ${action.action === "suspend" ? "bg-red-800" : "bg-emerald-800"}`}>{label}</button></div></section></div>;
+function Check({ label, pass }: { label: string; pass: boolean }) {
+  return (
+    <li className="flex items-center justify-between gap-3">
+      <span>{label}</span>
+      <strong>{pass ? "Passed" : "Failed"}</strong>
+    </li>
+  );
+}
+function Confirmation({
+  action,
+  workspaceName,
+  close,
+  apply,
+}: {
+  action: PendingAction;
+  workspaceName: string;
+  close: () => void;
+  apply: (reason: string) => Promise<void>;
+}) {
+  const [reason, setReason] = useState(""),
+    cancel = useRef<HTMLButtonElement>(null);
+  const verb =
+    action.action === "enable"
+      ? "Enable"
+      : action.action === "verify"
+        ? "Verify"
+        : action.action === "disable"
+          ? "Disable"
+          : "Suspend controlled release for";
+  const label =
+    action.action === "suspend"
+      ? `${verb} ${workspaceName}`
+      : `${verb} ${capabilityLabel(action.capability)} for ${workspaceName}`;
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-stone-950/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirmation-title"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") close();
+      }}
+    >
+      <section className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="flex justify-between gap-4">
+          <h2 id="confirmation-title" className="text-xl font-semibold">
+            {label}
+          </h2>
+          <button
+            aria-label="Close confirmation"
+            onClick={close}
+            className="grid h-11 w-11 place-items-center rounded-xl"
+          >
+            <X />
+          </button>
+        </div>
+        <p className="mt-3 text-sm text-stone-600">
+          Existing work and immutable evidence remain preserved. No lifecycle
+          record or external effect is created by this action.
+        </p>
+        <label className="mt-5 block font-semibold" htmlFor="release-reason">
+          Required reason
+        </label>
+        <textarea
+          id="release-reason"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          minLength={12}
+          maxLength={500}
+          className="mt-2 min-h-28 w-full rounded-xl border p-3"
+        />
+        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            ref={cancel}
+            onClick={close}
+            className="min-h-11 rounded-xl border px-4 font-semibold"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => apply(reason)}
+            className={`min-h-11 rounded-xl px-4 font-semibold text-white ${action.action === "suspend" ? "bg-red-800" : "bg-emerald-800"}`}
+          >
+            {label}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
 }
