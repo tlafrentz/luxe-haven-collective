@@ -1,3 +1,3 @@
-import { ProcurementWorkspace } from "@/components/furnishing/procurement-workspace";
+import { ProcurementDetail } from "@/components/furnishing/procurement-readiness-v2";
 export const dynamic = "force-dynamic";
-export default async function Page({ params, searchParams }: { params: Promise<{ procurementId: string }>; searchParams: Promise<{ view?: string }> }) { const [{ procurementId }, query] = await Promise.all([params, searchParams]); return <ProcurementWorkspace projectId={procurementId} view={query.view} />; }
+export default async function Page({params}:{params:Promise<{procurementId:string}>}){return <ProcurementDetail id={(await params).procurementId}/>}

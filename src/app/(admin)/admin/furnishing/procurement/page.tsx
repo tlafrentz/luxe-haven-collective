@@ -1,2 +1,3 @@
-import { FurnishingUnavailable } from "@/components/furnishing/furnishing-states";
-export default function Page() { return <FurnishingUnavailable title="Procurement" description="Review approved plans before purchase coordination begins." prerequisite="Procurement becomes available from an authorized Design Workspace after its plan and catalog snapshot satisfy approval prerequisites." href="/admin/furnishing/workspaces" hrefLabel="Open Design Workspaces" />; }
+import { ProcurementLibrary } from "@/components/furnishing/procurement-readiness-v2";
+export const dynamic = "force-dynamic";
+export default function Page(){return <ProcurementLibrary/>}
