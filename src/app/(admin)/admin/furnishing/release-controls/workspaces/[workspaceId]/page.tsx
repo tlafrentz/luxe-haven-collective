@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FurnishingHeader } from "@/components/furnishing/furnishing-navigation";
 import {
   RELEASE_CAPABILITIES,
+  type CapabilityProjection,
   type ReleaseCapability,
 } from "@/features/furnishing-studio/release-controls";
 import ReleaseSequence from "./release-sequence";
@@ -32,51 +33,45 @@ export default async function ControlledWorkspacePage({
     revokedAt?: string | null;
   };
   if (value?.status !== "found") notFound();
-  const [
-    { data: owner },
-    { data: releaseData },
-    { data: verificationRows },
-    ...responses
-  ] = await Promise.all([
-    db
-      .from("owners")
-      .select("display_name,company_name")
-      .eq("id", workspaceId)
-      .maybeSingle(),
-    db.rpc("resolve_furnishing_activation_control", {
-      p_target: "global",
-      p_target_id: "global",
-      p_tenant_id: null,
-    }),
-    db
-      .from("furnishing_activation_capabilities")
-      .select("capability,verification_state"),
-    ...RELEASE_CAPABILITIES.map((capability) =>
+  const [{ data: owner }, { data: releaseData }, ...responses] =
+    await Promise.all([
+      db
+        .from("owners")
+        .select("display_name,company_name")
+        .eq("id", workspaceId)
+        .maybeSingle(),
       db.rpc("resolve_furnishing_activation_control", {
-        p_target: "capability",
-        p_target_id: capability,
-        p_tenant_id: workspaceId,
+        p_target: "global",
+        p_target_id: "global",
+        p_tenant_id: null,
       }),
-    ),
-  ]);
-  const capabilities = RELEASE_CAPABILITIES.map((capability, index) => {
-    const row = responses[index].data as null | {
-      state?: string;
-      version?: number;
-    };
-    const verification = verificationRows?.find(
-      (entry) => entry.capability === capability,
-    )?.verification_state;
-    return {
-      capability: capability as ReleaseCapability,
-      enabled: row?.state === "internal",
-      verification:
-        verification === "verified" || verification === "failed"
-          ? verification
-          : ("unverified" as const),
-      version: Number(row?.version ?? 0),
-    };
-  });
+      ...RELEASE_CAPABILITIES.map((capability) =>
+        db.rpc("resolve_furnishing_activation_control", {
+          p_target: "capability",
+          p_target_id: capability,
+          p_tenant_id: workspaceId,
+        }),
+      ),
+    ]);
+  const capabilities: CapabilityProjection[] = RELEASE_CAPABILITIES.map(
+    (capability, index) => {
+      const row = responses[index].data as null | {
+        state?: string;
+        version?: number;
+        verificationState?: string;
+      };
+      const verification = row?.verificationState;
+      return {
+        capability: capability as ReleaseCapability,
+        enabled: row?.state === "internal",
+        verification:
+          verification === "verified" || verification === "failed"
+            ? verification
+            : "unverified",
+        version: Number(row?.version ?? 0),
+      };
+    },
+  );
   const name =
     owner?.display_name || owner?.company_name || "Controlled workspace";
   const release = releaseData as null | {

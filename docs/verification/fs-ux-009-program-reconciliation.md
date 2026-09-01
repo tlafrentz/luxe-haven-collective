@@ -47,6 +47,7 @@ The complete committed forward inventory after the Production ceiling was read w
 | `20260830153000_fs_ux_009_anonymous_catalog_verification.sql` | `1212c828d34a8a8b9c1571fc8d513a44e2c3a90fe5e8d704535f8f4bba8a87b2` |
 | `20260830154000_fs_ux_009_procurement_guard_verification.sql` | `9540fd160518442633caae50ddc5f7763508480747ebb4f940ea6183afec0b40` |
 | `20260830155000_fs_ux_009_release_permission_fixture_boundary.sql` | `9c2983158d119d937052ce794b0c96f548fa34cf3ef64f0fa8753e80db7aecea` |
+| `20260830156000_fs_ux_009_release_control_read_boundary.sql` | `c307b0a1ebbb810d9cfb4e8e1bb8a7229937e26962fae2db4ac72eca8ce65383` |
 
 The two required FS-UX-008 digests match `docs/verification/fs-ux-008-local-hold-point.md`. No migration was edited. Migration lint passed with no findings. Applying, replaying, and comparing the sequence were blocked by the unavailable database runtime.
 
@@ -410,3 +411,57 @@ Per the authoritative stop rule, the remaining browser lifecycle, responsive/acc
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. The resulting correction/history commit is not a deployment candidate. No completion tag, Production migration, deployment, Production configuration change, or broader permission correction is authorized.
+
+## Continuation from the Release Controls read hold
+
+The existing FS-UX-009 milestone resumed from correction/history commit `b273c85a808950528d90b15ec5837dd109d578f8`. All prior blocked attempts above remain immutable chronology.
+
+### Authorized authenticated read correction
+
+- Added only forward migration `20260830156000_fs_ux_009_release_control_read_boundary.sql`; no existing migration was rewritten. Its SHA-256 is `c307b0a1ebbb810d9cfb4e8e1bb8a7229937e26962fae2db4ac72eca8ce65383`.
+- The existing `resolve_furnishing_activation_control` RPC is the single intended Release Controls projection. It already returns only the capability state, optimistic version, and verification state required by the UI and binds capability resolution to the controlled workspace identifier.
+- The migration revokes anonymous and authenticated direct table reads, revokes the RPC's default/public execution, and grants RPC execution only to authenticated and service-role contexts. Authenticated INSERT, UPDATE, and DELETE remain prohibited. Verification runs, checks, internal failures, actor details, and unrelated workspace configuration are not exposed.
+- Both Release Controls pages now consume `verificationState` from the governed RPC and no longer query `furnishing_activation_capabilities` directly. Server-authoritative verification and mutation RPCs remain unchanged.
+- The actual-operation matrix passed for platform admin/owner, workspace-scoped delegated operator, workspace-scoped reviewer, unauthorized authenticated, wrong-workspace, suspended, revoked, anonymous, and service-role contexts. It also proved verified/unverified/failed distinction, workspace-identifier forgery denial, direct table read and mutation denial, and that client-supplied state cannot alter the projection. Service role without a genuine actor context fails closed.
+
+### Completed gates before the new stop
+
+| Gate | Result |
+| --- | --- |
+| Exact Production-ceiling sequence through `20260830156000` | passed |
+| FS-UX-003–008 lifecycle, authorization/RLS, concurrency, cleanup, stale-state, and atomicity matrices | passed |
+| Release Controls authenticated read matrix | passed |
+| All four authoritative capability verifications | passed |
+| Two clean-database rebuilds | passed |
+| Normalized schema equivalence | passed: both SHA-256 `15f7977adb2758aad72b120197f0ac0102c30f2f034880bd8715f0f743fecdb7` |
+| Migration replay | passed: zero pending through `20260830156000` |
+| Focused release-control tests | passed: 10/10 |
+| Typecheck after the bounded correction | passed |
+| Release Controls browser lifecycle | passed: enablement, four server verifications, workspace suspension/recovery, rollback, re-enable, and re-verification |
+| Release Controls desktop/mobile accessibility preflight | passed |
+| `git diff --check` | passed |
+
+Production remained at ceiling `20260829010000` and was not connected to or changed.
+
+### Earliest new authoritative hold
+
+The canonical browser lifecycle restarted from a clean controlled baseline and completed Release Controls. It then entered the canonical Inventory Imports route and submitted the controlled source workbook through `startInventoryImportAction`. The authoritative parser failed before persistence with:
+
+```text
+IMPORT_HEADERS_INVALID
+src/features/furnishing-studio/inventory-import.ts:190
+```
+
+The parser rejects the controlled XLSX when any worksheet header is blank or duplicated. No `furnishing_catalog_imports` row or catalog product was created. This is a concrete Inventory Imports application-contract defect at the earliest catalog lifecycle boundary, unrelated to the authorized Release Controls read correction. No parser, import, domain, or migration correction was attempted.
+
+Because of this stop, product adoption, room packages, design workspaces, budgets, procurement, delivery/installation, downstream browser read queries, remaining responsive/accessibility coverage, full repository suite, full lint, migration lint, and Production build were not rerun or relabeled as passing.
+
+### Cleanup and disposition
+
+Governed cleanup completed with `resources: 0`. The protected release baseline is exactly `disabled / global kill switch engaged / configuration invalid / optimistic version 1`; controlled workspaces, release permissions, active capability rows, and imports are zero. Four synthetic profiles remain only because repeated Release Controls attempts produced immutable audit evidence; there is no active membership, workspace, permission, verification capability, lifecycle project, or external effect associated with them.
+
+No order, payment, retailer request, shipment, notification, or other external effect occurred. Production and external systems remain unchanged.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. The resulting correction/history commit is not a deployment candidate. No completion tag, Production migration, deployment, Production configuration change, import-parser correction, or broader feature work is authorized.

@@ -31,6 +31,13 @@ const releasePermissionBoundary = fs.readFileSync(
   ),
   "utf8",
 );
+const releaseControlReadBoundary = fs.readFileSync(
+  path.join(
+    root,
+    "supabase/migrations/20260830156000_fs_ux_009_release_control_read_boundary.sql",
+  ),
+  "utf8",
+);
 const actions = fs.readFileSync(
   path.join(root, "src/app/(admin)/admin/furnishing/activation/actions.ts"),
   "utf8",
@@ -75,9 +82,7 @@ describe("FS-UX-008 governed orchestration contracts", () => {
     );
   });
   it("proves anonymous catalog denial through the anon-owned RLS boundary", () => {
-    expect(anonymousCatalogCorrection).toContain(
-      "owner to anon",
-    );
+    expect(anonymousCatalogCorrection).toContain("owner to anon");
     expect(anonymousCatalogCorrection).toContain(
       "row_security_active('public.furnishing_products'::regclass)",
     );
@@ -122,8 +127,25 @@ describe("FS-UX-008 governed orchestration contracts", () => {
     expect(releasePermissionBoundary).toContain(
       "grant select, delete on table public.furnishing_product_identity_claims to service_role",
     );
-    expect(releasePermissionBoundary).not.toContain("disable row level security");
+    expect(releasePermissionBoundary).not.toContain(
+      "disable row level security",
+    );
     expect(releasePermissionBoundary).not.toContain("grant all");
+  });
+  it("exposes the workspace-bound capability projection only through its RPC", () => {
+    expect(releaseControlReadBoundary).toContain(
+      "revoke select on table public.furnishing_activation_capabilities from authenticated",
+    );
+    expect(releaseControlReadBoundary).toContain(
+      "grant execute on function public.resolve_furnishing_activation_control(text,text,text) to authenticated, service_role",
+    );
+    expect(releaseControlReadBoundary).toContain(
+      "revoke all on table public.furnishing_activation_capabilities from anon",
+    );
+    expect(releaseControlReadBoundary).not.toMatch(
+      /grant (insert|update|delete|all)/,
+    );
+    expect(detail).not.toContain('.from("furnishing_activation_capabilities")');
   });
   it("serializes controls and gives suspension precedence", () => {
     expect(migration).toContain("pg_advisory_xact_lock");

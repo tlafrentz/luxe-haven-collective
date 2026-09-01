@@ -76,13 +76,17 @@ async function main() {
   const bootstrapAdmin = await browser.newContext();
   const bootstrapOwner = await browser.newContext();
   const anonymous = await browser.newContext();
-  const installLocalTurnstile = (context: BrowserContext) =>
-    context.route("https://challenges.cloudflare.com/**", (route) =>
+  const installLocalTurnstile = async (context: BrowserContext) => {
+    await context.addInitScript(
+      `window.turnstile={render:function(_node,options){setTimeout(function(){options.callback("XXXX.DUMMY.TOKEN.XXXX")},0);return "fsux9-local"},remove:function(){},reset:function(){}};`,
+    );
+    await context.route("https://challenges.cloudflare.com/**", (route) =>
       route.fulfill({
         contentType: "application/javascript",
         body: `window.turnstile={render:function(_node,options){setTimeout(function(){options.callback("XXXX.DUMMY.TOKEN.XXXX")},0);return "fsux9-local"},remove:function(){},reset:function(){}};`,
       }),
     );
+  };
   await Promise.all(
     [bootstrapAdmin, bootstrapOwner, anonymous].map(installLocalTurnstile),
   );
@@ -106,7 +110,7 @@ async function main() {
       const signIn = page.getByRole("button", { name: "Sign in" });
       for (
         let readyAttempt = 0;
-        readyAttempt < 5 && (await signIn.isDisabled());
+        readyAttempt < 20 && (await signIn.isDisabled());
         readyAttempt++
       ) {
         await page.waitForTimeout(300);
@@ -345,13 +349,15 @@ async function main() {
       "Verify capability",
       /^Verify Procurement readiness for /,
     );
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.reload({ waitUntil: "networkidle" });
     const body = await page.locator("body").innerText();
     if (
       !labels.every((label) => body.includes(label)) ||
       (body.match(/Verified/g) ?? []).length < 4
     )
-      throw new Error("activation:AUTHORITATIVE_REFRESH_MISMATCH");
+      throw new Error(
+        `activation:AUTHORITATIVE_REFRESH_MISMATCH:${body.replace(/\s+/g, " ").slice(0, 1600)}`,
+      );
     await page.close();
     return { status: response.status(), refreshed: 200 };
   }
@@ -365,63 +371,67 @@ async function main() {
       await page
         .locator('a[href^="/admin/furnishing/products/"]')
         .evaluateAll((nodes) =>
-          nodes.some((node) =>
-            /\/admin\/furnishing\/products\/[0-9a-f-]{36}$/.test(
-              new URL((node as HTMLAnchorElement).href).pathname,
-            ) &&
-            !node.closest("article, tr, li")?.textContent?.includes(
-              "FS-UX-009 anonymous RLS canary",
-            ),
+          nodes.some(
+            (node) =>
+              /\/admin\/furnishing\/products\/[0-9a-f-]{36}$/.test(
+                new URL((node as HTMLAnchorElement).href).pathname,
+              ) &&
+              !node
+                .closest("article, tr, li")
+                ?.textContent?.includes("FS-UX-009 anonymous RLS canary"),
           ),
         )
     ) {
       await page.close();
       return { status: 200, refreshed: 200 };
     }
-    const response = await page.goto(targetFor(step).toString(), {
-      waitUntil: "domcontentloaded",
-    });
+    const response = await page.goto(
+      `${origin}/admin/furnishing/imports/new?workspace=${credentials.workspaceId}`,
+      {
+        waitUntil: "networkidle",
+      },
+    );
     if (!response || response.status() >= 400)
       throw new Error("catalog-import:ROUTE_FAILED");
     await page
-      .getByLabel("Upload furnishing inventory")
+      .getByLabel("Choose an inventory file")
       .setInputFiles("docs/evidence/FS-008D/source/Catalog Review (1).xlsx");
-    await page
-      .getByRole("button", { name: "Parse and review 110 rows" })
-      .click();
-    await page.waitForURL(
-      /\/admin\/furnishing\/products\/import\/[0-9a-f-]+$/,
-      { timeout: 60_000 },
-    );
+    await Promise.all([
+      page.waitForURL(/\/admin\/furnishing\/imports\/[0-9a-f-]+$/, {
+        timeout: 60_000,
+      }),
+      page.getByRole("button", { name: "Upload and inspect" }).click(),
+    ]);
     lifecycle.importId = new URL(page.url()).pathname.split("/").at(-1) ?? "";
     if (!lifecycle.importId)
       throw new Error("catalog-import:IMPORT_ID_MISSING");
-    await page.getByText("110 detected rows", { exact: false }).waitFor();
-    const apply = page.getByRole("button", {
-      name: /Import \d+ valid reviewed items/,
-    });
-    const label = await apply.innerText();
-    if (label !== "Import 109 valid reviewed items")
-      throw new Error(`catalog-import:REVIEW_COUNT_MISMATCH:${label}`);
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          new URL(response.url()).pathname.includes(
-            `/products/import/${lifecycle.importId}`,
-          ),
-      ),
-      apply.click(),
-    ]);
-    await page.waitForLoadState("networkidle");
-    await page.reload({ waitUntil: "domcontentloaded" });
+    if (await page.getByRole("button", { name: "Use worksheet" }).count())
+      await clickForm(page, "Use worksheet");
+    await clickForm(page, "Confirm mapping and validate");
+    while (await page.getByRole("button", { name: "Skip row" }).count()) {
+      const skip = page.getByRole("button", { name: "Skip row" }).first();
+      await skip
+        .locator("xpath=ancestor::form")
+        .locator('[name="reason"]')
+        .fill("Invalid controlled source row");
+      await Promise.all([
+        page.waitForResponse((value) => value.request().method() === "POST"),
+        skip.click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+    }
+    await clickForm(page, "Reconcile catalog matches");
+    await clickForm(page, "Commit platform drafts");
+    await page.reload({ waitUntil: "networkidle" });
     const body = await page.locator("body").innerText();
     if (
-      !/Status\s+complete/i.test(body) ||
-      !/Created\s+109/i.test(body) ||
-      !/Failed\s+0/i.test(body)
+      !/Import complete/i.test(body) ||
+      !/new\s+109/i.test(body) ||
+      !/skipped\s+1/i.test(body)
     )
-      throw new Error("catalog-import:ATOMIC_APPLY_RECONCILIATION_FAILED");
+      throw new Error(
+        `catalog-import:ATOMIC_APPLY_RECONCILIATION_FAILED:${body.replace(/\s+/g, " ").slice(0, 1600)}`,
+      );
     await page.close();
     return { status: response.status(), refreshed: 200 };
   }

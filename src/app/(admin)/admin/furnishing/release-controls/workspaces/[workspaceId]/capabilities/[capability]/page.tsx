@@ -20,24 +20,20 @@ export default async function CapabilityDetailPage({
   if (!RELEASE_CAPABILITIES.includes(raw as ReleaseCapability)) notFound();
   const capability = raw as ReleaseCapability,
     db = await createClient();
-  const [releaseResponse, verificationResponse, ...responses] =
-    await Promise.all([
+  const [releaseResponse, ...responses] = await Promise.all([
+    db.rpc("resolve_furnishing_activation_control", {
+      p_target: "global",
+      p_target_id: "global",
+      p_tenant_id: null,
+    }),
+    ...RELEASE_CAPABILITIES.map((name) =>
       db.rpc("resolve_furnishing_activation_control", {
-        p_target: "global",
-        p_target_id: "global",
-        p_tenant_id: null,
+        p_target: "capability",
+        p_target_id: name,
+        p_tenant_id: workspaceId,
       }),
-      db
-        .from("furnishing_activation_capabilities")
-        .select("capability,verification_state"),
-      ...RELEASE_CAPABILITIES.map((name) =>
-        db.rpc("resolve_furnishing_activation_control", {
-          p_target: "capability",
-          p_target_id: name,
-          p_tenant_id: workspaceId,
-        }),
-      ),
-    ]);
+    ),
+  ]);
   if (
     responses.some(
       ({ data }) =>
@@ -47,14 +43,18 @@ export default async function CapabilityDetailPage({
     notFound();
   const items: CapabilityProjection[] = RELEASE_CAPABILITIES.map(
     (name, index) => {
-      const row = responses[index].data as { state?: string; version?: number };
+      const row = responses[index].data as {
+        state?: string;
+        version?: number;
+        verificationState?: string;
+      };
       return {
         capability: name,
         enabled: row?.state === "internal",
         verification:
-          verificationResponse.data?.find((value) => value.capability === name)
-            ?.verification_state === "verified"
-            ? "verified"
+          row?.verificationState === "verified" ||
+          row?.verificationState === "failed"
+            ? row.verificationState
             : "unverified",
         version: Number(row?.version ?? 0),
       };
