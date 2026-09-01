@@ -24,7 +24,8 @@ for migration in \
   supabase/migrations/20260830151000_fs_ux_008_control_orchestration.sql \
   supabase/migrations/20260830152000_fs_ux_009_controlled_fixture_service_grants.sql \
   supabase/migrations/20260830153000_fs_ux_009_anonymous_catalog_verification.sql \
-  supabase/migrations/20260830154000_fs_ux_009_procurement_guard_verification.sql
+  supabase/migrations/20260830154000_fs_ux_009_procurement_guard_verification.sql \
+  supabase/migrations/20260830155000_fs_ux_009_release_permission_fixture_boundary.sql
 do
   psql_local < "${migration}"
 done
@@ -46,3 +47,4 @@ bash scripts/verification/verify-fs-ux-008-concurrency.sh
 psql_local < scripts/verification/fs-ux-009-anonymous-catalog-verification.sql
 psql_local < scripts/verification/fs-ux-009-procurement-guard-verification.sql
 bash scripts/verification/verify-fs-ux-009-procurement-concurrency.sh
+psql_local < scripts/verification/fs-ux-009-release-permission-boundary.sql

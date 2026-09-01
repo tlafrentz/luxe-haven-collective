@@ -24,6 +24,13 @@ const procurementGuardCorrection = fs.readFileSync(
   ),
   "utf8",
 );
+const releasePermissionBoundary = fs.readFileSync(
+  path.join(
+    root,
+    "supabase/migrations/20260830155000_fs_ux_009_release_permission_fixture_boundary.sql",
+  ),
+  "utf8",
+);
 const actions = fs.readFileSync(
   path.join(root, "src/app/(admin)/admin/furnishing/activation/actions.ts"),
   "utf8",
@@ -101,6 +108,22 @@ describe("FS-UX-008 governed orchestration contracts", () => {
     ]) {
       expect(procurementGuardCorrection).toContain(check);
     }
+  });
+  it("limits trusted release-permission fixture writes to service role", () => {
+    expect(releasePermissionBoundary).toContain(
+      "revoke all on table public.fsux8_release_permissions from anon, authenticated, service_role",
+    );
+    expect(releasePermissionBoundary).toContain(
+      "grant select on table public.fsux8_release_permissions to authenticated",
+    );
+    expect(releasePermissionBoundary).toContain(
+      "grant select, insert, delete on table public.fsux8_release_permissions to service_role",
+    );
+    expect(releasePermissionBoundary).toContain(
+      "grant select, delete on table public.furnishing_product_identity_claims to service_role",
+    );
+    expect(releasePermissionBoundary).not.toContain("disable row level security");
+    expect(releasePermissionBoundary).not.toContain("grant all");
   });
   it("serializes controls and gives suspension precedence", () => {
     expect(migration).toContain("pg_advisory_xact_lock");

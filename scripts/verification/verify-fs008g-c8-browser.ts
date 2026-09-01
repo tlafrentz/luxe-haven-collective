@@ -76,6 +76,16 @@ async function main() {
   const bootstrapAdmin = await browser.newContext();
   const bootstrapOwner = await browser.newContext();
   const anonymous = await browser.newContext();
+  const installLocalTurnstile = (context: BrowserContext) =>
+    context.route("https://challenges.cloudflare.com/**", (route) =>
+      route.fulfill({
+        contentType: "application/javascript",
+        body: `window.turnstile={render:function(_node,options){setTimeout(function(){options.callback("XXXX.DUMMY.TOKEN.XXXX")},0);return "fsux9-local"},remove:function(){},reset:function(){}};`,
+      }),
+    );
+  await Promise.all(
+    [bootstrapAdmin, bootstrapOwner, anonymous].map(installLocalTurnstile),
+  );
   const results: Array<{
     id: string;
     status: number;
@@ -246,7 +256,7 @@ async function main() {
     await dialog.waitFor({ state: "hidden", timeout: 30_000 });
     if ((await page.getByRole("status").count()) === 0)
       throw new Error(`activation:ACTION_FEEDBACK_REGION_MISSING:${submitter}`);
-    await page.waitForLoadState("networkidle");
+    await page.reload({ waitUntil: "networkidle" });
   }
 
   async function runActivation(context: BrowserContext, step: Step) {

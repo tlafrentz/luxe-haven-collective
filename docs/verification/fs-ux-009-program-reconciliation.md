@@ -46,6 +46,7 @@ The complete committed forward inventory after the Production ceiling was read w
 | `20260830152000_fs_ux_009_controlled_fixture_service_grants.sql` | `f048d1e0904aa323deec813401533994d1fbbb61cf562375ef03df47809cc74e` |
 | `20260830153000_fs_ux_009_anonymous_catalog_verification.sql` | `1212c828d34a8a8b9c1571fc8d513a44e2c3a90fe5e8d704535f8f4bba8a87b2` |
 | `20260830154000_fs_ux_009_procurement_guard_verification.sql` | `9540fd160518442633caae50ddc5f7763508480747ebb4f940ea6183afec0b40` |
+| `20260830155000_fs_ux_009_release_permission_fixture_boundary.sql` | `9c2983158d119d937052ce794b0c96f548fa34cf3ef64f0fa8753e80db7aecea` |
 
 The two required FS-UX-008 digests match `docs/verification/fs-ux-008-local-hold-point.md`. No migration was edited. Migration lint passed with no findings. Applying, replaying, and comparing the sequence were blocked by the unavailable database runtime.
 
@@ -350,3 +351,62 @@ Per the stop-at-earliest-authoritative-boundary rule, the remaining browser life
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. The resulting correction/history commit is not a deployment candidate. No completion tag, Production migration, deployment, Production configuration change, or broader feature change is authorized.
+
+## Continuation from the release-permission provisioning hold
+
+The existing FS-UX-009 milestone resumed from correction/history commit `ffcd40f746145848766622a3105459525c57336a`. All earlier blocked attempts remain immutable chronology.
+
+### Authorized trusted fixture correction
+
+- No governed release-permission write RPC exists. `fsux8_has_release_permission` is a read predicate, while the controlled provisioner and cleanup explicitly use the trusted service-role client.
+- Added only forward migration `20260830155000_fs_ux_009_release_permission_fixture_boundary.sql`; no existing migration was rewritten.
+- Migration SHA-256: `9c2983158d119d937052ce794b0c96f548fa34cf3ef64f0fa8753e80db7aecea`.
+- The migration revokes inherited privileges on `fsux8_release_permissions`, restores authenticated SELECT only, and grants service role only SELECT/INSERT/DELETE. Anonymous access remains absent and authenticated INSERT/UPDATE/DELETE/TRUNCATE/TRIGGER/REFERENCES access is absent.
+- The complete provision/cleanup operation audit then exposed the trigger-created anonymous-canary identity claim as part of the same fixture dependency chain. The migration grants service role only SELECT/DELETE on `furnishing_product_identity_claims`; it grants no claim creation or update authority.
+- Focused transactional proof executes service-role insertion and scoped cleanup, anonymous and authenticated denial, cross-workspace authenticated denial, missing-delete atomic rollback, and protected-permission preservation.
+- A fresh full controlled provision-and-cleanup audit passed with `resources: 0` and no retained actor. Existing database lifecycle, authorization/RLS, concurrency, atomicity, and cleanup matrices exercise the actual governed operations for catalog, packages, design, budgets, procurement, installation, release controls, and audit evidence.
+- The browser harness now supplies deterministic Cloudflare test-token behavior only in its local headless contexts and reloads the authoritative server projection after each successful control action. No application or Production authentication behavior changed.
+
+### Completed gates before the new stop
+
+| Gate | Result |
+| --- | --- |
+| Exact Production-ceiling sequence through `20260830155000` | passed |
+| Complete provisioning and dependency-safe cleanup audit | passed |
+| Release-permission focused boundary and atomicity proof | passed |
+| FS-UX-003–008 lifecycle, authorization/RLS, concurrency, stale-state, cleanup, and atomicity matrices | passed |
+| All four authoritative capability verifications | passed |
+| Two clean-database rebuilds | passed |
+| Normalized schema equivalence | passed: both SHA-256 `1fd0cf795e58f7ebd98c43540c70420a9f5e78ee0528ef8e68b882a5ab3193e4` |
+| Migration replay | passed: zero pending through `20260830155000` |
+| Focused release-control tests | passed: 9/9 |
+| Typecheck | passed |
+| Full ESLint | passed with zero errors and the same nine warnings |
+| Migration lint | passed: no findings |
+| `git diff --check` | passed |
+
+Production remained at ceiling `20260829010000` and was not connected to or changed.
+
+### Earliest new authoritative hold
+
+The canonical browser lifecycle restarted from a fresh controlled baseline. The legacy activation redirect and canonical Release Controls route loaded, responsive/accessibility preflight passed, and the catalog capability was enabled. Its server-authoritative verification passed and persisted exactly one immutable run and audit evidence chain.
+
+The next capability remained locked because the authenticated server/UI projection could not read `furnishing_activation_capabilities`. A direct request through the same authenticated Supabase boundary returned:
+
+```text
+42501: permission denied for table furnishing_activation_capabilities
+```
+
+The database row was authoritatively `catalog_viewing / enabled / verified / version 1`, but the page's failed table query silently fell back to `unverified`; therefore Design Workspace remained unavailable. RLS policies exist for authorized capability reads, but the table lacks the corresponding authenticated SELECT grant. This is a concrete application/RLS contract defect outside the authorized trusted fixture boundary, so no correction or bypass was attempted.
+
+No catalog import, product adoption, package, design, budget, procurement, delivery, installation, purchase, retailer order, payment, notification, shipment, or external effect occurred.
+
+### Cleanup and disposition
+
+Dependency-safe cleanup completed with `resources: 0`; one actor was temporarily retained only by immutable release evidence. A final clean local database rebuild removed retained test actors and restored the exact protected baseline: release `disabled`, global kill switch engaged, configuration invalid, optimistic version `1`, with zero controlled profiles, workspaces, release permissions, verification runs, or audit rows.
+
+Per the authoritative stop rule, the remaining browser lifecycle, responsive/accessibility stages, full repository suite, Production build, and final certification gates were not run or relabeled as passing. Production and external systems remain unchanged.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. The resulting correction/history commit is not a deployment candidate. No completion tag, Production migration, deployment, Production configuration change, or broader permission correction is authorized.
