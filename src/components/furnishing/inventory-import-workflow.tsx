@@ -71,7 +71,7 @@ export async function InventoryImportWorkflow({
       name: string;
       hidden: boolean;
       rowCount: number;
-      headers: string[];
+      structuralError?: string | null;
     }>;
   };
   const commitContext =
@@ -158,9 +158,17 @@ export async function InventoryImportWorkflow({
                     {sheet.hidden ? "Hidden" : "Visible"}
                   </p>
                 </div>
-                <button disabled={sheet.hidden} className={primary}>
+                <button
+                  disabled={sheet.hidden || Boolean(sheet.structuralError)}
+                  className={primary}
+                >
                   Use worksheet
                 </button>
+                {sheet.structuralError ? (
+                  <p className="w-full text-sm text-red-700" role="alert">
+                    {sheet.structuralError}
+                  </p>
+                ) : null}
               </form>
             ))}
           </div>
@@ -178,58 +186,68 @@ export async function InventoryImportWorkflow({
             <input type="hidden" name="importId" value={importId} />
             <div className="grid gap-3 sm:grid-cols-2">
               {Object.entries(run.column_mapping ?? {}).map(
-                ([source, target]) => (
-                  <label
-                    className="grid gap-1 rounded-xl bg-stone-50 p-3 text-sm"
-                    key={source}
-                  >
-                    <span className="font-semibold">{source}</span>
-                    <select
-                      name={`mapping:${source}`}
-                      defaultValue={String(target ?? "")}
-                      className="min-h-11 rounded-lg border bg-white px-3"
+                ([source, target]) => {
+                  const columns = (
+                    run.parsing_configuration as {
+                      columns?: Array<{ id: string; displayLabel: string }>;
+                    } | null
+                  )?.columns;
+                  const label =
+                    columns?.find((column) => column.id === source)
+                      ?.displayLabel ?? source;
+                  return (
+                    <label
+                      className="grid gap-1 rounded-xl bg-stone-50 p-3 text-sm"
+                      key={source}
                     >
-                      <option value="">Ignore this column</option>
-                      {[
-                        "name",
-                        "retailer",
-                        "sku",
-                        "brand",
-                        "model",
-                        "variant",
-                        "category",
-                        "price",
-                        "currency",
-                        "product_url",
-                        "availability",
-                        "delivery_estimate",
-                        "description",
-                        "color",
-                        "finish",
-                        "materials",
-                        "width",
-                        "height",
-                        "depth",
-                        "weight",
-                        "dimensions_unit",
-                        "weight_unit",
-                        "room_type",
-                        "priority",
-                        "quantity_recommendation",
-                        "guest_capacity_relevance",
-                        "durability_notes",
-                        "assembly_requirement",
-                        "tv_compatibility",
-                        "primary_image_url",
-                        "additional_image_urls",
-                      ].map((field) => (
-                        <option value={field} key={field}>
-                          {field.replaceAll("_", " ")}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ),
+                      <span className="font-semibold">{label}</span>
+                      <select
+                        name={`mapping:${source}`}
+                        defaultValue={String(target ?? "")}
+                        className="min-h-11 rounded-lg border bg-white px-3"
+                      >
+                        <option value="">Ignore this column</option>
+                        {[
+                          "name",
+                          "retailer",
+                          "sku",
+                          "brand",
+                          "model",
+                          "variant",
+                          "category",
+                          "price",
+                          "currency",
+                          "product_url",
+                          "availability",
+                          "delivery_estimate",
+                          "description",
+                          "color",
+                          "finish",
+                          "materials",
+                          "width",
+                          "height",
+                          "depth",
+                          "weight",
+                          "dimensions_unit",
+                          "weight_unit",
+                          "room_type",
+                          "priority",
+                          "quantity_recommendation",
+                          "guest_capacity_relevance",
+                          "durability_notes",
+                          "assembly_requirement",
+                          "tv_compatibility",
+                          "primary_image_url",
+                          "additional_image_urls",
+                        ].map((field) => (
+                          <option value={field} key={field}>
+                            {field.replaceAll("_", " ")}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  );
+                },
               )}
             </div>
             <button className={primary}>Confirm mapping and validate</button>

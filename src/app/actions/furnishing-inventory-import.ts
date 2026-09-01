@@ -59,9 +59,11 @@ async function persistSheet(
   sheetName: string,
 ) {
   const { db } = await admin();
-  const sheet = parsed.sheets.find((x) => x.name === sheetName && !x.hidden);
+  const sheet = parsed.sheets.find(
+    (x) => x.name === sheetName && !x.hidden && !x.structuralError,
+  );
   if (!sheet) throw new Error("IMPORT_SHEET_INVALID");
-  const mapping = proposeMapping(sheet.headers);
+  const mapping = proposeMapping(sheet);
   await db
     .from("furnishing_catalog_import_items")
     .delete()
@@ -69,16 +71,16 @@ async function persistSheet(
   const rows = sheet.rows.map((cells, index) => ({
     import_id: importId,
     source_sheet: sheet.name,
-    source_row: index + 2,
+    source_row: index + sheet.headerRow + 1,
     source_item: cells[0] ?? `Row ${index + 2}`,
     proposed_name: cells[0] ?? `Row ${index + 2}`,
     review_action: "review",
     validation_issues: [],
     raw_source: Object.fromEntries(
-      sheet.headers.map((h, i) => [h, cells[i] ?? ""]),
+      sheet.columns.map((column, i) => [column.id, cells[i] ?? ""]),
     ),
     source_values: Object.fromEntries(
-      sheet.headers.map((h, i) => [h, cells[i] ?? ""]),
+      sheet.columns.map((column, i) => [column.id, cells[i] ?? ""]),
     ),
     source_row_digest: createHash("sha256")
       .update(JSON.stringify(cells))
@@ -98,8 +100,9 @@ async function persistSheet(
       total_rows: sheet.rowCount,
       status: "mapping_required",
       parsing_configuration: {
-        headerRow: 1,
+        headerRow: sheet.headerRow,
         delimiter: parsed.type === "csv" ? "detected" : null,
+        columns: sheet.columns,
       },
       mapping_version: 0,
       validation_version: 0,
@@ -126,7 +129,7 @@ export async function startInventoryImportAction(formData: FormData) {
     safe = sanitizeFilename(file.name),
     storagePath = `${context.workspaceId}/${importId}/${digest}.${type}`;
   const parsed = await parse(type, bytes);
-  const visible = parsed.sheets.filter((x) => !x.hidden);
+  const visible = parsed.sheets.filter((x) => !x.hidden && !x.structuralError);
   const duplicate = await db
     .from("furnishing_catalog_imports")
     .select("id,status")
@@ -163,8 +166,17 @@ export async function startInventoryImportAction(formData: FormData) {
       sheets: parsed.sheets.map((s) => ({
         name: s.name,
         hidden: s.hidden,
+        headerRow: s.headerRow,
         rowCount: s.rowCount,
-        headers: s.headers.slice(0, 20),
+        structuralError: s.structuralError ?? null,
+        columns: s.columns.slice(0, 20).map((column) => ({
+          index: column.index,
+          address: column.address,
+          header: column.header,
+          normalizedHeader: column.normalizedHeader,
+          id: column.id,
+          displayLabel: column.displayLabel,
+        })),
       })),
     },
     safe_diagnostics: { externalEffects: false },
@@ -197,7 +209,18 @@ export async function confirmInventoryMappingAction(formData: FormData) {
     .eq("import_id", importId)
     .order("source_row");
   if (items.error) throw new Error("IMPORT_ROWS_UNAVAILABLE");
-  const headers = Object.keys(items.data[0]?.source_values ?? {});
+  const columns = ((run.parsing_configuration as { columns?: unknown[] } | null)
+    ?.columns ?? []) as Array<{
+    index: number;
+    address: string;
+    header: string;
+    normalizedHeader: string;
+    id: string;
+    displayLabel: string;
+  }>;
+  const headers = columns.length
+    ? columns.map((column) => column.id)
+    : Object.keys(items.data[0]?.source_values ?? {});
   const mapping = Object.fromEntries(
     headers.map((header) => [
       header,
@@ -207,8 +230,22 @@ export async function confirmInventoryMappingAction(formData: FormData) {
   const sheet = {
     name: run.selected_sheet,
     hidden: false,
+    headerRow: Number(
+      (run.parsing_configuration as { headerRow?: number } | null)?.headerRow ??
+        1,
+    ),
     rowCount: items.data.length,
     headers,
+    columns: columns.length
+      ? columns
+      : headers.map((header, index) => ({
+          index,
+          address: String(index + 1),
+          header,
+          normalizedHeader: header.trim().toLowerCase(),
+          id: header,
+          displayLabel: header,
+        })),
     rows: items.data.map((x) =>
       headers.map((header) =>
         String((x.source_values as Record<string, unknown>)[header] ?? ""),

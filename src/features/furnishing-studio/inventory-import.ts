@@ -10,12 +10,23 @@ export const INVENTORY_IMPORT_LIMITS = Object.freeze({
   issuesPerRow: 50,
 });
 
+export type SourceColumn = {
+  index: number;
+  address: string;
+  header: string;
+  normalizedHeader: string;
+  id: string;
+  displayLabel: string;
+};
 export type SourceSheet = {
   name: string;
   hidden: boolean;
+  headerRow: number;
   rowCount: number;
   headers: string[];
+  columns: SourceColumn[];
   rows: string[][];
+  structuralError?: string;
 };
 export type ParsedInventory = {
   type: "csv" | "xlsx";
@@ -188,12 +199,133 @@ function parsedSheet(
   const headers = rows[0].map((x) => x.trim());
   if (headers.some((h, i) => !h || headers.indexOf(h) !== i))
     throw new Error("IMPORT_HEADERS_INVALID");
+  const columns = headers.map((header, index) => ({
+    index,
+    address: String(index + 1),
+    header,
+    normalizedHeader: normalizeHeader(header),
+    id: header,
+    displayLabel: header,
+  }));
   return {
     type,
     sheets: [
-      { name, hidden, rowCount: rows.length - 1, headers, rows: rows.slice(1) },
+      {
+        name,
+        hidden,
+        headerRow: 1,
+        rowCount: rows.length - 1,
+        headers,
+        columns,
+        rows: rows.slice(1),
+      },
     ],
     warnings: [],
+  };
+}
+
+const normalizeHeader = (header: string) =>
+  header.trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+
+function columnAddress(index: number) {
+  let value = index + 1,
+    result = "";
+  while (value > 0) {
+    value--;
+    result = String.fromCharCode(65 + (value % 26)) + result;
+    value = Math.floor(value / 26);
+  }
+  return result;
+}
+
+function parsedXlsxSheet(
+  name: string,
+  rawRows: string[][],
+  hidden: boolean,
+): SourceSheet {
+  if (rawRows.length < 2) throw new Error("IMPORT_HEADER_OR_ROWS_REQUIRED");
+  const candidates = rawRows
+    .slice(0, Math.min(25, rawRows.length - 1))
+    .map((row, index) => {
+      const populated = row.map((cell) => cell.trim()).filter(Boolean);
+      return {
+        index,
+        populated: populated.length,
+        unique: new Set(populated.map(normalizeHeader)).size,
+      };
+    })
+    .filter((candidate) => candidate.populated > 0);
+  const maximumPopulated = Math.max(
+    0,
+    ...candidates.map((candidate) => candidate.populated),
+  );
+  const headerIndex = candidates.find(
+    (candidate) =>
+      candidate.populated >= Math.max(1, Math.ceil(maximumPopulated * 0.75)) &&
+      candidate.unique / candidate.populated >= 0.5,
+  )?.index;
+  if (headerIndex === undefined)
+    throw new Error("IMPORT_HEADER_OR_ROWS_REQUIRED");
+  const dataRows = rawRows
+    .slice(headerIndex + 1)
+    .filter((row) => row.some((cell) => cell.trim()));
+  if (!dataRows.length) throw new Error("IMPORT_HEADER_OR_ROWS_REQUIRED");
+  if (dataRows.length > INVENTORY_IMPORT_LIMITS.rows)
+    throw new Error("IMPORT_ROW_LIMIT_EXCEEDED");
+  const width = Math.max(...rawRows.map((row) => row.length));
+  if (width > INVENTORY_IMPORT_LIMITS.columns)
+    throw new Error("IMPORT_COLUMN_LIMIT_EXCEEDED");
+  if (
+    rawRows.some((row) =>
+      row.some((cell) => cell.length > INVENTORY_IMPORT_LIMITS.cellCharacters),
+    )
+  )
+    throw new Error("IMPORT_CELL_LIMIT_EXCEEDED");
+
+  const kept: Array<{ index: number; header: string }> = [];
+  for (let index = 0; index < width; index++) {
+    const header = (rawRows[headerIndex][index] ?? "").trim();
+    const populated = dataRows.some(
+      (row) => (row[index] ?? "").trim().length > 0,
+    );
+    if (!header && !populated) continue;
+    if (!header)
+      throw new Error(`IMPORT_HEADER_REQUIRED:${name}:${columnAddress(index)}`);
+    kept.push({ index, header });
+  }
+  if (!kept.length) throw new Error("IMPORT_HEADER_OR_ROWS_REQUIRED");
+
+  const occurrences = new Map<string, number>();
+  const totals = new Map<string, number>();
+  for (const { header } of kept) {
+    const normalized = normalizeHeader(header);
+    totals.set(normalized, (totals.get(normalized) ?? 0) + 1);
+  }
+  const columns = kept.map(({ index, header }) => {
+    const normalizedHeader = normalizeHeader(header);
+    const occurrence = (occurrences.get(normalizedHeader) ?? 0) + 1;
+    occurrences.set(normalizedHeader, occurrence);
+    const address = columnAddress(index);
+    return {
+      index,
+      address,
+      header,
+      normalizedHeader,
+      id: `xlsx:${address}`,
+      displayLabel:
+        (totals.get(normalizedHeader) ?? 0) > 1
+          ? `${header} (${address}, occurrence ${occurrence})`
+          : header,
+    };
+  });
+  return {
+    name,
+    hidden,
+    headerRow: headerIndex + 1,
+    rowCount: dataRows.length,
+    headers: columns.map((column) => column.id),
+    columns,
+    rows: dataRows.map((row) => kept.map(({ index }) => row[index] ?? "")),
   };
 }
 export async function parseXlsx(bytes: Uint8Array): Promise<ParsedInventory> {
@@ -210,20 +342,55 @@ export async function parseXlsx(bytes: Uint8Array): Promise<ParsedInventory> {
   if (workbook.worksheets.length > INVENTORY_IMPORT_LIMITS.worksheets)
     throw new Error("IMPORT_WORKSHEET_LIMIT_EXCEEDED");
   const sheets = workbook.worksheets.map((sheet) => {
-    const rows: string[][] = [];
+    let meaningfulWidth = 0,
+      meaningfulHeight = 0;
     sheet.eachRow({ includeEmpty: false }, (row) =>
+      row.eachCell({ includeEmpty: false }, (cell, column) => {
+        if (safeCell(cell.value).trim()) {
+          meaningfulWidth = Math.max(meaningfulWidth, column);
+          meaningfulHeight = Math.max(meaningfulHeight, row.number);
+        }
+      }),
+    );
+    const rows: string[][] = [];
+    for (let rowNumber = 1; rowNumber <= meaningfulHeight; rowNumber++) {
+      const row = sheet.getRow(rowNumber);
       rows.push(
-        Array.from({ length: row.cellCount }, (_, i) =>
+        Array.from({ length: meaningfulWidth }, (_, i) =>
           safeCell(row.getCell(i + 1).value),
         ),
-      ),
-    );
-    return parsedSheet("xlsx", sheet.name, rows, sheet.state !== "visible")
-      .sheets[0];
+      );
+    }
+    try {
+      return parsedXlsxSheet(sheet.name, rows, sheet.state !== "visible");
+    } catch (error) {
+      const code =
+        error instanceof Error ? error.message : "IMPORT_SHEET_INVALID";
+      return {
+        name: sheet.name,
+        hidden: sheet.state !== "visible",
+        headerRow: 1,
+        rowCount: 0,
+        headers: [],
+        columns: [],
+        rows: [],
+        structuralError: code,
+      } satisfies SourceSheet;
+    }
   });
-  if (!sheets.some((s) => !s.hidden))
-    throw new Error("IMPORT_VISIBLE_WORKSHEET_REQUIRED");
-  return { type: "xlsx", sheets, warnings: [] };
+  const visible = sheets.filter((sheet) => !sheet.hidden);
+  if (!visible.some((sheet) => !sheet.structuralError))
+    throw new Error(
+      visible[0]?.structuralError ?? "IMPORT_VISIBLE_WORKSHEET_REQUIRED",
+    );
+  if (!visible.length) throw new Error("IMPORT_VISIBLE_WORKSHEET_REQUIRED");
+  return {
+    type: "xlsx",
+    sheets,
+    warnings: visible.flatMap((sheet) =>
+      sheet.structuralError ? [sheet.structuralError] : [],
+    ),
+  };
 }
 
 const aliases: Record<string, string[]> = {
@@ -251,14 +418,38 @@ const aliases: Record<string, string[]> = {
   priority: ["priority"],
   primary_image_url: ["image", "image url", "primary image url"],
 };
-export function proposeMapping(headers: string[]): Mapping {
+export function proposeMapping(
+  source: string[] | SourceColumn[] | SourceSheet,
+): Mapping {
+  const columns = Array.isArray(source)
+    ? source.map((value, index) =>
+        typeof value === "string"
+          ? {
+              index,
+              address: String(index + 1),
+              header: value,
+              normalizedHeader: normalizeHeader(value),
+              id: value,
+              displayLabel: value,
+            }
+          : value,
+      )
+    : source.columns;
+  const duplicateHeaders = new Set(
+    columns
+      .map((column) => column.normalizedHeader)
+      .filter(
+        (header, index, all) =>
+          all.indexOf(header) !== index || all.lastIndexOf(header) !== index,
+      ),
+  );
   const result: Mapping = {};
-  for (const header of headers) {
-    const normalized = header.trim().toLowerCase().replace(/[_-]+/g, " ");
-    result[header] =
-      Object.entries(aliases).find(([, values]) =>
-        values.includes(normalized),
-      )?.[0] ?? null;
+  for (const column of columns) {
+    result[column.id] = duplicateHeaders.has(column.normalizedHeader)
+      ? null
+      : (Object.entries(aliases).find(([, values]) =>
+          values.includes(column.normalizedHeader),
+        )?.[0] ?? null);
   }
   return result;
 }
@@ -369,7 +560,7 @@ export function validateRows(
         "Commercial products should include a price.",
       );
     return {
-      sourceRow: index + 2,
+      sourceRow: index + sheet.headerRow + 1,
       original,
       canonical,
       issues: issues.slice(0, INVENTORY_IMPORT_LIMITS.issuesPerRow),
