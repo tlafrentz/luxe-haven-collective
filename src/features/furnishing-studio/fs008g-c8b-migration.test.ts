@@ -27,7 +27,10 @@ describe("FS-008G-C8-B owner selection migration", () => {
     expect(sql).toContain("package_row.workspace_id=p_workspace_id");
     expect(sql).toContain("package_row.lifecycle_status='approved'");
     expect(projectActions).toContain(
-      'db.rpc("discover_furnishing_owner_packages"',
+      'authenticatedDb!.rpc("discover_furnishing_owner_packages"',
+    );
+    expect(projectActions).toContain(
+      'throw new Error("FURNISHING_PROJECT_ACCESS_DENIED")',
     );
     expect(projectActions).toContain("FURNISHING_PACKAGE_ACCESS_DENIED");
   });

@@ -50,6 +50,8 @@ async function authorize(
 }
 export async function getProjectSetup() {
   const { db, profile } = await context();
+  const authenticatedDb =
+    profile?.role === "admin" ? null : await createClient();
   const { data: workspaceRows } =
     profile?.role === "admin"
       ? await db
@@ -91,7 +93,7 @@ export async function getProjectSetup() {
             "id,version_number,estimated_budget_low_minor,estimated_budget_high_minor,bedroom_min,bedroom_max,bathroom_min,bathroom_max,guest_min,guest_max,furnishing_packages!furnishing_package_versions_furnishing_package_id_fkey(id,name,description,tier,property_type)",
           )
           .eq("lifecycle_status", "approved")
-      : db.rpc("discover_furnishing_owner_packages", {
+      : authenticatedDb!.rpc("discover_furnishing_owner_packages", {
           p_workspace_id: ownerWorkspaceId,
         }),
     db
@@ -101,7 +103,11 @@ export async function getProjectSetup() {
       )
       .eq("lifecycle_status", "approved"),
   ]);
-  const error = [propertyRows, packages, styles].find((x) => x.error)?.error;
+  if (packages.error && profile?.role !== "admin")
+    throw new Error("FURNISHING_PROJECT_ACCESS_DENIED");
+  const error =
+    [propertyRows, styles].find((result) => result.error)?.error ??
+    (profile?.role === "admin" ? packages.error : null);
   if (error) throw new Error("FURNISHING_OPERATION_FAILED");
   return {
     properties: propertyRows.data ?? [],
