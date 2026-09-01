@@ -17,6 +17,13 @@ const anonymousCatalogCorrection = fs.readFileSync(
   ),
   "utf8",
 );
+const procurementGuardCorrection = fs.readFileSync(
+  path.join(
+    root,
+    "supabase/migrations/20260830154000_fs_ux_009_procurement_guard_verification.sql",
+  ),
+  "utf8",
+);
 const actions = fs.readFileSync(
   path.join(root, "src/app/(admin)/admin/furnishing/activation/actions.ts"),
   "utf8",
@@ -70,6 +77,30 @@ describe("FS-UX-008 governed orchestration contracts", () => {
     expect(anonymousCatalogCorrection).toContain("unexpected_success");
     expect(anonymousCatalogCorrection).toContain("identity_unestablished");
     expect(anonymousCatalogCorrection).not.toContain("has_table_privilege");
+  });
+  it("verifies the authoritative procurement guard without toggling release state", () => {
+    expect(procurementGuardCorrection).toContain(
+      "fsux9_procurement_guard_invariant",
+    );
+    expect(procurementGuardCorrection).toContain(
+      "assert_fs008g_procurement_mutation_enabled",
+    );
+    expect(procurementGuardCorrection).toContain(
+      "deterministic_server_invariant",
+    );
+    expect(procurementGuardCorrection).not.toMatch(
+      /update public\.furnishing_activation_releases/,
+    );
+    expect(procurementGuardCorrection).not.toContain("p_success");
+  });
+  it("preserves the other authoritative verification checks", () => {
+    for (const check of [
+      "anonymous_denial",
+      "authorized_design_projection",
+      "fixed_minor_unit_budget",
+    ]) {
+      expect(procurementGuardCorrection).toContain(check);
+    }
   });
   it("serializes controls and gives suspension precedence", () => {
     expect(migration).toContain("pg_advisory_xact_lock");

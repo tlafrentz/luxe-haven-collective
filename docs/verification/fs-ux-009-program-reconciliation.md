@@ -45,6 +45,7 @@ The complete committed forward inventory after the Production ceiling was read w
 | `20260830151000_fs_ux_008_control_orchestration.sql`          | `f06aad6d71f31f3c76ea46c6c8b2d902a4509b5707b1310de492c7eb7fe7089a` |
 | `20260830152000_fs_ux_009_controlled_fixture_service_grants.sql` | `f048d1e0904aa323deec813401533994d1fbbb61cf562375ef03df47809cc74e` |
 | `20260830153000_fs_ux_009_anonymous_catalog_verification.sql` | `1212c828d34a8a8b9c1571fc8d513a44e2c3a90fe5e8d704535f8f4bba8a87b2` |
+| `20260830154000_fs_ux_009_procurement_guard_verification.sql` | `9540fd160518442633caae50ddc5f7763508480747ebb4f940ea6183afec0b40` |
 
 The two required FS-UX-008 digests match `docs/verification/fs-ux-008-local-hold-point.md`. No migration was edited. Migration lint passed with no findings. Applying, replaying, and comparing the sequence were blocked by the unavailable database runtime.
 
@@ -291,3 +292,61 @@ Per the stop-at-earliest-authoritative-boundary rule, the remaining catalog-thro
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. This correction commit is program evidence, not a deployment candidate. No completion tag, Production migration, deployment, Production configuration change, or feature expansion is authorized.
+
+## Continuation from the procurement-verification hold
+
+The existing FS-UX-009 milestone resumed from correction/history commit `66be0304d6af3d411be1bb5131eeb37ef35e960f`. Every prior blocked attempt above remains immutable chronology.
+
+### Authorized procurement verification correction
+
+- Added only forward migration `20260830154000_fs_ux_009_procurement_guard_verification.sql`; no existing migration was rewritten.
+- Migration SHA-256: `9540fd160518442633caae50ddc5f7763508480747ebb4f940ea6183afec0b40`.
+- The server verifier now evaluates a deterministic invariant over the authoritative `assert_fs008g_procurement_mutation_enabled()` boundary and its procurement triggers. It does not toggle or otherwise change the shared release configuration.
+- Verification passes while the real lifecycle is `internal`, valid, and has the global kill switch disengaged. A separate transactional integration test proves a real procurement baseline mutation is denied with `FURNISHING_ACTIVATION_DISABLED` while the global kill switch is engaged.
+- Verification records only immutable run/check/audit evidence, derives success exclusively on the server, preserves existing global/workspace suspension precedence, and leaves procurement, order, payment, notification, installation, and external-effect counts unchanged.
+- Forced audit insertion failure rolls back the verification run/checks and capability state. An independent-session proof serializes procurement verification before global suspension, commits exactly one evidence chain for each operation, and ends globally suspended.
+- Static regression confirms the catalog, design, and budgeting verification branches remain present and that the correction accepts no client-supplied success result.
+
+### Completed gates before the new stop
+
+| Gate | Result |
+| --- | --- |
+| Exact Production-ceiling sequence through `20260830154000` | passed |
+| FS-UX-003–008 database lifecycle matrices | passed |
+| Authorization/RLS, stale-state, concurrency, cleanup, and atomicity matrices in the exact-ceiling runner | passed |
+| All four authoritative capability verifications | passed |
+| Procurement guard focused regression | passed |
+| Procurement verification/global-suspension independent-session proof | passed |
+| Two clean-database rebuilds | passed |
+| Normalized schema equivalence | passed: both SHA-256 `1fd0cf795e58f7ebd98c43540c70420a9f5e78ee0528ef8e68b882a5ab3193e4` |
+| Migration replay | passed: zero pending through `20260830154000` |
+| Focused release-control tests | passed: 8/8 |
+| Typecheck | passed |
+| Full ESLint | passed with zero errors and the same nine warnings |
+| Migration lint | passed: no findings |
+| `git diff --check` | passed |
+
+Production remained at ceiling `20260829010000` and was not connected to or changed.
+
+### Earliest new authoritative hold
+
+The canonical browser lifecycle restarted from a clean database and stopped during governed fixture provisioning, before browser launch. The service-role client was denied while inserting the two explicit controlled recovery permissions:
+
+```text
+CONTROLLED_RELEASE_RECOVERY_PERMISSIONS
+42501: permission denied for table fsux8_release_permissions
+```
+
+Migration `20260830152000_fs_ux_009_controlled_fixture_service_grants.sql` grants controlled fixture access to customer accounts, memberships, and furnishing entitlements, but the clean schema grants no service-role INSERT privilege on `fsux8_release_permissions`. The fixture correctly avoids direct superuser mutation and therefore cannot establish the authorization context required for the canonical recovery/rollback lifecycle. This is a clean-schema authorization contract defect at the controlled public/service boundary, not a browser assertion or environmental failure. Correcting it would require another forward authorization change and is outside the single migration authorized for this continuation.
+
+The stop occurred before capability enablement, catalog import, product adoption, package, design, budget, procurement, delivery, installation, browser accessibility, or responsive-layout stages. No furnishing lifecycle or external effect occurred.
+
+### Cleanup and disposition
+
+Provisioning had created two synthetic identities and two controlled workspace records before the permission denial. A clean local database rebuild removed all partial records and restored the protected baseline exactly: release `disabled`, global kill switch engaged, configuration invalid, optimistic version `1`, with zero controlled profiles, controlled workspaces, release permissions, verification runs, or release audit events.
+
+Per the stop-at-earliest-authoritative-boundary rule, the remaining browser lifecycle, accessibility/responsive pass, full repository suite, Production build, and final certification gates were not run or relabeled as passing. Production and all external systems remain unchanged.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. The resulting correction/history commit is not a deployment candidate. No completion tag, Production migration, deployment, Production configuration change, or broader feature change is authorized.
