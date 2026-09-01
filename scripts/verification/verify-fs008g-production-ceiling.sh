@@ -21,7 +21,8 @@ for migration in \
   supabase/migrations/20260830130000_fs_ux_006_procurement_readiness.sql \
   supabase/migrations/20260830140000_fs_ux_007_delivery_installation_tracking.sql \
   supabase/migrations/20260830150000_fs_ux_008_release_controls.sql \
-  supabase/migrations/20260830151000_fs_ux_008_control_orchestration.sql
+  supabase/migrations/20260830151000_fs_ux_008_control_orchestration.sql \
+  supabase/migrations/20260830152000_fs_ux_009_controlled_fixture_service_grants.sql
 do
   psql_local < "${migration}"
 done

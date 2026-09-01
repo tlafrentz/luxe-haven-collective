@@ -138,3 +138,60 @@ The unchanged warnings are the same nine enumerated by ESLint and the FS-UX-008 
 The material residual risk is absence of new integrated runtime evidence, not a known code defect. Static and predecessor evidence cannot prove that the complete current candidate migrates deterministically and operates end to end under real RLS, concurrent sessions, controlled cleanup, and browser interaction. Certification must remain on hold until those gates run from the exact Production ceiling against two clean local databases and the protected baseline is restored exactly.
 
 Deployment recommendation: **HOLD**. Do not deploy, tag, migrate Production, change Production configuration, or activate capabilities from this result. Resume with the expected local Supabase Docker/Postgres runtime available and restart at the pre-mutation baseline-capture stage.
+
+## Continuation from the environmental hold
+
+The existing FS-UX-009 milestone resumed from evidence commit `e7bb5e4e3fece3854458bf956d9b399b52bba9c4` after the local Colima endpoint became healthy. The original blocked attempt above remains the immutable record of the pre-execution stop; this continuation does not replace it.
+
+### Resumed environment and bounded corrections
+
+- Repository preflight: `e7bb5e4e3fece3854458bf956d9b399b52bba9c4`, clean tree.
+- Docker context and endpoint: `colima`, `unix:///Users/toddl/.colima/default/docker.sock`.
+- Docker engine: `29.5.2`; local Supabase Postgres and supporting containers healthy.
+- Production ceiling reconfirmed as `20260829010000`; Production was not connected to or changed.
+- All previously recorded post-ceiling digests remained unchanged.
+- `fdc7ed44495ac310d26106e7722f3262901e7314` adds forward-only migration `20260830152000_fs_ux_009_controlled_fixture_service_grants.sql` after a clean database demonstrated that the guarded local lifecycle provisioner could not create its controlled customer fixture because `service_role` lacked DML on `customer_accounts`, `customer_account_memberships`, and `commercial_entitlements`.
+- `d1d215765c810d3ddb9de171a4c39c11f84e98af` corrects dependency-safe controlled fixture cleanup after retries demonstrated style-system and unbound-designation foreign-key blockers.
+- New migration SHA-256: `f048d1e0904aa323deec813401533994d1fbbb61cf562375ef03df47809cc74e`.
+- No existing migration was edited.
+
+Both defects occurred in controlled test setup/cleanup. The first stopped before a customer account, property, furnishing project, or lifecycle artifact existed. The second occurred while reconciling the pre-lifecycle fixture. No external or Production effect occurred.
+
+### Resumed database results
+
+| Gate | Continuation result |
+| --- | --- |
+| Exact Production-ceiling forward sequence through `20260830152000` | passed |
+| Production-derived 109-product/220-row/three-package assertions | passed |
+| Migration replay | passed: zero pending migrations |
+| Two clean-database rebuilds | passed |
+| Normalized schema equivalence | passed: both SHA-256 `7fc51cd970189a232748f3f0b8a0bc49ac9c2c17aeaf1bb8f1b57de0c3f4d346` |
+| FS-UX-003–008 database lifecycle matrices | passed |
+| Direct authorization and RLS matrices | passed |
+| Independent-session concurrency and stale-state matrices | passed |
+| Release-control suspension precedence and recovery | passed |
+| Forced audit-persistence rollback | passed |
+| Governed cleanup negative/concurrency matrices | passed |
+| Controlled pre-lifecycle fixture cleanup retry | passed: `resources: 0` |
+
+PostgreSQL 17 emits a random `\\restrict`/`\\unrestrict` safety token in each text dump. Raw dumps differed only on those two non-schema lines. Removing only those tokens produced byte-identical 64,953-line schema dumps and the digest above.
+
+### Resumed code gates
+
+| Gate | Continuation result |
+| --- | --- |
+| Complete repository suite | passed: 4,638/4,638 across 848 files |
+| FS-UX-009 focused regression suite | passed: 4/4 |
+| Typecheck | passed |
+| Full ESLint | passed with zero errors and the same nine warnings |
+| Migration lint | passed: no findings |
+| Production build | passed; 290 static pages generated and canonical Furnishing Studio routes emitted |
+| `git diff --check` | passed |
+
+### Current bounded hold
+
+The integrated authenticated browser lifecycle remains unproven. Authentication succeeded locally using synthetic local-only CAPTCHA configuration, but the browser run stopped at its first activation stage because `scripts/verification/verify-fs008g-c8-browser.ts` still expects the retired FS-008G controls and a `Required reason` field on `/admin/furnishing/activation`. FS-UX-008 intentionally redirects that legacy route to `/admin/furnishing/release-controls`, whose governed server-verification sequence is materially different. The database-authoritative FS-UX-008 lifecycle and concurrency proofs pass, but they do not substitute for the required current browser, accessibility, responsive-layout, and complete isolated end-to-end lifecycle pass.
+
+The browser stop occurred before catalog import or any furnishing lifecycle mutation. The controlled fixture was cleaned to zero resources under retry. The final local database was rebuilt cleanly through `20260830152000`. No purchase, retailer order, shipment, payment, notification, carrier, installer, or irreversible provider effect occurred.
+
+Current classification remains `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`. No deployment candidate is issued. The required bounded next correction is a current FS-UX-009 browser lifecycle/accessibility harness aligned to the feature-frozen FS-UX-008 release-control routes and server-verification contracts; application behavior must not be changed merely to satisfy the obsolete FS-008G harness. Deployment recommendation remains **HOLD**.
