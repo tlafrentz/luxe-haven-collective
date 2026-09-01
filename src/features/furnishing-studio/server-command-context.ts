@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export type FurnishingCommandTarget =
   | "workspace"
+  | "platform_product"
   | "import"
   | "product"
   | "offer"
@@ -61,8 +62,16 @@ const contextError = (error: unknown) =>
 async function authoritativeWorkspace(
   targetType: FurnishingCommandTarget,
   targetId: string,
+  requestedWorkspace?: string,
 ) {
   const db = createAdminClient();
+  if (targetType === "platform_product") {
+    const [{ data: product }, { data: workspace }] = await Promise.all([
+      db.from("furnishing_products").select("id").eq("id", targetId).eq("scope", "platform").is("workspace_id", null).maybeSingle(),
+      db.from("owners").select("id").eq("id", requestedWorkspace ?? "").maybeSingle(),
+    ]);
+    return product?.id && workspace?.id ? String(workspace.id) : null;
+  }
   if (targetType === "workspace" || targetType === "cleanup") {
     const { data } = await db
       .from("owners")
@@ -199,6 +208,7 @@ export async function issueFurnishingCommandContext(input: IssueInput) {
   const resolvedWorkspace = await authoritativeWorkspace(
     input.targetType,
     input.targetId,
+    input.workspaceId,
   );
   if (resolvedWorkspace !== input.workspaceId)
     throw new Error("FS008G_CONTEXT_TARGET_MISMATCH");
@@ -263,6 +273,7 @@ export async function resolveFurnishingCommandContext(
   const workspace = await authoritativeWorkspace(
     context.targetType,
     context.targetId,
+    context.workspaceId,
   );
   if (workspace !== context.workspaceId)
     throw new Error("FS008G_CONTEXT_TARGET_MISMATCH");

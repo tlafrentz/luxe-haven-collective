@@ -19,9 +19,11 @@ export type FurnishingGovernanceState = Readonly<{
 
 export async function adoptPlatformProductAction(formData: FormData) {
   await requireRole(["admin"]);
-  const context = await resolveFurnishingCommandContext(value(formData, "commandContextId"), { commandType: "catalog.product.adopt", targetType: "workspace" });
+  const context = await resolveFurnishingCommandContext(value(formData, "commandContextId"), { commandType: "catalog.product.adopt", targetType: "platform_product" });
+  const sourceProductId = value(formData, "sourceProductId");
+  if (sourceProductId !== context.targetId) throw new Error("CATALOG_ADOPTION_CONTEXT_TARGET_MISMATCH");
   const client = await createClient();
-  const result = await client.rpc("adopt_furnishing_platform_product" as never, { p_input: { workspace_id: context.workspaceId, source_product_id: value(formData, "sourceProductId"), workspace_overrides: {}, correlation_id: context.correlationId, idempotency_key: context.idempotencyKey } } as never);
+  const result = await client.rpc("adopt_furnishing_platform_product" as never, { p_input: { workspace_id: context.workspaceId, source_product_id: sourceProductId, workspace_overrides: {}, correlation_id: context.correlationId, idempotency_key: context.idempotencyKey } } as never);
   if (result.error) throw new Error(typed(result.error, "CATALOG_ADOPTION_FAILED"));
   const productId = String((result.data as unknown as { workspaceProductId?: string })?.workspaceProductId ?? "");
   if (!productId) throw new Error("CATALOG_ADOPTION_FAILED");

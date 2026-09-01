@@ -396,7 +396,7 @@ export async function ProductDetail({ productId, workspaceId }: { productId: str
   const roomNames = new Map(roomTypes.map((x: Row) => [x.id, x.name]));
   const controlledWorkspace = workspaceId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(workspaceId) ? workspaceId : null;
   const { data: existingAdoption } = product.scope === "platform" && controlledWorkspace ? await createAdminClient().from("furnishing_product_adoptions").select("workspace_product_id").eq("workspace_id", controlledWorkspace).eq("source_product_id", product.id).maybeSingle() : { data: null };
-  const adoptionContext = product.scope === "platform" && controlledWorkspace && !existingAdoption ? await issueFurnishingCommandContext({ workflow: "fs008g-finalization:catalog-governance", workspaceId: controlledWorkspace, commandType: "catalog.product.adopt", targetType: "workspace", targetId: controlledWorkspace }) : null;
+  const adoptionContext = product.scope === "platform" && controlledWorkspace && !existingAdoption ? await issueFurnishingCommandContext({ workflow: "fs008g-finalization:catalog-governance", workspaceId: controlledWorkspace, commandType: "catalog.product.adopt", targetType: "platform_product", targetId: String(product.id) }) : null;
   const governedIds = [String(product.id), ...offers.map((offer) => String(offer.id))];
   const [{ data: approvals }, { data: assignments }] = product.workspace_id
     ? await Promise.all([

@@ -20,6 +20,7 @@ type Fixture = {
   styleVersionId: string;
   anonymousProbeProductId: string;
   controlledDesignationId: string;
+  controlledRunId: string;
   releaseBaseline: null | {
     id: string;
     globalState: string;
@@ -82,22 +83,6 @@ async function main() {
     if (restored.error)
       throw new Error(`CLEANUP_RELEASE_BASELINE:${restored.error.message}`);
   }
-  const workspace = await admin
-    .from("owners")
-    .select("id")
-    .eq("id", fixture.workspaceId)
-    .maybeSingle();
-  if (workspace.error)
-    throw new Error(`CLEANUP_WORKSPACE_LOOKUP:${workspace.error.message}`);
-  if (workspace.data) {
-    const designation = await admin.rpc("cleanup_fs008g_c8_controlled_tenant", {
-      p_workspace_id: fixture.workspaceId,
-      p_admin_id: fixture.admin.id,
-      p_owner_id: fixture.owner.id,
-    });
-    if (designation.error)
-      throw new Error(`CLEANUP_DESIGNATION:${designation.error.message}`);
-  }
   if (fixture.customerAccountId) {
     await remove(
       "commercial_entitlements",
@@ -110,23 +95,6 @@ async function main() {
       fixture.customerAccountId,
     );
     await remove("customer_accounts", "id", fixture.customerAccountId);
-  }
-  if (fixture.controlledDesignationId) {
-    const revoked = await admin
-      .from("furnishing_controlled_fixture_designations")
-      .update({
-        cleaned_at: new Date().toISOString(),
-        revoked_at: new Date().toISOString(),
-      })
-      .eq("id", fixture.controlledDesignationId)
-      .is("project_id", null);
-    if (revoked.error)
-      throw new Error(`CLEANUP_DESIGNATION_REVOKE:${revoked.error.message}`);
-    await remove(
-      "furnishing_controlled_fixture_designations",
-      "id",
-      fixture.controlledDesignationId,
-    );
   }
   if (fixture.styleVersionId) {
     const styleVersion = await mustStyleVersion(fixture.styleVersionId);
@@ -155,6 +123,24 @@ async function main() {
   }
   if (fixture.propertyId) await remove("properties", "id", fixture.propertyId);
   await remove("workspace_memberships", "workspace_id", fixture.workspaceId);
+  const workspace = await admin
+    .from("owners")
+    .select("id")
+    .eq("id", fixture.workspaceId)
+    .maybeSingle();
+  if (workspace.error)
+    throw new Error(`CLEANUP_WORKSPACE_LOOKUP:${workspace.error.message}`);
+  if (workspace.data) {
+    const cleanup = await admin.rpc("cleanup_fs008g_c8_controlled_tenant", {
+      p_workspace_id: fixture.workspaceId,
+      p_wrong_workspace_id: fixture.wrongWorkspaceId,
+      p_admin_id: fixture.admin.id,
+      p_owner_id: fixture.owner.id,
+      p_controlled_run_id: fixture.controlledRunId,
+    });
+    if (cleanup.error)
+      throw new Error(`CLEANUP_CONTROLLED_RUN:${cleanup.error.message}`);
+  }
   await remove("owners", "id", fixture.workspaceId);
   await remove("owners", "id", fixture.wrongWorkspaceId);
   for (const identity of [fixture.owner, fixture.admin]) {
