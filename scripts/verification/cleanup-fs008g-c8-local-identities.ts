@@ -18,6 +18,7 @@ type Fixture = {
   customerAccountId: string;
   propertyId: string;
   styleVersionId: string;
+  anonymousProbeProductId: string;
   controlledDesignationId: string;
   releaseBaseline: null | {
     id: string;
@@ -38,6 +39,18 @@ async function remove(table: string, column: string, value: string) {
 
 async function main() {
   const fixture = JSON.parse(await readFile(credentialPath, "utf8")) as Fixture;
+  if (fixture.anonymousProbeProductId) {
+    await remove(
+      "furnishing_product_identity_claims",
+      "product_id",
+      fixture.anonymousProbeProductId,
+    );
+    await remove(
+      "furnishing_products",
+      "id",
+      fixture.anonymousProbeProductId,
+    );
+  }
   await remove("fsux8_release_permissions", "actor_id", fixture.admin.id);
   await remove(
     "furnishing_activation_workspaces",

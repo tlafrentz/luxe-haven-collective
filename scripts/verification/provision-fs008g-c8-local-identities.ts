@@ -31,6 +31,7 @@ const credentials = {
   customerAccountId: "",
   propertyId: "",
   styleVersionId: "",
+  anonymousProbeProductId: "",
   controlledRunId: randomUUID(),
   controlledCorrelationId: randomUUID(),
   controlledDesignationId: "",
@@ -283,6 +284,23 @@ async function provision() {
     ]),
     "CONTROLLED_RELEASE_RECOVERY_PERMISSIONS",
   );
+  const anonymousProbeProduct = (await must(
+    admin
+      .from("furnishing_products")
+      .insert({
+        workspace_id: workspace.id,
+        name: "FS-UX-009 anonymous RLS canary",
+        product_type: "test_fixture",
+        category: "test_fixture",
+        status: "draft",
+        scope: "workspace",
+        created_by: credentials.admin.id,
+      })
+      .select("id")
+      .single(),
+    "ANONYMOUS_RLS_PROBE_PRODUCT",
+  )) as { id: string };
+  credentials.anonymousProbeProductId = anonymousProbeProduct.id;
   await must(
     admin
       .from("furnishing_activation_releases")

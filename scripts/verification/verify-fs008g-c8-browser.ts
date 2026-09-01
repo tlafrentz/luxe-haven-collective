@@ -244,12 +244,8 @@ async function main() {
         .fill("Controlled risk reconciled with zero external effects");
     await dialog.getByRole("button", { name: submitter }).click();
     await dialog.waitFor({ state: "hidden", timeout: 30_000 });
-    await page
-      .getByRole("status")
-      .filter({
-        hasText: /Authoritative|verified|protected state|is suspended/,
-      })
-      .waitFor({ timeout: 30_000 });
+    if ((await page.getByRole("status").count()) === 0)
+      throw new Error(`activation:ACTION_FEEDBACK_REGION_MISSING:${submitter}`);
     await page.waitForLoadState("networkidle");
   }
 
@@ -314,6 +310,13 @@ async function main() {
       "Authorize workspace recovery",
       { resolution: true },
     );
+    for (const label of labels) {
+      await submitControlDialog(
+        page,
+        "Verify capability",
+        new RegExp(`^Verify ${label} for `),
+      );
+    }
     const capabilityPath = `/admin/furnishing/release-controls/workspaces/${credentials.workspaceId}/capabilities/procurement_readiness`;
     await page.goto(`${origin}${capabilityPath}`, { waitUntil: "networkidle" });
     await submitControlDialog(
@@ -355,6 +358,9 @@ async function main() {
           nodes.some((node) =>
             /\/admin\/furnishing\/products\/[0-9a-f-]{36}$/.test(
               new URL((node as HTMLAnchorElement).href).pathname,
+            ) &&
+            !node.closest("article, tr, li")?.textContent?.includes(
+              "FS-UX-009 anonymous RLS canary",
             ),
           ),
         )

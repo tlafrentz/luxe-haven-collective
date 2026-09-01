@@ -43,6 +43,8 @@ The complete committed forward inventory after the Production ceiling was read w
 | `20260830140000_fs_ux_007_delivery_installation_tracking.sql` | `42e0821f97605be9292cfe010c684289d1a41731d9d891ea36642698c2c90c5a` |
 | `20260830150000_fs_ux_008_release_controls.sql`               | `9eca483b7977c30e910074ae138e7c79287b882bb51081ac2c26efc60d62b75f` |
 | `20260830151000_fs_ux_008_control_orchestration.sql`          | `f06aad6d71f31f3c76ea46c6c8b2d902a4509b5707b1310de492c7eb7fe7089a` |
+| `20260830152000_fs_ux_009_controlled_fixture_service_grants.sql` | `f048d1e0904aa323deec813401533994d1fbbb61cf562375ef03df47809cc74e` |
+| `20260830153000_fs_ux_009_anonymous_catalog_verification.sql` | `1212c828d34a8a8b9c1571fc8d513a44e2c3a90fe5e8d704535f8f4bba8a87b2` |
 
 The two required FS-UX-008 digests match `docs/verification/fs-ux-008-local-hold-point.md`. No migration was edited. Migration lint passed with no findings. Applying, replaying, and comparing the sequence were blocked by the unavailable database runtime.
 
@@ -240,3 +242,52 @@ Post-stop bounded checks passed: 14/14 focused release-control tests, typecheck,
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. No deployment candidate SHA, completion tag, Production migration, Production configuration change, or feature expansion is authorized from this result.
+
+## Continuation from the anonymous-denial hold
+
+The existing FS-UX-009 milestone resumed from evidence commit `81313840e844822fc7d60ced84431caaf4fcafe2`. All earlier environmental, browser-harness, and anonymous-verification blocked attempts above remain immutable program chronology.
+
+### Authorized forward correction
+
+- Added only forward migration `20260830153000_fs_ux_009_anonymous_catalog_verification.sql`; no existing migration was rewritten.
+- Migration SHA-256: `1212c828d34a8a8b9c1571fc8d513a44e2c3a90fe5e8d704535f8f4bba8a87b2`.
+- The server-owned verification now invokes the catalog-viewing `furnishing_products` SELECT boundary under database role `anon`, requires active row security, and classifies `expected_denial`, `identity_unestablished`, `boundary_inactive`, `probe_error`, and `unexpected_success` separately.
+- Success is derived exclusively on the server. The immutable verification run, checks, result, and audit evidence retain workspace, capability/version, correlation, actor, timestamp, probe role/method/boundary, and verification-version context in the same transaction.
+- The other three capability verifications and the zero furnishing/external-effect invariant are unchanged.
+- Focused regression proves that granting table-level SELECT to `anon` cannot itself satisfy the check, while a temporary permissive anonymous RLS policy produces `unexpected_success`.
+
+### Migration and focused verification results
+
+| Gate | Result |
+| --- | --- |
+| Exact Production-ceiling forward sequence through `20260830153000` | passed |
+| Forward migration replay | passed: zero pending migrations |
+| Two clean-database rebuilds | passed |
+| Normalized schema equivalence | passed: both SHA-256 `dde8e92eca07622bc7695e8f8e42375ca735d819a59d910d3b2f50748f9f66f0` |
+| Anonymous catalog RLS regression | passed, including table-grant and permissive-policy negative controls |
+| Existing database lifecycle, RLS, authorization, concurrency, stale-state, and atomicity matrices | passed in the exact-ceiling runner |
+| Focused release-control tests | passed: 9/9 |
+| Typecheck | passed |
+| Full ESLint | passed with zero errors and the same nine warnings |
+| Migration lint | passed: no findings |
+| `git diff --check` | passed |
+
+Production remained at ceiling `20260829010000` and was not connected to or changed.
+
+### Earliest new authoritative hold
+
+The canonical browser lifecycle restarted from a clean controlled baseline. The corrected `catalog_viewing` verification passed and persisted immutable evidence with role `anon`, method `rls_filtered`, status `expected_denial`, and boundary `furnishing_products_select_rls`. The catalog, design, and budgeting capability verifications also passed.
+
+The run then stopped at `procurement_readiness`. Its authoritative verification persisted `failed` because `execution_fail_closed=false`: that check requires the global kill switch to be engaged, while the controlled catalog-through-procurement lifecycle requires the release to be active. The redesigned canonical Release Controls interface exposes no authorized transition that can satisfy that prerequisite and then continue the active lifecycle. The action envelope/UI also accepted the completed verification invocation even though its authoritative result was failed. Correcting either contract is outside the single authorized anonymous-denial migration and would require a separate bounded decision; no broader release-control change was attempted.
+
+No catalog import or downstream furnishing lifecycle stage ran after this failure. No purchase, retailer order, shipment, payment, notification, carrier, installer, or other external effect occurred.
+
+### Cleanup and disposition
+
+Governed cleanup initially exposed a fixture dependency on the anonymous canary's identity claim. Dependency-safe cleanup removed that claim before its product, then completed with `resources: 0`. A final clean local database rebuild removed retained immutable test actors and restored the seeded protected baseline. Production and external systems remained unchanged.
+
+Per the stop-at-earliest-authoritative-boundary rule, the remaining catalog-through-installation browser stages, responsive/accessibility pass, complete repository suite, Production build, and final certification gates were not run or relabeled as passing. Post-stop bounded checks are recorded above.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. This correction commit is program evidence, not a deployment candidate. No completion tag, Production migration, deployment, Production configuration change, or feature expansion is authorized.

@@ -10,6 +10,13 @@ const migration = fs.readFileSync(
   ),
   "utf8",
 );
+const anonymousCatalogCorrection = fs.readFileSync(
+  path.join(
+    root,
+    "supabase/migrations/20260830153000_fs_ux_009_anonymous_catalog_verification.sql",
+  ),
+  "utf8",
+);
 const actions = fs.readFileSync(
   path.join(root, "src/app/(admin)/admin/furnishing/activation/actions.ts"),
   "utf8",
@@ -52,6 +59,17 @@ describe("FS-UX-008 governed orchestration contracts", () => {
     expect(migration).toContain(
       "FURNISHING_RELEASE_VERIFICATION_MUTATION_DETECTED",
     );
+  });
+  it("proves anonymous catalog denial through the anon-owned RLS boundary", () => {
+    expect(anonymousCatalogCorrection).toContain(
+      "owner to anon",
+    );
+    expect(anonymousCatalogCorrection).toContain(
+      "row_security_active('public.furnishing_products'::regclass)",
+    );
+    expect(anonymousCatalogCorrection).toContain("unexpected_success");
+    expect(anonymousCatalogCorrection).toContain("identity_unestablished");
+    expect(anonymousCatalogCorrection).not.toContain("has_table_privilege");
   });
   it("serializes controls and gives suspension precedence", () => {
     expect(migration).toContain("pg_advisory_xact_lock");
