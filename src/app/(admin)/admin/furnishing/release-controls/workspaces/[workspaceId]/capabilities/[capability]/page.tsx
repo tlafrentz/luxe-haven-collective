@@ -22,22 +22,22 @@ export default async function CapabilityDetailPage({
     db = await createClient();
   const [releaseResponse, verificationResponse, ...responses] =
     await Promise.all([
-    db.rpc("resolve_furnishing_activation_control", {
-      p_target: "global",
-      p_target_id: "global",
-      p_tenant_id: null,
-    }),
-    db
-      .from("furnishing_activation_capabilities")
-      .select("capability,verification_state"),
-    ...RELEASE_CAPABILITIES.map((name) =>
       db.rpc("resolve_furnishing_activation_control", {
-        p_target: "capability",
-        p_target_id: name,
-        p_tenant_id: workspaceId,
+        p_target: "global",
+        p_target_id: "global",
+        p_tenant_id: null,
       }),
-    ),
-  ]);
+      db
+        .from("furnishing_activation_capabilities")
+        .select("capability,verification_state"),
+      ...RELEASE_CAPABILITIES.map((name) =>
+        db.rpc("resolve_furnishing_activation_control", {
+          p_target: "capability",
+          p_target_id: name,
+          p_tenant_id: workspaceId,
+        }),
+      ),
+    ]);
   if (
     responses.some(
       ({ data }) =>
@@ -67,7 +67,7 @@ export default async function CapabilityDetailPage({
     policyVersion?: string;
   } | null;
   return (
-    <main className="space-y-8 px-4 pb-12 sm:px-6">
+    <div className="space-y-8 px-4 pb-12 sm:px-6">
       <FurnishingHeader
         title={capabilityLabel(capability)}
         description="Capability state, bounded verification, and guarded rollback details."
@@ -143,7 +143,7 @@ export default async function CapabilityDetailPage({
       >
         Back to activation sequence
       </Link>
-    </main>
+    </div>
   );
 }
 function Item({ label, value }: { label: string; value: string }) {

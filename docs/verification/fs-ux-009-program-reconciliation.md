@@ -28,21 +28,21 @@ This blocks fresh authoritative proof of the complete public-boundary lifecycle,
 
 The complete committed forward inventory after the Production ceiling was read without modification. SHA-256 digests are:
 
-| Migration | SHA-256 |
-| --- | --- |
-| `20260829020000_fs008g_c8a_catalog_package_governance.sql` | `414df501890015be632f5a4fa3f8cbecfe151463b2c8d54775e3f0bac2b3baf0` |
-| `20260829030000_fs008g_c8b_owner_selection_snapshot.sql` | `a09eaa3fd01814fb662ab9b25d2bdc262eb7a6ccebfe1be91b5c2b7abbfd0f1d` |
-| `20260829040000_fs008g_c8c_procurement_cleanup.sql` | `1d629e75c3c51737b1a1fe63624fd94aa3ae8fd316bf5c82d68c30d0ad158c07` |
-| `20260829050000_fs008g_c8d_workspace_native_import.sql` | `c31923754dc89c423c34c0b9cf559811fe8fcbb07913ea7c0914972d0f39ba36` |
-| `20260829051000_fs008g_c8d_requirement_review_state.sql` | `7ebcb61396e1290e99d9f23da0cf15ee12b14b035c6668bfdb7ebbc725666137` |
-| `20260830090000_fs_ux_002_catalog_lifecycle.sql` | `b3175e282cf8edf9b11377f96c2ea6e6c8352d28d60da24addaf2055c4200929` |
-| `20260830100000_fs_ux_003_inventory_import_workflow.sql` | `a269518d969c942a4fc6569c487fdb277a68f23fca339a6e40bcc024a3981e2b` |
-| `20260830110000_fs_ux_004_room_packages.sql` | `97642e5991375feb234f6f1c08d11a936d492ef9f8d60d6bfcf8cdf53a181f25` |
-| `20260830120000_fs_ux_005_design_workspaces_budgets.sql` | `e5ab26ca8c12d9ee8b0bfc6b8f2e3ea875d703ae3de636a06f9ebe78b8bb2652` |
-| `20260830130000_fs_ux_006_procurement_readiness.sql` | `d99c32d38f1914397e8f8d850c47a1a040b2d62b186308ee2625ccf1c3d08dba` |
+| Migration                                                     | SHA-256                                                            |
+| ------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `20260829020000_fs008g_c8a_catalog_package_governance.sql`    | `414df501890015be632f5a4fa3f8cbecfe151463b2c8d54775e3f0bac2b3baf0` |
+| `20260829030000_fs008g_c8b_owner_selection_snapshot.sql`      | `a09eaa3fd01814fb662ab9b25d2bdc262eb7a6ccebfe1be91b5c2b7abbfd0f1d` |
+| `20260829040000_fs008g_c8c_procurement_cleanup.sql`           | `1d629e75c3c51737b1a1fe63624fd94aa3ae8fd316bf5c82d68c30d0ad158c07` |
+| `20260829050000_fs008g_c8d_workspace_native_import.sql`       | `c31923754dc89c423c34c0b9cf559811fe8fcbb07913ea7c0914972d0f39ba36` |
+| `20260829051000_fs008g_c8d_requirement_review_state.sql`      | `7ebcb61396e1290e99d9f23da0cf15ee12b14b035c6668bfdb7ebbc725666137` |
+| `20260830090000_fs_ux_002_catalog_lifecycle.sql`              | `b3175e282cf8edf9b11377f96c2ea6e6c8352d28d60da24addaf2055c4200929` |
+| `20260830100000_fs_ux_003_inventory_import_workflow.sql`      | `a269518d969c942a4fc6569c487fdb277a68f23fca339a6e40bcc024a3981e2b` |
+| `20260830110000_fs_ux_004_room_packages.sql`                  | `97642e5991375feb234f6f1c08d11a936d492ef9f8d60d6bfcf8cdf53a181f25` |
+| `20260830120000_fs_ux_005_design_workspaces_budgets.sql`      | `e5ab26ca8c12d9ee8b0bfc6b8f2e3ea875d703ae3de636a06f9ebe78b8bb2652` |
+| `20260830130000_fs_ux_006_procurement_readiness.sql`          | `d99c32d38f1914397e8f8d850c47a1a040b2d62b186308ee2625ccf1c3d08dba` |
 | `20260830140000_fs_ux_007_delivery_installation_tracking.sql` | `42e0821f97605be9292cfe010c684289d1a41731d9d891ea36642698c2c90c5a` |
-| `20260830150000_fs_ux_008_release_controls.sql` | `9eca483b7977c30e910074ae138e7c79287b882bb51081ac2c26efc60d62b75f` |
-| `20260830151000_fs_ux_008_control_orchestration.sql` | `f06aad6d71f31f3c76ea46c6c8b2d902a4509b5707b1310de492c7eb7fe7089a` |
+| `20260830150000_fs_ux_008_release_controls.sql`               | `9eca483b7977c30e910074ae138e7c79287b882bb51081ac2c26efc60d62b75f` |
+| `20260830151000_fs_ux_008_control_orchestration.sql`          | `f06aad6d71f31f3c76ea46c6c8b2d902a4509b5707b1310de492c7eb7fe7089a` |
 
 The two required FS-UX-008 digests match `docs/verification/fs-ux-008-local-hold-point.md`. No migration was edited. Migration lint passed with no findings. Applying, replaying, and comparing the sequence were blocked by the unavailable database runtime.
 
@@ -50,18 +50,18 @@ The two required FS-UX-008 digests match `docs/verification/fs-ux-008-local-hold
 
 The production build emitted the canonical dynamic routes and their governed descendants:
 
-| Area | Canonical route | Build result | Navigation parent |
-| --- | --- | --- | --- |
-| Overview | `/admin/furnishing` | emitted | Overview |
-| Catalog | `/admin/furnishing/catalog` | emitted | Product Catalog |
-| Imports | `/admin/furnishing/imports` | emitted | Imports |
-| Room Packages | `/admin/furnishing/room-packages` | emitted | Room Packages |
-| Design Workspaces | `/admin/furnishing/workspaces` | emitted | Design Workspaces |
-| Budgets | `/admin/furnishing/budgets` | emitted | Budgets |
-| Procurement | `/admin/furnishing/procurement` | emitted | Procurement |
-| Installations | `/admin/furnishing/installations` | emitted | Installations |
-| Release Controls | `/admin/furnishing/release-controls` | emitted | Release Controls |
-| Settings | `/admin/furnishing/settings` | emitted | Settings |
+| Area              | Canonical route                      | Build result | Navigation parent |
+| ----------------- | ------------------------------------ | ------------ | ----------------- |
+| Overview          | `/admin/furnishing`                  | emitted      | Overview          |
+| Catalog           | `/admin/furnishing/catalog`          | emitted      | Product Catalog   |
+| Imports           | `/admin/furnishing/imports`          | emitted      | Imports           |
+| Room Packages     | `/admin/furnishing/room-packages`    | emitted      | Room Packages     |
+| Design Workspaces | `/admin/furnishing/workspaces`       | emitted      | Design Workspaces |
+| Budgets           | `/admin/furnishing/budgets`          | emitted      | Budgets           |
+| Procurement       | `/admin/furnishing/procurement`      | emitted      | Procurement       |
+| Installations     | `/admin/furnishing/installations`    | emitted      | Installations     |
+| Release Controls  | `/admin/furnishing/release-controls` | emitted      | Release Controls  |
+| Settings          | `/admin/furnishing/settings`         | emitted      | Settings          |
 
 Static navigation tests pass and verify canonical order, links, prefix ownership, legacy route parentage, focus restoration, dialog trapping, Escape behavior, visible focus styles, 44-pixel-equivalent targets, and canonical breadcrumbs. The build also emitted legacy `/admin/furnishing/activation`, `/admin/furnishing/installation`, `/admin/furnishing/products`, `/admin/furnishing/packages`, and `/admin/furnishing/projects` surfaces. Authenticated direct-load, refresh, redirects, filter/return preservation, and responsive browser behavior were not freshly exercised because the required controlled identities and database were unavailable.
 
@@ -78,16 +78,16 @@ These are code and static-test findings, not a substitute for the missing integr
 
 ## Authorization matrix
 
-| Principal | Static/focused coverage | Fresh database/browser result |
-| --- | --- | --- |
-| Workspace owner | server and migration contracts pass | blocked |
-| Delegated operator | delegated release-control/RLS contracts pass | blocked |
-| Reviewer/approver | review boundary contracts pass | blocked |
-| Wrong-workspace authenticated user | fail-closed contracts pass | blocked |
-| Authenticated user without furnishing permission | fail-closed contracts pass | blocked |
-| Suspended/revoked user | suspension contracts pass | blocked |
-| Platform administrator | explicit admin boundary contracts pass | blocked |
-| Anonymous user | direct denial contracts pass | blocked |
+| Principal                                        | Static/focused coverage                      | Fresh database/browser result |
+| ------------------------------------------------ | -------------------------------------------- | ----------------------------- |
+| Workspace owner                                  | server and migration contracts pass          | blocked                       |
+| Delegated operator                               | delegated release-control/RLS contracts pass | blocked                       |
+| Reviewer/approver                                | review boundary contracts pass               | blocked                       |
+| Wrong-workspace authenticated user               | fail-closed contracts pass                   | blocked                       |
+| Authenticated user without furnishing permission | fail-closed contracts pass                   | blocked                       |
+| Suspended/revoked user                           | suspension contracts pass                    | blocked                       |
+| Platform administrator                           | explicit admin boundary contracts pass       | blocked                       |
+| Anonymous user                                   | direct denial contracts pass                 | blocked                       |
 
 The FS-UX-007 and FS-UX-008 predecessor records report database-executed matrices at their own candidates. FS-UX-009 does not relabel those historical results as a fresh integrated run.
 
@@ -111,25 +111,25 @@ The atomic reconciliation state is therefore clean and bounded: repository uncha
 
 ## Validation results
 
-| Gate | Result |
-| --- | --- |
-| Starting repository suite | passed: 4,634/4,634 tests across 847 files |
-| FS-UX-focused suite | passed: 267/267 tests across 55 files |
-| Typecheck | passed |
-| Full ESLint | passed with zero errors and nine unchanged warnings |
-| Migration lint | passed: no findings |
-| Production build | passed; 290 static pages generated and all canonical Furnishing Studio routes emitted |
-| Route/navigation static contract | passed |
-| `git diff --check` | passed |
-| Exact-ceiling migration sequence | blocked: local Docker/Postgres unavailable |
-| Clean-database migration sequence and schema equivalence | blocked: local Docker/Postgres unavailable |
-| Public-boundary integrated lifecycle | blocked: controlled database/identities unavailable |
-| Fresh authorization/RLS matrix | blocked: controlled database/identities unavailable |
-| Fresh independent-session concurrency suite | blocked: controlled database unavailable |
-| Fresh immutable-history and forced-audit-failure reconciliation | blocked: controlled database unavailable |
-| Desktop/mobile authenticated accessibility run | blocked: controlled application identities/database unavailable |
-| Protected-baseline comparison | blocked: local database unavailable before capture |
-| Ending clean-tree verification | required after the evidence commit; no deployment-ready candidate is issued |
+| Gate                                                            | Result                                                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Starting repository suite                                       | passed: 4,634/4,634 tests across 847 files                                            |
+| FS-UX-focused suite                                             | passed: 267/267 tests across 55 files                                                 |
+| Typecheck                                                       | passed                                                                                |
+| Full ESLint                                                     | passed with zero errors and nine unchanged warnings                                   |
+| Migration lint                                                  | passed: no findings                                                                   |
+| Production build                                                | passed; 290 static pages generated and all canonical Furnishing Studio routes emitted |
+| Route/navigation static contract                                | passed                                                                                |
+| `git diff --check`                                              | passed                                                                                |
+| Exact-ceiling migration sequence                                | blocked: local Docker/Postgres unavailable                                            |
+| Clean-database migration sequence and schema equivalence        | blocked: local Docker/Postgres unavailable                                            |
+| Public-boundary integrated lifecycle                            | blocked: controlled database/identities unavailable                                   |
+| Fresh authorization/RLS matrix                                  | blocked: controlled database/identities unavailable                                   |
+| Fresh independent-session concurrency suite                     | blocked: controlled database unavailable                                              |
+| Fresh immutable-history and forced-audit-failure reconciliation | blocked: controlled database unavailable                                              |
+| Desktop/mobile authenticated accessibility run                  | blocked: controlled application identities/database unavailable                       |
+| Protected-baseline comparison                                   | blocked: local database unavailable before capture                                    |
+| Ending clean-tree verification                                  | required after the evidence commit; no deployment-ready candidate is issued           |
 
 The unchanged warnings are the same nine enumerated by ESLint and the FS-UX-008 record: one each in `generate-end-to-end-audit.mjs`, `verify-fs008g-c8-browser.ts`, `furnishing-navigation.tsx`, `project-workspace-v1.tsx`, `supabase-ca001b-lifecycle.ts`, `furnishing-delivery-envelope.ts`, and `standard-report-administration.ts`, plus two in `furnishing-property-resolution.test.ts`.
 
@@ -159,34 +159,34 @@ Both defects occurred in controlled test setup/cleanup. The first stopped before
 
 ### Resumed database results
 
-| Gate | Continuation result |
-| --- | --- |
-| Exact Production-ceiling forward sequence through `20260830152000` | passed |
-| Production-derived 109-product/220-row/three-package assertions | passed |
-| Migration replay | passed: zero pending migrations |
-| Two clean-database rebuilds | passed |
-| Normalized schema equivalence | passed: both SHA-256 `7fc51cd970189a232748f3f0b8a0bc49ac9c2c17aeaf1bb8f1b57de0c3f4d346` |
-| FS-UX-003–008 database lifecycle matrices | passed |
-| Direct authorization and RLS matrices | passed |
-| Independent-session concurrency and stale-state matrices | passed |
-| Release-control suspension precedence and recovery | passed |
-| Forced audit-persistence rollback | passed |
-| Governed cleanup negative/concurrency matrices | passed |
-| Controlled pre-lifecycle fixture cleanup retry | passed: `resources: 0` |
+| Gate                                                               | Continuation result                                                                     |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| Exact Production-ceiling forward sequence through `20260830152000` | passed                                                                                  |
+| Production-derived 109-product/220-row/three-package assertions    | passed                                                                                  |
+| Migration replay                                                   | passed: zero pending migrations                                                         |
+| Two clean-database rebuilds                                        | passed                                                                                  |
+| Normalized schema equivalence                                      | passed: both SHA-256 `7fc51cd970189a232748f3f0b8a0bc49ac9c2c17aeaf1bb8f1b57de0c3f4d346` |
+| FS-UX-003–008 database lifecycle matrices                          | passed                                                                                  |
+| Direct authorization and RLS matrices                              | passed                                                                                  |
+| Independent-session concurrency and stale-state matrices           | passed                                                                                  |
+| Release-control suspension precedence and recovery                 | passed                                                                                  |
+| Forced audit-persistence rollback                                  | passed                                                                                  |
+| Governed cleanup negative/concurrency matrices                     | passed                                                                                  |
+| Controlled pre-lifecycle fixture cleanup retry                     | passed: `resources: 0`                                                                  |
 
 PostgreSQL 17 emits a random `\\restrict`/`\\unrestrict` safety token in each text dump. Raw dumps differed only on those two non-schema lines. Removing only those tokens produced byte-identical 64,953-line schema dumps and the digest above.
 
 ### Resumed code gates
 
-| Gate | Continuation result |
-| --- | --- |
-| Complete repository suite | passed: 4,638/4,638 across 848 files |
-| FS-UX-009 focused regression suite | passed: 4/4 |
-| Typecheck | passed |
-| Full ESLint | passed with zero errors and the same nine warnings |
-| Migration lint | passed: no findings |
-| Production build | passed; 290 static pages generated and canonical Furnishing Studio routes emitted |
-| `git diff --check` | passed |
+| Gate                               | Continuation result                                                               |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| Complete repository suite          | passed: 4,638/4,638 across 848 files                                              |
+| FS-UX-009 focused regression suite | passed: 4/4                                                                       |
+| Typecheck                          | passed                                                                            |
+| Full ESLint                        | passed with zero errors and the same nine warnings                                |
+| Migration lint                     | passed: no findings                                                               |
+| Production build                   | passed; 290 static pages generated and canonical Furnishing Studio routes emitted |
+| `git diff --check`                 | passed                                                                            |
 
 ### Current bounded hold
 
@@ -195,3 +195,48 @@ The integrated authenticated browser lifecycle remains unproven. Authentication 
 The browser stop occurred before catalog import or any furnishing lifecycle mutation. The controlled fixture was cleaned to zero resources under retry. The final local database was rebuilt cleanly through `20260830152000`. No purchase, retailer order, shipment, payment, notification, carrier, installer, or irreversible provider effect occurred.
 
 Current classification remains `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`. No deployment candidate is issued. The required bounded next correction is a current FS-UX-009 browser lifecycle/accessibility harness aligned to the feature-frozen FS-UX-008 release-control routes and server-verification contracts; application behavior must not be changed merely to satisfy the obsolete FS-008G harness. Deployment recommendation remains **HOLD**.
+
+## Continuation from the browser-harness hold
+
+The same FS-UX-009 milestone resumed from evidence commit `35ab9df2268e2bd092fa21b9ba966907af622166`. The environmental stop and the obsolete-browser-harness stop above remain immutable chronology. The valid program-history corrections remain `fdc7ed44495ac310d26106e7722f3262901e7314` (controlled fixture service-role grants) and `d1d215765c810d3ddb9de171a4c39c11f84e98af` (dependency-safe controlled fixture cleanup).
+
+### Resumed preflight and bounded browser correction
+
+- Repository preflight: exact commit `35ab9df2268e2bd092fa21b9ba966907af622166`, clean working tree.
+- Local Docker/Postgres: healthy; local API `http://127.0.0.1:54321`, local Postgres `127.0.0.1:54322`.
+- Production ceiling remained `20260829010000`; Production was not connected to or changed.
+- No migration was added, edited, or applied to Production. Previously recorded post-ceiling digests remain unchanged.
+- The browser runbook and harness now use `/admin/furnishing/release-controls/workspaces/{workspaceId}`. `/admin/furnishing/activation` is tested separately as a compatibility redirect to `/admin/furnishing/release-controls`; no retired activation control is expected or restored.
+- The revised harness sequences server-authoritative capability enablement and verification, workspace suspension/recovery, guarded rollback and re-verification, and global suspension/recovery. It also adds desktop/mobile overflow, landmark, heading, keyboard-focus, automated serious/critical accessibility, error feedback, destructive confirmation, context, and anonymous-denial checks.
+- Controlled setup now records and restores the exact release baseline and grants only the two explicit recovery permissions that administrators do not receive implicitly. Cleanup was made retry-safe for partial identity removal and retains an immutable audit actor only while the ephemeral test database exists.
+
+The accessibility preflight demonstrated and bounded two concrete defects before lifecycle mutation: nested `main` landmarks on the five Release Controls pages and insufficient contrast for the authenticated-shell identity subtitle. The smallest corrections use the admin shell as the single main landmark and change only that subtitle's color token. The focused release-control regression passed (5/5), and typecheck passed after these corrections.
+
+### Precise third hold contract
+
+The controlled browser lifecycle then enabled `catalog_viewing` through the canonical UI and invoked the server-authoritative verification action. The server persisted a failed verification and correctly prevented the next capability. The exact failed check was:
+
+```text
+capability-verification-v2
+verification: failed
+anonymous_denial: false
+```
+
+`fsux8_verify_capability_v2` computes `anonymous_denial` as `not has_table_privilege('anon','public.furnishing_products','INSERT')`. On the exact clean schema the `anon` role has a table-level grant while RLS remains the authoritative row-level denial boundary. The verification therefore reports failure without exercising the actual anonymous RLS operation. This is a concrete application/database contract defect in the server-authoritative verification, not a browser-harness mismatch. It requires a forward-only database correction and focused regression proof. This continuation expressly authorizes no database migration, so no correction or bypass was attempted.
+
+The stop was atomic at the release-control stage. No import, product, package, project, design, budget, procurement, receipt, installation, completion, retailer, order, payment, notification, shipment, carrier, or other external effect was created. The only governed mutations were one capability enable audit event and its failed immutable server-verification evidence.
+
+### Cleanup and final reconciliation
+
+- Dependency-safe cleanup removed all active controlled resources and reported `resources: 0`; one soft-deleted actor was temporarily retained solely because immutable audit evidence references it.
+- A final clean local database rebuild through `20260830152000` removed the ephemeral test database and restored the exact seeded protected baseline.
+- Before that rebuild, direct reconciliation reported release baseline `disabled / global kill switch engaged / configuration invalid / version 1`, zero controlled workspace rows, zero capability rows, zero controlled owner rows, and zero payment, notification, or procurement-order effects.
+- Production and all external systems remained unchanged.
+
+Outstanding browser stages, fresh end-to-end authorization/concurrency/accessibility coverage beyond the stopped control stage, and the final full repository/lint/build gates were not relabeled as passing. They must be rerun after an authorized forward correction makes the authoritative verification test the real anonymous RLS boundary.
+
+Post-stop bounded checks passed: 14/14 focused release-control tests, typecheck, full ESLint with the same nine warnings and zero errors, and `git diff --check`. The complete repository suite, Production build, and remaining final gates were intentionally not rerun after the authoritative lifecycle stop.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. No deployment candidate SHA, completion tag, Production migration, Production configuration change, or feature expansion is authorized from this result.

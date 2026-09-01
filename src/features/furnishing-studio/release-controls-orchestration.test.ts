@@ -28,8 +28,23 @@ const controlAction = fs.readFileSync(
   ),
   "utf8",
 );
+const releaseControlPages = [
+  "page.tsx",
+  "history/page.tsx",
+  "history/[eventId]/page.tsx",
+  "workspaces/[workspaceId]/page.tsx",
+  "workspaces/[workspaceId]/capabilities/[capability]/page.tsx",
+].map((file) =>
+  fs.readFileSync(
+    path.join(root, "src/app/(admin)/admin/furnishing/release-controls", file),
+    "utf8",
+  ),
+);
 
 describe("FS-UX-008 governed orchestration contracts", () => {
+  it("uses the admin shell as the single main landmark", () => {
+    for (const page of releaseControlPages) expect(page).not.toContain("<main");
+  });
   it("uses authoritative server verification without a client success assertion", () => {
     expect(actions).toContain("fsux8_verify_capability_v2");
     expect(actions).not.toContain("p_success");

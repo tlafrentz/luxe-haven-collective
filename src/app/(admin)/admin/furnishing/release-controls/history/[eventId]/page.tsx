@@ -16,7 +16,7 @@ export default async function ControlEventPage({
     .maybeSingle();
   if (!data) notFound();
   return (
-    <main className="space-y-8 px-4 pb-12 sm:px-6">
+    <div className="space-y-8 px-4 pb-12 sm:px-6">
       <FurnishingHeader
         title="Control event"
         description="Immutable technical evidence for one governed control action."
@@ -56,7 +56,7 @@ export default async function ControlEventPage({
           </pre>
         </details>
       </section>
-    </main>
+    </div>
   );
 }
 function Item({ label, value }: { label: string; value: string }) {

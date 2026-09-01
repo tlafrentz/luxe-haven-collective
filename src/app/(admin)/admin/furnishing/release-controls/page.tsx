@@ -41,7 +41,7 @@ export default async function ReleaseControlsPage() {
     available: release?.status === "found",
   });
   return (
-    <main className="space-y-8 px-4 pb-12 sm:px-6">
+    <div className="space-y-8 px-4 pb-12 sm:px-6">
       <FurnishingHeader
         title="Release controls"
         description="Guide the controlled furnishing release through verified, reversible capability steps."
@@ -202,7 +202,7 @@ export default async function ReleaseControlsPage() {
         engaged={release?.globalKillSwitch !== false}
         suspended={release?.state === "paused"}
       />
-    </main>
+    </div>
   );
 }
 function Summary({ label, value }: { label: string; value: string }) {

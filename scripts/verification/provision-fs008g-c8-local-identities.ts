@@ -34,6 +34,13 @@ const credentials = {
   controlledRunId: randomUUID(),
   controlledCorrelationId: randomUUID(),
   controlledDesignationId: "",
+  releaseBaseline: null as null | {
+    id: string;
+    globalState: string;
+    globalKillSwitch: boolean;
+    configurationValid: boolean;
+    optimisticVersion: number;
+  },
   candidateCommit,
 };
 
@@ -80,10 +87,16 @@ async function createIdentity(
 async function purgeLocalOrphans() {
   const listed = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (listed.error) throw listed.error;
-  const orphans = listed.data.users.filter((user) =>
-    user.email?.startsWith("fs008g-c8-") && user.email.endsWith("@example.invalid"));
+  const orphans = listed.data.users.filter(
+    (user) =>
+      user.email?.startsWith("fs008g-c8-") &&
+      user.email.endsWith("@example.invalid"),
+  );
   for (const orphan of orphans) {
-    await admin.from("workspace_memberships").delete().eq("profile_id", orphan.id);
+    await admin
+      .from("workspace_memberships")
+      .delete()
+      .eq("profile_id", orphan.id);
     await admin.from("owners").delete().eq("profile_id", orphan.id);
     const removed = await admin.auth.admin.deleteUser(orphan.id);
     if (removed.error) throw removed.error;
@@ -97,118 +110,299 @@ async function provision() {
   await createIdentity("admin", "admin");
   await createIdentity("owner", "owner");
 
-  const existingOwner = await must(
-    admin.from("owners").select("id").eq("profile_id", credentials.owner.id).maybeSingle(),
+  const existingOwner = (await must(
+    admin
+      .from("owners")
+      .select("id")
+      .eq("profile_id", credentials.owner.id)
+      .maybeSingle(),
     "OWNER_LOOKUP",
-  ) as { id: string } | null;
-  const workspace = existingOwner ?? await must(
-    admin.from("owners").insert({
-      profile_id: credentials.owner.id,
-      company_name: `FS008G C8 ${suffix}`,
-    }).select("id").single(),
-    "WORKSPACE_CREATE",
-  ) as { id: string };
+  )) as { id: string } | null;
+  const workspace =
+    existingOwner ??
+    ((await must(
+      admin
+        .from("owners")
+        .insert({
+          profile_id: credentials.owner.id,
+          company_name: `FS008G C8 ${suffix}`,
+        })
+        .select("id")
+        .single(),
+      "WORKSPACE_CREATE",
+    )) as { id: string });
   credentials.workspaceId = workspace.id;
 
-  const wrongWorkspace = await must(
-    admin.from("owners").insert({ profile_id: credentials.admin.id, company_name: `FS008G C8 Nonmember ${suffix}` }).select("id").single(),
+  const wrongWorkspace = (await must(
+    admin
+      .from("owners")
+      .insert({
+        profile_id: credentials.admin.id,
+        company_name: `FS008G C8 Nonmember ${suffix}`,
+      })
+      .select("id")
+      .single(),
     "WRONG_WORKSPACE_CREATE",
-  ) as { id: string };
+  )) as { id: string };
   credentials.wrongWorkspaceId = wrongWorkspace.id;
 
-  await must(admin.from("workspace_memberships").upsert([
-    { workspace_id: workspace.id, profile_id: credentials.owner.id, role: "owner", status: "active", property_access_mode: "all", joined_at: new Date().toISOString() },
-    { workspace_id: workspace.id, profile_id: credentials.admin.id, role: "administrator", status: "active", property_access_mode: "all", joined_at: new Date().toISOString() },
-  ], { onConflict: "workspace_id,profile_id" }), "WORKSPACE_MEMBERSHIPS");
-  await must(admin.rpc("provision_fs008g_c8_controlled_tenant", {
-    p_workspace_id: workspace.id,
-    p_admin_id: credentials.admin.id,
-    p_owner_id: credentials.owner.id,
-  }), "CONTROLLED_TENANT_DESIGNATION");
-  const designation = await must(admin.rpc("designate_fs008g_controlled_project", {
-    p_input: {
-      workspace_id: workspace.id,
-      controlled_run_id: credentials.controlledRunId,
-      correlation_id: credentials.controlledCorrelationId,
-      candidate_commit: candidateCommit,
-      purpose: "FS-008G C8 controlled lifecycle verification",
-      created_by: credentials.owner.id,
-      expires_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-    },
-  }), "CONTROLLED_RUN_CREATE") as { designationId: string };
+  await must(
+    admin.from("workspace_memberships").upsert(
+      [
+        {
+          workspace_id: workspace.id,
+          profile_id: credentials.owner.id,
+          role: "owner",
+          status: "active",
+          property_access_mode: "all",
+          joined_at: new Date().toISOString(),
+        },
+        {
+          workspace_id: workspace.id,
+          profile_id: credentials.admin.id,
+          role: "administrator",
+          status: "active",
+          property_access_mode: "all",
+          joined_at: new Date().toISOString(),
+        },
+      ],
+      { onConflict: "workspace_id,profile_id" },
+    ),
+    "WORKSPACE_MEMBERSHIPS",
+  );
+  await must(
+    admin.rpc("provision_fs008g_c8_controlled_tenant", {
+      p_workspace_id: workspace.id,
+      p_admin_id: credentials.admin.id,
+      p_owner_id: credentials.owner.id,
+    }),
+    "CONTROLLED_TENANT_DESIGNATION",
+  );
+  const designation = (await must(
+    admin.rpc("designate_fs008g_controlled_project", {
+      p_input: {
+        workspace_id: workspace.id,
+        controlled_run_id: credentials.controlledRunId,
+        correlation_id: credentials.controlledCorrelationId,
+        candidate_commit: candidateCommit,
+        purpose: "FS-008G C8 controlled lifecycle verification",
+        created_by: credentials.owner.id,
+        expires_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+      },
+    }),
+    "CONTROLLED_RUN_CREATE",
+  )) as { designationId: string };
   credentials.controlledDesignationId = designation.designationId;
-  const customerAccount = await must(admin.from("customer_accounts").insert({
-    tenant_id: workspace.id,
-    account_type: "owner",
-    status: "active",
-  }).select("id").single(), "CUSTOMER_ACCOUNT_FIXTURE") as { id: string };
+  const customerAccount = (await must(
+    admin
+      .from("customer_accounts")
+      .insert({
+        tenant_id: workspace.id,
+        account_type: "owner",
+        status: "active",
+      })
+      .select("id")
+      .single(),
+    "CUSTOMER_ACCOUNT_FIXTURE",
+  )) as { id: string };
   credentials.customerAccountId = customerAccount.id;
-  await must(admin.from("customer_account_memberships").insert({
-    tenant_id: workspace.id,
-    customer_account_id: customerAccount.id,
-    profile_id: credentials.owner.id,
-    status: "active",
-  }), "CUSTOMER_ACCOUNT_MEMBERSHIP_FIXTURE");
-  const release = await must(admin.from("furnishing_activation_releases")
-    .select("id,global_state,global_kill_switch,configuration_valid")
-    .eq("milestone", "FS-008A").single(), "ACTIVATION_BASELINE_LOOKUP") as {
-      id: string; global_state: string; global_kill_switch: boolean; configuration_valid: boolean;
-    };
-  await must(admin.from("furnishing_activation_releases").update({
-    global_state: "internal", global_kill_switch: false, configuration_valid: true,
-  }).eq("id", release.id), "LOCAL_ENTITLEMENT_WINDOW_OPEN");
-  try {
-    await must(admin.from("commercial_entitlements").insert({
+  await must(
+    admin.from("customer_account_memberships").insert({
       tenant_id: workspace.id,
       customer_account_id: customerAccount.id,
-      capability_code: "furnishing.project.access",
-      resource_scope_type: "workspace",
-      resource_scope_id: workspace.id,
-      source: "migration",
-      source_reference_id: `fs008g-c8-local-${suffix}`,
-      offer_code: "FS-DESIGN",
-      offer_version: 1,
+      profile_id: credentials.owner.id,
       status: "active",
+    }),
+    "CUSTOMER_ACCOUNT_MEMBERSHIP_FIXTURE",
+  );
+  const release = (await must(
+    admin
+      .from("furnishing_activation_releases")
+      .select(
+        "id,global_state,global_kill_switch,configuration_valid,optimistic_version",
+      )
+      .eq("milestone", "FS-008A")
+      .single(),
+    "ACTIVATION_BASELINE_LOOKUP",
+  )) as {
+    id: string;
+    global_state: string;
+    global_kill_switch: boolean;
+    configuration_valid: boolean;
+    optimistic_version: number;
+  };
+  credentials.releaseBaseline = {
+    id: release.id,
+    globalState: release.global_state,
+    globalKillSwitch: release.global_kill_switch,
+    configurationValid: release.configuration_valid,
+    optimisticVersion: release.optimistic_version,
+  };
+  await must(
+    admin
+      .from("furnishing_activation_releases")
+      .update({
+        global_state: "internal",
+        global_kill_switch: false,
+        configuration_valid: true,
+      })
+      .eq("id", release.id),
+    "CONTROLLED_RELEASE_PRECONDITION",
+  );
+  await must(
+    admin.from("furnishing_activation_workspaces").insert({
+      release_id: release.id,
+      workspace_id: workspace.id,
+      enabled: true,
+      kill_switch: false,
+      cohort: "internal",
       effective_from: new Date().toISOString(),
-    }), "FURNISHING_ENTITLEMENT_FIXTURE");
+      expires_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+      approved_by: credentials.admin.id,
+      reason: "FS-UX-009 controlled browser fixture precondition",
+      optimistic_version: 0,
+    }),
+    "CONTROLLED_RELEASE_WORKSPACE",
+  );
+  await must(
+    admin.from("fsux8_release_permissions").insert([
+      {
+        actor_id: credentials.admin.id,
+        workspace_id: workspace.id,
+        permission: "workspace_recover",
+        granted_by: credentials.admin.id,
+        reason: "FS-UX-009 controlled browser recovery proof",
+      },
+      {
+        actor_id: credentials.admin.id,
+        workspace_id: null,
+        permission: "global_recover",
+        granted_by: credentials.admin.id,
+        reason: "FS-UX-009 controlled browser recovery proof",
+      },
+    ]),
+    "CONTROLLED_RELEASE_RECOVERY_PERMISSIONS",
+  );
+  await must(
+    admin
+      .from("furnishing_activation_releases")
+      .update({
+        global_state: "internal",
+        global_kill_switch: false,
+        configuration_valid: true,
+      })
+      .eq("id", release.id),
+    "LOCAL_ENTITLEMENT_WINDOW_OPEN",
+  );
+  try {
+    await must(
+      admin.from("commercial_entitlements").insert({
+        tenant_id: workspace.id,
+        customer_account_id: customerAccount.id,
+        capability_code: "furnishing.project.access",
+        resource_scope_type: "workspace",
+        resource_scope_id: workspace.id,
+        source: "migration",
+        source_reference_id: `fs008g-c8-local-${suffix}`,
+        offer_code: "FS-DESIGN",
+        offer_version: 1,
+        status: "active",
+        effective_from: new Date().toISOString(),
+      }),
+      "FURNISHING_ENTITLEMENT_FIXTURE",
+    );
   } finally {
-    await must(admin.from("furnishing_activation_releases").update({
-      global_state: release.global_state,
-      global_kill_switch: release.global_kill_switch,
-      configuration_valid: release.configuration_valid,
-    }).eq("id", release.id), "LOCAL_ENTITLEMENT_WINDOW_RESTORE");
+    await must(
+      admin
+        .from("furnishing_activation_releases")
+        .update({
+          global_state: "internal",
+          global_kill_switch: false,
+          configuration_valid: true,
+        })
+        .eq("id", release.id),
+      "LOCAL_ENTITLEMENT_WINDOW_RESTORE",
+    );
   }
-  const property = await must(admin.from("properties").insert({
-    owner_id: workspace.id,
-    name: `FS008G C8 Isolated Property ${suffix}`,
-    slug: `fs008g-c8-${suffix}`,
-    description: "Isolated browser fixture",
-    address_line_1: "800 Local Test Way",
-    city: "Austin",
-    state: "TX",
-    postal_code: "78701",
-    country: "US",
-    property_type: "short_term_rental",
-    timezone: "America/Chicago",
-    bedrooms: 2,
-    bathrooms: 2,
-    max_guests: 6,
-    status: "draft",
-    source: "manual",
-  }).select("id").single(), "PROPERTY_FIXTURE") as { id: string };
+  const property = (await must(
+    admin
+      .from("properties")
+      .insert({
+        owner_id: workspace.id,
+        name: `FS008G C8 Isolated Property ${suffix}`,
+        slug: `fs008g-c8-${suffix}`,
+        description: "Isolated browser fixture",
+        address_line_1: "800 Local Test Way",
+        city: "Austin",
+        state: "TX",
+        postal_code: "78701",
+        country: "US",
+        property_type: "short_term_rental",
+        timezone: "America/Chicago",
+        bedrooms: 2,
+        bathrooms: 2,
+        max_guests: 6,
+        status: "draft",
+        source: "manual",
+      })
+      .select("id")
+      .single(),
+    "PROPERTY_FIXTURE",
+  )) as { id: string };
   credentials.propertyId = property.id;
-  const style = await must(admin.from("furnishing_style_systems").insert({ workspace_id: workspace.id, name: "C8-D Controlled Style", slug: `c8d-${suffix}`, description: "Isolated fixture", scope: "workspace", lifecycle_status: "approved", created_by: credentials.admin.id }).select("id").single(), "STYLE_FIXTURE") as { id: string };
-  const styleVersion = await must(admin.from("furnishing_style_system_versions").insert({ style_system_id: style.id, version_number: 1, lifecycle_status: "approved", design_principles: ["durable"], mood_tags: ["controlled"], created_by: credentials.admin.id, approved_by: credentials.admin.id, approved_at: new Date().toISOString() }).select("id").single(), "STYLE_VERSION_FIXTURE") as { id: string };
+  const style = (await must(
+    admin
+      .from("furnishing_style_systems")
+      .insert({
+        workspace_id: workspace.id,
+        name: "C8-D Controlled Style",
+        slug: `c8d-${suffix}`,
+        description: "Isolated fixture",
+        scope: "workspace",
+        lifecycle_status: "approved",
+        created_by: credentials.admin.id,
+      })
+      .select("id")
+      .single(),
+    "STYLE_FIXTURE",
+  )) as { id: string };
+  const styleVersion = (await must(
+    admin
+      .from("furnishing_style_system_versions")
+      .insert({
+        style_system_id: style.id,
+        version_number: 1,
+        lifecycle_status: "approved",
+        design_principles: ["durable"],
+        mood_tags: ["controlled"],
+        created_by: credentials.admin.id,
+        approved_by: credentials.admin.id,
+        approved_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single(),
+    "STYLE_VERSION_FIXTURE",
+  )) as { id: string };
   credentials.styleVersionId = styleVersion.id;
-  await must(admin.from("furnishing_style_systems").update({ current_version_id: styleVersion.id }).eq("id", style.id), "STYLE_CURRENT_VERSION");
+  await must(
+    admin
+      .from("furnishing_style_systems")
+      .update({ current_version_id: styleVersion.id })
+      .eq("id", style.id),
+    "STYLE_CURRENT_VERSION",
+  );
 
   const path = `${outputDirectory}/credentials.json`;
   await writeFile(path, `${JSON.stringify(credentials)}\n`, { mode: 0o600 });
   await chmod(path, 0o600);
-  process.stdout.write(JSON.stringify({ credentialPath: path, workspaceId: workspace.id }));
+  process.stdout.write(
+    JSON.stringify({ credentialPath: path, workspaceId: workspace.id }),
+  );
 }
 
 void provision().catch((error: unknown) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? error.message : String(error)}\n`,
+  );
   process.exitCode = 1;
 });

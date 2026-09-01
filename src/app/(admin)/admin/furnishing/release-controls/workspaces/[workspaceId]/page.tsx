@@ -86,7 +86,7 @@ export default async function ControlledWorkspacePage({
     globalKillSwitch?: boolean;
   };
   return (
-    <main className="space-y-8 px-4 pb-12 sm:px-6">
+    <div className="space-y-8 px-4 pb-12 sm:px-6">
       <FurnishingHeader
         title={name}
         description="Activate and verify bounded capabilities in policy order."
@@ -111,6 +111,6 @@ export default async function ControlledWorkspacePage({
         }}
         capabilities={capabilities}
       />
-    </main>
+    </div>
   );
 }

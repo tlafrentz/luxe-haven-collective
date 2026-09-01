@@ -19,6 +19,13 @@ type Fixture = {
   propertyId: string;
   styleVersionId: string;
   controlledDesignationId: string;
+  releaseBaseline: null | {
+    id: string;
+    globalState: string;
+    globalKillSwitch: boolean;
+    configurationValid: boolean;
+    optimisticVersion: number;
+  };
 };
 const admin = createClient(url, required("SUPABASE_SERVICE_ROLE_KEY"), {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -31,25 +38,82 @@ async function remove(table: string, column: string, value: string) {
 
 async function main() {
   const fixture = JSON.parse(await readFile(credentialPath, "utf8")) as Fixture;
-  const designation = await admin.rpc("cleanup_fs008g_c8_controlled_tenant", {
-    p_workspace_id: fixture.workspaceId,
-    p_admin_id: fixture.admin.id,
-    p_owner_id: fixture.owner.id,
-  });
-  if (designation.error) throw new Error(`CLEANUP_DESIGNATION:${designation.error.message}`);
+  await remove("fsux8_release_permissions", "actor_id", fixture.admin.id);
+  await remove(
+    "furnishing_activation_workspaces",
+    "workspace_id",
+    fixture.workspaceId,
+  );
+  if (fixture.releaseBaseline) {
+    if (
+      fixture.releaseBaseline.globalState === "disabled" &&
+      fixture.releaseBaseline.globalKillSwitch &&
+      !fixture.releaseBaseline.configurationValid &&
+      fixture.releaseBaseline.optimisticVersion === 1
+    ) {
+      await remove(
+        "furnishing_activation_capabilities",
+        "release_id",
+        fixture.releaseBaseline.id,
+      );
+    }
+    const restored = await admin
+      .from("furnishing_activation_releases")
+      .update({
+        global_state: fixture.releaseBaseline.globalState,
+        global_kill_switch: fixture.releaseBaseline.globalKillSwitch,
+        configuration_valid: fixture.releaseBaseline.configurationValid,
+        optimistic_version: fixture.releaseBaseline.optimisticVersion,
+      })
+      .eq("id", fixture.releaseBaseline.id);
+    if (restored.error)
+      throw new Error(`CLEANUP_RELEASE_BASELINE:${restored.error.message}`);
+  }
+  const workspace = await admin
+    .from("owners")
+    .select("id")
+    .eq("id", fixture.workspaceId)
+    .maybeSingle();
+  if (workspace.error)
+    throw new Error(`CLEANUP_WORKSPACE_LOOKUP:${workspace.error.message}`);
+  if (workspace.data) {
+    const designation = await admin.rpc("cleanup_fs008g_c8_controlled_tenant", {
+      p_workspace_id: fixture.workspaceId,
+      p_admin_id: fixture.admin.id,
+      p_owner_id: fixture.owner.id,
+    });
+    if (designation.error)
+      throw new Error(`CLEANUP_DESIGNATION:${designation.error.message}`);
+  }
   if (fixture.customerAccountId) {
-    await remove("commercial_entitlements", "customer_account_id", fixture.customerAccountId);
-    await remove("customer_account_memberships", "customer_account_id", fixture.customerAccountId);
+    await remove(
+      "commercial_entitlements",
+      "customer_account_id",
+      fixture.customerAccountId,
+    );
+    await remove(
+      "customer_account_memberships",
+      "customer_account_id",
+      fixture.customerAccountId,
+    );
     await remove("customer_accounts", "id", fixture.customerAccountId);
   }
   if (fixture.controlledDesignationId) {
     const revoked = await admin
       .from("furnishing_controlled_fixture_designations")
-      .update({ cleaned_at: new Date().toISOString(), revoked_at: new Date().toISOString() })
+      .update({
+        cleaned_at: new Date().toISOString(),
+        revoked_at: new Date().toISOString(),
+      })
       .eq("id", fixture.controlledDesignationId)
       .is("project_id", null);
-    if (revoked.error) throw new Error(`CLEANUP_DESIGNATION_REVOKE:${revoked.error.message}`);
-    await remove("furnishing_controlled_fixture_designations", "id", fixture.controlledDesignationId);
+    if (revoked.error)
+      throw new Error(`CLEANUP_DESIGNATION_REVOKE:${revoked.error.message}`);
+    await remove(
+      "furnishing_controlled_fixture_designations",
+      "id",
+      fixture.controlledDesignationId,
+    );
   }
   if (fixture.styleVersionId) {
     const styleVersion = await mustStyleVersion(fixture.styleVersionId);
@@ -59,11 +123,22 @@ async function main() {
         .update({ current_version_id: null })
         .eq("id", styleVersion.style_system_id)
         .eq("current_version_id", fixture.styleVersionId);
-      if (detached.error) throw new Error(`CLEANUP_STYLE_CURRENT_VERSION:${detached.error.message}`);
+      if (detached.error)
+        throw new Error(
+          `CLEANUP_STYLE_CURRENT_VERSION:${detached.error.message}`,
+        );
     }
-    await remove("furnishing_style_system_versions", "id", fixture.styleVersionId);
+    await remove(
+      "furnishing_style_system_versions",
+      "id",
+      fixture.styleVersionId,
+    );
     if (styleVersion?.style_system_id)
-      await remove("furnishing_style_systems", "id", styleVersion.style_system_id);
+      await remove(
+        "furnishing_style_systems",
+        "id",
+        styleVersion.style_system_id,
+      );
   }
   if (fixture.propertyId) await remove("properties", "id", fixture.propertyId);
   await remove("workspace_memberships", "workspace_id", fixture.workspaceId);
@@ -71,16 +146,52 @@ async function main() {
   await remove("owners", "id", fixture.wrongWorkspaceId);
   for (const identity of [fixture.owner, fixture.admin]) {
     const result = await admin.auth.admin.deleteUser(identity.id);
-    if (result.error) throw new Error(`CLEANUP_AUTH_USER:${result.error.message}`);
+    if (result.error) {
+      if (result.error.message === "User not found") continue;
+      const retainedActor = await admin
+        .from("furnishing_activation_audit_events")
+        .select("id", { count: "exact", head: true })
+        .eq("actor_id", identity.id);
+      if (retainedActor.error || !retainedActor.count)
+        throw new Error(`CLEANUP_AUTH_USER:${result.error.message}`);
+      const softDeleted = await admin.auth.admin.deleteUser(identity.id, true);
+      if (softDeleted.error)
+        throw new Error(`CLEANUP_AUTH_USER_SOFT:${softDeleted.error.message}`);
+    }
   }
   const checks = await Promise.all([
-    admin.from("owners").select("id", { count: "exact", head: true }).eq("id", fixture.workspaceId),
-    admin.from("profiles").select("id", { count: "exact", head: true }).in("id", [fixture.owner.id, fixture.admin.id]),
-    ...(fixture.customerAccountId ? [admin.from("customer_accounts").select("id", { count: "exact", head: true }).eq("id", fixture.customerAccountId)] : []),
+    admin
+      .from("owners")
+      .select("id", { count: "exact", head: true })
+      .eq("id", fixture.workspaceId),
+    admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .in("id", [fixture.owner.id, fixture.admin.id]),
+    ...(fixture.customerAccountId
+      ? [
+          admin
+            .from("customer_accounts")
+            .select("id", { count: "exact", head: true })
+            .eq("id", fixture.customerAccountId),
+        ]
+      : []),
   ]);
-  if (checks.some((result) => result.error || result.count !== 0))
+  if (
+    checks.some(
+      (result, index) =>
+        result.error ||
+        (index === 1 ? (result.count ?? 0) > 1 : result.count !== 0),
+    )
+  )
     throw new Error("FS008G_LOCAL_ZERO_RESOURCE_RECONCILIATION_FAILED");
-  process.stdout.write(JSON.stringify({ status: "clean", resources: 0 }));
+  process.stdout.write(
+    JSON.stringify({
+      status: "clean",
+      resources: 0,
+      retainedImmutableActors: checks[1].count ?? 0,
+    }),
+  );
 }
 
 async function mustStyleVersion(id: string) {
@@ -89,11 +200,14 @@ async function mustStyleVersion(id: string) {
     .select("style_system_id")
     .eq("id", id)
     .maybeSingle<{ style_system_id: string }>();
-  if (result.error) throw new Error(`CLEANUP_STYLE_VERSION_LOOKUP:${result.error.message}`);
+  if (result.error)
+    throw new Error(`CLEANUP_STYLE_VERSION_LOOKUP:${result.error.message}`);
   return result.data;
 }
 
 void main().catch((error: unknown) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? error.message : String(error)}\n`,
+  );
   process.exitCode = 1;
 });

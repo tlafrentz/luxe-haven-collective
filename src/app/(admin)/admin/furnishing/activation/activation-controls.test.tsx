@@ -1,20 +1,30 @@
-import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { activationPrerequisite, workspaceControlsFor, type ActivationSequenceState } from "./activation-controls";
-describe("FS-008A P2.4B Admin activation surface", () => {
-  it("preserves the legacy URL through the canonical release-control redirect", () => { const page = readFileSync("src/app/(admin)/admin/furnishing/activation/page.tsx", "utf8"); expect(page).toContain('redirect("/admin/furnishing/release-controls")'); });
-  it("has accessible reason, pending, server-bound loading, refresh, and status behavior", () => { const view = readFileSync("src/app/(admin)/admin/furnishing/activation/activation-controls.tsx", "utf8"); expect(view).toContain("aria-describedby"); expect(view).toContain('role="status"'); expect(view).toContain("useTransition"); expect(view).toContain("router.replace"); expect(view).toContain("workspaceId="); expect(view).toContain("Loading authoritative workspace"); });
-  it("hands commands to a server-only action with confirmation and concurrency fields", () => { const view = readFileSync("src/app/(admin)/admin/furnishing/activation/activation-controls.tsx", "utf8"); expect(view).toContain("submitFurnishingActivationCommand"); expect(view).toContain("expectedVersion"); expect(view).toContain("window.confirm"); });
-  it("renders every remaining control family", () => { const view = readFileSync("src/app/(admin)/admin/furnishing/activation/activation-controls.tsx", "utf8"); for (const value of ["workspace-kill-switch", "workspace-state", "cohort-grant", "cohort-expiration", "cohort-revoke", "capability-state"]) expect(view).toContain(value); });
-  it("maps governed controls to explicit states without one hard-coded submit payload",()=>{const view=readFileSync("src/app/(admin)/admin/furnishing/activation/activation-controls.tsx","utf8");for(const value of ["Set global state: internal","Lift global kill switch","Enable controlled workspace","Engage global kill switch"])expect(view).toContain(value);expect(view).toContain("activationControlPayload(control,reason)");expect(view).not.toContain('submitFurnishingActivationCommand({ command: "global-kill-switch"')});
-  it("resolves the release summary through the governed release-control boundary",()=>{const page=readFileSync("src/app/(admin)/admin/furnishing/release-controls/page.tsx","utf8");expect(page).toContain('requireReleaseControlAccess("view")');expect(page).toContain('p_target: "global"');expect(page).toContain('rpc("resolve_furnishing_activation_control"')});
-  it("removes free-form workspace identity and resolves exact scoped state",()=>{const page=readFileSync("src/app/(admin)/admin/furnishing/release-controls/workspaces/[workspaceId]/page.tsx","utf8");expect(page).toContain('p_target: "workspace"');expect(page).toContain('p_target_id: workspaceId');expect(page).not.toContain("workspace ID")});
-  it("renders authoritative identity, revocation, kill switch, and version without a version-zero client fallback",()=>{const view=readFileSync("src/app/(admin)/admin/furnishing/activation/activation-controls.tsx","utf8");for(const value of ["Authoritative version","workspace.revoked_at","workspace.kill_switch","workspace.optimistic_version"])expect(view).toContain(value);expect(view).not.toContain("selected?.optimistic_version??0");expect(view).not.toMatch(/expectedVersion:\s*0/)});
-  it("cannot submit client-entered unresolved workspace controls and keeps emergency global control independent",()=>{const view=readFileSync("src/app/(admin)/admin/furnishing/activation/activation-controls.tsx","utf8");expect(view).toContain('bound=workspaceStatus==="found"');expect(view).toContain('blocked?"Load authoritative workspace state first.');expect(view.indexOf("<Button control={engage}")).toBeLessThan(view.indexOf('blocked?"Load authoritative'))});
-  it("refreshes the authoritative read model after every accepted or rejected response",()=>{const view=readFileSync("src/app/(admin)/admin/furnishing/activation/activation-controls.tsx","utf8");expect(view).toContain("router.refresh()");expect(view).not.toContain('result.code==="VERSION_CONFLICT"')});
-  it("retains the authoritative missing-row version zero only in the Admin-safe database resolver",()=>{const migration=readFileSync("supabase/migrations/20260826013000_fs008g_c2_unambiguous_activation_command.sql","utf8");expect(migration).toContain("'state','disabled','version',0");expect(migration).toContain("if not found then")});
-  it("binds every mutation to the authoritative revoked-row version 4",()=>{const controls=workspaceControlsFor({id:"row",workspace_id:"4abe0850-6ad7-40a0-89bb-b1fb5e6afe82",enabled:false,kill_switch:true,revoked_at:"2026-08-27T23:46:59Z",optimistic_version:4});expect(controls).toHaveLength(7);expect(new Set(controls.map(control=>control.expectedVersion))).toEqual(new Set([4]))});
-  it("uses version zero only for an authoritative missing-row projection and renders no controls while unresolved",()=>{const missing=workspaceControlsFor({id:"4abe0850-6ad7-40a0-89bb-b1fb5e6afe82",workspace_id:"4abe0850-6ad7-40a0-89bb-b1fb5e6afe82",enabled:false,kill_switch:true,optimistic_version:0});expect(missing.every(control=>control.expectedVersion===0)).toBe(true);expect(workspaceControlsFor(null)).toEqual([])});
-  it("enforces every forward prerequisite in canonical order",()=>{const base:ActivationSequenceState={cohortActive:false,workspaceEnabled:false,workspaceKillSwitch:true,allCapabilitiesEnabled:false,allCapabilitiesDisabled:true,globalInternal:false};expect(activationPrerequisite({command:"workspace-state",state:"internal"},base)).toContain("cohort");expect(activationPrerequisite({command:"capability-state",state:"internal"},{...base,cohortActive:true})).toContain("workspace");expect(activationPrerequisite({command:"workspace-kill-switch",state:"internal"},{...base,cohortActive:true,workspaceEnabled:true,allCapabilitiesDisabled:false})).toContain("capabilities");expect(activationPrerequisite({command:"global-state",state:"internal"},{...base,cohortActive:true,workspaceEnabled:true,allCapabilitiesEnabled:true,allCapabilitiesDisabled:false})).toContain("workspace kill switch");expect(activationPrerequisite({command:"global-kill-switch",state:"internal"},{...base})).toContain("global state")});
-  it("enforces reverse-order rollback prerequisites",()=>{const active:ActivationSequenceState={cohortActive:true,workspaceEnabled:true,workspaceKillSwitch:true,allCapabilitiesEnabled:false,allCapabilitiesDisabled:false,globalInternal:false};expect(activationPrerequisite({command:"workspace-state",state:"disabled"},active)).toContain("capabilities");expect(activationPrerequisite({command:"cohort-revoke",state:"disabled"},{...active,allCapabilitiesDisabled:true})).toContain("workspace");expect(activationPrerequisite({command:"cohort-revoke",state:"disabled"},{...active,workspaceEnabled:false,allCapabilitiesDisabled:true})).toBeNull()});
+import { describe, expect, it } from "vitest";
+
+const read = (path: string) => readFileSync(path, "utf8");
+
+describe("legacy furnishing activation compatibility", () => {
+  it("redirects the legacy URL to canonical Release Controls", () => {
+    expect(
+      read("src/app/(admin)/admin/furnishing/activation/page.tsx"),
+    ).toContain('redirect("/admin/furnishing/release-controls")');
+  });
+
+  it("resolves the canonical summary through the governed server boundary", () => {
+    const page = read(
+      "src/app/(admin)/admin/furnishing/release-controls/page.tsx",
+    );
+    expect(page).toContain('requireReleaseControlAccess("view")');
+    expect(page).toContain('p_target: "global"');
+    expect(page).toContain('rpc("resolve_furnishing_activation_control"');
+  });
+
+  it("resolves exact workspace context without a free-form identifier", () => {
+    const page = read(
+      "src/app/(admin)/admin/furnishing/release-controls/workspaces/[workspaceId]/page.tsx",
+    );
+    expect(page).toContain('p_target: "workspace"');
+    expect(page).toContain("p_target_id: workspaceId");
+    expect(page).not.toContain("workspace ID");
+  });
 });

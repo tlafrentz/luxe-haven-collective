@@ -13,7 +13,7 @@ export default async function ControlHistoryPage() {
     .order("occurred_at", { ascending: false })
     .limit(100);
   return (
-    <main className="space-y-8 px-4 pb-12 sm:px-6">
+    <div className="space-y-8 px-4 pb-12 sm:px-6">
       <FurnishingHeader
         title="Control history"
         description="Read-only projection of immutable release-control evidence."
@@ -54,7 +54,7 @@ export default async function ControlHistoryPage() {
           </table>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 function Th({ children }: { children: React.ReactNode }) {

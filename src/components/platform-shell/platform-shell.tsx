@@ -114,7 +114,12 @@ export function ClientWorkspaceShell({
   entitlements,
 }: Omit<ShellProps, "experience">) {
   return (
-    <PlatformShell experience="client-workspace" role={role} enabledFeatureFlags={enabledFeatureFlags} entitlements={entitlements}>
+    <PlatformShell
+      experience="client-workspace"
+      role={role}
+      enabledFeatureFlags={enabledFeatureFlags}
+      entitlements={entitlements}
+    >
       {children}
     </PlatformShell>
   );
@@ -130,17 +135,34 @@ export function OperationsConsoleShell({
   );
 }
 
-export function PlatformShell({ children, experience, role, enabledFeatureFlags, entitlements }: ShellProps) {
+export function PlatformShell({
+  children,
+  experience,
+  role,
+  enabledFeatureFlags,
+  entitlements,
+}: ShellProps) {
   return (
     <WorkspaceContextProvider>
-      <PlatformShellFrame experience={experience} role={role} enabledFeatureFlags={enabledFeatureFlags} entitlements={entitlements}>
+      <PlatformShellFrame
+        experience={experience}
+        role={role}
+        enabledFeatureFlags={enabledFeatureFlags}
+        entitlements={entitlements}
+      >
         {children}
       </PlatformShellFrame>
     </WorkspaceContextProvider>
   );
 }
 
-function PlatformShellFrame({ children, experience, role, enabledFeatureFlags, entitlements }: ShellProps) {
+function PlatformShellFrame({
+  children,
+  experience,
+  role,
+  enabledFeatureFlags,
+  entitlements,
+}: ShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -481,7 +503,7 @@ function ShellNavigation({
                   <span className="block truncate text-sm font-semibold text-white">
                     Todd L.
                   </span>
-                  <span className="block truncate text-xs text-stone-500">
+                  <span className="block truncate text-xs text-stone-300">
                     Administrator
                   </span>
                 </span>
@@ -808,26 +830,78 @@ export function pageDetails(
     };
   }
   if (pathname.startsWith("/dashboard/hpm")) {
-    const title = pathname.startsWith("/dashboard/hpm/reports/") ? "HPM Report" : pathname.startsWith("/dashboard/hpm/reports") ? "Reports" : pathname.startsWith("/dashboard/hpm/operations") ? "Operations" : pathname.startsWith("/dashboard/hpm/attention") ? "Attention" : pathname.startsWith("/dashboard/hpm/lifecycle/") ? "Lifecycle Thread" : pathname.startsWith("/dashboard/hpm/lifecycle") ? "Lifecycle" : "Overview";
+    const title = pathname.startsWith("/dashboard/hpm/reports/")
+      ? "HPM Report"
+      : pathname.startsWith("/dashboard/hpm/reports")
+        ? "Reports"
+        : pathname.startsWith("/dashboard/hpm/operations")
+          ? "Operations"
+          : pathname.startsWith("/dashboard/hpm/attention")
+            ? "Attention"
+            : pathname.startsWith("/dashboard/hpm/lifecycle/")
+              ? "Lifecycle Thread"
+              : pathname.startsWith("/dashboard/hpm/lifecycle")
+                ? "Lifecycle"
+                : "Overview";
     return {
       eyebrow: "Hospitality Performance Management",
       title,
       breadcrumbs: [
         { id: "home", label: "Home", href: "/dashboard" },
-        { id: "hpm", label: "HPM", ...(title === "Overview" ? { current: true } : { href: "/dashboard/hpm" }) },
-        ...(title === "Overview" ? [] : [{ id: "current", label: title, current: true }]),
+        {
+          id: "hpm",
+          label: "HPM",
+          ...(title === "Overview"
+            ? { current: true }
+            : { href: "/dashboard/hpm" }),
+        },
+        ...(title === "Overview"
+          ? []
+          : [{ id: "current", label: title, current: true }]),
       ],
     };
   }
   if (pathname.startsWith("/dashboard/automations")) {
-    const title = pathname.includes("/operations/reports/") ? "Automation Report" : pathname.endsWith("/operations") ? "Operations" : pathname.includes("/approvals/") ? "Approval Review" : pathname.endsWith("/approvals") ? "Approvals" : pathname.includes("/runs/") ? "Run Detail" : pathname.endsWith("/runs") ? "Runs" : pathname.includes("/versions/") ? "Version Review" : pathname.endsWith("/new") ? "New Automation" : pathname.includes("/definitions/") ? "Automation Detail" : pathname.endsWith("/definitions") ? "Automations" : pathname.includes("/templates/") ? "Template Detail" : pathname.endsWith("/templates") ? "Templates" : "Overview";
+    const title = pathname.includes("/operations/reports/")
+      ? "Automation Report"
+      : pathname.endsWith("/operations")
+        ? "Operations"
+        : pathname.includes("/approvals/")
+          ? "Approval Review"
+          : pathname.endsWith("/approvals")
+            ? "Approvals"
+            : pathname.includes("/runs/")
+              ? "Run Detail"
+              : pathname.endsWith("/runs")
+                ? "Runs"
+                : pathname.includes("/versions/")
+                  ? "Version Review"
+                  : pathname.endsWith("/new")
+                    ? "New Automation"
+                    : pathname.includes("/definitions/")
+                      ? "Automation Detail"
+                      : pathname.endsWith("/definitions")
+                        ? "Automations"
+                        : pathname.includes("/templates/")
+                          ? "Template Detail"
+                          : pathname.endsWith("/templates")
+                            ? "Templates"
+                            : "Overview";
     return {
       eyebrow: "Governed operations",
       title,
       breadcrumbs: [
         { id: "home", label: "Home", href: "/dashboard" },
-        { id: "automation", label: "Automation", ...(title === "Overview" ? { current: true } : { href: "/dashboard/automations" }) },
-        ...(title === "Overview" ? [] : [{ id: "current", label: title, current: true }]),
+        {
+          id: "automation",
+          label: "Automation",
+          ...(title === "Overview"
+            ? { current: true }
+            : { href: "/dashboard/automations" }),
+        },
+        ...(title === "Overview"
+          ? []
+          : [{ id: "current", label: title, current: true }]),
       ],
     };
   }
@@ -858,17 +932,32 @@ export function pageDetails(
           : [{ id: "current", label: "Conversation", current: true }]),
       ],
     };
-  if (pathname === "/dashboard/learn" || pathname.startsWith("/dashboard/learn/")) {
-    const section = pathname.startsWith("/dashboard/learn/lessons") ? "Knowledge"
-      : pathname.startsWith("/dashboard/learn/experiments") ? "Experiments"
-        : pathname.startsWith("/dashboard/learn/improvement") ? "Improvement" : "Outcomes";
+  if (
+    pathname === "/dashboard/learn" ||
+    pathname.startsWith("/dashboard/learn/")
+  ) {
+    const section = pathname.startsWith("/dashboard/learn/lessons")
+      ? "Knowledge"
+      : pathname.startsWith("/dashboard/learn/experiments")
+        ? "Experiments"
+        : pathname.startsWith("/dashboard/learn/improvement")
+          ? "Improvement"
+          : "Outcomes";
     return {
       eyebrow: "Learn",
       title: section,
       breadcrumbs: [
         { id: "home", label: "Home", href: "/dashboard" },
-        { id: "learn", label: "Learn", ...(pathname === "/dashboard/learn" ? { current: true as const } : { href: "/dashboard/learn" }) },
-        ...(pathname === "/dashboard/learn" ? [] : [{ id: "current", label: section, current: true as const }]),
+        {
+          id: "learn",
+          label: "Learn",
+          ...(pathname === "/dashboard/learn"
+            ? { current: true as const }
+            : { href: "/dashboard/learn" }),
+        },
+        ...(pathname === "/dashboard/learn"
+          ? []
+          : [{ id: "current", label: section, current: true as const }]),
       ],
     };
   }
