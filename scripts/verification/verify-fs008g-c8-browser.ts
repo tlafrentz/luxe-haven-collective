@@ -1,4 +1,4 @@
-import { chmod, readFile, rm } from "node:fs/promises";
+import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import axe from "axe-core";
 import { chromium, type BrowserContext, type Page } from "playwright-core";
 
@@ -27,6 +27,8 @@ async function main() {
     throw new Error("FS008G_BROWSER_MUTATION_ACK_REQUIRED");
   const credentialPath = process.env.FS008G_BROWSER_CREDENTIAL_FILE;
   const stateDirectory = process.env.FS008G_BROWSER_STATE_DIR;
+  const lifecycleStatePath = process.env.FS008G_BROWSER_LIFECYCLE_FILE;
+  const startStage = process.env.FS008G_BROWSER_START_STAGE;
   if (!credentialPath)
     throw new Error("FS008G_BROWSER_CREDENTIAL_FILE_REQUIRED");
   if (!stateDirectory) throw new Error("FS008G_BROWSER_STATE_DIR_REQUIRED");
@@ -96,7 +98,26 @@ async function main() {
     refreshed: number;
     denialChecked: boolean;
   }> = [];
-  const lifecycle = { importId: "", packageId: "", projectId: "" };
+  const lifecycle = lifecycleStatePath
+    ? await readFile(lifecycleStatePath, "utf8")
+        .then(
+          (value) =>
+            JSON.parse(value) as {
+              importId: string;
+              packageId: string;
+              projectId: string;
+            },
+        )
+        .catch(() => ({
+          importId: process.env.FS008G_BROWSER_IMPORT_ID ?? "",
+          packageId: process.env.FS008G_BROWSER_PACKAGE_ID ?? "",
+          projectId: process.env.FS008G_BROWSER_PROJECT_ID ?? "",
+        }))
+    : {
+        importId: process.env.FS008G_BROWSER_IMPORT_ID ?? "",
+        packageId: process.env.FS008G_BROWSER_PACKAGE_ID ?? "",
+        projectId: process.env.FS008G_BROWSER_PROJECT_ID ?? "",
+      };
 
   async function login(page: Page, persona: "admin" | "owner") {
     const identity = credentials[persona];
@@ -113,17 +134,26 @@ async function main() {
         readyAttempt < 20 && (await signIn.isDisabled());
         readyAttempt++
       ) {
-        await page.waitForTimeout(300);
+        await page.locator('input[name="captchaToken"]').evaluate((node) => {
+          const input = node as HTMLInputElement;
+          Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            "value",
+          )?.set?.call(input, "XXXX.DUMMY.TOKEN.XXXX");
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        });
         await page.evaluate(() =>
           window.dispatchEvent(
             new CustomEvent("public-auth-captcha", { detail: true }),
           ),
         );
+        await page.waitForTimeout(300);
       }
       if (await signIn.isDisabled())
         throw new Error(`LOGIN_CAPTCHA_NOT_READY:${persona}`);
       await page.locator('input[name="captchaToken"]').evaluate((node) => {
-        (node as HTMLInputElement).value = "local-browser-verification";
+        (node as HTMLInputElement).value = "XXXX.DUMMY.TOKEN.XXXX";
       });
       await signIn.click();
       await Promise.race([
@@ -362,13 +392,53 @@ async function main() {
     return { status: response.status(), refreshed: 200 };
   }
 
+  async function ensureReleaseState(context: BrowserContext) {
+    const page = await context.newPage();
+    await page.goto(
+      `${origin}/admin/furnishing/release-controls/workspaces/${credentials.workspaceId}`,
+      { waitUntil: "networkidle" },
+    );
+    for (const label of [
+      "Catalog viewing",
+      "Design Workspace",
+      "Budgeting",
+      "Procurement readiness",
+    ]) {
+      const enable = page.getByRole("button", {
+        name: `Enable ${label}`,
+        exact: true,
+      });
+      if (await enable.count())
+        await submitControlDialog(
+          page,
+          `Enable ${label}`,
+          new RegExp(`^Enable ${label} for `),
+        );
+      const verify = page.getByRole("button", {
+        name: "Verify capability",
+        exact: true,
+      });
+      if (await verify.count())
+        await submitControlDialog(
+          page,
+          "Verify capability",
+          new RegExp(`^Verify ${label} for `),
+        );
+    }
+    const body = await page.locator("body").innerText();
+    if ((body.match(/Verified/g) ?? []).length < 4)
+      throw new Error("RELEASE_STATE_SETUP_FAILED");
+    await page.close();
+  }
+
   async function runCatalogImport(context: BrowserContext, step: Step) {
     const page = await context.newPage();
     await page.goto(`${origin}/admin/furnishing/products`, {
       waitUntil: "networkidle",
     });
     if (
-      await page
+      !lifecycle.importId &&
+      (await page
         .locator('a[href^="/admin/furnishing/products/"]')
         .evaluateAll((nodes) =>
           nodes.some(
@@ -380,52 +450,90 @@ async function main() {
                 .closest("article, tr, li")
                 ?.textContent?.includes("FS-UX-009 anonymous RLS canary"),
           ),
-        )
+        ))
     ) {
       await page.close();
       return { status: 200, refreshed: 200 };
     }
     const response = await page.goto(
-      `${origin}/admin/furnishing/imports/new?workspace=${credentials.workspaceId}`,
-      {
-        waitUntil: "networkidle",
-      },
+      lifecycle.importId
+        ? `${origin}/admin/furnishing/imports/${lifecycle.importId}`
+        : `${origin}/admin/furnishing/imports/new?workspace=${credentials.workspaceId}`,
+      { waitUntil: "networkidle" },
     );
     if (!response || response.status() >= 400)
       throw new Error("catalog-import:ROUTE_FAILED");
-    await page
-      .getByLabel("Choose an inventory file")
-      .setInputFiles("docs/evidence/FS-008D/source/Catalog Review (1).xlsx");
-    await Promise.all([
-      page.waitForURL(/\/admin\/furnishing\/imports\/[0-9a-f-]+$/, {
-        timeout: 60_000,
-      }),
-      page.getByRole("button", { name: "Upload and inspect" }).click(),
-    ]);
-    lifecycle.importId = new URL(page.url()).pathname.split("/").at(-1) ?? "";
-    if (!lifecycle.importId)
-      throw new Error("catalog-import:IMPORT_ID_MISSING");
-    if (await page.getByRole("button", { name: "Use worksheet" }).count())
-      await clickForm(page, "Use worksheet");
-    await clickForm(page, "Confirm mapping and validate");
+    if (!lifecycle.importId) {
+      await page
+        .getByLabel("Choose an inventory file")
+        .setInputFiles("docs/evidence/FS-008D/source/Catalog Review (1).xlsx");
+      await Promise.all([
+        page.waitForURL(/\/admin\/furnishing\/imports\/[0-9a-f-]+$/, {
+          timeout: 60_000,
+        }),
+        page.getByRole("button", { name: "Upload and inspect" }).click(),
+      ]);
+      lifecycle.importId = new URL(page.url()).pathname.split("/").at(-1) ?? "";
+      if (!lifecycle.importId)
+        throw new Error("catalog-import:IMPORT_ID_MISSING");
+    }
+    if (await page.getByRole("button", { name: "Use worksheet" }).count()) {
+      const catalogSheet = page.locator(
+        'form:has(input[name="sheet"][value="Catalog Review"])',
+      );
+      await Promise.all([
+        page.waitForResponse((value) => value.request().method() === "POST"),
+        catalogSheet.getByRole("button", { name: "Use worksheet" }).click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+    }
+    const mappingButton = page.getByRole("button", {
+      name: "Confirm mapping and validate",
+    });
+    if (await mappingButton.count()) {
+      const mappingForm = mappingButton.locator("xpath=ancestor::form");
+      await mappingForm.locator('[name="mapping:xlsx:A"]').selectOption("sku");
+      await mappingForm
+        .locator('[name="mapping:xlsx:N"]')
+        .selectOption("product_url");
+      await mappingForm.locator('[name="mapping:xlsx:I"]').selectOption("");
+      await Promise.all([
+        page.waitForURL(/\/validation$/),
+        mappingButton.click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+    }
     while (await page.getByRole("button", { name: "Skip row" }).count()) {
       const skip = page.getByRole("button", { name: "Skip row" }).first();
-      await skip
-        .locator("xpath=ancestor::form")
+      const skipForm = skip.locator("xpath=ancestor::form");
+      await skipForm
         .locator('[name="reason"]')
         .fill("Invalid controlled source row");
+      await page.waitForTimeout(1_000);
       await Promise.all([
         page.waitForResponse((value) => value.request().method() === "POST"),
         skip.click(),
       ]);
-      await page.waitForLoadState("networkidle");
+      await page.reload({ waitUntil: "networkidle" });
     }
-    await clickForm(page, "Reconcile catalog matches");
-    await clickForm(page, "Commit platform drafts");
+    if (
+      await page
+        .getByRole("button", { name: "Reconcile catalog matches" })
+        .count()
+    ) {
+      await clickForm(page, "Reconcile catalog matches");
+      await page.reload({ waitUntil: "networkidle" });
+    }
+    if (
+      await page.getByRole("button", { name: "Commit platform drafts" }).count()
+    ) {
+      await clickForm(page, "Commit platform drafts");
+      await page.reload({ waitUntil: "networkidle" });
+    }
     await page.reload({ waitUntil: "networkidle" });
     const body = await page.locator("body").innerText();
     if (
-      !/Import complete/i.test(body) ||
+      !/(?:Import complete|complete with skips)/i.test(body) ||
       !/new\s+109/i.test(body) ||
       !/skipped\s+1/i.test(body)
     )
@@ -494,11 +602,11 @@ async function main() {
     const productLinks: string[] = [];
     for (const productName of ["55 inch Smart TV", "TV Mount", "Sofa"]) {
       await page.goto(
-        `${origin}/admin/furnishing/products?q=${encodeURIComponent(productName)}&scope=workspace`,
+        `${origin}/admin/furnishing/catalog?view=platform&workspace=${credentials.workspaceId}&q=${encodeURIComponent(productName)}`,
         { waitUntil: "networkidle" },
       );
       const link = page
-        .locator('a[href^="/admin/furnishing/products/"]')
+        .locator('a[href^="/admin/furnishing/catalog/"]')
         .filter({ hasText: productName })
         .first();
       if (await link.count())
@@ -511,7 +619,44 @@ async function main() {
         "catalog-reconciliation:TV_MOUNT_DURABLE_PRODUCTS_MISSING",
       );
     for (const href of productLinks) {
-      await page.goto(href, { waitUntil: "networkidle" });
+      const platformUrl = new URL(href);
+      platformUrl.searchParams.set("workspace", credentials.workspaceId);
+      await page.goto(platformUrl.toString(), { waitUntil: "networkidle" });
+      const adopt = page.getByRole("button", {
+        name: "Add to workspace catalog",
+        exact: true,
+      });
+      if (await adopt.count()) {
+        await Promise.all([
+          page.waitForResponse(
+            (response) => response.request().method() === "POST",
+          ),
+          adopt.click(),
+        ]);
+        await page.goto(platformUrl.toString(), { waitUntil: "networkidle" });
+      }
+      const adoptedProduct = page.getByRole("link", {
+        name: /Open existing workspace product/,
+      });
+      if (!(await adoptedProduct.count()))
+        throw new Error(
+          `catalog-reconciliation:ADOPTION_PROJECTION_MISSING:${page.url()}:${(await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 1000)}`,
+        );
+      await page.goto(
+        new URL(
+          (await adoptedProduct.getAttribute("href")) ?? "",
+          origin,
+        ).toString(),
+        { waitUntil: "networkidle" },
+      );
+      const submitReview = page.getByRole("button", {
+        name: "Submit for review",
+        exact: true,
+      });
+      if (await submitReview.count()) {
+        await clickClientForm(page, submitReview, "submitted for review");
+        await page.reload({ waitUntil: "networkidle" });
+      }
       const createAlternate = page.getByRole("button", {
         name: "Create controlled alternate offer",
         exact: true,
@@ -531,10 +676,17 @@ async function main() {
             exact: true,
           })
           .count()
-      )
-        await clickForm(page, "Approve controlled product", {
-          reason: "C8-D controlled product approval",
+      ) {
+        const approval = page.getByRole("button", {
+          name: "Approve controlled product",
+          exact: true,
         });
+        await approval
+          .locator("xpath=ancestor::form")
+          .locator('[name="reason"]')
+          .fill("C8-D controlled product approval");
+        await clickClientForm(page, approval, "Product approved");
+      }
       await page.reload({ waitUntil: "networkidle" });
       while (
         await page
@@ -544,9 +696,17 @@ async function main() {
           })
           .count()
       ) {
-        await clickForm(page, "Approve controlled offer", {
-          reason: "C8-D controlled offer approval",
-        });
+        const approval = page
+          .getByRole("button", {
+            name: "Approve controlled offer",
+            exact: true,
+          })
+          .first();
+        await approval
+          .locator("xpath=ancestor::form")
+          .locator('[name="reason"]')
+          .fill("C8-D controlled offer approval");
+        await clickClientForm(page, approval, "Offer approved");
         await page.reload({ waitUntil: "networkidle" });
       }
       const assignmentContextIds = await page
@@ -1079,7 +1239,14 @@ async function main() {
     const controlledOwner = await browser.newContext({
       storageState: ownerState,
     });
-    for (const step of runbook.steps) {
+    if (process.env.FS008G_BROWSER_ENSURE_RELEASE_STATE === "true")
+      await ensureReleaseState(controlledAdmin);
+    const startIndex = startStage
+      ? runbook.steps.findIndex((step) => step.id === startStage)
+      : 0;
+    if (startStage && startIndex < 0)
+      throw new Error(`FS008G_BROWSER_START_STAGE_INVALID:${startStage}`);
+    for (const step of runbook.steps.slice(Math.max(0, startIndex))) {
       process.stderr.write(`FS008G_BROWSER_STAGE_START:${step.id}\n`);
       const context =
         step.persona === "controlled-admin" ? controlledAdmin : controlledOwner;
@@ -1132,6 +1299,12 @@ async function main() {
           throw new Error(`${step.id}:ANONYMOUS_ACCESS_ALLOWED`);
       }
       results.push({ id: step.id, ...route, denialChecked });
+      if (lifecycleStatePath) {
+        await writeFile(lifecycleStatePath, JSON.stringify(lifecycle), {
+          mode: 0o600,
+        });
+        await chmod(lifecycleStatePath, 0o600);
+      }
     }
     await controlledAdmin.close();
     await controlledOwner.close();

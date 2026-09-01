@@ -465,3 +465,35 @@ No order, payment, retailer request, shipment, notification, or other external e
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. The resulting correction/history commit is not a deployment candidate. No completion tag, Production migration, deployment, Production configuration change, import-parser correction, or broader feature work is authorized.
+
+## Continuation from the XLSX parser hold
+
+The existing FS-UX-009 milestone resumed from `b098ccabdace58a23a7adf1d4b358b6514b9822e`. All prior blocked attempts above remain immutable chronology.
+
+### Bounded corrections preserved
+
+- `86394bdf` — `fix(fs-ux-009): reconcile XLSX source columns`. The XLSX parser now ignores wholly blank formatted columns, reports populated headerless columns by worksheet and address, preserves duplicate headers as stable source-column identities, requires explicit mapping for ambiguous duplicates, and retains physical worksheet row lineage through validation. CSV identity behavior is unchanged.
+- `test(fs-ux-009): harden browser import harness` (the bounded harness commit immediately following `86394bdf`) uses the canonical worksheet and source-column identifiers, handles current CAPTCHA and Server Action hydration behavior, persists lifecycle identifiers, supports bounded stage resume, and follows the canonical platform-product adoption flow.
+
+Neither commit is a deployment candidate.
+
+Focused parser regression coverage passed 14/14, typecheck passed, and `git diff --check` passed. The controlled workbook selected `Catalog Review` at physical header row 4, validated 109 rows, identified one intentional `URL_INVALID` row, skipped that row through the governed UI, reconciled the catalog, and committed 109 platform drafts with zero blocking rows.
+
+### Earliest new authoritative hold
+
+The resumed catalog lifecycle stopped at the platform-product adoption projection. The governed adoption RPC succeeded atomically and created one workspace product with its `furnishing_product_adoptions` lineage row. The server-rendered platform detail nevertheless continued to offer `Add to workspace catalog` instead of projecting `Open existing workspace product`.
+
+The exact service-role read used by `ProductDetail` failed with PostgreSQL `42501`:
+
+```text
+permission denied for table furnishing_product_adoptions
+Hint: GRANT SELECT ON public.furnishing_product_adoptions TO service_role
+```
+
+This is a genuine trusted read-boundary defect. No permission or migration correction was attempted because the parser continuation does not authorize a database migration or broader privilege change. The adoption itself was complete and internally consistent; no requirement, room package, project, procurement, installation, order, payment, retailer, shipment, notification, or external effect was created.
+
+The isolated local database was rebuilt through `20260830156000`. Final reconciliation is zero imports, products, adoptions, controlled designations, projects, and workspaces. The protected release baseline is restored exactly to `disabled / global kill switch engaged / configuration invalid / optimistic version 1`. Production was not connected to or changed.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. The required next action is a separately authorized, minimum trusted read-boundary correction for `furnishing_product_adoptions`, followed by resume at catalog adoption. No completed Release Controls, migration-equivalence, schema, or authorization proof needs replay unless its implementation or state changes.
