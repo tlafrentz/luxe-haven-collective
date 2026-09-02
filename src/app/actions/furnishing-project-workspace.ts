@@ -8,12 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { assertFurnishingEntitlement } from "./furnishing-access";
 import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 import { resolveFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
-import {
-  minorUnits,
-  representativeOffer,
-  resolveQuantity,
-  validatePlan,
-} from "@/features/furnishing-studio";
+import { minorUnits, validatePlan } from "@/features/furnishing-studio";
 // Supabase projections are dynamic until the pending FS migrations generate database types.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -23,6 +18,10 @@ const projectCreationError = (error: unknown) =>
   String((error as { message?: unknown } | null)?.message ?? "").match(
     /FURNISHING_PROJECT_[A-Z_]+/,
   )?.[0] ?? "FURNISHING_PROJECT_CREATION_FAILED";
+const planGenerationError = (error: unknown) =>
+  String((error as { message?: unknown } | null)?.message ?? "").match(
+    /FURNISHING_PLAN_[A-Z_]+/,
+  )?.[0] ?? "FURNISHING_PLAN_GENERATION_FAILED";
 async function context() {
   const { user, profile } = await requireUser();
   return { user, profile, db: createAdminClient() };
@@ -272,7 +271,8 @@ export async function createProjectWorkspaceAction(formData: FormData) {
         },
       } as never,
     );
-  if (creationError || !creation) throw new Error(projectCreationError(creationError));
+  if (creationError || !creation)
+    throw new Error(projectCreationError(creationError));
   const authorizedCreation = creation as unknown as Row;
   if (
     String(authorizedCreation.workspaceId) !== command.workspaceId ||
@@ -444,169 +444,34 @@ export async function getProjectWorkspace(projectId: string) {
     moodBoards: moodBoards ?? [],
   };
 }
-const offerProjection = (offer: Row, preferredOfferId?: string | null) => ({
-  id: String(offer.id),
-  status: offer.status,
-  availability: offer.availability,
-  listedPrice:
-    typeof offer.listed_price_minor === "number"
-      ? {
-          amountMinor: offer.listed_price_minor,
-          currency: offer.currency ?? "USD",
-        }
-      : null,
-  lastVerifiedAt: offer.last_verified_at ?? null,
-  preferred: offer.id === preferredOfferId,
-});
 export async function generateFurnishingPlanAction(formData: FormData) {
-  const { user } = await context(),
-    command = await resolveFurnishingCommandContext(
-      value(formData, "commandContextId"),
-      { commandType: "project.plan.generate", targetType: "project" },
-    ),
-    db = createAdminClient(),
-    projectId = command.targetId;
-  const { project, packageVersion } = (await getProjectWorkspace(
-    projectId,
-  )) as Row;
-  if (project.current_plan_version_id) {
-    const { data: existing } = await db
-      .from("furnishing_plans")
-      .select("id")
-      .eq("id", project.current_plan_version_id)
-      .eq("project_id", projectId)
-      .maybeSingle();
-    if (existing) return;
-    throw new Error("PLAN_GENERATION_CONFLICT");
-  }
-  if (!packageVersion) throw new Error("APPROVED_PACKAGE_REQUIRED");
-  const rooms: Row[] = project.furnishing_rooms ?? [],
-    facts = {
-      bedrooms: Number(
-        project.property_furnishing_profiles?.bedroom_count ?? 1,
-      ),
-      bathrooms: Number(
-        project.property_furnishing_profiles?.bathroom_count ?? 1,
-      ),
-      guests: Number(project.property_furnishing_profiles?.guest_capacity ?? 2),
-      rooms: rooms.length,
-      beds: Number(project.property_furnishing_profiles?.bedroom_count ?? 1),
-    };
-  const { data: plan, error } = await db
-    .from("furnishing_plans")
-    .insert({
-      project_id: projectId,
-      version_number: 1,
-      status: "draft",
-      package_snapshot: {
-        packageVersionId: packageVersion.id,
-        versionNumber: packageVersion.version_number,
+  const commandContextId = value(formData, "commandContextId"),
+    expectedProjectVersion = Number(value(formData, "expectedProjectVersion"));
+  if (
+    !Number.isSafeInteger(expectedProjectVersion) ||
+    expectedProjectVersion < 1
+  )
+    throw new Error("FURNISHING_PLAN_COMMAND_INVALID");
+  const db = await createClient();
+  const { data, error } = await db.rpc(
+    "generate_authorized_furnishing_plan" as never,
+    {
+      p_input: {
+        command_context_id: commandContextId,
+        expected_project_version: expectedProjectVersion,
       },
-      design_snapshot: {
-        designProfileVersionId: project.design_profile_version_id,
-      },
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
-  let total = 0,
-    selectionOrder = 0;
-  const compositions: Row[] =
-    packageVersion.furnishing_package_room_composition ?? [];
-  for (const room of rooms) {
-    const composition =
-      compositions.find((x: Row) => x.room_type === room.room_type) ||
-      (room.room_type === "primary_bedroom"
-        ? compositions.find((x: Row) => x.room_type === "bedroom")
-        : null);
-    if (!composition) continue;
-    const roomVersion = composition.furnishing_room_package_versions;
-    await db
-      .from("furnishing_rooms")
-      .update({ room_package_version_id: roomVersion.id, status: "planning" })
-      .eq("id", room.id);
-    for (const item of roomVersion.furnishing_room_package_items ?? []) {
-      const rule = item.furnishing_quantity_rules,
-        quantity = resolveQuantity(
-          {
-            id: rule.id,
-            ruleType: rule.rule_type,
-            multiplier: Number(rule.multiplier),
-            minimum: rule.minimum === null ? null : Number(rule.minimum),
-            maximum: rule.maximum === null ? null : Number(rule.maximum),
-            customExpression: rule.custom_expression
-              ? JSON.stringify(rule.custom_expression)
-              : null,
-            rounding: rule.rounding,
-          },
-          facts,
-        ),
-        product = item.furnishing_products,
-        offer = product
-          ? representativeOffer(
-              (product.furnishing_product_offers ?? []).map((candidate: Row) =>
-                offerProjection(candidate, product.preferred_offer_id),
-              ),
-            )
-          : null,
-        unit = offer?.listedPrice?.amountMinor ?? null,
-        estimated = unit === null ? null : Math.round(unit * quantity);
-      total += estimated ?? 0;
-      let compatibility = null;
-      if (product && project.design_profile_version_id) {
-        const styleVersion =
-          project.furnishing_design_profile_versions?.style_system_version_id;
-        const { data: assignment } = await db
-          .from("furnishing_product_style_assignments")
-          .select("compatibility")
-          .eq("product_id", product.id)
-          .eq("style_system_version_id", styleVersion)
-          .maybeSingle();
-        compatibility = assignment?.compatibility ?? null;
-      }
-      await db.from("furnishing_product_selections").insert({
-        furnishing_plan_id: plan.id,
-        room_id: room.id,
-        package_item_id: item.id,
-        requirement_id: item.room_requirement_id,
-        requirement_name:
-          item.furnishing_room_requirements?.name ?? item.requirement_key,
-        product_id: product?.id ?? null,
-        selected_offer_id: offer?.id ?? null,
-        quantity_rule_id: item.quantity_rule_id,
-        resolved_quantity: quantity,
-        purchase_quantity: quantity,
-        estimated_unit_price_minor: unit,
-        estimated_total_minor: estimated,
-        price_observed_at: unit !== null ? new Date().toISOString() : null,
-        selection_source: "package",
-        selection_status: product ? "recommended" : "missing",
-        required: item.priority === "required",
-        priority: item.priority,
-        style_compatibility: compatibility,
-        sort_order: selectionOrder++,
-      });
-    }
-  }
-  await db
-    .from("furnishing_plans")
-    .update({
-      estimated_subtotal_minor: total,
-      estimated_total_minor: total,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", plan.id);
-  await db
-    .from("furnishing_projects")
-    .update({
-      current_plan_version_id: plan.id,
-      plan_status: "draft",
-      lifecycle_status: "designing",
-      phase: "selections",
-    })
-    .eq("id", projectId);
-  revalidatePath(`/admin/furnishing/projects/${projectId}`);
+    } as never,
+  );
+  if (error) throw new Error(planGenerationError(error));
+  const result = data as unknown as {
+    projectId?: string;
+    planId?: string;
+    projectVersion?: number;
+    status?: string;
+  };
+  if (!result?.projectId || !result.planId || !result.projectVersion)
+    throw new Error("FURNISHING_PLAN_RESULT_INVALID");
+  revalidatePath(`/admin/furnishing/projects/${result.projectId}`);
 }
 async function editableSelection(
   db: ReturnType<typeof createAdminClient>,

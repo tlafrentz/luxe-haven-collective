@@ -635,6 +635,11 @@ export async function ProjectWorkspace({
                 name="commandContextId"
                 value={generateContext?.contextId ?? ""}
               />
+              <input
+                type="hidden"
+                name="expectedProjectVersion"
+                value={project.optimistic_version}
+              />
               <button className={button}>Generate Plan v1</button>
             </form>
           ) : null}
