@@ -567,3 +567,27 @@ Governed cleanup archived/reconciled the controlled project, plan, snapshot, bas
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. The next bounded correction is the canonical installation-source projection relation name. Final full-suite, build, migration-rebuild, and installation completion gates were not run after this authoritative stop.
+
+## Installation source continuation from `fd4dbbc3`
+
+The bounded application correction replaces the nonexistent embedded `fsux7_installation_projects` relation with canonical `furnishing_installation_projects` on `/admin/furnishing/installations/new`. The projection now executes with the authenticated server client, so existing RLS remains authoritative, and it exposes only current approved, non-archived readiness sources. Completed or archived installation sources are excluded. The submission remains bound to the immutable readiness snapshot identifier. No migration or database-object rename was introduced. A complete installation route/action/component/browser-harness search found no other stale database relation reference; the remaining `fsux7_*` names are installed evidence tables and governed RPCs.
+
+Focused projection and existing installation suites passed 13/13, typecheck passed, and `git diff --check` passed. The corrected route loaded directly from a fresh controlled approved readiness snapshot and rendered the no-external-effect notice and canonical create action.
+
+### Earliest new authoritative hold
+
+Authenticated installation creation then failed atomically inside `fsux7_create_project`:
+
+```text
+null value in column "source_selection_id" of relation "fsux7_planned_lines" violates not-null constraint
+```
+
+The installed RPC copies `furnishing_procurement_lines.source_plan_line_id` into `fsux7_planned_lines.source_selection_id`. Canonical design-snapshot procurement lines are constrained by `furnishing_procurement_line_source_check` to use `source_line_kind = 'snapshot_item'`, a non-null `source_snapshot_item_id`, and a null `source_plan_line_id`. No later forward migration replaces this RPC. Both browser submissions rolled back: zero installation projects, planned lines, orders, receipts, shipments, or external effects were created.
+
+This is a distinct authoritative database-contract defect outside the authorized no-migration relation correction. Receipt, inspection, installation evidence, completion, remaining accessibility coverage, and expensive final gates were not run or relabeled as passing.
+
+Governed cleanup completed and retained only history allowed by its retention contract. Final active-resource reconciliation is zero controlled installation projects, procurement baselines, procurement lines, projects, plans, orders, memberships, entitlements, release workspaces, and release capabilities. Release Controls are exactly `disabled / global kill switch engaged / configuration invalid / optimistic version 1`. No order, payment, shipment, notification, retailer request, provider effect, Production access, or Production change occurred.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. A future bounded forward correction must make installation planned-line lineage resolve the canonical source selection for snapshot-native procurement lines without weakening tenant, authorization, snapshot, idempotency, or atomicity boundaries.

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { Badge, FurnishingHeader } from "./furnishing-navigation";
 import {
   approveCompletion,
@@ -103,14 +104,28 @@ export async function TrackingLibrary() {
 
 export async function NewTrackingProject() {
   await requireRole(["admin"]);
-  const db = createAdminClient();
+  const db = await createClient();
   const { data, error } = await db
     .from("fsux6_readiness_snapshots")
     .select(
-      "id,baseline_id,snapshot_digest,created_at,furnishing_procurement_baselines(id,fsux7_installation_projects(id))",
+      "id,baseline_id,readiness_version_id,snapshot_digest,created_at,furnishing_procurement_baselines!inner(id,readiness_status,current_readiness_version_id,archived_at,furnishing_installation_projects(id,tracking_status,archived_at))",
     )
+    .eq("furnishing_procurement_baselines.readiness_status", "approved")
+    .is("furnishing_procurement_baselines.archived_at", null)
     .order("created_at", { ascending: false });
   if (error) throw new Error("INSTALLATION_SOURCE_LOAD_FAILED");
+  const sources = (data ?? []).filter((snapshot: Row) => {
+    const baseline = snapshot.furnishing_procurement_baselines as Row | null;
+    const projects =
+      (baseline?.furnishing_installation_projects as Row[] | undefined) ?? [];
+    return (
+      baseline?.current_readiness_version_id === snapshot.readiness_version_id &&
+      !projects.some(
+        (project) =>
+          project.archived_at !== null || project.tracking_status === "complete",
+      )
+    );
+  });
   return (
     <div className="space-y-6">
       <FurnishingHeader
@@ -120,10 +135,10 @@ export async function NewTrackingProject() {
       />
       {notice}
       <div className="grid gap-4">
-        {(data ?? []).map((s: Row) => {
+        {sources.map((s: Row) => {
           const baseline = s.furnishing_procurement_baselines as Row | null,
             used = (
-              baseline?.fsux7_installation_projects as Row[] | undefined
+              baseline?.furnishing_installation_projects as Row[] | undefined
             )?.[0];
           return (
             <form
@@ -158,6 +173,17 @@ export async function NewTrackingProject() {
             </form>
           );
         })}
+        {!sources.length ? (
+          <div className="rounded-2xl border bg-white p-8 text-center">
+            <h2 className="text-xl font-semibold">
+              No eligible readiness snapshots
+            </h2>
+            <p className="mt-2 text-stone-600">
+              Approve a current Procurement Readiness version before creating
+              installation tracking.
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   );
