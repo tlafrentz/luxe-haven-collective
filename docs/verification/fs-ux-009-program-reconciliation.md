@@ -591,3 +591,17 @@ Governed cleanup completed and retained only history allowed by its retention co
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. A future bounded forward correction must make installation planned-line lineage resolve the canonical source selection for snapshot-native procurement lines without weakening tenant, authorization, snapshot, idempotency, or atomicity boundaries.
+
+## Remaining installation-path reconciliation from `07ec924a`
+
+Forward migration `20260830164000_fs_ux_009_installation_lineage_reconciliation.sql` adds the snapshot-native `source_snapshot_item_id` lineage, makes legacy `source_selection_id` optional, and enforces exactly one authoritative source. `fsux7_create_project` now locks and revalidates the approved readiness chain and exact catalog snapshot or legacy plan lineage before atomically materializing planned lines. The same migration corrects installation scoping for shipments, room allocations, inspections, and completion quantities. Its privilege audit adds only the authenticated columns needed by the readiness-source projection and SELECT-only `service_role` access to the eight evidence tables rendered by the trusted installation detail projection. RLS and all mutation grants remain unchanged.
+
+The focused rebuilt-database lifecycle passed approved snapshot → procurement → installation project → snapshot-native planned line → controlled order/receipt → installation → item/property inspection → completion → material correction → reinspection → reapproval, plus the existing governed cleanup matrix. Focused tests passed 20/20 and typecheck plus `git diff --check` passed. The canonical browser continued through the same installation stages, including material correction, reapproval, desktop/mobile overflow checks, and serious/critical axe checks, with zero external effects. Confirmed application blockers corrected in the same bounded batch were: ignored trusted projection errors, a one-to-one embedded relation treated as an array, the retired `line` inspection value instead of canonical `item`, and reapproval hidden by a retained superseded completion snapshot.
+
+### Cleanup hold
+
+The browser prerequisite was provisioned on the predecessor rehearsal tenant before a controlled fixture designation existed. The governed cleanup contract correctly refuses retroactive binding because the project and property predate the designation. No Production or external effect occurred, but deleting those records through an ad hoc privileged path would bypass the required cleanup boundary. The local database was therefore restored by an exact-ceiling rebuild, removing the disposable browser state and restoring the protected seed; the independent governed cleanup matrix remains passing. A future continuation must provision its browser prerequisite through the designation-first fixture contract so that the exact browser lifecycle can itself invoke governed cleanup.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. Final full-suite/build gates were not run because governed cleanup of the browser-created lifecycle could not be certified.

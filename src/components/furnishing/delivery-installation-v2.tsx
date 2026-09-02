@@ -9,6 +9,7 @@ import {
   createTrackingProject,
   recordInstallation,
   recordOrderEvidence,
+  recordMaterialInstallationCorrection,
   recordPropertyInspection,
   recordReceipt,
 } from "@/app/(admin)/admin/furnishing/installations/actions";
@@ -116,13 +117,23 @@ export async function NewTrackingProject() {
   if (error) throw new Error("INSTALLATION_SOURCE_LOAD_FAILED");
   const sources = (data ?? []).filter((snapshot: Row) => {
     const baseline = snapshot.furnishing_procurement_baselines as Row | null;
-    const projects =
-      (baseline?.furnishing_installation_projects as Row[] | undefined) ?? [];
+    const related = baseline?.furnishing_installation_projects as
+      | Row
+      | Row[]
+      | null
+      | undefined;
+    const projects = Array.isArray(related)
+      ? related
+      : related
+        ? [related]
+        : [];
     return (
-      baseline?.current_readiness_version_id === snapshot.readiness_version_id &&
+      baseline?.current_readiness_version_id ===
+        snapshot.readiness_version_id &&
       !projects.some(
         (project) =>
-          project.archived_at !== null || project.tracking_status === "complete",
+          project.archived_at !== null ||
+          project.tracking_status === "complete",
       )
     );
   });
@@ -137,9 +148,12 @@ export async function NewTrackingProject() {
       <div className="grid gap-4">
         {sources.map((s: Row) => {
           const baseline = s.furnishing_procurement_baselines as Row | null,
-            used = (
-              baseline?.furnishing_installation_projects as Row[] | undefined
-            )?.[0];
+            related = baseline?.furnishing_installation_projects as
+              | Row
+              | Row[]
+              | null
+              | undefined,
+            used = Array.isArray(related) ? related[0] : related;
           return (
             <form
               action={createTrackingProject}
@@ -209,15 +223,15 @@ export async function TrackingDetail({
     .maybeSingle();
   if (!p) notFound();
   const [
-    { data: planned },
-    { data: orders },
-    { data: shipments },
-    { data: deliveries },
-    { data: allocations },
-    { data: events },
-    { data: exceptions },
-    { data: inspections },
-    { data: snapshots },
+    plannedResult,
+    ordersResult,
+    shipmentsResult,
+    deliveriesResult,
+    allocationsResult,
+    eventsResult,
+    exceptionsResult,
+    inspectionsResult,
+    snapshotsResult,
   ] = await Promise.all([
     db
       .from("fsux7_planned_lines")
@@ -255,6 +269,30 @@ export async function TrackingDetail({
       .select("id,snapshot_digest,created_at")
       .eq("installation_project_id", id),
   ]);
+  const results = [
+    plannedResult,
+    ordersResult,
+    shipmentsResult,
+    deliveriesResult,
+    allocationsResult,
+    eventsResult,
+    exceptionsResult,
+    inspectionsResult,
+    snapshotsResult,
+  ];
+  if (results.some((result) => result.error))
+    throw new Error("INSTALLATION_PROJECTION_LOAD_FAILED");
+  const [
+    planned,
+    orders,
+    shipments,
+    deliveries,
+    allocations,
+    events,
+    exceptions,
+    inspections,
+    snapshots,
+  ] = results.map((result) => result.data);
   const links = [
     ["Overview", ""],
     ["Orders", "/orders"],
@@ -506,7 +544,7 @@ function TrackingSection({
               name="expected"
               value={String(p.current_tracking_version)}
             />
-            <input type="hidden" name="inspectionType" value="line" />
+            <input type="hidden" name="inspectionType" value="item" />
             <input type="hidden" name="plannedLineId" value={String(line.id)} />
             <input
               type="hidden"
@@ -564,7 +602,8 @@ function TrackingSection({
             Immutable completion snapshot:{" "}
             <code>{String(snapshots[0].snapshot_digest)}</code>
           </p>
-        ) : (
+        ) : null}
+        {p.tracking_status !== "complete" ? (
           <form action={approveCompletion}>
             <input type="hidden" name="projectId" value={String(p.id)} />
             <input
@@ -576,7 +615,37 @@ function TrackingSection({
               Approve installation completion
             </button>
           </form>
-        )}
+        ) : null}
+        {events[0] && p.tracking_status === "complete" ? (
+          <form
+            action={recordMaterialInstallationCorrection}
+            className="grid gap-3 rounded-xl border border-amber-300 p-4"
+          >
+            <input type="hidden" name="projectId" value={String(p.id)} />
+            <input
+              type="hidden"
+              name="expected"
+              value={String(p.current_tracking_version)}
+            />
+            <input type="hidden" name="sourceId" value={String(events[0].id)} />
+            <input
+              type="hidden"
+              name="reason"
+              value="Controlled material correction verification"
+            />
+            <label className="text-sm font-medium">
+              Corrected installer identity
+              <input
+                required
+                name="externalActor"
+                className="mt-1 min-h-11 w-full rounded-xl border px-3"
+              />
+            </label>
+            <button className="min-h-11 rounded-xl border border-amber-500 px-4 font-semibold">
+              Record material correction
+            </button>
+          </form>
+        ) : null}
       </section>
     );
   return (

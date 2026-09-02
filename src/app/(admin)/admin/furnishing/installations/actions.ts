@@ -106,7 +106,11 @@ export async function recordPropertyInspection(form: FormData) {
       inspection_type: value(form, "inspectionType") || "property",
       result: value(form, "result") || "passed",
       template_version: "fs-ux-007-v1",
-      checks: { controlled_browser_review: true },
+      checks: {
+        controlled_browser_review: true,
+        tv_mount_applicable: false,
+        tv_mount_verified: true,
+      },
       evidence: { evidence_class: value(form, "evidenceClass") },
       external_inspector: value(form, "externalInspector"),
       planned_line_id: value(form, "plannedLineId"),
@@ -127,6 +131,29 @@ export async function approveCompletion(form: FormData) {
     i: projectId,
     expected: Number(value(form, "expected")),
     idempotency: value(form, "idempotency") || `completion-${randomUUID()}`,
+    correlation: randomUUID(),
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/furnishing/installations/${projectId}`);
+}
+
+export async function recordMaterialInstallationCorrection(form: FormData) {
+  await requireRole(["admin"]);
+  const projectId = value(form, "projectId"),
+    client = await createClient();
+  const { error } = await client.rpc("fsux7_correct_evidence", {
+    i: projectId,
+    expected: Number(value(form, "expected")),
+    input: {
+      source_type: "installation_event",
+      source_id: value(form, "sourceId"),
+      material: true,
+      corrected_evidence: {
+        external_actor: value(form, "externalActor"),
+      },
+      reason: value(form, "reason"),
+    },
+    idempotency: value(form, "idempotency") || `correction-${randomUUID()}`,
     correlation: randomUUID(),
   });
   if (error) throw new Error(error.message);
