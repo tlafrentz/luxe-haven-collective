@@ -28,6 +28,8 @@ async function main() {
   const credentialPath = process.env.FS008G_BROWSER_CREDENTIAL_FILE;
   const stateDirectory = process.env.FS008G_BROWSER_STATE_DIR;
   const lifecycleStatePath = process.env.FS008G_BROWSER_LIFECYCLE_FILE;
+  const reviewerCredentialPath =
+    process.env.FS008G_BROWSER_REVIEWER_CREDENTIAL_FILE;
   const startStage = process.env.FS008G_BROWSER_START_STAGE;
   if (!credentialPath)
     throw new Error("FS008G_BROWSER_CREDENTIAL_FILE_REQUIRED");
@@ -42,6 +44,11 @@ async function main() {
     controlledCorrelationId: string;
     candidateCommit: string;
   };
+  const reviewerCredentials = reviewerCredentialPath
+    ? (JSON.parse(await readFile(reviewerCredentialPath, "utf8")) as {
+        admin: { email: string; password: string; id: string };
+      })
+    : null;
 
   const runbook = JSON.parse(
     await readFile("docs/runbooks/fs008g-finalization.json", "utf8"),
@@ -75,8 +82,12 @@ async function main() {
   });
   const adminState = `${stateDirectory}/admin.json`;
   const ownerState = `${stateDirectory}/owner.json`;
+  const reviewerState = `${stateDirectory}/reviewer.json`;
   const bootstrapAdmin = await browser.newContext();
   const bootstrapOwner = await browser.newContext();
+  const bootstrapReviewer = reviewerCredentials
+    ? await browser.newContext()
+    : null;
   const anonymous = await browser.newContext();
   const installLocalTurnstile = async (context: BrowserContext) => {
     await context.addInitScript(
@@ -90,7 +101,9 @@ async function main() {
     );
   };
   await Promise.all(
-    [bootstrapAdmin, bootstrapOwner, anonymous].map(installLocalTurnstile),
+    [bootstrapAdmin, bootstrapOwner, anonymous, bootstrapReviewer]
+      .filter((context): context is BrowserContext => context !== null)
+      .map(installLocalTurnstile),
   );
   const results: Array<{
     id: string;
@@ -119,8 +132,13 @@ async function main() {
         projectId: process.env.FS008G_BROWSER_PROJECT_ID ?? "",
       };
 
-  async function login(page: Page, persona: "admin" | "owner") {
-    const identity = credentials[persona];
+  async function login(
+    page: Page,
+    persona: "admin" | "owner" | "reviewer",
+  ) {
+    const identity =
+      persona === "reviewer" ? reviewerCredentials?.admin : credentials[persona];
+    if (!identity) throw new Error("REVIEWER_CREDENTIALS_REQUIRED");
     for (let attempt = 1; attempt <= 3; attempt++) {
       await page.goto(`${origin}/login`, { waitUntil: "domcontentloaded" });
       await page
@@ -134,7 +152,12 @@ async function main() {
         readyAttempt < 20 && (await signIn.isDisabled());
         readyAttempt++
       ) {
-        await page.locator('input[name="captchaToken"]').evaluate((node) => {
+        const tokenInput = page.locator('input[name="captchaToken"]');
+        if ((await tokenInput.count()) === 0) {
+          await page.waitForTimeout(300);
+          continue;
+        }
+        await tokenInput.evaluate((node) => {
           const input = node as HTMLInputElement;
           Object.getOwnPropertyDescriptor(
             HTMLInputElement.prototype,
@@ -152,9 +175,12 @@ async function main() {
       }
       if (await signIn.isDisabled())
         throw new Error(`LOGIN_CAPTCHA_NOT_READY:${persona}`);
-      await page.locator('input[name="captchaToken"]').evaluate((node) => {
-        (node as HTMLInputElement).value = "XXXX.DUMMY.TOKEN.XXXX";
-      });
+      const captchaToken = page.locator('input[name="captchaToken"]');
+      if ((await captchaToken.count()) > 0) {
+        await captchaToken.evaluate((node) => {
+          (node as HTMLInputElement).value = "XXXX.DUMMY.TOKEN.XXXX";
+        });
+      }
       await signIn.click();
       await Promise.race([
         page
@@ -1104,7 +1130,11 @@ async function main() {
     return { status: response.status(), refreshed: 200 };
   }
 
-  async function runProcurement(context: BrowserContext, step: Step) {
+  async function runProcurement(
+    context: BrowserContext,
+    step: Step,
+    reviewer?: BrowserContext,
+  ) {
     const page = await context.newPage();
     const response = await page.goto(targetFor(step).toString(), {
       waitUntil: "networkidle",
@@ -1122,10 +1152,18 @@ async function main() {
       });
     }
     if (step.id === "batch-order") {
-      await page.locator('[name="retailerId"]').selectOption({ index: 1 });
-      await clickForm(page, "Submit batch for authorization");
-      await page.reload({ waitUntil: "networkidle" });
-      await clickForm(page, "Authorize batch");
+      if ((await page.getByRole("button", { name: "Authorize batch" }).count()) === 0) {
+        await page.locator('[name="retailerId"]').selectOption({ index: 1 });
+        await clickForm(page, "Submit batch for authorization");
+        await page.reload({ waitUntil: "networkidle" });
+      }
+      const approvalPage = reviewer ? await reviewer.newPage() : page;
+      if (reviewer)
+        await approvalPage.goto(targetFor(step).toString(), {
+          waitUntil: "networkidle",
+        });
+      await clickForm(approvalPage, "Authorize batch");
+      if (reviewer) await approvalPage.close();
     }
     if (step.id === "receiving") {
       const first = page
@@ -1255,14 +1293,22 @@ async function main() {
     await login(await bootstrapAdmin.newPage(), "admin");
     await new Promise((resolve) => setTimeout(resolve, 1_000));
     await login(await bootstrapOwner.newPage(), "owner");
+    if (bootstrapReviewer) {
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+      await login(await bootstrapReviewer.newPage(), "reviewer");
+    }
     await saveState(bootstrapAdmin, adminState);
     await saveState(bootstrapOwner, ownerState);
+    if (bootstrapReviewer) await saveState(bootstrapReviewer, reviewerState);
     const controlledAdmin = await browser.newContext({
       storageState: adminState,
     });
     const controlledOwner = await browser.newContext({
       storageState: ownerState,
     });
+    const controlledReviewer = bootstrapReviewer
+      ? await browser.newContext({ storageState: reviewerState })
+      : undefined;
     if (process.env.FS008G_BROWSER_ENSURE_RELEASE_STATE === "true")
       await ensureReleaseState(controlledAdmin);
     const startIndex = startStage
@@ -1299,7 +1345,11 @@ async function main() {
                             "batch-order",
                             "receiving",
                           ].includes(step.id)
-                        ? await runProcurement(controlledAdmin, step)
+                        ? await runProcurement(
+                            controlledAdmin,
+                            step,
+                            controlledReviewer,
+                          )
                         : step.id === "owner-projection"
                           ? await runOwnerProjection(controlledOwner, step)
                           : step.id === "kill-switch-cleanup"
@@ -1332,6 +1382,7 @@ async function main() {
     }
     await controlledAdmin.close();
     await controlledOwner.close();
+    await controlledReviewer?.close();
     process.stdout.write(
       JSON.stringify(
         {
@@ -1349,10 +1400,12 @@ async function main() {
   } finally {
     await bootstrapAdmin.close();
     await bootstrapOwner.close();
+    await bootstrapReviewer?.close();
     await anonymous.close();
     await browser.close();
     await rm(adminState, { force: true });
     await rm(ownerState, { force: true });
+    await rm(reviewerState, { force: true });
   }
 }
 

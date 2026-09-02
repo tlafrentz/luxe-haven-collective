@@ -543,3 +543,27 @@ Governed cleanup archived/reconciled the controlled project, plan, and immutable
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. The required next bounded correction is limited to the generated-column insert in authoritative procurement baseline creation. No Production migration, deployment, tag, or broader lifecycle change is authorized by this record.
+
+## Procurement generated-quantity continuation from `8abcfafd`
+
+The existing milestone resumed from `8abcfafdd8f5121016608a2d060bdf97510b30f9`. Forward migration `20260830163000_fs_ux_009_procurement_generated_quantity.sql` (SHA-256 `a5d507450c575d3ce04f549babce95fb78987f4f6231f6673453159a83153b76`) replaces only `create_or_replay_procurement_baseline`. Its procurement-line insert omits generated column `procurement_quantity`; PostgreSQL derives it from `planned_quantity - existing_inventory_quantity`, and create/replay results include the authoritative derived line quantities. Snapshot lineage, the global procurement guard, administrator authorization, idempotency, atomic event persistence, and the no-external-effect event payload remain intact.
+
+The clean-schema generated-column audit found no other generated columns in procurement-through-installation tables and no other explicit generated-column assignments in the remaining RPCs. Focused database proof passed create, exact derived quantity, replay, same-key changed-input conflict, stale source denial, cross-workspace source denial, unauthorized denial, and forced audit-persistence rollback with no partial baseline or line. Focused tests passed 14/14 across the new correction and existing procurement suites.
+
+The resumed canonical browser flow created one snapshot-native procurement baseline. It then created the controlled budget and purchase batch, and a distinct controlled administrator authorized the batch as required by the existing two-actor contract. No external order was recorded or placed. A minimum controlled approved-readiness snapshot was prepared solely to enter the canonical Delivery and Installation interface; its evidence explicitly records `noOrderPlaced: true` and `externalEffects: false`.
+
+### Earliest new authoritative hold
+
+The canonical `/admin/furnishing/installations/new` route failed before installation-project creation with `INSTALLATION_SOURCE_LOAD_FAILED`. The server-rendered PostgREST projection requests:
+
+```text
+furnishing_procurement_baselines(id,fsux7_installation_projects(id))
+```
+
+No relation named `fsux7_installation_projects` exists; the authoritative table is `furnishing_installation_projects`. This is a genuine application read-contract defect in `NewTrackingProject`, not a selector or generated-column defect. It is outside the authorized procurement RPC correction, so no installation component or read contract was changed. No installation project, order, receipt, shipment, payment, notification, retailer request, or provider effect was created.
+
+Governed cleanup archived/reconciled the controlled project, plan, snapshot, baseline, one generated-quantity line, budget, batch, readiness version, and retained immutable readiness evidence. The controlled reviewer membership was removed and its login disabled while its profile remains only for immutable approval references. Final active-resource reconciliation is zero projects, baselines, lines, batches, installations, orders, receipts, controlled memberships, release workspaces, and release capabilities. The protected package remains approved at its original version, and Release Controls are exactly `disabled / global kill switch engaged / configuration invalid / optimistic version 1`. Production and external systems remain unchanged.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. The next bounded correction is the canonical installation-source projection relation name. Final full-suite, build, migration-rebuild, and installation completion gates were not run after this authoritative stop.
