@@ -517,3 +517,29 @@ Governed cleanup returned the project to `archived` and its plan to `superseded`
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. A future bounded correction must prevent archived or otherwise ineligible package dependencies from entering an authoritative plan and must reconcile stale controlled package composition during cleanup before this continuation resumes at plan generation.
+
+## Package-item eligibility continuation from `63852337`
+
+The existing milestone resumed from `63852337eaf5221ee0304f63222f2ec2f425e146`. Prior Release Controls, import, adoption, and package-governance evidence remained unchanged and was not repeated.
+
+Forward migration `20260830162000_fs_ux_009_package_plan_eligibility.sql` (SHA-256 `229485faf198e10318a5537e891b14d0307b49bf613b31bec5a2b04c9026d66d`) corrects both authorized eligibility boundaries. Owner package discovery now excludes approved packages whose required composition contains a non-current room-package version, invalid quantity rule, inactive or retired workspace product, missing approved product version, or missing usable governed offer. Atomic plan generation locks and revalidates the same records before invoking the existing transactional generator, reports `FURNISHING_PLAN_PACKAGE_ITEM_INELIGIBLE:<item-id>`, and binds created selections to the validated approved product version. Historical package, approval, and snapshot evidence is not rewritten, and no alternative is substituted implicitly.
+
+Focused verification passed 13/13 across the new eligibility suite, atomic plan generation, and the existing selection/snapshot suite. Typecheck, migration lint, and the local migration apply also passed. Actual authenticated discovery returned only the fresh eligible controlled package. A transaction then archived its product between discovery and generation: generation failed with the item-specific eligibility error and created no plan, selection, project pointer/version update, command success, or audit evidence. Rolling the transaction back restored the eligible fixture.
+
+The resumed browser journey passed plan generation, delivery allocation, plan validation, owner submission, administrator approval, and immutable snapshot creation. This confirms the eligibility correction repaired the previously blocked snapshot boundary.
+
+### Earliest new authoritative hold
+
+Procurement readiness then failed at its authoritative database boundary with:
+
+```text
+cannot insert a non-DEFAULT value into column "procurement_quantity"
+```
+
+The existing `create_or_replay_procurement_baseline` function attempts to insert into the generated `procurement_quantity` column. No baseline, procurement line, order, payment, shipment, retailer request, notification, installation, or provider effect was created. This is a separate application defect outside the authorized package-eligibility correction, so no procurement code or migration was changed and downstream browser stages and expensive final gates were not run.
+
+Governed cleanup archived/reconciled the controlled project, plan, and immutable snapshot. Remaining synthetic prerequisites referenced by retained immutable evidence were moved to inactive states; controlled memberships and entitlements were removed. Final active-resource reconciliation is zero projects, plans, products, offers, property packages, room packages, procurement baselines, installations, orders, controlled memberships, controlled entitlements, release workspaces, and release capabilities. The protected package `99200000-0000-4000-8000-000000000010` remains approved at its original current version. Release Controls are restored exactly to `disabled / global kill switch engaged / configuration invalid / optimistic version 1`. Production and external systems remain unchanged.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. The required next bounded correction is limited to the generated-column insert in authoritative procurement baseline creation. No Production migration, deployment, tag, or broader lifecycle change is authorized by this record.

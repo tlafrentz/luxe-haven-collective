@@ -20,7 +20,7 @@ const projectCreationError = (error: unknown) =>
   )?.[0] ?? "FURNISHING_PROJECT_CREATION_FAILED";
 const planGenerationError = (error: unknown) =>
   String((error as { message?: unknown } | null)?.message ?? "").match(
-    /FURNISHING_PLAN_[A-Z_]+/,
+    /FURNISHING_PLAN_PACKAGE_ITEM_INELIGIBLE:[0-9a-f-]{36}|FURNISHING_PLAN_[A-Z_]+/,
   )?.[0] ?? "FURNISHING_PLAN_GENERATION_FAILED";
 async function context() {
   const { user, profile } = await requireUser();
