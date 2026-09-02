@@ -40,17 +40,32 @@ async function remove(table: string, column: string, value: string) {
 
 async function main() {
   const fixture = JSON.parse(await readFile(credentialPath, "utf8")) as Fixture;
+  const unboundDesignation = await admin
+    .from("furnishing_controlled_fixture_designations")
+    .update({
+      cleaned_at: new Date().toISOString(),
+      revoked_at: new Date().toISOString(),
+    })
+    .eq("id", fixture.controlledDesignationId)
+    .is("project_id", null)
+    .select("id");
+  if (unboundDesignation.error)
+    throw new Error(
+      `CLEANUP_UNBOUND_DESIGNATION:${unboundDesignation.error.message}`,
+    );
+  if (unboundDesignation.data?.length)
+    await remove(
+      "furnishing_controlled_fixture_designations",
+      "id",
+      fixture.controlledDesignationId,
+    );
   if (fixture.anonymousProbeProductId) {
     await remove(
       "furnishing_product_identity_claims",
       "product_id",
       fixture.anonymousProbeProductId,
     );
-    await remove(
-      "furnishing_products",
-      "id",
-      fixture.anonymousProbeProductId,
-    );
+    await remove("furnishing_products", "id", fixture.anonymousProbeProductId);
   }
   await remove("fsux8_release_permissions", "actor_id", fixture.admin.id);
   await remove(

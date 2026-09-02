@@ -25,7 +25,7 @@ describe("FS-UX-009 installation source projection", () => {
     expect(implementation).toContain(
       '.is("furnishing_procurement_baselines.archived_at", null)',
     );
-    expect(implementation).toContain(
+    expect(implementation.replace(/\s+/g, " ")).toContain(
       "baseline?.current_readiness_version_id === snapshot.readiness_version_id",
     );
     expect(implementation).toContain('project.tracking_status === "complete"');

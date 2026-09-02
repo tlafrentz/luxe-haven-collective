@@ -28,22 +28,28 @@ describe("FS-UX-009 controlled fixture service grants", () => {
 
 describe("FS-UX-009 controlled fixture cleanup ordering", () => {
   it("removes provisioned dependencies before both synthetic workspaces", () => {
-    const style = cleanup.indexOf('remove("furnishing_style_systems"');
-    const property = cleanup.indexOf('remove("properties"');
-    const workspace = cleanup.indexOf('remove("owners", "id", fixture.workspaceId)');
+    const compact = cleanup.replace(/\s+/g, " ");
+    const style = compact.indexOf('remove( "furnishing_style_systems"');
+    const property = compact.indexOf('remove("properties"');
+    const workspace = compact.indexOf(
+      'remove("owners", "id", fixture.workspaceId)',
+    );
     expect(style).toBeGreaterThan(-1);
     expect(property).toBeGreaterThan(style);
     expect(workspace).toBeGreaterThan(property);
-    expect(cleanup).toContain('remove("owners", "id", fixture.wrongWorkspaceId)');
+    expect(cleanup).toContain(
+      'remove("owners", "id", fixture.wrongWorkspaceId)',
+    );
   });
 
   it("closes and removes an unbound pre-lifecycle designation", () => {
+    const compact = cleanup.replace(/\s+/g, " ");
     expect(cleanup).toContain("furnishing_controlled_fixture_designations");
     expect(cleanup).toContain("cleaned_at:");
     expect(cleanup).toContain("revoked_at:");
     expect(cleanup).toContain('.is("project_id", null)');
-    expect(cleanup).toContain(
-      'remove("furnishing_controlled_fixture_designations"',
+    expect(compact).toContain(
+      'remove( "furnishing_controlled_fixture_designations"',
     );
   });
 });

@@ -605,3 +605,32 @@ The browser prerequisite was provisioned on the predecessor rehearsal tenant bef
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. Final full-suite/build gates were not run because governed cleanup of the browser-created lifecycle could not be certified.
+
+## Simplified workflow completion profile
+
+The authorized simplification was implemented from `3655319a02a62eb41b10f000c3747dc5abeeb8ee` in forward migration `20260830165000_fs_ux_009_simplified_workflow.sql` (SHA-256 `6894958881166f31078da3719ab76af0c61f587239613d163297a438f0c6d590`). The migration is local only; Production remained unchanged at ceiling `20260829010000`.
+
+New projects use their immutable FS-UX-005 approval snapshot as the authoritative source. Manual procurement lines reference immutable snapshot items, and simplified installation lines reference procurement lines. The customer-visible workflow is `draft → ready_for_review → approved → procurement → installation → completed`, with governed cancellation. Procurement is a checklist with `not_started`, `ordered`, `received`, and `issue`; it creates no order, payment, retailer request, provider request, shipment, or notification. Installation records quantities and the bounded delivery/installation states without requiring the legacy FS-UX-007 inspection, manifest, TV/mount, or provider subsystems.
+
+Every user mutation executes through the authenticated server client and one transactional, security-definer RPC. The RPCs derive identity from `auth.uid()`, enforce active workspace membership through the existing workspace role boundary, retain the global Release Controls guard, bind idempotency to the full action fingerprint, reject stale versions, and persist append-only activity in the same transaction. Anonymous, wrong-workspace, unauthorized, suspended/revoked, stale, duplicate, unresolved-completion, and no-external-effect behavior is covered by focused/database proof; the normal owner browser path exercised checklist creation, manual ordering, delivery, installation, and completion through `/dashboard/furnishing/projects/[projectId]`.
+
+The clean database lifecycle proof passed approval snapshot → procurement checklist → manual ordered state → installation → completion, including replay, changed-input conflict, stale update, premature completion rejection, cross-workspace denial, and unchanged external-effect tables. The authenticated Playwright run passed at 1440×900 and 390×844 with no horizontal overflow and no WCAG 2 A/AA axe violations. Governed cleanup returned active simplified projects, workflows, procurement lines, installation lines, external orders, and payments to zero. Immutable project/activity evidence remained retired under its retention contract; the final clean rebuild removed the disposable local database and restored the seed baseline.
+
+Final gates:
+
+- Focused simplified and affected regression suites: 11/11 passed.
+- Complete repository suite: 858 files, 4,684 tests passed.
+- Typecheck: passed.
+- Lint: zero errors; 10 pre-existing warnings, unchanged and outside this correction.
+- Migration lint: no findings.
+- Production build: passed, including all Furnishing dashboard/admin routes.
+- Complete clean local migration chain through `20260830165000`: passed.
+- Transactional database lifecycle and migration replay: passed.
+- `git diff --check`: passed.
+- Production and external systems: unchanged.
+
+Final candidate: the commit containing this completion section and the simplified workflow implementation (reported by exact SHA in the completion handoff).
+
+Classification: `FS-UX-009_SIMPLIFIED_WORKFLOW_COMPLETE_PENDING_PRODUCTION_DEPLOYMENT`.
+
+Deployment recommendation: **HOLD pending a separately authorized Production migration and deployment window**. This local classification does not authorize Production access, migration, deployment, or tagging.
