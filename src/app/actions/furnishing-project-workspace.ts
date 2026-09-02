@@ -2,7 +2,7 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireRole, requireUser } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { assertFurnishingEntitlement } from "./furnishing-access";
@@ -996,8 +996,8 @@ export async function validateFurnishingPlanAction(formData: FormData) {
 }
 export async function submitOrApprovePlanAction(formData: FormData) {
   const mode = value(formData, "mode");
-  if (mode === "approve") await requireRole(["admin"]);
-  else if (mode !== "submit") throw new Error("PLAN_TRANSITION_INVALID");
+  if (mode !== "approve" && mode !== "submit")
+    throw new Error("PLAN_TRANSITION_INVALID");
   const { user } = await context(),
     command = await resolveFurnishingCommandContext(
       value(formData, "commandContextId"),

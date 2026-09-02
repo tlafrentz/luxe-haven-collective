@@ -1175,7 +1175,7 @@ function PlanActions({
           </button>
         </form>
       ) : null}
-      {plan.status === "awaiting_approval" && !customer ? (
+      {plan.status === "awaiting_approval" ? (
         <form action={submitOrApprovePlanAction} className="mt-3">
           <input
             type="hidden"

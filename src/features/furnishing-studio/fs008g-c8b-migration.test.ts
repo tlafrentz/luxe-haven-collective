@@ -5,6 +5,10 @@ const sql = readFileSync(
   "supabase/migrations/20260829030000_fs008g_c8b_owner_selection_snapshot.sql",
   "utf8",
 );
+const customerApprovalCorrection = readFileSync(
+  "supabase/migrations/20260902010000_fs_ux_009_customer_approval_snapshot.sql",
+  "utf8",
+);
 const projectActions = readFileSync(
   "src/app/actions/furnishing-project-workspace.ts",
   "utf8",
@@ -49,7 +53,10 @@ describe("FS-008G-C8-B owner selection migration", () => {
     expect(sql).toContain("OWNER_PLAN_ADMIN_APPROVAL_REQUIRED");
     expect(sql).toContain("OWNER_PLAN_STALE");
     expect(sql).toContain("OWNER_PLAN_REPLAY_CONFLICT");
-    expect(projectActions).toContain('await requireRole(["admin"])');
+    expect(customerApprovalCorrection).toContain(
+      "membership_role not in('owner','administrator','operator')",
+    );
+    expect(projectActions).not.toContain('await requireRole(["admin"])');
     expect(projectActions).toContain(
       'authenticated.rpc("transition_furnishing_owner_plan"',
     );
