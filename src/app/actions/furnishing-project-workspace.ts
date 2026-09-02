@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase/server";
 import { assertFurnishingEntitlement } from "./furnishing-access";
 import { assertFurnishingActivationMutationDisabled } from "@/features/furnishing-studio/activation";
 import { resolveFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
-import { assertFurnishingCatalogMutationAllowed } from "./furnishing-catalog-activation";
 import {
   minorUnits,
   representativeOffer,
@@ -20,6 +19,10 @@ import {
 type Row = Record<string, any>;
 const value = (data: FormData, key: string) =>
   String(data.get(key) ?? "").trim();
+const projectCreationError = (error: unknown) =>
+  String((error as { message?: unknown } | null)?.message ?? "").match(
+    /FURNISHING_PROJECT_[A-Z_]+/,
+  )?.[0] ?? "FURNISHING_PROJECT_CREATION_FAILED";
 async function context() {
   const { user, profile } = await requireUser();
   return { user, profile, db: createAdminClient() };
@@ -242,58 +245,49 @@ export async function createProjectWorkspaceAction(formData: FormData) {
     value(formData, "commandContextId"),
     { commandType: "project.create", targetType: "workspace" },
   );
-  await assertFurnishingCatalogMutationAllowed(command.workspaceId);
-  const { user, profile, db } = await context(),
-    propertyId = value(formData, "propertyId");
+  const propertyId = value(formData, "propertyId"),
+    target = value(formData, "targetBudget"),
+    packageVersionId = value(formData, "packageVersionId"),
+    styleVersionId = value(formData, "styleVersionId"),
+    authenticated = await createClient(),
+    { data: creation, error: creationError } = await authenticated.rpc(
+      "create_authorized_furnishing_project_workspace" as never,
+      {
+        p_input: {
+          command_context_id: value(formData, "commandContextId"),
+          property_id: propertyId,
+          package_version_id: packageVersionId,
+          name: value(formData, "name"),
+          description: value(formData, "notes"),
+          project_type: value(formData, "projectType"),
+          target_budget_minor: target ? minorUnits(target).amountMinor : null,
+          target_launch_date: value(formData, "targetLaunchDate"),
+          budget_priority: value(formData, "budgetPriority"),
+          style_version_id: styleVersionId,
+          bedrooms: value(formData, "bedrooms"),
+          bathrooms: value(formData, "bathrooms"),
+          guests: value(formData, "guests"),
+          include_outdoor: formData.get("includeOutdoor") === "on",
+          furnishing_state: value(formData, "furnishingState"),
+        },
+      } as never,
+    );
+  if (creationError || !creation) throw new Error(projectCreationError(creationError));
+  const authorizedCreation = creation as unknown as Row;
+  if (
+    String(authorizedCreation.workspaceId) !== command.workspaceId ||
+    !authorizedCreation.projectId
+  )
+    throw new Error("FURNISHING_PROJECT_CONTEXT_MISMATCH");
+  const { user, profile, db } = await context();
   const { data: property } = await db
     .from("properties")
     .select("id,owner_id,bedrooms,bathrooms,max_guests,property_type")
     .eq("id", propertyId)
+    .eq("owner_id", command.workspaceId)
     .single();
   if (!property) throw new Error("PROPERTY_REQUIRED");
-  if (String(property.owner_id) !== command.workspaceId)
-    throw new Error("FURNISHING_PROJECT_CONTEXT_MISMATCH");
-  await authorize(db, profile, property.owner_id);
-  const target = value(formData, "targetBudget"),
-    packageVersionId = value(formData, "packageVersionId"),
-    styleVersionId = value(formData, "styleVersionId");
-  if (profile?.role !== "admin") {
-    const ownerDb = await createClient(),
-      { data: eligiblePackages, error: eligibilityError } = await ownerDb.rpc(
-        "discover_furnishing_owner_packages",
-        { p_workspace_id: property.owner_id },
-      );
-    if (
-      eligibilityError ||
-      !(eligiblePackages as Row[] | null)?.some(
-        (pkg) => String(pkg.package_version_id) === packageVersionId,
-      )
-    )
-      throw new Error("FURNISHING_PACKAGE_ACCESS_DENIED");
-  }
-  const { data: project, error } = await db
-    .from("furnishing_projects")
-    .insert({
-      workspace_id: property.owner_id,
-      property_id: property.id,
-      name: value(formData, "name"),
-      description: value(formData, "notes") || null,
-      lifecycle_status: "planning",
-      project_type: value(formData, "projectType"),
-      target_budget_minor: target ? minorUnits(target).amountMinor : null,
-      target_launch_date: value(formData, "targetLaunchDate") || null,
-      furnishing_package_version_id: packageVersionId,
-      design_profile_version_id: null,
-      budget_priority: value(formData, "budgetPriority"),
-      plan_status: "not_generated",
-      created_by: user.id,
-      status: "draft",
-      phase: "setup",
-      budget: { target: Number(target) || 0 },
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error("FURNISHING_OPERATION_FAILED");
+  const project = { id: String(authorizedCreation.projectId) };
   const bedrooms =
       Number(formData.get("bedrooms")) || Number(property.bedrooms) || 1,
     bathrooms = Math.ceil(

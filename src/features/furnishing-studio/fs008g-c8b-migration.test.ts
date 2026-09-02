@@ -32,7 +32,9 @@ describe("FS-008G-C8-B owner selection migration", () => {
     expect(projectActions).toContain(
       'throw new Error("FURNISHING_PROJECT_ACCESS_DENIED")',
     );
-    expect(projectActions).toContain("FURNISHING_PACKAGE_ACCESS_DENIED");
+    expect(projectActions).toContain(
+      "create_authorized_furnishing_project_workspace",
+    );
   });
 
   it("governs save/resume, quantities, delivery, budget, stale revisions, and replay", () => {
