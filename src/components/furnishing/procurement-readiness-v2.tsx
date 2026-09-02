@@ -3,26 +3,582 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Badge, FurnishingHeader } from "./furnishing-navigation";
-import { createProcurementReadiness, reviewProcurementPlan, submitProcurementReview, validateProcurementReadiness } from "@/app/(admin)/admin/furnishing/procurement/actions";
+import {
+  createProcurementReadiness,
+  reviewProcurementPlan,
+  submitProcurementReview,
+  updateProcurementDeliveryPlan,
+  validateProcurementReadiness,
+} from "@/app/(admin)/admin/furnishing/procurement/actions";
 
 type Row = Record<string, unknown>;
-const money = (minor: unknown, currency = "USD") => new Intl.NumberFormat("en-US", { style: "currency", currency }).format(Number(minor ?? 0) / 100);
-const noOrder = <aside className="rounded-2xl border border-amber-300 bg-amber-50 p-4" role="status"><strong>No order has been placed.</strong><p className="mt-1 text-sm text-stone-700">Ordering is not enabled. This plan is preparation evidence only; no retailer request, cart, payment, notification, delivery, or installation has been created.</p></aside>;
+const money = (minor: unknown, currency = "USD") =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency }).format(
+    Number(minor ?? 0) / 100,
+  );
+const noOrder = (
+  <aside
+    className="rounded-2xl border border-amber-300 bg-amber-50 p-4"
+    role="status"
+  >
+    <strong>No order has been placed.</strong>
+    <p className="mt-1 text-sm text-stone-700">
+      Ordering is not enabled. This plan is preparation evidence only; no
+      retailer request, cart, payment, notification, delivery, or installation
+      has been created.
+    </p>
+  </aside>
+);
 
 export async function ProcurementLibrary() {
-  await requireRole(["admin"]);const db=createAdminClient();
-  const { data, error }=await db.from("furnishing_procurement_baselines").select("id,workspace_id,project_id,readiness_status,currency,estimated_total_minor,created_at,furnishing_projects(name,properties(name)),fsux6_procurement_versions(version_number,approved_budget_minor,variance_minor)").not("fsux5_handoff_id","is",null).is("archived_at",null).order("created_at",{ascending:false});
-  if(error)throw new Error("PROCUREMENT_LIBRARY_LOAD_FAILED");
-  return <div className="space-y-6"><FurnishingHeader current="procurement" title="Procurement Readiness" description="Verify approved furnishing evidence, retailer groups, quantities, prices, delivery assumptions, and budget variance before any future purchase boundary." action={<Link className="inline-flex min-h-11 items-center rounded-xl bg-emerald-800 px-4 font-semibold text-white" href="/admin/furnishing/procurement/new">Create project</Link>}/>{noOrder}<div className="overflow-x-auto rounded-2xl border bg-white"><table className="w-full min-w-[52rem] text-left text-sm"><thead><tr className="border-b"><th className="p-4">Project</th><th className="p-4">Property</th><th className="p-4">Readiness</th><th className="p-4">Estimate</th><th className="p-4">Variance</th><th className="p-4">Action</th></tr></thead><tbody>{(data??[]).map((row:Row)=>{const project=row.furnishing_projects as Row|null,property=project?.properties as Row|null,versions=row.fsux6_procurement_versions as Row[]|null,v=versions?.[0];return <tr className="border-b last:border-0" key={String(row.id)}><th className="p-4">{String(project?.name??"Procurement project")}</th><td className="p-4">{String(property?.name??"Property")}</td><td className="p-4"><Badge value={String(row.readiness_status)}/></td><td className="p-4">{money(row.estimated_total_minor,String(row.currency))}</td><td className="p-4">{money(v?.variance_minor,String(row.currency))}</td><td className="p-4"><Link className="font-semibold text-emerald-800" href={`/admin/furnishing/procurement/${row.id}`}>Open</Link></td></tr>})}</tbody></table>{!data?.length?<div className="p-8 text-center"><h2 className="text-xl font-semibold">No procurement plans yet</h2><p className="mt-2 text-stone-600">Prepare an approved Design Workspace and Budget, then create a non-executing readiness plan.</p></div>:null}</div></div>;
+  await requireRole(["admin"]);
+  const db = createAdminClient();
+  const { data, error } = await db
+    .from("furnishing_procurement_baselines")
+    .select(
+      "id,workspace_id,project_id,readiness_status,currency,estimated_total_minor,created_at,furnishing_projects(name,properties(name)),fsux6_procurement_versions(version_number,approved_budget_minor,variance_minor)",
+    )
+    .not("fsux5_handoff_id", "is", null)
+    .is("archived_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error("PROCUREMENT_LIBRARY_LOAD_FAILED");
+  return (
+    <div className="space-y-6">
+      <FurnishingHeader
+        current="procurement"
+        title="Procurement Readiness"
+        description="Verify approved furnishing evidence, retailer groups, quantities, prices, delivery assumptions, and budget variance before any future purchase boundary."
+        action={
+          <Link
+            className="inline-flex min-h-11 items-center rounded-xl bg-emerald-800 px-4 font-semibold text-white"
+            href="/admin/furnishing/procurement/new"
+          >
+            Create project
+          </Link>
+        }
+      />
+      {noOrder}
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full min-w-[52rem] text-left text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="p-4">Project</th>
+              <th className="p-4">Property</th>
+              <th className="p-4">Readiness</th>
+              <th className="p-4">Estimate</th>
+              <th className="p-4">Variance</th>
+              <th className="p-4">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(data ?? []).map((row: Row) => {
+              const project = row.furnishing_projects as Row | null,
+                property = project?.properties as Row | null,
+                versions = row.fsux6_procurement_versions as Row[] | null,
+                v = versions?.[0];
+              return (
+                <tr className="border-b last:border-0" key={String(row.id)}>
+                  <th className="p-4">
+                    {String(project?.name ?? "Procurement project")}
+                  </th>
+                  <td className="p-4">
+                    {String(property?.name ?? "Property")}
+                  </td>
+                  <td className="p-4">
+                    <Badge value={String(row.readiness_status)} />
+                  </td>
+                  <td className="p-4">
+                    {money(row.estimated_total_minor, String(row.currency))}
+                  </td>
+                  <td className="p-4">
+                    {money(v?.variance_minor, String(row.currency))}
+                  </td>
+                  <td className="p-4">
+                    <Link
+                      className="font-semibold text-emerald-800"
+                      href={`/admin/furnishing/procurement/${row.id}`}
+                    >
+                      Open
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {!data?.length ? (
+          <div className="p-8 text-center">
+            <h2 className="text-xl font-semibold">No procurement plans yet</h2>
+            <p className="mt-2 text-stone-600">
+              Prepare an approved Design Workspace and Budget, then create a
+              non-executing readiness plan.
+            </p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
-export async function NewProcurementProject(){await requireRole(["admin"]);const db=createAdminClient();const {data}=await db.from("fsux5_procurement_handoffs").select("id,project_id,created_at,furnishing_projects(name,properties(name)),furnishing_procurement_baselines(id)").order("created_at",{ascending:false});return <div className="space-y-6"><FurnishingHeader current="procurement" title="Create procurement project" description="Choose an approved, current Design Workspace handoff. Creation is atomic and never places an order."/>{noOrder}<div className="grid gap-4">{(data??[]).map((h:Row)=>{const used=(h.furnishing_procurement_baselines as Row[]|null)?.length,project=h.furnishing_projects as Row|null;return <form action={createProcurementReadiness} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-white p-5" key={String(h.id)}><input type="hidden" name="handoffId" value={String(h.id)}/><input type="hidden" name="idempotency" value={`handoff-${String(h.id)}`}/><div><strong>{String(project?.name??"Approved Design Workspace")}</strong><p className="mt-1 text-sm text-stone-600">Handoff {String(h.id).slice(0,8)} · {used?"Project already exists":"Ready to prepare"}</p></div>{used?<Link className="inline-flex min-h-11 items-center rounded-xl border px-4 font-semibold" href={`/admin/furnishing/procurement/${(h.furnishing_procurement_baselines as Row[])[0].id}`}>Open existing</Link>:<button className="min-h-11 rounded-xl bg-emerald-800 px-4 font-semibold text-white" type="submit">Create readiness plan</button>}</form>})}</div></div>}
+export async function NewProcurementProject() {
+  await requireRole(["admin"]);
+  const db = createAdminClient();
+  const { data, error } = await db
+    .from("fsux5_procurement_handoffs")
+    .select(
+      "id,project_id,created_at,furnishing_projects(name,properties(name)),furnishing_procurement_baselines(id)",
+    )
+    .order("created_at", { ascending: false });
+  if (error) throw new Error("PROCUREMENT_HANDOFF_LOAD_FAILED");
+  return (
+    <div className="space-y-6">
+      <FurnishingHeader
+        current="procurement"
+        title="Create procurement project"
+        description="Choose an approved, current Design Workspace handoff. Creation is atomic and never places an order."
+      />
+      {noOrder}
+      <div className="grid gap-4">
+        {(data ?? []).map((h: Row) => {
+          const used = (h.furnishing_procurement_baselines as Row[] | null)
+              ?.length,
+            project = h.furnishing_projects as Row | null;
+          return (
+            <form
+              action={createProcurementReadiness}
+              className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-white p-5"
+              key={String(h.id)}
+            >
+              <input type="hidden" name="handoffId" value={String(h.id)} />
+              <input
+                type="hidden"
+                name="idempotency"
+                value={`handoff-${String(h.id)}`}
+              />
+              <div>
+                <strong>
+                  {String(project?.name ?? "Approved Design Workspace")}
+                </strong>
+                <p className="mt-1 text-sm text-stone-600">
+                  Handoff {String(h.id).slice(0, 8)} ·{" "}
+                  {used ? "Project already exists" : "Ready to prepare"}
+                </p>
+              </div>
+              {used ? (
+                <Link
+                  className="inline-flex min-h-11 items-center rounded-xl border px-4 font-semibold"
+                  href={`/admin/furnishing/procurement/${(h.furnishing_procurement_baselines as Row[])[0].id}`}
+                >
+                  Open existing
+                </Link>
+              ) : (
+                <button
+                  className="min-h-11 rounded-xl bg-emerald-800 px-4 font-semibold text-white"
+                  type="submit"
+                >
+                  Create readiness plan
+                </button>
+              )}
+            </form>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
-export async function ProcurementDetail({id,section="overview",versionId}:{id:string;section?:string;versionId?:string}){await requireRole(["admin"]);const db=createAdminClient();const {data:base}=await db.from("furnishing_procurement_baselines").select("*,furnishing_projects(name,properties(name)),fsux6_procurement_versions(*)").eq("id",id).not("fsux5_handoff_id","is",null).is("archived_at",null).maybeSingle();if(!base)notFound();const versions=(base.fsux6_procurement_versions as Row[]).sort((a,b)=>Number(b.version_number)-Number(a.version_number)),version=versionId?versions.find(v=>v.id===versionId):versions.find(v=>v.id===base.current_readiness_version_id)??versions[0];if(!version)notFound();const [{data:lines},{data:groups},{data:exceptions},{data:validations},{data:snapshot}]=await Promise.all([db.from("furnishing_procurement_lines").select("id,description,retailer_sku,variant,planned_quantity,priority,baseline_unit_price_minor,observed_unit_price_minor,currency,availability_state,price_freshness,resolution_state,furnishing_retailers(name)").eq("readiness_version_id",version.id).is("archived_at",null),db.from("fsux6_retailer_groups").select("*").eq("readiness_version_id",version.id).is("archived_at",null),db.from("furnishing_procurement_exceptions").select("id,exception_type,severity,status,detail").eq("baseline_id",id),db.from("fsux6_validation_runs").select("*").eq("readiness_version_id",version.id).order("created_at",{ascending:false}),db.from("fsux6_readiness_snapshots").select("id,snapshot_digest,created_at").eq("readiness_version_id",version.id).maybeSingle()]);const links=[["Overview",""],["Product lines","/lines"],["Retailer groups","/retailers"],["Exceptions","/exceptions"],["Budget reconciliation","/budget"],["Readiness review","/review"]];return <div className="space-y-6"><FurnishingHeader current="procurement" title={section==="overview"?String((base.furnishing_projects as Row)?.name??"Procurement project"):section.replaceAll("_"," ")} description={`Version ${version.version_number} · ${String(version.state).replaceAll("_"," ")}`}/>{noOrder}<nav aria-label="Procurement project sections" className="flex flex-wrap gap-2">{links.map(([label,path])=><Link className="inline-flex min-h-11 items-center rounded-xl border bg-white px-4 font-semibold focus-visible:ring-2 focus-visible:ring-emerald-700" href={`/admin/furnishing/procurement/${id}${path}`} key={label}>{label}</Link>)}</nav><Summary version={version}/>{section==="lines"?<Lines rows={lines??[]}/>:section==="retailers"?<Groups rows={groups??[]}/>:section==="exceptions"?<Exceptions rows={exceptions??[]}/>:section==="budget"?<Budget version={version}/>:section==="review"?<Review base={base as Row} version={version} validations={validations??[]} snapshot={snapshot}/>:section==="version"?<section className="rounded-2xl border bg-white p-6"><h2 className="text-xl font-semibold">Immutable readiness snapshot</h2><p className="mt-2">Digest: <code>{String(snapshot?.snapshot_digest??"Snapshot unavailable")}</code></p></section>:<div className="grid gap-5 lg:grid-cols-2"><Lines rows={lines??[]}/><Exceptions rows={exceptions??[]}/></div>}</div>}
+export async function ProcurementDetail({
+  id,
+  section = "overview",
+  versionId,
+}: {
+  id: string;
+  section?: string;
+  versionId?: string;
+}) {
+  await requireRole(["admin"]);
+  const db = createAdminClient();
+  const { data: base } = await db
+    .from("furnishing_procurement_baselines")
+    .select(
+      "*,furnishing_projects(name,properties(name)),fsux6_procurement_versions(*)",
+    )
+    .eq("id", id)
+    .not("fsux5_handoff_id", "is", null)
+    .is("archived_at", null)
+    .maybeSingle();
+  if (!base) notFound();
+  const versions = (base.fsux6_procurement_versions as Row[]).sort(
+      (a, b) => Number(b.version_number) - Number(a.version_number),
+    ),
+    version = versionId
+      ? versions.find((v) => v.id === versionId)
+      : (versions.find((v) => v.id === base.current_readiness_version_id) ??
+        versions[0]);
+  if (!version) notFound();
+  const [
+    { data: lines },
+    { data: groups },
+    { data: exceptions },
+    { data: validations },
+    { data: snapshot },
+  ] = await Promise.all([
+    db
+      .from("furnishing_procurement_lines")
+      .select(
+        "id,description,retailer_sku,variant,planned_quantity,priority,baseline_unit_price_minor,observed_unit_price_minor,currency,availability_state,price_freshness,resolution_state,furnishing_retailers(name)",
+      )
+      .eq("readiness_version_id", version.id)
+      .is("archived_at", null),
+    db
+      .from("fsux6_retailer_groups")
+      .select("*")
+      .eq("readiness_version_id", version.id)
+      .is("archived_at", null),
+    db
+      .from("furnishing_procurement_exceptions")
+      .select("id,exception_type,severity,status,detail")
+      .eq("baseline_id", id),
+    db
+      .from("fsux6_validation_runs")
+      .select("*")
+      .eq("readiness_version_id", version.id)
+      .order("created_at", { ascending: false }),
+    db
+      .from("fsux6_readiness_snapshots")
+      .select("id,snapshot_digest,created_at")
+      .eq("readiness_version_id", version.id)
+      .maybeSingle(),
+  ]);
+  const links = [
+    ["Overview", ""],
+    ["Product lines", "/lines"],
+    ["Retailer groups", "/retailers"],
+    ["Exceptions", "/exceptions"],
+    ["Budget reconciliation", "/budget"],
+    ["Readiness review", "/review"],
+  ];
+  return (
+    <div className="space-y-6">
+      <FurnishingHeader
+        current="procurement"
+        title={
+          section === "overview"
+            ? String(
+                (base.furnishing_projects as Row)?.name ??
+                  "Procurement project",
+              )
+            : section.replaceAll("_", " ")
+        }
+        description={`Version ${version.version_number} · ${String(version.state).replaceAll("_", " ")}`}
+      />
+      {noOrder}
+      <nav
+        aria-label="Procurement project sections"
+        className="flex flex-wrap gap-2"
+      >
+        {links.map(([label, path]) => (
+          <Link
+            className="inline-flex min-h-11 items-center rounded-xl border bg-white px-4 font-semibold focus-visible:ring-2 focus-visible:ring-emerald-700"
+            href={`/admin/furnishing/procurement/${id}${path}`}
+            key={label}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <Summary version={version} />
+      {section === "lines" ? (
+        <Lines rows={lines ?? []} />
+      ) : section === "retailers" ? (
+        <Groups rows={groups ?? []} />
+      ) : section === "exceptions" ? (
+        <Exceptions rows={exceptions ?? []} />
+      ) : section === "budget" ? (
+        <Budget version={version} />
+      ) : section === "review" ? (
+        <Review
+          base={base as Row}
+          version={version}
+          validations={validations ?? []}
+          snapshot={snapshot}
+        />
+      ) : section === "version" ? (
+        <section className="rounded-2xl border bg-white p-6">
+          <h2 className="text-xl font-semibold">
+            Immutable readiness snapshot
+          </h2>
+          <p className="mt-2">
+            Digest:{" "}
+            <code>
+              {String(snapshot?.snapshot_digest ?? "Snapshot unavailable")}
+            </code>
+          </p>
+        </section>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Lines rows={lines ?? []} />
+          <Exceptions rows={exceptions ?? []} />
+        </div>
+      )}
+    </div>
+  );
+}
 
-function Summary({version}:{version:Row}){return <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Current estimate",money(version.estimated_total_minor,String(version.currency))],["Approved budget",money(version.approved_budget_minor,String(version.currency))],["Variance",money(version.variance_minor,String(version.currency))],["Contingency",money(version.contingency_minor,String(version.currency))]].map(([label,value])=><div className="rounded-2xl bg-stone-100 p-4" key={label}><dt className="text-sm text-stone-600">{label}</dt><dd className="mt-1 text-xl font-semibold">{value}</dd></div>)}</dl>}
-function Lines({rows}:{rows:Row[]}){return <section className="rounded-2xl border bg-white p-5"><h2 className="text-xl font-semibold">Product lines</h2><div className="mt-4 space-y-3">{rows.map(row=><article className="rounded-xl border p-4" key={String(row.id)}><div className="flex justify-between gap-3"><strong>{String(row.description)}</strong><Badge value={String(row.availability_state)}/></div><p className="mt-2 text-sm text-stone-600">SKU {String(row.retailer_sku??"unresolved")} · Qty {String(row.planned_quantity)} · {money(row.observed_unit_price_minor,String(row.currency))} each · {String(row.price_freshness)}</p></article>)}</div></section>}
-function Groups({rows}:{rows:Row[]}){return <section className="rounded-2xl border bg-white p-5"><h2 className="text-xl font-semibold">Retailer groups</h2><div className="mt-4 grid gap-3 sm:grid-cols-2">{rows.map(row=><article className="rounded-xl border p-4" key={String(row.id)}><strong>{row.retailer_id?"Governed retailer":"Retailer unresolved"}</strong><p className="mt-2 text-sm text-stone-600">{String(row.line_count)} lines · {money(row.estimated_total_minor,String(row.currency))} · {String(row.readiness_state).replaceAll("_"," ")}</p></article>)}</div></section>}
-function Exceptions({rows}:{rows:Row[]}){return <section className="rounded-2xl border bg-white p-5"><h2 className="text-xl font-semibold">Exceptions</h2>{rows.length?<ul className="mt-4 space-y-2">{rows.map(row=><li className="rounded-xl border p-3" key={String(row.id)}><strong>{String(row.exception_type).replaceAll("_"," ")}</strong><p className="text-sm text-stone-600">{String(row.severity)} · {String(row.status)}</p></li>)}</ul>:<p className="mt-3 text-stone-600">No recorded exceptions.</p>}</section>}
-function Budget({version}:{version:Row}){return <section className="rounded-2xl border bg-white p-5"><h2 className="text-xl font-semibold">Budget reconciliation</h2><div className="mt-4"><Summary version={version}/></div><p className="mt-4 text-sm text-stone-600">Contingency remains explicit and is never silently consumed to conceal a material overage.</p></section>}
-function Review({base,version,validations,snapshot}:{base:Row;version:Row;validations:Row[];snapshot:Row|null}){const state=String(version.state);return <section className="space-y-4 rounded-2xl border bg-white p-5"><h2 className="text-xl font-semibold">Readiness review</h2><p>Latest validation: {validations[0]?`${validations[0].result} · ${validations[0].blocking_count} blocking` : "Not run"}</p>{snapshot?<p className="rounded-xl bg-emerald-50 p-4">Approved immutable snapshot: <code>{String(snapshot.snapshot_digest).slice(0,20)}…</code></p>:null}<div className="flex flex-wrap gap-3">{["reconciling","needs_resolution"].includes(state)?<form action={validateProcurementReadiness}><input type="hidden" name="projectId" value={String(base.id)}/><input type="hidden" name="expected" value={String(version.optimistic_version)}/><button className="min-h-11 rounded-xl border px-4 font-semibold" type="submit">Validate readiness</button></form>:null}{state==="ready_for_review"?<form action={submitProcurementReview}><input type="hidden" name="projectId" value={String(base.id)}/><input type="hidden" name="expected" value={String(version.optimistic_version)}/><button className="min-h-11 rounded-xl bg-emerald-800 px-4 font-semibold text-white" type="submit">Submit review</button></form>:null}{state==="in_review"?<><form action={reviewProcurementPlan}><input type="hidden" name="projectId" value={String(base.id)}/><input type="hidden" name="expected" value={String(version.optimistic_version)}/><input type="hidden" name="decision" value="approved"/><input type="hidden" name="reason" value="Readiness evidence approved"/><button className="min-h-11 rounded-xl bg-emerald-800 px-4 font-semibold text-white" type="submit">Approve procurement plan</button></form><form action={reviewProcurementPlan} className="flex gap-2"><input type="hidden" name="projectId" value={String(base.id)}/><input type="hidden" name="expected" value={String(version.optimistic_version)}/><input type="hidden" name="decision" value="changes_requested"/><input required minLength={3} name="reason" aria-label="Changes requested reason" className="min-h-11 rounded-xl border px-3" placeholder="Reason required"/><button className="min-h-11 rounded-xl border px-4 font-semibold" type="submit">Request changes</button></form></>:null}</div><aside className="rounded-xl bg-stone-100 p-4"><strong>Purchase authorization deferred</strong><p className="mt-1 text-sm text-stone-600">No future-purchase authorization control is exposed in this milestone.</p></aside></section>}
+function Summary({ version }: { version: Row }) {
+  return (
+    <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {[
+        [
+          "Current estimate",
+          money(version.estimated_total_minor, String(version.currency)),
+        ],
+        [
+          "Approved budget",
+          money(version.approved_budget_minor, String(version.currency)),
+        ],
+        ["Variance", money(version.variance_minor, String(version.currency))],
+        [
+          "Contingency",
+          money(version.contingency_minor, String(version.currency)),
+        ],
+      ].map(([label, value]) => (
+        <div className="rounded-2xl bg-stone-100 p-4" key={label}>
+          <dt className="text-sm text-stone-600">{label}</dt>
+          <dd className="mt-1 text-xl font-semibold">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+function Lines({ rows }: { rows: Row[] }) {
+  return (
+    <section className="rounded-2xl border bg-white p-5">
+      <h2 className="text-xl font-semibold">Product lines</h2>
+      <div className="mt-4 space-y-3">
+        {rows.map((row) => (
+          <article className="rounded-xl border p-4" key={String(row.id)}>
+            <div className="flex justify-between gap-3">
+              <strong>{String(row.description)}</strong>
+              <Badge value={String(row.availability_state)} />
+            </div>
+            <p className="mt-2 text-sm text-stone-600">
+              SKU {String(row.retailer_sku ?? "unresolved")} · Qty{" "}
+              {String(row.planned_quantity)} ·{" "}
+              {money(row.observed_unit_price_minor, String(row.currency))} each
+              · {String(row.price_freshness)}
+            </p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+function Groups({ rows }: { rows: Row[] }) {
+  return (
+    <section className="rounded-2xl border bg-white p-5">
+      <h2 className="text-xl font-semibold">Retailer groups</h2>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {rows.map((row) => (
+          <article className="rounded-xl border p-4" key={String(row.id)}>
+            <strong>
+              {row.retailer_id ? "Governed retailer" : "Retailer unresolved"}
+            </strong>
+            <p className="mt-2 text-sm text-stone-600">
+              {String(row.line_count)} lines ·{" "}
+              {money(row.estimated_total_minor, String(row.currency))} ·{" "}
+              {String(row.readiness_state).replaceAll("_", " ")}
+            </p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+function Exceptions({ rows }: { rows: Row[] }) {
+  return (
+    <section className="rounded-2xl border bg-white p-5">
+      <h2 className="text-xl font-semibold">Exceptions</h2>
+      {rows.length ? (
+        <ul className="mt-4 space-y-2">
+          {rows.map((row) => (
+            <li className="rounded-xl border p-3" key={String(row.id)}>
+              <strong>{String(row.exception_type).replaceAll("_", " ")}</strong>
+              <p className="text-sm text-stone-600">
+                {String(row.severity)} · {String(row.status)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-stone-600">No recorded exceptions.</p>
+      )}
+    </section>
+  );
+}
+function Budget({ version }: { version: Row }) {
+  return (
+    <section className="rounded-2xl border bg-white p-5">
+      <h2 className="text-xl font-semibold">Budget reconciliation</h2>
+      <div className="mt-4">
+        <Summary version={version} />
+      </div>
+      <p className="mt-4 text-sm text-stone-600">
+        Contingency remains explicit and is never silently consumed to conceal a
+        material overage.
+      </p>
+    </section>
+  );
+}
+function Review({
+  base,
+  version,
+  validations,
+  snapshot,
+}: {
+  base: Row;
+  version: Row;
+  validations: Row[];
+  snapshot: Row | null;
+}) {
+  const state = String(version.state);
+  return (
+    <section className="space-y-4 rounded-2xl border bg-white p-5">
+      <h2 className="text-xl font-semibold">Readiness review</h2>
+      <p>
+        Latest validation:{" "}
+        {validations[0]
+          ? `${validations[0].result} · ${validations[0].blocking_count} blocking`
+          : "Not run"}
+      </p>
+      {snapshot ? (
+        <p className="rounded-xl bg-emerald-50 p-4">
+          Approved immutable snapshot:{" "}
+          <code>{String(snapshot.snapshot_digest).slice(0, 20)}…</code>
+        </p>
+      ) : null}
+      {["reconciling", "needs_resolution"].includes(state) ? (
+        <form
+          action={updateProcurementDeliveryPlan}
+          className="grid gap-3 rounded-xl border p-4 sm:grid-cols-2"
+        >
+          <input type="hidden" name="projectId" value={String(base.id)} />
+          <input
+            type="hidden"
+            name="expected"
+            value={String(version.optimistic_version)}
+          />
+          <label className="text-sm font-medium">
+            Delivery/property information
+            <input
+              required
+              name="address"
+              className="mt-1 min-h-11 w-full rounded-xl border px-3"
+            />
+          </label>
+          <label className="text-sm font-medium">
+            Receiving contact
+            <input
+              required
+              name="receivingContact"
+              className="mt-1 min-h-11 w-full rounded-xl border px-3"
+            />
+          </label>
+          <button
+            className="min-h-11 rounded-xl border px-4 font-semibold sm:col-span-2"
+            type="submit"
+          >
+            Save delivery plan
+          </button>
+        </form>
+      ) : null}
+      <div className="flex flex-wrap gap-3">
+        {["reconciling", "needs_resolution"].includes(state) ? (
+          <form action={validateProcurementReadiness}>
+            <input type="hidden" name="projectId" value={String(base.id)} />
+            <input
+              type="hidden"
+              name="expected"
+              value={String(version.optimistic_version)}
+            />
+            <button
+              className="min-h-11 rounded-xl border px-4 font-semibold"
+              type="submit"
+            >
+              Validate readiness
+            </button>
+          </form>
+        ) : null}
+        {state === "ready_for_review" ? (
+          <form action={submitProcurementReview}>
+            <input type="hidden" name="projectId" value={String(base.id)} />
+            <input
+              type="hidden"
+              name="expected"
+              value={String(version.optimistic_version)}
+            />
+            <button
+              className="min-h-11 rounded-xl bg-emerald-800 px-4 font-semibold text-white"
+              type="submit"
+            >
+              Submit review
+            </button>
+          </form>
+        ) : null}
+        {state === "in_review" ? (
+          <>
+            <form action={reviewProcurementPlan}>
+              <input type="hidden" name="projectId" value={String(base.id)} />
+              <input
+                type="hidden"
+                name="expected"
+                value={String(version.optimistic_version)}
+              />
+              <input type="hidden" name="decision" value="approved" />
+              <input
+                type="hidden"
+                name="reason"
+                value="Readiness evidence approved"
+              />
+              <button
+                className="min-h-11 rounded-xl bg-emerald-800 px-4 font-semibold text-white"
+                type="submit"
+              >
+                Approve procurement plan
+              </button>
+            </form>
+            <form action={reviewProcurementPlan} className="flex gap-2">
+              <input type="hidden" name="projectId" value={String(base.id)} />
+              <input
+                type="hidden"
+                name="expected"
+                value={String(version.optimistic_version)}
+              />
+              <input type="hidden" name="decision" value="changes_requested" />
+              <input
+                required
+                minLength={3}
+                name="reason"
+                aria-label="Changes requested reason"
+                className="min-h-11 rounded-xl border px-3"
+                placeholder="Reason required"
+              />
+              <button
+                className="min-h-11 rounded-xl border px-4 font-semibold"
+                type="submit"
+              >
+                Request changes
+              </button>
+            </form>
+          </>
+        ) : null}
+      </div>
+      <aside className="rounded-xl bg-stone-100 p-4">
+        <strong>Purchase authorization deferred</strong>
+        <p className="mt-1 text-sm text-stone-600">
+          No future-purchase authorization control is exposed in this milestone.
+        </p>
+      </aside>
+    </section>
+  );
+}

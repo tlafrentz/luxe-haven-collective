@@ -989,35 +989,41 @@ async function main() {
   ) {
     const page = await owner.newPage();
     const response = await page.goto(
-      `${origin}/dashboard/furnishing/projects/new`,
+      lifecycle.projectId
+        ? `${origin}/dashboard/furnishing/projects/${lifecycle.projectId}`
+        : `${origin}/dashboard/furnishing/projects/new`,
       { waitUntil: "networkidle" },
     );
     if (!response || response.status() >= 400)
       throw new Error("owner-project:DISCOVERY_ROUTE_FAILED");
-    await page.getByRole("link", { name: "Let's get started" }).click();
-    await page.waitForURL(
-      /\/dashboard\/furnishing\/projects\/new\?step=setup$/,
-    );
-    const form = page
-      .getByRole("button", { name: "Create project workspace" })
-      .locator("xpath=ancestor::form");
-    await form.locator('[name="propertyId"]').selectOption({ index: 1 });
-    await form
-      .locator('[name="name"]')
-      .fill("C8-D Isolated Furnishing Lifecycle");
-    await form.locator('[name="bedrooms"]').fill("1");
-    await form.locator('[name="bathrooms"]').fill("0");
-    await form.locator('[name="guests"]').fill("2");
-    await form.locator('[name="packageVersionId"]').first().check();
-    await form.locator('[name="styleVersionId"]').first().check();
-    await form.locator('[name="targetBudget"]').fill("25000");
-    await form
-      .getByRole("button", { name: "Create project workspace" })
-      .click();
-    await page.waitForURL(/\/dashboard\/furnishing\/projects\/[0-9a-f-]{36}$/, {
-      timeout: 30_000,
-    });
-    lifecycle.projectId = new URL(page.url()).pathname.split("/").at(-1) ?? "";
+    if (!lifecycle.projectId) {
+      await page.getByRole("link", { name: "Let's get started" }).click();
+      await page.waitForURL(
+        /\/dashboard\/furnishing\/projects\/new\?step=setup$/,
+      );
+      const form = page
+        .getByRole("button", { name: "Create project workspace" })
+        .locator("xpath=ancestor::form");
+      await form.locator('[name="propertyId"]').selectOption({ index: 1 });
+      await form
+        .locator('[name="name"]')
+        .fill("C8-D Isolated Furnishing Lifecycle");
+      await form.locator('[name="bedrooms"]').fill("1");
+      await form.locator('[name="bathrooms"]').fill("0");
+      await form.locator('[name="guests"]').fill("2");
+      await form.locator('[name="packageVersionId"]').first().check();
+      await form.locator('[name="styleVersionId"]').first().check();
+      await form.locator('[name="targetBudget"]').fill("25000");
+      await form
+        .getByRole("button", { name: "Create project workspace" })
+        .click();
+      await page.waitForURL(
+        /\/dashboard\/furnishing\/projects\/[0-9a-f-]{36}$/,
+        { timeout: 30_000 },
+      );
+      lifecycle.projectId =
+        new URL(page.url()).pathname.split("/").at(-1) ?? "";
+    }
     if (!lifecycle.projectId)
       throw new Error("owner-project:PROJECT_ID_MISSING");
     const generate = page.getByRole("button", { name: "Generate Plan v1" });
@@ -1032,6 +1038,24 @@ async function main() {
       await Promise.all([
         page.waitForResponse((r) => r.request().method() === "POST"),
         offer.click(),
+      ]);
+      await page.reload({ waitUntil: "networkidle" });
+    }
+    const quantity = page.getByText("Override quantity").first();
+    if (await quantity.count()) {
+      await quantity.click();
+      const allocation = page
+        .getByRole("button", { name: "Apply", exact: true })
+        .first()
+        .locator("xpath=ancestor::form");
+      await allocation.locator('[name="quantity"]').fill("1");
+      await allocation
+        .locator('[name="reason"]')
+        .fill("Controlled lifecycle allocation");
+      await allocation.locator('[name="delivery"]').fill("125.00");
+      await Promise.all([
+        page.waitForResponse((r) => r.request().method() === "POST"),
+        allocation.getByRole("button", { name: "Apply" }).click(),
       ]);
       await page.reload({ waitUntil: "networkidle" });
     }

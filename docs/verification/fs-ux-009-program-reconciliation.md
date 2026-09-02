@@ -28,26 +28,26 @@ This blocks fresh authoritative proof of the complete public-boundary lifecycle,
 
 The complete committed forward inventory after the Production ceiling was read without modification. SHA-256 digests are:
 
-| Migration                                                     | SHA-256                                                            |
-| ------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `20260829020000_fs008g_c8a_catalog_package_governance.sql`    | `414df501890015be632f5a4fa3f8cbecfe151463b2c8d54775e3f0bac2b3baf0` |
-| `20260829030000_fs008g_c8b_owner_selection_snapshot.sql`      | `a09eaa3fd01814fb662ab9b25d2bdc262eb7a6ccebfe1be91b5c2b7abbfd0f1d` |
-| `20260829040000_fs008g_c8c_procurement_cleanup.sql`           | `1d629e75c3c51737b1a1fe63624fd94aa3ae8fd316bf5c82d68c30d0ad158c07` |
-| `20260829050000_fs008g_c8d_workspace_native_import.sql`       | `c31923754dc89c423c34c0b9cf559811fe8fcbb07913ea7c0914972d0f39ba36` |
-| `20260829051000_fs008g_c8d_requirement_review_state.sql`      | `7ebcb61396e1290e99d9f23da0cf15ee12b14b035c6668bfdb7ebbc725666137` |
-| `20260830090000_fs_ux_002_catalog_lifecycle.sql`              | `b3175e282cf8edf9b11377f96c2ea6e6c8352d28d60da24addaf2055c4200929` |
-| `20260830100000_fs_ux_003_inventory_import_workflow.sql`      | `a269518d969c942a4fc6569c487fdb277a68f23fca339a6e40bcc024a3981e2b` |
-| `20260830110000_fs_ux_004_room_packages.sql`                  | `97642e5991375feb234f6f1c08d11a936d492ef9f8d60d6bfcf8cdf53a181f25` |
-| `20260830120000_fs_ux_005_design_workspaces_budgets.sql`      | `e5ab26ca8c12d9ee8b0bfc6b8f2e3ea875d703ae3de636a06f9ebe78b8bb2652` |
-| `20260830130000_fs_ux_006_procurement_readiness.sql`          | `d99c32d38f1914397e8f8d850c47a1a040b2d62b186308ee2625ccf1c3d08dba` |
-| `20260830140000_fs_ux_007_delivery_installation_tracking.sql` | `42e0821f97605be9292cfe010c684289d1a41731d9d891ea36642698c2c90c5a` |
-| `20260830150000_fs_ux_008_release_controls.sql`               | `9eca483b7977c30e910074ae138e7c79287b882bb51081ac2c26efc60d62b75f` |
-| `20260830151000_fs_ux_008_control_orchestration.sql`          | `f06aad6d71f31f3c76ea46c6c8b2d902a4509b5707b1310de492c7eb7fe7089a` |
-| `20260830152000_fs_ux_009_controlled_fixture_service_grants.sql` | `f048d1e0904aa323deec813401533994d1fbbb61cf562375ef03df47809cc74e` |
-| `20260830153000_fs_ux_009_anonymous_catalog_verification.sql` | `1212c828d34a8a8b9c1571fc8d513a44e2c3a90fe5e8d704535f8f4bba8a87b2` |
-| `20260830154000_fs_ux_009_procurement_guard_verification.sql` | `9540fd160518442633caae50ddc5f7763508480747ebb4f940ea6183afec0b40` |
+| Migration                                                          | SHA-256                                                            |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `20260829020000_fs008g_c8a_catalog_package_governance.sql`         | `414df501890015be632f5a4fa3f8cbecfe151463b2c8d54775e3f0bac2b3baf0` |
+| `20260829030000_fs008g_c8b_owner_selection_snapshot.sql`           | `a09eaa3fd01814fb662ab9b25d2bdc262eb7a6ccebfe1be91b5c2b7abbfd0f1d` |
+| `20260829040000_fs008g_c8c_procurement_cleanup.sql`                | `1d629e75c3c51737b1a1fe63624fd94aa3ae8fd316bf5c82d68c30d0ad158c07` |
+| `20260829050000_fs008g_c8d_workspace_native_import.sql`            | `c31923754dc89c423c34c0b9cf559811fe8fcbb07913ea7c0914972d0f39ba36` |
+| `20260829051000_fs008g_c8d_requirement_review_state.sql`           | `7ebcb61396e1290e99d9f23da0cf15ee12b14b035c6668bfdb7ebbc725666137` |
+| `20260830090000_fs_ux_002_catalog_lifecycle.sql`                   | `b3175e282cf8edf9b11377f96c2ea6e6c8352d28d60da24addaf2055c4200929` |
+| `20260830100000_fs_ux_003_inventory_import_workflow.sql`           | `a269518d969c942a4fc6569c487fdb277a68f23fca339a6e40bcc024a3981e2b` |
+| `20260830110000_fs_ux_004_room_packages.sql`                       | `97642e5991375feb234f6f1c08d11a936d492ef9f8d60d6bfcf8cdf53a181f25` |
+| `20260830120000_fs_ux_005_design_workspaces_budgets.sql`           | `e5ab26ca8c12d9ee8b0bfc6b8f2e3ea875d703ae3de636a06f9ebe78b8bb2652` |
+| `20260830130000_fs_ux_006_procurement_readiness.sql`               | `d99c32d38f1914397e8f8d850c47a1a040b2d62b186308ee2625ccf1c3d08dba` |
+| `20260830140000_fs_ux_007_delivery_installation_tracking.sql`      | `42e0821f97605be9292cfe010c684289d1a41731d9d891ea36642698c2c90c5a` |
+| `20260830150000_fs_ux_008_release_controls.sql`                    | `9eca483b7977c30e910074ae138e7c79287b882bb51081ac2c26efc60d62b75f` |
+| `20260830151000_fs_ux_008_control_orchestration.sql`               | `f06aad6d71f31f3c76ea46c6c8b2d902a4509b5707b1310de492c7eb7fe7089a` |
+| `20260830152000_fs_ux_009_controlled_fixture_service_grants.sql`   | `f048d1e0904aa323deec813401533994d1fbbb61cf562375ef03df47809cc74e` |
+| `20260830153000_fs_ux_009_anonymous_catalog_verification.sql`      | `1212c828d34a8a8b9c1571fc8d513a44e2c3a90fe5e8d704535f8f4bba8a87b2` |
+| `20260830154000_fs_ux_009_procurement_guard_verification.sql`      | `9540fd160518442633caae50ddc5f7763508480747ebb4f940ea6183afec0b40` |
 | `20260830155000_fs_ux_009_release_permission_fixture_boundary.sql` | `9c2983158d119d937052ce794b0c96f548fa34cf3ef64f0fa8753e80db7aecea` |
-| `20260830156000_fs_ux_009_release_control_read_boundary.sql` | `c307b0a1ebbb810d9cfb4e8e1bb8a7229937e26962fae2db4ac72eca8ce65383` |
+| `20260830156000_fs_ux_009_release_control_read_boundary.sql`       | `c307b0a1ebbb810d9cfb4e8e1bb8a7229937e26962fae2db4ac72eca8ce65383` |
 
 The two required FS-UX-008 digests match `docs/verification/fs-ux-008-local-hold-point.md`. No migration was edited. Migration lint passed with no findings. Applying, replaying, and comparing the sequence were blocked by the unavailable database runtime.
 
@@ -261,19 +261,19 @@ The existing FS-UX-009 milestone resumed from evidence commit `81313840e844822fc
 
 ### Migration and focused verification results
 
-| Gate | Result |
-| --- | --- |
-| Exact Production-ceiling forward sequence through `20260830153000` | passed |
-| Forward migration replay | passed: zero pending migrations |
-| Two clean-database rebuilds | passed |
-| Normalized schema equivalence | passed: both SHA-256 `dde8e92eca07622bc7695e8f8e42375ca735d819a59d910d3b2f50748f9f66f0` |
-| Anonymous catalog RLS regression | passed, including table-grant and permissive-policy negative controls |
-| Existing database lifecycle, RLS, authorization, concurrency, stale-state, and atomicity matrices | passed in the exact-ceiling runner |
-| Focused release-control tests | passed: 9/9 |
-| Typecheck | passed |
-| Full ESLint | passed with zero errors and the same nine warnings |
-| Migration lint | passed: no findings |
-| `git diff --check` | passed |
+| Gate                                                                                              | Result                                                                                  |
+| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Exact Production-ceiling forward sequence through `20260830153000`                                | passed                                                                                  |
+| Forward migration replay                                                                          | passed: zero pending migrations                                                         |
+| Two clean-database rebuilds                                                                       | passed                                                                                  |
+| Normalized schema equivalence                                                                     | passed: both SHA-256 `dde8e92eca07622bc7695e8f8e42375ca735d819a59d910d3b2f50748f9f66f0` |
+| Anonymous catalog RLS regression                                                                  | passed, including table-grant and permissive-policy negative controls                   |
+| Existing database lifecycle, RLS, authorization, concurrency, stale-state, and atomicity matrices | passed in the exact-ceiling runner                                                      |
+| Focused release-control tests                                                                     | passed: 9/9                                                                             |
+| Typecheck                                                                                         | passed                                                                                  |
+| Full ESLint                                                                                       | passed with zero errors and the same nine warnings                                      |
+| Migration lint                                                                                    | passed: no findings                                                                     |
+| `git diff --check`                                                                                | passed                                                                                  |
 
 Production remained at ceiling `20260829010000` and was not connected to or changed.
 
@@ -311,22 +311,22 @@ The existing FS-UX-009 milestone resumed from correction/history commit `66be030
 
 ### Completed gates before the new stop
 
-| Gate | Result |
-| --- | --- |
-| Exact Production-ceiling sequence through `20260830154000` | passed |
-| FS-UX-003–008 database lifecycle matrices | passed |
-| Authorization/RLS, stale-state, concurrency, cleanup, and atomicity matrices in the exact-ceiling runner | passed |
-| All four authoritative capability verifications | passed |
-| Procurement guard focused regression | passed |
-| Procurement verification/global-suspension independent-session proof | passed |
-| Two clean-database rebuilds | passed |
-| Normalized schema equivalence | passed: both SHA-256 `1fd0cf795e58f7ebd98c43540c70420a9f5e78ee0528ef8e68b882a5ab3193e4` |
-| Migration replay | passed: zero pending through `20260830154000` |
-| Focused release-control tests | passed: 8/8 |
-| Typecheck | passed |
-| Full ESLint | passed with zero errors and the same nine warnings |
-| Migration lint | passed: no findings |
-| `git diff --check` | passed |
+| Gate                                                                                                     | Result                                                                                  |
+| -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Exact Production-ceiling sequence through `20260830154000`                                               | passed                                                                                  |
+| FS-UX-003–008 database lifecycle matrices                                                                | passed                                                                                  |
+| Authorization/RLS, stale-state, concurrency, cleanup, and atomicity matrices in the exact-ceiling runner | passed                                                                                  |
+| All four authoritative capability verifications                                                          | passed                                                                                  |
+| Procurement guard focused regression                                                                     | passed                                                                                  |
+| Procurement verification/global-suspension independent-session proof                                     | passed                                                                                  |
+| Two clean-database rebuilds                                                                              | passed                                                                                  |
+| Normalized schema equivalence                                                                            | passed: both SHA-256 `1fd0cf795e58f7ebd98c43540c70420a9f5e78ee0528ef8e68b882a5ab3193e4` |
+| Migration replay                                                                                         | passed: zero pending through `20260830154000`                                           |
+| Focused release-control tests                                                                            | passed: 8/8                                                                             |
+| Typecheck                                                                                                | passed                                                                                  |
+| Full ESLint                                                                                              | passed with zero errors and the same nine warnings                                      |
+| Migration lint                                                                                           | passed: no findings                                                                     |
+| `git diff --check`                                                                                       | passed                                                                                  |
 
 Production remained at ceiling `20260829010000` and was not connected to or changed.
 
@@ -370,21 +370,21 @@ The existing FS-UX-009 milestone resumed from correction/history commit `ffcd40f
 
 ### Completed gates before the new stop
 
-| Gate | Result |
-| --- | --- |
-| Exact Production-ceiling sequence through `20260830155000` | passed |
-| Complete provisioning and dependency-safe cleanup audit | passed |
-| Release-permission focused boundary and atomicity proof | passed |
-| FS-UX-003–008 lifecycle, authorization/RLS, concurrency, stale-state, cleanup, and atomicity matrices | passed |
-| All four authoritative capability verifications | passed |
-| Two clean-database rebuilds | passed |
-| Normalized schema equivalence | passed: both SHA-256 `1fd0cf795e58f7ebd98c43540c70420a9f5e78ee0528ef8e68b882a5ab3193e4` |
-| Migration replay | passed: zero pending through `20260830155000` |
-| Focused release-control tests | passed: 9/9 |
-| Typecheck | passed |
-| Full ESLint | passed with zero errors and the same nine warnings |
-| Migration lint | passed: no findings |
-| `git diff --check` | passed |
+| Gate                                                                                                  | Result                                                                                  |
+| ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Exact Production-ceiling sequence through `20260830155000`                                            | passed                                                                                  |
+| Complete provisioning and dependency-safe cleanup audit                                               | passed                                                                                  |
+| Release-permission focused boundary and atomicity proof                                               | passed                                                                                  |
+| FS-UX-003–008 lifecycle, authorization/RLS, concurrency, stale-state, cleanup, and atomicity matrices | passed                                                                                  |
+| All four authoritative capability verifications                                                       | passed                                                                                  |
+| Two clean-database rebuilds                                                                           | passed                                                                                  |
+| Normalized schema equivalence                                                                         | passed: both SHA-256 `1fd0cf795e58f7ebd98c43540c70420a9f5e78ee0528ef8e68b882a5ab3193e4` |
+| Migration replay                                                                                      | passed: zero pending through `20260830155000`                                           |
+| Focused release-control tests                                                                         | passed: 9/9                                                                             |
+| Typecheck                                                                                             | passed                                                                                  |
+| Full ESLint                                                                                           | passed with zero errors and the same nine warnings                                      |
+| Migration lint                                                                                        | passed: no findings                                                                     |
+| `git diff --check`                                                                                    | passed                                                                                  |
 
 Production remained at ceiling `20260829010000` and was not connected to or changed.
 
@@ -426,20 +426,20 @@ The existing FS-UX-009 milestone resumed from correction/history commit `b273c85
 
 ### Completed gates before the new stop
 
-| Gate | Result |
-| --- | --- |
-| Exact Production-ceiling sequence through `20260830156000` | passed |
-| FS-UX-003–008 lifecycle, authorization/RLS, concurrency, cleanup, stale-state, and atomicity matrices | passed |
-| Release Controls authenticated read matrix | passed |
-| All four authoritative capability verifications | passed |
-| Two clean-database rebuilds | passed |
-| Normalized schema equivalence | passed: both SHA-256 `15f7977adb2758aad72b120197f0ac0102c30f2f034880bd8715f0f743fecdb7` |
-| Migration replay | passed: zero pending through `20260830156000` |
-| Focused release-control tests | passed: 10/10 |
-| Typecheck after the bounded correction | passed |
-| Release Controls browser lifecycle | passed: enablement, four server verifications, workspace suspension/recovery, rollback, re-enable, and re-verification |
-| Release Controls desktop/mobile accessibility preflight | passed |
-| `git diff --check` | passed |
+| Gate                                                                                                  | Result                                                                                                                 |
+| ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Exact Production-ceiling sequence through `20260830156000`                                            | passed                                                                                                                 |
+| FS-UX-003–008 lifecycle, authorization/RLS, concurrency, cleanup, stale-state, and atomicity matrices | passed                                                                                                                 |
+| Release Controls authenticated read matrix                                                            | passed                                                                                                                 |
+| All four authoritative capability verifications                                                       | passed                                                                                                                 |
+| Two clean-database rebuilds                                                                           | passed                                                                                                                 |
+| Normalized schema equivalence                                                                         | passed: both SHA-256 `15f7977adb2758aad72b120197f0ac0102c30f2f034880bd8715f0f743fecdb7`                                |
+| Migration replay                                                                                      | passed: zero pending through `20260830156000`                                                                          |
+| Focused release-control tests                                                                         | passed: 10/10                                                                                                          |
+| Typecheck after the bounded correction                                                                | passed                                                                                                                 |
+| Release Controls browser lifecycle                                                                    | passed: enablement, four server verifications, workspace suspension/recovery, rollback, re-enable, and re-verification |
+| Release Controls desktop/mobile accessibility preflight                                               | passed                                                                                                                 |
+| `git diff --check`                                                                                    | passed                                                                                                                 |
 
 Production remained at ceiling `20260829010000` and was not connected to or changed.
 
@@ -497,3 +497,23 @@ The isolated local database was rebuilt through `20260830156000`. Final reconcil
 Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
 
 Deployment recommendation: **HOLD**. The required next action is a separately authorized, minimum trusted read-boundary correction for `furnishing_product_adoptions`, followed by resume at catalog adoption. No completed Release Controls, migration-equivalence, schema, or authorization proof needs replay unless its implementation or state changes.
+
+## Simplified remaining-path continuation from `b96f14ee`
+
+The bounded integration correction is commit `be793d82` (`fix(fs-ux-009): reconcile remaining lifecycle path`). It adds only forward migration `20260830161000_fs_ux_009_remaining_path_integration_fixes.sql` (SHA-256 `db970b7c90b7cbe682036820491540bf4d53d16081628601871c83cd558c5f48`). Production remained unchanged at `20260829010000`.
+
+The migration replaces `save_furnishing_selection_delivery` with the same transactional contract using `ON CONFLICT ON CONSTRAINT furnishing_selection_delivery_allo_selection_id_property_id_key`. It also binds receipt and installation sources to the authoritative installation project and procurement baseline. The existing procurement delivery-plan and installation-inspection RPCs are now reachable through the canonical UI. No purchase, payment, retailer request, shipment, notification, or provider action was added.
+
+Focused verification passed: 21/21 affected migration tests, the new remaining-path suite 3/3, typecheck, affected-file lint, migration lint with no findings, and `git diff --check`. The local migration applied transactionally. The canonical browser then passed plan generation, offer/quantity/delivery allocation, validation, owner submission, administrator approval, and advanced to immutable snapshot creation. The corrected allocation persisted exactly one selection/property allocation and the required plan command evidence.
+
+### Authoritative stop
+
+At immutable snapshot creation, the lifecycle failed closed with `FS008D_SNAPSHOT_UNAVAILABLE`; procurement then correctly rejected the missing snapshot with `PROCUREMENT_AUTHORITATIVE_SNAPSHOT_REQUIRED`. Database reconciliation established the cause: plan generation had accepted an archived controlled product still reachable through a retained package composition. The resulting approved selection had no eligible product version or selected offer, so it could not satisfy the immutable snapshot contract. This also proves the earlier controlled cleanup left a retained package dependency capable of influencing a later active lifecycle.
+
+This is a genuine application/cleanup-boundary defect, not a selector or hydration failure. Downstream procurement, delivery, installation, expensive repository gates, and Production build were not run or relabeled as passing.
+
+Governed cleanup returned the project to `archived` and its plan to `superseded`. The remaining mutable controlled allocation and prerequisite records were reconciled in dependency order; active controlled products, packages, allocations, memberships, entitlements, projects, procurement records, and installations are zero. Immutable plan-generation evidence and its referenced command contexts remain only under their retention contract. The protected package `99200000-0000-4000-8000-000000000010` remains approved at its original version. Release Controls are restored exactly to `disabled / global kill switch engaged / configuration invalid / optimistic version 1`, with zero workspace or capability rows. No external or Production effect occurred.
+
+Current classification: `FS-UX-009_PROGRAM_RECONCILIATION_BLOCKED_CLEAN`.
+
+Deployment recommendation: **HOLD**. A future bounded correction must prevent archived or otherwise ineligible package dependencies from entering an authoritative plan and must reconcile stale controlled package composition during cleanup before this continuation resumes at plan generation.
