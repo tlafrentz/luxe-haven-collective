@@ -634,3 +634,29 @@ Final candidate: the commit containing this completion section and the simplifie
 Classification: `FS-UX-009_SIMPLIFIED_WORKFLOW_COMPLETE_PENDING_PRODUCTION_DEPLOYMENT`.
 
 Deployment recommendation: **HOLD pending a separately authorized Production migration and deployment window**. This local classification does not authorize Production access, migration, deployment, or tagging.
+
+## Production deployment and certification — 2026-09-02
+
+Production certification resumed from local candidate `d90d5b4b3b7718269ba2997355c31013c50b8dad` using only the genuine platform-administrator session supplied in the dedicated browser. The deployed approval correction candidate was `25e449cb06270c862e7af97c58c894219cd24c14`. Production migrations were applied forward-only through ceiling `20260902014000`; no existing migration was rewritten.
+
+Production-only bounded corrections and migration digests:
+
+- `0aa1ec9c` — genuine platform-admin provisioning authority; `20260902011000_fs_ux_009_genuine_admin_provisioning.sql`, SHA-256 `94829b7632fa8f48a616fd1851a2d88dfff0f36f9fbb923f488bcd09998b5c5a`.
+- `b9e2771f` — isolated controlled wrong-workspace cleanup; `20260902012000_fs_ux_009_controlled_wrong_workspace_cleanup.sql`, SHA-256 `0b63dc510df02476332d34a08c8fea05ad0ec3eb04e08557bccfa429feb13f6b`.
+- `5de4be01` — atomic capability verification-evidence binding; `20260902013000_fs_ux_009_capability_evidence_binding.sql`, SHA-256 `19bd882f1fd972c7d8d6913865d90d25bb20d1f5e977388891ed83b01fb37713`.
+- `55f1761e` — stable selection-allocation replay at the originally accepted revision; `20260902014000_fs_ux_009_selection_allocation_replay.sql`, SHA-256 `1e1a7271133ddd24faf156e67f8a831de7a2010d2ed008acce47a96ffc9a5589`.
+- `968fa237d0b2bab7274d796ac2b5a96658f55a2e` — customer room-query preservation through the simplified project shell; no migration.
+
+The exact `968fa237d0b2bab7274d796ac2b5a96658f55a2e` application correction was deployed as Vercel deployment `dpl_22Uk745Qovn7o8AKP8WsbRbzhzwa`, reached `READY`, and was aliased to `https://luxehavencollective.co`. Its pre-deployment gates passed: 864 test files and 4,701 tests, typecheck, Production build, `git diff --check`, and lint with zero errors and the same 11 pre-existing warnings.
+
+The authenticated Production journey passed through approved-package discovery, Design Workspace creation, five-room plan generation and selection allocation, validation, submission, transactional approval and immutable snapshot creation, five-line manual procurement checklist, five-line delivery/installation tracking, and project completion. Procurement created no platform order and no payment, retailer, provider, shipment, or notification effect. Approval replay and selection-allocation replay remained idempotent. Anonymous access redirected to login. A separately authenticated wrong-workspace identity received the governed `Workspace access unavailable` state without record disclosure.
+
+Responsive checks passed at 390×844 and 1440×900 with no horizontal overflow. Axe WCAG 2 A/AA checks reported no violations on the completed customer project. The final read-only health check returned HTTP 200, and the post-certification Vercel error-log query returned no entries.
+
+Cleanup used the authorized retained-evidence contract. Both controlled workspace activations were revoked through authenticated Release Controls before memberships were removed. The completed project, simple workflow, procurement lines, installation lines, controlled products, offers, and packages were archived. Four generated identities were credential-rotated and disabled; all controlled memberships and entitlements were revoked. Immutable approval snapshots, activity, audit evidence, and required workspace/profile/customer-account tombstones were retained. Final reconciliation was zero active controlled projects, workflows, procurement lines, installation lines, products, packages, memberships, or entitlements, and zero scoped orders, payments, or notifications. The one pre-existing Production Furnishing project retained its August 5, 2026 last-update timestamp and was untouched.
+
+Release Controls finish state is globally active for eligible authenticated workspaces: `global_state=internal`, configuration valid, global kill switch disengaged, and all four capabilities enabled, server-verified, and bound to immutable verification evidence. Both certification workspaces are revoked, disabled, and kill-switched. Production remains at migration ceiling `20260902014000`.
+
+Final classification: `FS-UX-009_PRODUCTION_DEPLOYED_CERTIFIED_AND_ACTIVE`.
+
+Deployment recommendation: **ACTIVE**. Any later Production change requires its own authorization and deployment record.
