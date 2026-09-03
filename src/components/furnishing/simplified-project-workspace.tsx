@@ -31,9 +31,11 @@ const stages = [
 export async function SimplifiedProjectWorkspace({
   id,
   customer = false,
+  roomId,
 }: {
   id: string;
   customer?: boolean;
+  roomId?: string;
 }) {
   await requireUser();
   const client = await createClient();
@@ -68,7 +70,9 @@ export async function SimplifiedProjectWorkspace({
       );
     });
   if (["draft", "ready_for_review"].includes(stage))
-    return <ProjectWorkspace projectId={id} customer={customer} />;
+    return (
+      <ProjectWorkspace projectId={id} customer={customer} roomId={roomId} />
+    );
   return (
     <div className="space-y-8">
       <FurnishingHeader
