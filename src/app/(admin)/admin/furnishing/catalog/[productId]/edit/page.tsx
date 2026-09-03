@@ -1,5 +1,12 @@
-import { getFurnishingProductEditContext } from "@/app/actions/furnishing-catalog";
-import { ProductEditWorkspace } from "@/components/furnishing/product-edit-workspace";
-import { issueFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
-export const dynamic = "force-dynamic";
-export default async function Page({ params }: { params: Promise<{productId:string}> }) { const {productId}=await params, data=await getFurnishingProductEditContext(productId), workspaceId=String(data.product.workspace_id??""); let editContextId:string|undefined,approvalContextId:string|undefined;if(workspaceId){const [edit,approve]=await Promise.all([issueFurnishingCommandContext({workflow:"fs008g-finalization:catalog-edit",workspaceId,commandType:"catalog.product.edit",targetType:"product",targetId:productId}),issueFurnishingCommandContext({workflow:"fs008g-finalization:catalog-edit",workspaceId,commandType:"catalog.product.revision.approve",targetType:"product",targetId:productId})]);editContextId=edit.contextId;approvalContextId=approve.contextId}return <ProductEditWorkspace {...data} editContextId={editContextId} approvalContextId={approvalContextId}/>; }
+import { permanentRedirect } from "next/navigation";
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ productId: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const [{ productId }, query] = await Promise.all([params, searchParams]);
+  const workspace = query.workspace;
+  permanentRedirect(`/admin/furnishing/products/${productId}/edit${workspace ? `?workspace=${encodeURIComponent(workspace)}` : ""}`);
+}

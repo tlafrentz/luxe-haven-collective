@@ -1,5 +1,7 @@
-import { NewProduct } from "@/components/furnishing/product-catalog-workspace";
+import { getLibraryTaxonomy } from "@/app/actions/furnishing-library";
+import { AddProductFlow } from "@/components/furnishing/add-product-flow";
 export const dynamic = "force-dynamic";
-export default function Page() {
-  return <NewProduct />;
+export default async function Page() {
+  const taxonomy = await getLibraryTaxonomy();
+  return <AddProductFlow {...taxonomy} />;
 }
