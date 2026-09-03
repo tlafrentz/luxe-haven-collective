@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { importProductFromLink, validateProductLinkUrl, detectRetailer } from "@/features/furnishing-studio/link-import";
 import type { ExtractedProduct } from "@/features/furnishing-studio/link-import";
+import { minorUnits } from "@/features/furnishing-studio";
 
 async function libraryAdmin() {
   const { user } = await requireRole(["admin"]);
@@ -321,6 +322,16 @@ export async function createLibraryProductAction(
     }
     const retailerId = text(formData, "retailerId") || null;
     const sku = text(formData, "sku") || null;
+    const currency = text(formData, "currency") || "USD";
+    const rawPrice = text(formData, "listedPrice");
+    let listedPriceMinor: number | null = null;
+    if (rawPrice) {
+      try {
+        listedPriceMinor = minorUnits(rawPrice, currency).amountMinor;
+      } catch {
+        return { ok: false, message: "Enter the price as a plain amount, e.g. 39.98." };
+      }
+    }
     const fingerprint = JSON.stringify({ actor: user.id, canonicalUrl, retailerId, sku });
     const idempotencyKey = `library-create:${createHash("sha256").update(fingerprint).digest("hex")}`;
     const client = await createClient();
@@ -341,8 +352,9 @@ export async function createLibraryProductAction(
         retailer_id: retailerId,
         retailer_product_id: text(formData, "retailerProductId") || null,
         sku,
-        listed_price_minor: text(formData, "listedPriceMinor") || null,
-        currency: text(formData, "currency") || "USD",
+        image_url: text(formData, "imageUrl") || null,
+        listed_price_minor: listedPriceMinor,
+        currency,
         availability: text(formData, "availability") || "unknown",
         notes: text(formData, "notes") || null,
         tags: formData.getAll("tags").map(String).filter(Boolean),
@@ -407,5 +419,61 @@ export async function archiveLibraryProductAction(
   } catch (error) {
     const code = typed(error, "CATALOG_LIBRARY_ARCHIVE_UNAVAILABLE");
     return { ok: false, message: code === "CATALOG_PRODUCT_VERSION_STALE" ? "This product changed. Refresh before trying again." : code };
+  }
+}
+
+export type OfferUpdateState = Readonly<{ ok?: boolean; message?: string }>;
+
+/**
+ * Direct offer update for platform-scope library products only. Workspace-
+ * scope products keep their existing governed offer/approval controls
+ * (create-alternate-offer, offer-assignment, approval) — this simpler path
+ * must not become a way to bypass that for a workspace-scope product.
+ */
+export async function updateLibraryProductOfferAction(
+  _previous: OfferUpdateState,
+  formData: FormData,
+): Promise<OfferUpdateState> {
+  try {
+    const { user, db } = await libraryAdmin();
+    const offerId = text(formData, "offerId");
+    const productId = text(formData, "productId");
+    if (!offerId || !productId) return { ok: false, message: "Missing product or offer." };
+    const { data: product } = await db.from("furnishing_products").select("scope").eq("id", productId).maybeSingle();
+    if (product?.scope !== "platform") return { ok: false, message: "CATALOG_LIBRARY_OFFER_UPDATE_UNSUPPORTED" };
+    const currency = text(formData, "currency") || "USD";
+    const rawPrice = text(formData, "listedPrice");
+    let listedPriceMinor: number | null = null;
+    if (rawPrice) {
+      try {
+        listedPriceMinor = minorUnits(rawPrice, currency).amountMinor;
+      } catch {
+        return { ok: false, message: "Enter the price as a plain amount, e.g. 39.98." };
+      }
+    }
+    const { error } = await db
+      .from("furnishing_product_offers")
+      .update({
+        listed_price_minor: listedPriceMinor,
+        currency,
+        availability: text(formData, "availability") || "unknown",
+        sku: text(formData, "sku") || null,
+        retailer_id: text(formData, "retailerId") || null,
+        last_verified_at: new Date().toISOString(),
+      })
+      .eq("id", offerId)
+      .eq("product_id", productId);
+    if (error) throw error;
+    await db.from("furnishing_catalog_activity").insert({
+      product_id: productId,
+      offer_id: offerId,
+      event_type: "furnishing_library_offer_updated",
+      actor_id: user.id,
+      metadata: { externalEffects: false },
+    });
+    revalidatePath(`/admin/furnishing/products/${productId}`);
+    return { ok: true, message: "Price and availability updated." };
+  } catch (error) {
+    return { ok: false, message: typed(error, "CATALOG_LIBRARY_OFFER_UPDATE_UNAVAILABLE") };
   }
 }

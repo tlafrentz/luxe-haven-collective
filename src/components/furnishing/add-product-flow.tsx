@@ -11,6 +11,7 @@ import {
   type LinkValidationState,
   type SaveProductState,
 } from "@/app/actions/furnishing-library";
+import { ProductThumb } from "./product-thumb";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -108,23 +109,29 @@ export function AddProductFlow({ categories, retailers, roomTypes, styleTags }: 
             <input type="hidden" name="forceCreate" value={forceCreate ? "true" : "false"} />
             <input type="hidden" name="extractionSource" value={extracted?.source ?? ""} />
             <input type="hidden" name="extractionConfidence" value={extracted?.confidence ?? ""} />
+            <input type="hidden" name="imageUrl" value={extracted?.imageUrl ?? ""} />
             <p className="text-xs text-stone-500">Link: {extraction.canonicalUrl}</p>
+            <div className="grid gap-4 sm:grid-cols-[128px_1fr]">
+              <ProductThumb src={extracted?.imageUrl} alt="" className="h-32 w-32 rounded-xl" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm font-medium sm:col-span-2">Product name
+                  <input name="name" required defaultValue={extracted?.name ?? ""} className={input} />
+                </label>
+                <label className="text-sm font-medium">Retailer
+                  <select name="retailerId" defaultValue={extraction.retailerId ?? ""} className={input}>
+                    <option value="">Not set</option>
+                    {retailers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm font-medium">Brand
+                  <input name="brand" defaultValue={extracted?.brand ?? ""} className={input} />
+                </label>
+                <label className="text-sm font-medium">Price
+                  <input name="listedPrice" type="text" inputMode="decimal" placeholder="0.00" defaultValue={extracted?.priceAmount ?? ""} className={input} />
+                </label>
+              </div>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-sm font-medium sm:col-span-2">Product name
-                <input name="name" required defaultValue={extracted?.name ?? ""} className={input} />
-              </label>
-              <label className="text-sm font-medium">Retailer
-                <select name="retailerId" defaultValue={extraction.retailerId ?? ""} className={input}>
-                  <option value="">Not set</option>
-                  {retailers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
-              </label>
-              <label className="text-sm font-medium">Brand
-                <input name="brand" defaultValue={extracted?.brand ?? ""} className={input} />
-              </label>
-              <label className="text-sm font-medium">Price
-                <input name="listedPriceMinor" type="number" min={0} step={1} placeholder="Amount in cents" defaultValue={extracted?.priceAmount ? String(Math.round(Number(extracted.priceAmount) * 100)) : ""} className={input} />
-              </label>
               <label className="text-sm font-medium">Currency
                 <input name="currency" defaultValue={extracted?.priceCurrency ?? "USD"} className={input} />
               </label>

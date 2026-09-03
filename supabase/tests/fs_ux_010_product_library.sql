@@ -41,7 +41,8 @@ begin
     'room_type_ids',jsonb_build_array(ctx.room_id),
     'style_tag_ids',jsonb_build_array(ctx.style_id),
     'listed_price_minor','18900',
-    'currency','USD'
+    'currency','USD',
+    'image_url','https://cdn.example.com/arched-oak-coffee-table.jpg'
   )) into result;
   if result->>'status'<>'created' then raise exception 'FSUX010_CREATE_UNEXPECTED_STATUS: %', result; end if;
   v_product_id:=(result->>'productId')::uuid;
@@ -55,6 +56,29 @@ begin
   end if;
   if not exists(select 1 from public.furnishing_catalog_activity where product_id=v_product_id and event_type='furnishing_library_product_created' and (metadata->>'externalEffects')::boolean=false) then
     raise exception 'FSUX010_CREATE_ACTIVITY_MISSING_OR_HAS_EXTERNAL_EFFECTS';
+  end if;
+  if not exists(select 1 from public.furnishing_product_media where product_id=v_product_id and is_primary and source_url='https://cdn.example.com/arched-oak-coffee-table.jpg') then
+    raise exception 'FSUX010_CREATE_IMAGE_NOT_PERSISTED';
+  end if;
+end $$;
+
+-- 1b. A non-https image URL is silently ignored rather than stored (matches
+--     URL-safety expectations elsewhere in this migration).
+do $$
+declare ctx record; result jsonb; v_product_id uuid;
+begin
+  select * into ctx from fsux010_ctx;
+  select public.create_furnishing_library_product(jsonb_build_object(
+    'correlation_id',gen_random_uuid(),'idempotency_key','fsux010-test-create-unsafe-image',
+    'submitted_url','https://www.example.com/products/unsafe-image-product',
+    'canonical_url','https://www.example.com/products/unsafe-image-product',
+    'name','Unsafe Image Product','category_id',ctx.category_id,
+    'room_type_ids',jsonb_build_array(ctx.room_id),
+    'image_url','javascript:alert(1)'
+  )) into result;
+  v_product_id:=(result->>'productId')::uuid;
+  if exists(select 1 from public.furnishing_product_media where product_id=v_product_id) then
+    raise exception 'FSUX010_UNSAFE_IMAGE_URL_PERSISTED';
   end if;
 end $$;
 

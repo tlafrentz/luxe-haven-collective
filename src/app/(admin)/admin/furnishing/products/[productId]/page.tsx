@@ -13,6 +13,7 @@ export default async function Page({
       product={data.product}
       roomTypes={data.roomTypes}
       styleTags={data.styleTags}
+      retailers={data.retailers}
       activity={data.activity}
       usage={data.usage}
     />

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { ExternalLink, ImageIcon } from "lucide-react";
-import { archiveLibraryProductAction } from "@/app/actions/furnishing-library";
+import { ExternalLink } from "lucide-react";
+import { archiveLibraryProductAction, updateLibraryProductOfferAction } from "@/app/actions/furnishing-library";
+import { ProductThumb } from "./product-thumb";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -11,21 +12,26 @@ type Props = Readonly<{
   product: Row;
   roomTypes: Row[];
   styleTags: Row[];
+  retailers: Row[];
   activity: Row[];
   usage: { packageItems: Row[]; plans: Row[] };
 }>;
 
 const money = (minor: unknown, currency = "USD") =>
   typeof minor === "number" ? new Intl.NumberFormat("en-US", { style: "currency", currency }).format(minor / 100) : "Price unavailable";
+const inputCls = "mt-1 min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-emerald-700";
 
-export function LibraryProductDetail({ product, roomTypes, styleTags, activity, usage }: Props) {
+export function LibraryProductDetail({ product, roomTypes, styleTags, retailers, activity, usage }: Props) {
   const [archiveState, archiveAction, archiving] = useActionState(archiveLibraryProductAction, {});
+  const [offerState, offerAction, savingOffer] = useActionState(updateLibraryProductOfferAction, {});
   const offer = (product.furnishing_product_offers ?? [])[0] as Row | undefined;
   const rooms: Row[] = product.furnishing_product_room_compatibility ?? [];
   const roomNameById = new Map(roomTypes.map((r) => [r.id, r.name]));
   const styles: Row[] = product.furnishing_product_style_tags ?? [];
   const styleNameById = new Map(styleTags.map((s) => [s.id, s.name]));
   const archived = product.status === "archived";
+  const media: Row[] = product.furnishing_product_media ?? [];
+  const primaryImageUrl = (media.find((item) => item.is_primary) ?? media[0])?.source_url ?? null;
 
   return (
     <main className="space-y-8 px-4 pb-12 sm:px-0">
@@ -36,9 +42,7 @@ export function LibraryProductDetail({ product, roomTypes, styleTags, activity, 
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl bg-stone-100">
-            <ImageIcon aria-hidden="true" className="h-8 w-8 text-stone-400" />
-          </div>
+          <ProductThumb src={primaryImageUrl} alt={product.name} className="h-24 w-24 shrink-0 rounded-2xl" />
           <div>
             <h1 className="text-3xl font-semibold text-stone-950">{product.name}</h1>
             <p className="mt-1 text-stone-600">{offer?.furnishing_retailers?.name ?? "No retailer set"} · {money(offer?.listed_price_minor, offer?.currency)}</p>
@@ -71,13 +75,52 @@ export function LibraryProductDetail({ product, roomTypes, styleTags, activity, 
         </div>
         <div className="rounded-2xl border p-5">
           <h2 className="font-semibold">Price and availability evidence</h2>
-          <dl className="mt-3 space-y-2 text-sm">
-            <div className="flex justify-between"><dt className="text-stone-500">Price</dt><dd>{money(offer?.listed_price_minor, offer?.currency)}</dd></div>
-            <div className="flex justify-between"><dt className="text-stone-500">Availability</dt><dd>{offer?.availability?.replaceAll("_", " ") ?? "Unknown"}</dd></div>
-            <div className="flex justify-between"><dt className="text-stone-500">Last verified</dt><dd>{offer?.last_verified_at ? new Date(offer.last_verified_at).toLocaleString() : "Unknown"}</dd></div>
-            <div className="flex justify-between"><dt className="text-stone-500">SKU</dt><dd>{offer?.sku ?? "Not set"}</dd></div>
-            <div className="flex justify-between"><dt className="text-stone-500">Source</dt><dd className="capitalize">{(product.source_type ?? "manual").replaceAll("_", " ")}</dd></div>
-          </dl>
+          {offer && !archived && product.scope === "platform" ? (
+            <form action={offerAction} className="mt-3 space-y-3 text-sm">
+              <input type="hidden" name="productId" value={product.id} />
+              <input type="hidden" name="offerId" value={offer.id} />
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs font-medium text-stone-500">Price
+                  <input name="listedPrice" type="text" inputMode="decimal" placeholder="0.00" defaultValue={typeof offer.listed_price_minor === "number" ? (offer.listed_price_minor / 100).toFixed(2) : ""} className={inputCls} />
+                </label>
+                <label className="text-xs font-medium text-stone-500">Currency
+                  <input name="currency" defaultValue={offer.currency ?? "USD"} className={inputCls} />
+                </label>
+                <label className="text-xs font-medium text-stone-500">Availability
+                  <select name="availability" defaultValue={offer.availability ?? "unknown"} className={inputCls}>
+                    <option value="in_stock">In stock</option>
+                    <option value="low_stock">Low stock</option>
+                    <option value="out_of_stock">Out of stock</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </label>
+                <label className="text-xs font-medium text-stone-500">SKU
+                  <input name="sku" defaultValue={offer.sku ?? ""} className={inputCls} />
+                </label>
+                <label className="col-span-2 text-xs font-medium text-stone-500">Retailer
+                  <select name="retailerId" defaultValue={offer.retailer_id ?? ""} className={inputCls}>
+                    <option value="">Not set</option>
+                    {retailers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="flex items-center justify-between text-xs text-stone-500">
+                <span>Last verified {offer.last_verified_at ? new Date(offer.last_verified_at).toLocaleString() : "Unknown"} · Source: {(product.source_type ?? "manual").replaceAll("_", " ")}</span>
+                <button disabled={savingOffer} className="min-h-11 rounded-xl bg-emerald-800 px-4 font-semibold text-white disabled:opacity-50">
+                  {savingOffer ? "Saving…" : "Save"}
+                </button>
+              </div>
+              <p role="status" aria-live="polite" className={`min-h-5 text-sm ${offerState.ok === false ? "text-red-700" : "text-emerald-700"}`}>{offerState.message ?? ""}</p>
+            </form>
+          ) : (
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex justify-between"><dt className="text-stone-500">Price</dt><dd>{money(offer?.listed_price_minor, offer?.currency)}</dd></div>
+              <div className="flex justify-between"><dt className="text-stone-500">Availability</dt><dd>{offer?.availability?.replaceAll("_", " ") ?? "Unknown"}</dd></div>
+              <div className="flex justify-between"><dt className="text-stone-500">Last verified</dt><dd>{offer?.last_verified_at ? new Date(offer.last_verified_at).toLocaleString() : "Unknown"}</dd></div>
+              <div className="flex justify-between"><dt className="text-stone-500">SKU</dt><dd>{offer?.sku ?? "Not set"}</dd></div>
+              <div className="flex justify-between"><dt className="text-stone-500">Source</dt><dd className="capitalize">{(product.source_type ?? "manual").replaceAll("_", " ")}</dd></div>
+            </dl>
+          )}
         </div>
       </section>
 

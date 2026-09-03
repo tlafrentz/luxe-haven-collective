@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Boxes, ExternalLink, FilterX, ImageIcon, SlidersHorizontal } from "lucide-react";
+import { Boxes, ExternalLink, FilterX, SlidersHorizontal } from "lucide-react";
 import { getFurnishingLibrary, type LibraryFilterValue, type LibraryFilters } from "@/app/actions/furnishing-library";
 import { FurnishingHeader } from "./furnishing-navigation";
+import { ProductThumb } from "./product-thumb";
 
 // Supabase projections remain dynamic until generated FS-UX-010 database types land.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -159,13 +160,17 @@ function offerFor(product: Row) {
   const offers: Row[] = product.furnishing_product_offers ?? [];
   return offers.find((offer) => offer.status === "active") ?? offers[0];
 }
+function primaryImage(product: Row): string | null {
+  const media: Row[] = product.furnishing_product_media ?? [];
+  return (media.find((item) => item.is_primary) ?? media[0])?.source_url ?? null;
+}
 function ProductCard({ product: p }: { product: Row }) {
   const offer = offerFor(p);
   const rooms: Row[] = p.furnishing_product_room_compatibility ?? [];
   return (
     <article className="flex flex-col rounded-2xl border bg-white p-4">
-      <Link href={`/admin/furnishing/products/${p.id}`} className="flex h-32 items-center justify-center rounded-xl bg-stone-100 outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
-        <ImageIcon aria-hidden="true" className="h-8 w-8 text-stone-400" />
+      <Link href={`/admin/furnishing/products/${p.id}`} className="block overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
+        <ProductThumb src={primaryImage(p)} alt={p.name} className="h-32 w-full" />
       </Link>
       <div className="mt-3 flex-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{offer?.furnishing_retailers?.name ?? "No retailer"}</p>
