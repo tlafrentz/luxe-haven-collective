@@ -44,41 +44,58 @@ const toArray = (value: LibraryFilterValue): string[] =>
   Array.isArray(value) ? value.filter(Boolean) : typeof value === "string" && value ? value.split(",").map((entry) => entry.trim()).filter(Boolean) : [];
 const toSingle = (value: LibraryFilterValue): string | undefined => (Array.isArray(value) ? value[0] : (value as string | undefined));
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyLibraryFilters<T extends { eq: any; neq: any; or: any; in: any }>(
+  query: T,
+  input: Readonly<{
+    includeArchived: boolean;
+    q?: string;
+    category?: string;
+    roomIds: readonly string[];
+    styleIds: readonly string[];
+    retailerIds: readonly string[];
+    availability?: string;
+  }>,
+): T {
+  let next = input.includeArchived ? query.eq("status", "archived") : query.neq("status", "archived");
+  if (input.q) {
+    const term = input.q.replaceAll("%", "");
+    next = next.or(`name.ilike.%${term}%,brand.ilike.%${term}%,manufacturer_part_number.ilike.%${term}%,tags.cs.{${term}}`);
+  }
+  if (input.category) next = next.eq("category_id", input.category);
+  if (input.roomIds.length) next = next.in("furnishing_product_room_compatibility.room_type_id", input.roomIds);
+  if (input.styleIds.length) next = next.in("furnishing_product_style_tags.style_tag_id", input.styleIds);
+  if (input.retailerIds.length) next = next.in("furnishing_product_offers.retailer_id", input.retailerIds);
+  if (input.availability && input.availability !== "archived") {
+    next = next.eq("furnishing_product_offers.availability", input.availability);
+  }
+  return next;
+}
+
 export async function getFurnishingLibrary(filters: LibraryFilters = {}) {
   const { db } = await libraryAdmin();
-  const roomIds = toArray(filters.room);
-  const styleIds = toArray(filters.style);
-  const retailerIds = toArray(filters.retailer);
-  const q = toSingle(filters.q);
-  const category = toSingle(filters.category);
-  const availability = toSingle(filters.availability);
-  const includeArchived = availability === "archived" || toSingle(filters.status) === "archived";
+  const filterInput = {
+    includeArchived: toSingle(filters.availability) === "archived" || toSingle(filters.status) === "archived",
+    q: toSingle(filters.q),
+    category: toSingle(filters.category),
+    roomIds: toArray(filters.room),
+    styleIds: toArray(filters.style),
+    retailerIds: toArray(filters.retailer),
+    availability: toSingle(filters.availability),
+  };
 
-  let query = db
-    .from("furnishing_products")
-    .select(
-      "*,furnishing_product_categories(id,name,slug,group_name),furnishing_product_offers!furnishing_product_offers_product_id_fkey(*,furnishing_retailers(id,name,domain)),furnishing_product_room_compatibility(room_type_id),furnishing_product_style_tags(style_tag_id),furnishing_product_media(id,source_url,storage_path,alt_text,is_primary,sort_order)",
-    )
-    .eq("scope", "platform")
-    .order("updated_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(PAGE_SIZE);
-
-  query = includeArchived ? query.eq("status", "archived") : query.neq("status", "archived");
-
-  if (q) {
-    const term = q.replaceAll("%", "");
-    query = query.or(
-      `name.ilike.%${term}%,brand.ilike.%${term}%,manufacturer_part_number.ilike.%${term}%,tags.cs.{${term}}`,
-    );
-  }
-  if (category) query = query.eq("category_id", category);
-  if (roomIds.length) query = query.in("furnishing_product_room_compatibility.room_type_id", roomIds);
-  if (styleIds.length) query = query.in("furnishing_product_style_tags.style_tag_id", styleIds);
-  if (retailerIds.length) query = query.in("furnishing_product_offers.retailer_id", retailerIds);
-  if (availability && availability !== "archived") {
-    query = query.eq("furnishing_product_offers.availability", availability);
-  }
+  let query = applyLibraryFilters(
+    db
+      .from("furnishing_products")
+      .select(
+        "*,furnishing_product_categories(id,name,slug,group_name),furnishing_product_offers!furnishing_product_offers_product_id_fkey(*,furnishing_retailers(id,name,domain)),furnishing_product_room_compatibility(room_type_id),furnishing_product_style_tags(style_tag_id),furnishing_product_media(id,source_url,storage_path,alt_text,is_primary,sort_order)",
+      )
+      .eq("scope", "platform")
+      .order("updated_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(PAGE_SIZE),
+    filterInput,
+  );
 
   const cursor = decodeCursor(toSingle(filters.cursor));
   if (cursor) {
@@ -87,14 +104,23 @@ export async function getFurnishingLibrary(filters: LibraryFilters = {}) {
     );
   }
 
-  const [productRows, categories, retailers, roomTypes, styleTags] = await Promise.all([
+  // Total count must reflect the search/filter conditions only, not the
+  // pagination cursor — a separate head-only query keeps it accurate on
+  // every page rather than shrinking as the cursor advances.
+  const countQuery = applyLibraryFilters(
+    db.from("furnishing_products").select("id", { count: "exact", head: true }).eq("scope", "platform"),
+    filterInput,
+  );
+
+  const [productRows, countResult, categories, retailers, roomTypes, styleTags] = await Promise.all([
     query,
+    countQuery,
     db.from("furnishing_product_categories").select("*").eq("status", "active").order("sort_order"),
     db.from("furnishing_retailers").select("*").order("name"),
     db.from("furnishing_room_types").select("*").eq("status", "active").order("sort_order"),
     db.from("furnishing_style_tags").select("*").eq("status", "active").order("sort_order"),
   ]);
-  const error = [productRows, categories, retailers, roomTypes, styleTags].find((result) => result.error)?.error;
+  const error = [productRows, countResult, categories, retailers, roomTypes, styleTags].find((result) => result.error)?.error;
   if (error) throw new Error(error.message);
   const products = productRows.data ?? [];
   const last = products[products.length - 1] as { updated_at?: string; id?: string } | undefined;
@@ -104,6 +130,7 @@ export async function getFurnishingLibrary(filters: LibraryFilters = {}) {
       : null;
   return {
     products,
+    totalCount: countResult.count ?? products.length,
     categories: categories.data ?? [],
     retailers: retailers.data ?? [],
     roomTypes: roomTypes.data ?? [],
@@ -130,27 +157,46 @@ export async function getLibraryTaxonomy() {
 
 export async function getFurnishingLibraryProduct(productId: string) {
   const { db } = await libraryAdmin();
-  const [{ data: product, error }, { data: categories }, { data: retailers }, { data: roomTypes }, { data: styleTags }, { data: activity }] =
-    await Promise.all([
-      db
-        .from("furnishing_products")
-        .select(
-          "*,furnishing_product_categories(id,name,slug,group_name),furnishing_product_offers!furnishing_product_offers_product_id_fkey(*,furnishing_retailers(id,name,domain)),furnishing_product_room_compatibility(room_type_id),furnishing_product_style_tags(style_tag_id),furnishing_product_media(*)",
-        )
-        .eq("id", productId)
-        .single(),
-      db.from("furnishing_product_categories").select("*").eq("status", "active").order("sort_order"),
-      db.from("furnishing_retailers").select("*").eq("status", "active").order("name"),
-      db.from("furnishing_room_types").select("*").eq("status", "active").order("sort_order"),
-      db.from("furnishing_style_tags").select("*").eq("status", "active").order("sort_order"),
-      db
-        .from("furnishing_catalog_activity")
-        .select("event_type,occurred_at,metadata")
-        .eq("product_id", productId)
-        .order("occurred_at", { ascending: false })
-        .limit(25),
-    ]);
+  const [
+    { data: product, error },
+    { data: categories },
+    { data: retailers },
+    { data: roomTypes },
+    { data: styleTags },
+    { data: activity },
+    { data: packageItems },
+    { data: selections },
+  ] = await Promise.all([
+    db
+      .from("furnishing_products")
+      .select(
+        "*,furnishing_product_categories(id,name,slug,group_name),furnishing_product_offers!furnishing_product_offers_product_id_fkey(*,furnishing_retailers(id,name,domain)),furnishing_product_room_compatibility(room_type_id),furnishing_product_style_tags(style_tag_id),furnishing_product_media(*)",
+      )
+      .eq("id", productId)
+      .single(),
+    db.from("furnishing_product_categories").select("*").eq("status", "active").order("sort_order"),
+    db.from("furnishing_retailers").select("*").eq("status", "active").order("name"),
+    db.from("furnishing_room_types").select("*").eq("status", "active").order("sort_order"),
+    db.from("furnishing_style_tags").select("*").eq("status", "active").order("sort_order"),
+    db
+      .from("furnishing_catalog_activity")
+      .select("event_type,occurred_at,metadata")
+      .eq("product_id", productId)
+      .order("occurred_at", { ascending: false })
+      .limit(25),
+    db.from("furnishing_room_package_items").select("id,room_package_version_id").eq("recommended_product_id", productId).limit(50),
+    db
+      .from("furnishing_product_selections")
+      .select("id,furnishing_plans!inner(project_id,furnishing_projects!inner(id,name))")
+      .eq("product_id", productId)
+      .limit(50),
+  ]);
   if (error) throw new Error(error.message);
+  const plans = new Map<string, string>();
+  for (const selection of selections ?? []) {
+    const project = (selection.furnishing_plans as unknown as { furnishing_projects?: { id?: string; name?: string } })?.furnishing_projects;
+    if (project?.id) plans.set(project.id, project.name ?? "Furnishing plan");
+  }
   return {
     product,
     categories: categories ?? [],
@@ -158,6 +204,10 @@ export async function getFurnishingLibraryProduct(productId: string) {
     roomTypes: roomTypes ?? [],
     styleTags: styleTags ?? [],
     activity: activity ?? [],
+    usage: {
+      packageItems: packageItems ?? [],
+      plans: [...plans].map(([id, name]) => ({ id, name })),
+    },
   };
 }
 

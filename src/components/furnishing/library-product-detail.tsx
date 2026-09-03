@@ -12,12 +12,13 @@ type Props = Readonly<{
   roomTypes: Row[];
   styleTags: Row[];
   activity: Row[];
+  usage: { packageItems: Row[]; plans: Row[] };
 }>;
 
 const money = (minor: unknown, currency = "USD") =>
   typeof minor === "number" ? new Intl.NumberFormat("en-US", { style: "currency", currency }).format(minor / 100) : "Price unavailable";
 
-export function LibraryProductDetail({ product, roomTypes, styleTags, activity }: Props) {
+export function LibraryProductDetail({ product, roomTypes, styleTags, activity, usage }: Props) {
   const [archiveState, archiveAction, archiving] = useActionState(archiveLibraryProductAction, {});
   const offer = (product.furnishing_product_offers ?? [])[0] as Row | undefined;
   const rooms: Row[] = product.furnishing_product_room_compatibility ?? [];
@@ -83,6 +84,30 @@ export function LibraryProductDetail({ product, roomTypes, styleTags, activity }
       {product.notes ? (
         <section className="rounded-2xl border p-5"><h2 className="font-semibold">Notes</h2><p className="mt-2 text-sm text-stone-700">{product.notes}</p></section>
       ) : null}
+
+      <section className="rounded-2xl border p-5">
+        <h2 className="font-semibold">Usage in room packages and furnishing plans</h2>
+        {usage.packageItems.length || usage.plans.length ? (
+          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            <div className="flex justify-between rounded-xl bg-stone-50 p-3"><dt>Room packages</dt><dd className="font-semibold">{usage.packageItems.length}</dd></div>
+            <div className="flex justify-between rounded-xl bg-stone-50 p-3"><dt>Furnishing plans</dt><dd className="font-semibold">{usage.plans.length}</dd></div>
+          </dl>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-stone-600">Not yet used in any room package or furnishing plan.</p>
+            {!archived ? (
+              <p className="mt-2 text-sm text-stone-600">
+                Selecting a library product into a governed room package or furnishing plan uses the same approval
+                workflow as any other product.{" "}
+                <Link href={`/admin/furnishing/catalog/${product.id}`} className="font-semibold text-emerald-800 underline">
+                  Open this product&apos;s governance and approval view
+                </Link>{" "}
+                to adopt it into a workspace and approve it for use.
+              </p>
+            ) : null}
+          </>
+        )}
+      </section>
 
       <section>
         <h2 className="text-xl font-semibold">Activity</h2>

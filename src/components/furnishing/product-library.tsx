@@ -108,7 +108,7 @@ export async function ProductLibrary({ searchParams }: { searchParams: Promise<F
       </form>
 
       <p className="text-sm text-stone-600" role="status">
-        {data.products.length} {data.products.length === 1 ? "saved product" : "saved products"}
+        {data.totalCount} {data.totalCount === 1 ? "saved product" : "saved products"}
       </p>
 
       {data.products.length ? (

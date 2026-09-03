@@ -14,6 +14,7 @@ export default async function Page({
       roomTypes={data.roomTypes}
       styleTags={data.styleTags}
       activity={data.activity}
+      usage={data.usage}
     />
   );
 }
