@@ -266,8 +266,12 @@ export async function getReservationContexts(
   access: ReservationContextAccess = "operational-summary",
   now = new Date(),
 ): Promise<readonly ReservationContext[]> {
-  authorize(principal, access);
-  const sources = await repository.list(principal.workspaceId);
+  authorize(principal, access); // throws if principal.userId is falsy
+  // repository.list resolves identity via resolveOwnerIdentity, which checks
+  // this value against the caller's own auth.uid() -- it must be the
+  // calling profile's id, not the workspace id (the interface's "ownerId"
+  // parameter name is misleading here).
+  const sources = await repository.list(principal.userId!);
   const query = filters.query?.trim().toLowerCase();
 
   return sources
@@ -294,8 +298,8 @@ export async function getReservationContext(
   access: ReservationContextAccess = "operational-summary",
   now = new Date(),
 ): Promise<ReservationContext | null> {
-  authorize(principal, access);
-  const source = await repository.get(principal.workspaceId, bookingId);
+  authorize(principal, access); // throws if principal.userId is falsy
+  const source = await repository.get(principal.userId!, bookingId);
   return source
     ? projectReservationContext(buildReservationContext(source, now), access)
     : null;

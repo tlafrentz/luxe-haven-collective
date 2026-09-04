@@ -127,6 +127,14 @@ describe("reservation context application", () => {
     expect(repository.calls).toEqual(["owner-1", "owner-1"]);
   });
 
+  it("passes the caller's profile id to the repository, not the workspace id (regression: these previously matched by coincidence in fixtures)", async () => {
+    const principal: ReservationContextPrincipal = { userId: "profile-9", workspaceId: "workspace-9", role: "owner" };
+    const repository = new Repository([source({ ownerId: "profile-9" })]);
+    await getReservationContexts(repository, principal, {}, undefined, now);
+    await getReservationContext(repository, principal, "booking-1", undefined, now);
+    expect(repository.calls).toEqual(["profile-9", "profile-9"]);
+  });
+
   it("denies anonymous and restricted contact access without confirming records", async () => {
     const repository = new Repository([source()]);
     await expect(

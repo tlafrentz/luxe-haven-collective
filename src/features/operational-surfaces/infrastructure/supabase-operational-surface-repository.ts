@@ -177,7 +177,10 @@ export async function getOperationalSurfaceProjection(input: Readonly<{
       "operational-summary",
       input.now,
     ),
-    getOperationalProperties(input.principal.workspaceId),
+    // getOperationalProperties resolves identity via resolveOwnerIdentity,
+    // which checks this value against the caller's own auth.uid() -- it
+    // must be the calling profile's id, not the workspace id.
+    getOperationalProperties(input.principal.userId),
     getOperationalSynchronization(identity.ownerProfileId),
   ]);
   const properties = propertyRecords.map((property) => {
