@@ -12,9 +12,9 @@ type Item = Readonly<{ id: FurnishingSection; label: string; href: string; icon:
 /**
  * FS-UX-010: one horizontal section menu. Product Library absorbs the
  * former Product Catalog/Products/Retailers/Imports surfaces; Furnishing
- * Plans absorbs Design Workspaces/Budgets. Imports, Release Controls, and
- * Settings remain reachable at their existing routes but are no longer
- * primary Furnishing Studio navigation (spec §4.1).
+ * Plans absorbs Design Workspaces/Budgets. Imports and Settings remain
+ * reachable at their existing routes but are no longer primary Furnishing
+ * Studio navigation (spec §4.1).
  */
 export const furnishingNavigationItems: readonly Item[] = [
   { id: "overview", label: "Overview", href: "/admin/furnishing", icon: House, prefixes: ["/admin/furnishing"] },

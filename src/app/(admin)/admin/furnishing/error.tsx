@@ -46,12 +46,6 @@ export default function FurnishingAdminError({
           >
             Refresh authoritative state
           </button>
-          <a
-            className="rounded-xl border px-4 py-2 font-semibold"
-            href="/admin/furnishing/activation"
-          >
-            Open safety controls
-          </a>
         </div>
       </section>
     </main>
