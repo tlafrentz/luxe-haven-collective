@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Boxes, ClipboardList, House, PackageCheck, Sofa, Truck, type LucideIcon } from "lucide-react";
+import { ContextLink } from "@/platform/workspace-context";
 
 export type FurnishingSection = "overview" | "product-library" | "room-packages" | "furnishing-plans" | "procurement" | "installations";
 type Item = Readonly<{ id: FurnishingSection; label: string; href: string; icon: LucideIcon; prefixes: readonly string[] }>;
@@ -38,7 +39,7 @@ export function FurnishingStudioShell({ children }: { children: ReactNode }) {
         {furnishingNavigationItems.map((item) => {
           const Icon = item.icon, selected = item.id === active;
           return <li key={item.id}>
-            <Link
+            <ContextLink
               href={item.href}
               prefetch={selected ? undefined : false}
               aria-current={selected ? "page" : undefined}
@@ -46,7 +47,7 @@ export function FurnishingStudioShell({ children }: { children: ReactNode }) {
             >
               <Icon aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
               {item.label}
-            </Link>
+            </ContextLink>
           </li>;
         })}
       </ul>

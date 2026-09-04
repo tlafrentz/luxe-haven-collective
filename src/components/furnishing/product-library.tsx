@@ -15,11 +15,12 @@ const money = (minor: unknown, currency = "USD") =>
 const single = (value: LibraryFilterValue): string | undefined => (Array.isArray(value) ? value[0] : (value as string | undefined));
 const list = (value: LibraryFilterValue): string[] => (Array.isArray(value) ? [...value] : value ? [value as string] : []);
 
-function buildQuery(filters: Filters, overrides: Record<string, LibraryFilterValue>) {
+export function buildQuery(filters: Filters, overrides: Record<string, LibraryFilterValue>) {
   const params = new URLSearchParams();
-  const merged: Record<string, LibraryFilterValue> = { ...filters, ...overrides };
+  // Any filter/search change resets pagination by default; an override that
+  // explicitly sets a new cursor (the "Show more" link) must still win.
+  const merged: Record<string, LibraryFilterValue> = { ...filters, cursor: undefined, ...overrides };
   for (const [key, value] of Object.entries(merged)) {
-    if (key === "cursor") continue; // any filter/search change resets pagination
     for (const entry of list(value)) params.append(key, entry);
   }
   const query = params.toString();
