@@ -4,3 +4,6 @@ export * from "./notifications-preferences-forms";
 export * from "./organization-form";
 export * from "./team-access-manager";
 export * from "./accept-invitation";
+export * from "./team-sub-navigation";
+export * from "./platform-access/role-option-card";
+export * from "./platform-access/role-assignment-manager";

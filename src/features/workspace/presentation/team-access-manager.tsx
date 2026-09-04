@@ -9,6 +9,7 @@ import {
   updateTeamMemberAction,
   type TeamActionResult,
 } from "@/app/actions/workspace-team-access";
+import type { RoleAssignmentRow } from "@/app/actions/platform-access-assignments";
 import {
   capabilitySummary,
   type WorkspaceAccessContext,
@@ -16,6 +17,7 @@ import {
   type WorkspaceMembership,
   type WorkspaceRole,
 } from "../domain/team-access";
+import { RoleAssignmentManager } from "./platform-access/role-assignment-manager";
 
 type PropertyOption = Readonly<{ id: string; name: string }>;
 
@@ -24,11 +26,15 @@ export function TeamAccessManager({
   members,
   invitations,
   properties,
+  roleAssignmentsByMember,
+  canManageRoleAssignments,
 }: Readonly<{
   context: WorkspaceAccessContext;
   members: readonly WorkspaceMembership[];
   invitations: readonly WorkspaceInvitation[];
   properties: readonly PropertyOption[];
+  roleAssignmentsByMember: ReadonlyMap<string, readonly RoleAssignmentRow[]>;
+  canManageRoleAssignments: boolean;
 }>) {
   const [feedback, setFeedback] = useState<TeamActionResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -45,7 +51,16 @@ export function TeamAccessManager({
         <p className="mt-1 text-sm text-stone-600">Roles describe responsibility; property scope controls which hospitality assets are visible.</p>
         <div className="mt-5 space-y-4">
           {members.map((member) => (
-            <MemberCard key={member.id} context={context} member={member} properties={properties} pending={pending} mutate={mutate} />
+            <MemberCard
+              key={member.id}
+              context={context}
+              member={member}
+              properties={properties}
+              pending={pending}
+              mutate={mutate}
+              roleAssignments={roleAssignmentsByMember.get(member.profileId) ?? []}
+              canManageRoleAssignments={canManageRoleAssignments}
+            />
           ))}
         </div>
       </section>
@@ -90,7 +105,23 @@ function InviteMemberForm({ properties, pending, onResult }: Readonly<{ properti
   </form></section>;
 }
 
-function MemberCard({ context, member, properties, pending, mutate }: Readonly<{ context: WorkspaceAccessContext; member: WorkspaceMembership; properties: readonly PropertyOption[]; pending: boolean; mutate: (work: () => Promise<TeamActionResult>) => void }>) {
+function MemberCard({
+  context,
+  member,
+  properties,
+  pending,
+  mutate,
+  roleAssignments,
+  canManageRoleAssignments,
+}: Readonly<{
+  context: WorkspaceAccessContext;
+  member: WorkspaceMembership;
+  properties: readonly PropertyOption[];
+  pending: boolean;
+  mutate: (work: () => Promise<TeamActionResult>) => void;
+  roleAssignments: readonly RoleAssignmentRow[];
+  canManageRoleAssignments: boolean;
+}>) {
   const [role, setRole] = useState(member.role);
   const [mode, setMode] = useState(member.propertyAccess.type);
   const [selected, setSelected] = useState(member.propertyAccess.type === "selected" ? [...member.propertyAccess.propertyIds] : []);
@@ -101,7 +132,17 @@ function MemberCard({ context, member, properties, pending, mutate }: Readonly<{
     <label className="text-xs font-semibold text-stone-600">Property scope<select value={mode} disabled={pending || self || owner || role==="administrator"} onChange={(event) => setMode(event.target.value as typeof mode)} className="organization-input mt-1"><option value="all">All properties</option><option value="selected">Selected properties</option><option value="none">No properties</option></select></label>
     {mode==="selected" && !owner ? <fieldset className="sm:col-span-2"><legend className="text-xs font-semibold text-stone-600">Assigned properties</legend><div className="mt-1 flex flex-wrap gap-2">{properties.map((property) => <label key={property.id} className="flex items-center gap-1.5 rounded-full bg-stone-50 px-3 py-2 text-xs"><input type="checkbox" disabled={self} checked={selected.includes(property.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current,property.id] : current.filter((id)=>id!==property.id))} />{property.name}</label>)}</div></fieldset> : null}
     {!self ? <div className="sm:col-span-2 flex flex-wrap justify-end gap-2"><button disabled={pending || role===member.role} onClick={() => mutate(() => updateTeamMemberAction({ workspaceId:context.workspaceId,membershipId:member.id,action:"role",role,commandId:crypto.randomUUID() }))} className="rounded-full border border-stone-300 px-4 py-2 text-xs font-semibold disabled:opacity-40">Save role</button><button disabled={pending || (mode==="selected"&&!selected.length)} onClick={() => mutate(() => updateTeamMemberAction({ workspaceId:context.workspaceId,membershipId:member.id,action:"access",propertyAccessMode:mode,propertyIds:selected,commandId:crypto.randomUUID() }))} className="rounded-full border border-stone-300 px-4 py-2 text-xs font-semibold">Save access</button>{member.status==="suspended" ? <button onClick={() => mutate(() => updateTeamMemberAction({workspaceId:context.workspaceId,membershipId:member.id,action:"restore",commandId:crypto.randomUUID()}))} className="rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white">Restore</button> : <button onClick={() => { if(window.confirm(`Suspend access for ${member.member.displayName}?`)) mutate(() => updateTeamMemberAction({workspaceId:context.workspaceId,membershipId:member.id,action:"suspend",commandId:crypto.randomUUID()})); }} className="rounded-full border border-amber-300 px-4 py-2 text-xs font-semibold text-amber-800">Suspend</button>}<button onClick={() => { if(window.confirm(`Remove ${member.member.displayName} from this workspace? This does not delete their account.`)) mutate(() => updateTeamMemberAction({workspaceId:context.workspaceId,membershipId:member.id,action:"remove",commandId:crypto.randomUUID()})); }} className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold text-red-700">Remove</button></div> : null}
-  </div></div></article>;
+  </div></div>
+  <RoleAssignmentManager
+    subjectId={member.profileId}
+    workspaceId={context.workspaceId}
+    canManage={canManageRoleAssignments && !self}
+    properties={properties}
+    assignments={roleAssignments}
+    mutate={mutate}
+    pending={pending}
+  />
+  </article>;
 }
 
 function scopeLabel(scope: WorkspaceMembership["propertyAccess"]) { return scope.type === "selected" ? `${scope.propertyIds.length} selected ${scope.propertyIds.length===1?"property":"properties"}` : `${scope.type} properties`; }

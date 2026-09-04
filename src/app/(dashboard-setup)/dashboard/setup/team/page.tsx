@@ -29,7 +29,14 @@ export default async function SetupTeamPage() {
       <h1 className="font-serif text-3xl text-stone-950">Invite your team (optional).</h1>
       <p className="mt-2 text-sm text-stone-600">Add teammates now or skip and invite later.</p>
       <WorkspaceCard level={1} className="mt-6 p-6 sm:p-8">
-        <TeamAccessManager context={context} members={members} invitations={invitations} properties={properties} />
+        <TeamAccessManager
+          context={context}
+          members={members}
+          invitations={invitations}
+          properties={properties}
+          roleAssignmentsByMember={new Map()}
+          canManageRoleAssignments={false}
+        />
       </WorkspaceCard>
       <div className="mt-6 flex items-center justify-between">
         <Link href="/dashboard/setup/import" className="text-sm font-semibold text-stone-500 hover:text-stone-800">
