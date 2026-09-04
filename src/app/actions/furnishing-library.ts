@@ -122,7 +122,10 @@ export async function getFurnishingLibrary(filters: LibraryFilters = {}) {
     db.from("furnishing_style_tags").select("*").eq("status", "active").order("sort_order"),
   ]);
   const error = [productRows, countResult, categories, retailers, roomTypes, styleTags].find((result) => result.error)?.error;
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("furnishing_library_query_failed", { filterInput, code: error.code, message: error.message, details: error.details, hint: error.hint });
+    throw new Error(`CATALOG_LIBRARY_QUERY_FAILED_${error.code ?? "UNKNOWN"}`);
+  }
   const products = productRows.data ?? [];
   const last = products[products.length - 1] as { updated_at?: string; id?: string } | undefined;
   const nextCursor =
