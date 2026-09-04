@@ -20,6 +20,7 @@ export async function DesignWorkspaceLibrary() {
     .select(
       "id,name,design_workspace_status,target_budget_minor,target_budget_currency,target_launch_date,updated_at,properties(name,property_type),furnishing_budgets(estimated_total_minor,lifecycle_status)",
     )
+    .neq("design_workspace_status", "archived")
     .order("updated_at", { ascending: false });
   if (error) throw new Error("DESIGN_WORKSPACE_LOAD_FAILED");
   return (
