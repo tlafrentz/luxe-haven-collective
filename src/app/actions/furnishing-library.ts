@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { importProductFromLink, validateProductLinkUrl, detectRetailer } from "@/features/furnishing-studio/link-import";
 import type { ExtractedProduct } from "@/features/furnishing-studio/link-import";
 import { minorUnits } from "@/features/furnishing-studio";
+import { libraryEmbedJoins } from "@/features/furnishing-studio/library-query";
 
 async function libraryAdmin() {
   const { user } = await requireRole(["admin"]);
@@ -85,11 +86,13 @@ export async function getFurnishingLibrary(filters: LibraryFilters = {}) {
     availability: toSingle(filters.availability),
   };
 
+  const { roomJoin, styleJoin, offerJoin } = libraryEmbedJoins(filterInput);
+
   let query = applyLibraryFilters(
     db
       .from("furnishing_products")
       .select(
-        "*,furnishing_product_categories(id,name,slug,group_name),furnishing_product_offers!furnishing_product_offers_product_id_fkey(*,furnishing_retailers(id,name,domain)),furnishing_product_room_compatibility(room_type_id),furnishing_product_style_tags(style_tag_id),furnishing_product_media(id,source_url,storage_path,alt_text,is_primary,sort_order)",
+        `*,furnishing_product_categories(id,name,slug,group_name),furnishing_product_offers!furnishing_product_offers_product_id_fkey${offerJoin}(*,furnishing_retailers(id,name,domain)),furnishing_product_room_compatibility${roomJoin}(room_type_id),furnishing_product_style_tags${styleJoin}(style_tag_id),furnishing_product_media(id,source_url,storage_path,alt_text,is_primary,sort_order)`,
       )
       .eq("scope", "platform")
       .order("updated_at", { ascending: false })
@@ -107,9 +110,16 @@ export async function getFurnishingLibrary(filters: LibraryFilters = {}) {
 
   // Total count must reflect the search/filter conditions only, not the
   // pagination cursor — a separate head-only query keeps it accurate on
-  // every page rather than shrinking as the cursor advances.
+  // every page rather than shrinking as the cursor advances. It still needs
+  // the same filtered embeds as the main query above, for the same reason.
   const countQuery = applyLibraryFilters(
-    db.from("furnishing_products").select("id", { count: "exact", head: true }).eq("scope", "platform"),
+    db
+      .from("furnishing_products")
+      .select(
+        `id,furnishing_product_room_compatibility${roomJoin}(room_type_id),furnishing_product_style_tags${styleJoin}(style_tag_id),furnishing_product_offers!furnishing_product_offers_product_id_fkey${offerJoin}(retailer_id,availability)`,
+        { count: "exact", head: true },
+      )
+      .eq("scope", "platform"),
     filterInput,
   );
 
