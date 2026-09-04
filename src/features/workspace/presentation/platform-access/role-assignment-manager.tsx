@@ -160,6 +160,7 @@ export function RoleAssignmentManager({
                 refreshPreview(next);
               }}
             />
+            <p className="text-xs text-stone-500">Workspace Owner and Administrator are set from the Role dropdown above — they&apos;re always workspace-wide.</p>
             <fieldset>
               <legend className="text-xs font-semibold text-stone-700">Modules (choose one or more)</legend>
               <div className="mt-1 flex flex-wrap gap-2">
