@@ -53,42 +53,67 @@ describe("RoleAssignmentManager interaction", () => {
     expect(screen.getByText("Mesa Vineyard")).toBeTruthy();
   });
 
+  it("disables Save until at least one module is selected", async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByText(/Module & scope assignments/));
+    await user.type(screen.getByPlaceholderText("Why is this access needed?"), "Onboarding");
+    expect((screen.getByRole("button", { name: "Save assignment" }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByLabelText("Guidebook Studio"));
+    expect((screen.getByRole("button", { name: "Save assignment" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("disables Save until at least one property is selected in property scope", async () => {
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByText(/Module & scope assignments/));
     await user.type(screen.getByPlaceholderText("Why is this access needed?"), "Onboarding");
+    await user.click(screen.getByLabelText("Guidebook Studio"));
     await user.click(screen.getByLabelText("Selected properties"));
     expect((screen.getByRole("button", { name: "Save assignment" }) as HTMLButtonElement).disabled).toBe(true);
     await user.click(screen.getByLabelText("Mesa Vineyard"));
     expect((screen.getByRole("button", { name: "Save assignment" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("issues one addRoleAssignmentAction call per selected property", async () => {
+  it("issues one addRoleAssignmentAction call per selected module x property combination", async () => {
     vi.mocked(addRoleAssignmentAction).mockResolvedValue({ ok: true, message: "Assignment saved." });
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByText(/Module & scope assignments/));
     await user.type(screen.getByPlaceholderText("Why is this access needed?"), "Onboarding");
+    await user.click(screen.getByLabelText("Guidebook Studio"));
+    await user.click(screen.getByLabelText("Financial Intelligence"));
     await user.click(screen.getByLabelText("Selected properties"));
     await user.click(screen.getByLabelText("Mesa Vineyard"));
     await user.click(screen.getByLabelText("Coastal Retreat"));
     await user.click(screen.getByRole("button", { name: "Save assignment" }));
 
-    await waitFor(() => expect(addRoleAssignmentAction).toHaveBeenCalledTimes(2));
-    expect(addRoleAssignmentAction).toHaveBeenCalledWith(expect.objectContaining({ scopeId: "prop-1" }));
-    expect(addRoleAssignmentAction).toHaveBeenCalledWith(expect.objectContaining({ scopeId: "prop-2" }));
+    await waitFor(() => expect(addRoleAssignmentAction).toHaveBeenCalledTimes(4));
+    expect(addRoleAssignmentAction).toHaveBeenCalledWith(expect.objectContaining({ module: "guidebooks", scopeId: "prop-1" }));
+    expect(addRoleAssignmentAction).toHaveBeenCalledWith(expect.objectContaining({ module: "guidebooks", scopeId: "prop-2" }));
+    expect(addRoleAssignmentAction).toHaveBeenCalledWith(expect.objectContaining({ module: "financials", scopeId: "prop-1" }));
+    expect(addRoleAssignmentAction).toHaveBeenCalledWith(expect.objectContaining({ module: "financials", scopeId: "prop-2" }));
   });
 
-  it("saves once with a null scope id for Entire workspace", async () => {
+  it("saves once per selected module with a null scope id for Entire workspace", async () => {
     vi.mocked(addRoleAssignmentAction).mockResolvedValue({ ok: true, message: "Assignment saved." });
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByText(/Module & scope assignments/));
     await user.type(screen.getByPlaceholderText("Why is this access needed?"), "Onboarding");
+    await user.click(screen.getByLabelText("Guidebook Studio"));
     await user.click(screen.getByRole("button", { name: "Save assignment" }));
     await waitFor(() => expect(addRoleAssignmentAction).toHaveBeenCalledTimes(1));
-    expect(addRoleAssignmentAction).toHaveBeenCalledWith(expect.objectContaining({ scopeType: "workspace", scopeId: null }));
+    expect(addRoleAssignmentAction).toHaveBeenCalledWith(expect.objectContaining({ module: "guidebooks", scopeType: "workspace", scopeId: null }));
+  });
+
+  it("requests a preview covering every selected module", async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByText(/Module & scope assignments/));
+    await user.click(screen.getByLabelText("Guidebook Studio"));
+    await user.click(screen.getByLabelText("Financial Intelligence"));
+    await waitFor(() => expect(previewRoleAssignmentAccessAction).toHaveBeenLastCalledWith(expect.objectContaining({ modules: ["guidebooks", "financials"] })));
   });
 
   it("confirms before revoking an existing assignment", async () => {

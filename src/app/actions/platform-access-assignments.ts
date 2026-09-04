@@ -110,17 +110,20 @@ export type PreviewRoleAssignmentInput = Readonly<{
   subjectId: string;
   workspaceId: string;
   role: RoleName;
-  module: string;
+  modules: readonly string[];
   scopeType: ScopeType;
   scopeId?: string | null;
 }>;
 
 /**
- * Before-save preview: (a) whether the target person already has a small
- * representative sample of this module's privileges today, and (b) the
- * full set they'd additionally gain from this role's bundle in this
- * module. Does not simulate the hypothetical post-grant evaluator result --
- * that would require re-implementing its precedence rules client-side.
+ * Before-save preview: (a) whether the target person already has one
+ * representative privilege from each selected module today, and (b) the
+ * full set they'd additionally gain from this role's bundle in each
+ * selected module. Does not simulate the hypothetical post-grant evaluator
+ * result -- that would require re-implementing its precedence rules
+ * client-side. "Today" is bounded to one evaluate_privilege call per
+ * selected module (at most 8, the full module list) rather than per
+ * sensitivity tier, since AUTH-006 allows granting several modules at once.
  *
  * Re-checks workspace.roles.roles_manage itself: evaluate_privilege has no
  * built-in "is the caller allowed to ask about this subject" gate (unlike
@@ -140,6 +143,8 @@ export async function previewRoleAssignmentAccessAction(input: PreviewRoleAssign
   });
   if (!permitted.allowed) throw new Error("PA_ASSIGNMENT_PERMISSION_DENIED");
 
+  if (!input.modules.length) return { today: [], afterGrant: [] };
+
   const { data: roleRow } = await client.from("roles").select("id").eq("canonical_name", input.role).maybeSingle();
   if (!roleRow) return { today: [], afterGrant: [] };
 
@@ -149,15 +154,20 @@ export async function previewRoleAssignmentAccessAction(input: PreviewRoleAssign
     .eq("role_id", roleRow.id)
     .is("superseded_at", null);
 
-  const inModule = (privilegeRows ?? [])
+  const moduleSet = new Set(input.modules);
+  const inModules = (privilegeRows ?? [])
     .map((row) => row.privilege_definitions as unknown as { id: string; module: string; action: string; label: string; sensitivity: RolePrivilegeRow["sensitivity"] } | null)
-    .filter((row): row is NonNullable<typeof row> => Boolean(row) && row!.module === input.module);
+    .filter((row): row is NonNullable<typeof row> => Boolean(row) && moduleSet.has(row!.module));
 
-  const summary = summarizeRolePrivileges(inModule.map((row) => ({ roleId: input.role, module: row.module, action: row.action, sensitivity: row.sensitivity })));
+  const summary = summarizeRolePrivileges(inModules.map((row) => ({ roleId: input.role, module: row.module, action: row.action, sensitivity: row.sensitivity })));
   const afterGrant = [...(summary.get(input.role)?.entries() ?? [])].map(([module, actions]) => ({ module, actions }));
 
-  const sample = (["standard", "elevated", "critical"] as const)
-    .map((tier) => inModule.find((row) => row.sensitivity === tier))
+  // One representative privilege per selected module (prefer the "view"-tier action, so the preview reads naturally), bounded to input.modules.length calls.
+  const sample = input.modules
+    .map((module) => {
+      const rows = inModules.filter((row) => row.module === module);
+      return rows.find((row) => row.sensitivity === "standard") ?? rows[0];
+    })
     .filter((row): row is NonNullable<typeof row> => Boolean(row));
 
   const today = await Promise.all(

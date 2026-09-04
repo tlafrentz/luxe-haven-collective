@@ -64,21 +64,25 @@ export function RoleAssignmentManager({
   pending: boolean;
 }>) {
   const [role, setRole] = useState<RoleName>("manager");
-  const [module, setModule] = useState<string>(MODULES[0].id);
+  const [modules, setModules] = useState<string[]>([]);
   const [scope, setScope] = useState<ScopeChoice>("workspace");
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [preview, setPreview] = useState<AssignmentPreview | null>(null);
   const [previewPending, startPreview] = useTransition();
 
-  const refreshPreview = (nextRole: RoleName = role, nextModule = module, nextScope: ScopeChoice = scope, nextProperties = selectedProperties) => {
+  const refreshPreview = (nextRole: RoleName = role, nextModules = modules, nextScope: ScopeChoice = scope, nextProperties = selectedProperties) => {
+    if (!nextModules.length) {
+      setPreview(null);
+      return;
+    }
     startPreview(async () => {
       setPreview(
         await previewRoleAssignmentAccessAction({
           subjectId,
           workspaceId,
           role: nextRole,
-          module: nextModule,
+          modules: nextModules,
           scopeType: nextScope === "workspace" ? "workspace" : "property",
           scopeId: nextScope === "property" ? (nextProperties[0] ?? null) : null,
         }),
@@ -86,14 +90,21 @@ export function RoleAssignmentManager({
     });
   };
 
+  // AUTH-006: a Manager/Contributor/Viewer assignment covers "one or more
+  // modules" -- realized as one role_assignment row per (module, scope)
+  // pair, so saving loops over every combination of the selected modules
+  // and scopes rather than issuing a single call.
   const save = () => {
     const scopeIds = scope === "workspace" ? [null] : selectedProperties;
     mutate(async () => {
-      for (const scopeId of scopeIds) {
-        const result = await addRoleAssignmentAction({ subjectId, role, workspaceId, module, scopeType: scope === "workspace" ? "workspace" : "property", scopeId, reason });
-        if (!result.ok) return result;
+      for (const moduleId of modules) {
+        for (const scopeId of scopeIds) {
+          const result = await addRoleAssignmentAction({ subjectId, role, workspaceId, module: moduleId, scopeType: scope === "workspace" ? "workspace" : "property", scopeId, reason });
+          if (!result.ok) return result;
+        }
       }
       setReason("");
+      setModules([]);
       setSelectedProperties([]);
       setPreview(null);
       return { ok: true, message: "Assignment saved." };
@@ -149,23 +160,25 @@ export function RoleAssignmentManager({
                 refreshPreview(next);
               }}
             />
-            <label className="block text-xs font-semibold text-stone-700">
-              Module
-              <select
-                value={module}
-                onChange={(event) => {
-                  setModule(event.target.value);
-                  refreshPreview(role, event.target.value);
-                }}
-                className="organization-input mt-1"
-              >
+            <fieldset>
+              <legend className="text-xs font-semibold text-stone-700">Modules (choose one or more)</legend>
+              <div className="mt-1 flex flex-wrap gap-2">
                 {MODULES.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
+                  <label key={entry.id} className="flex items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={modules.includes(entry.id)}
+                      onChange={(event) => {
+                        const next = event.target.checked ? [...modules, entry.id] : modules.filter((id) => id !== entry.id);
+                        setModules(next);
+                        refreshPreview(role, next);
+                      }}
+                    />
                     {entry.label}
-                  </option>
+                  </label>
                 ))}
-              </select>
-            </label>
+              </div>
+            </fieldset>
             <fieldset>
               <legend className="text-xs font-semibold text-stone-700">Scope</legend>
               <div className="mt-1 flex flex-wrap gap-3">
@@ -177,7 +190,7 @@ export function RoleAssignmentManager({
                       checked={scope === value}
                       onChange={() => {
                         setScope(value);
-                        refreshPreview(role, module, value);
+                        refreshPreview(role, modules, value);
                       }}
                     />
                     {value === "workspace" ? "Entire workspace" : "Selected properties"}
@@ -197,7 +210,7 @@ export function RoleAssignmentManager({
                         onChange={(event) => {
                           const next = event.target.checked ? [...selectedProperties, property.id] : selectedProperties.filter((id) => id !== property.id);
                           setSelectedProperties(next);
-                          refreshPreview(role, module, scope, next);
+                          refreshPreview(role, modules, scope, next);
                         }}
                       />
                       {property.name}
@@ -214,7 +227,7 @@ export function RoleAssignmentManager({
             <div className="flex justify-end">
               <button
                 type="button"
-                disabled={pending || !reason.trim() || (scope === "property" && !selectedProperties.length)}
+                disabled={pending || !reason.trim() || !modules.length || (scope === "property" && !selectedProperties.length)}
                 onClick={save}
                 className="min-h-11 rounded-full bg-stone-950 px-5 text-xs font-semibold text-white disabled:opacity-40"
               >
@@ -244,7 +257,7 @@ function AssignmentPreviewView({ preview, pending, roleLabel }: Readonly<{ previ
       <p className="mt-2 font-semibold text-stone-800">After this grant, {roleLabel} will additionally be able to:</p>
       {preview.afterGrant.map((group) => (
         <p key={group.module} className="mt-1 text-stone-600">
-          {group.actions.join(", ")}
+          <strong>{moduleLabel(group.module)}:</strong> {group.actions.join(", ")}
         </p>
       ))}
     </div>
