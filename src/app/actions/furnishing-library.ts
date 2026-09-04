@@ -477,3 +477,92 @@ export async function updateLibraryProductOfferAction(
     return { ok: false, message: typed(error, "CATALOG_LIBRARY_OFFER_UPDATE_UNAVAILABLE") };
   }
 }
+
+// ---------------------------------------------------------------------
+// One-time image backfill for products saved before image capture existed
+// ---------------------------------------------------------------------
+
+const BACKFILL_BATCH_SIZE = 10;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function getLibraryImageBackfillStatus() {
+  const { db } = await libraryAdmin();
+  const { data: withMedia } = await db.from("furnishing_product_media").select("product_id");
+  const excludeIds = new Set((withMedia ?? []).map((row) => row.product_id as string));
+  const { data: candidates } = await db
+    .from("furnishing_products")
+    .select("id,furnishing_product_offers!furnishing_product_offers_product_id_fkey(product_url)")
+    .eq("scope", "platform")
+    .neq("status", "archived");
+  const missing = (candidates ?? []).filter((product) => {
+    if (excludeIds.has(product.id)) return false;
+    const offers = (product as unknown as { furnishing_product_offers?: { product_url?: string }[] }).furnishing_product_offers ?? [];
+    return offers.some((offer) => offer.product_url);
+  });
+  return { missingCount: missing.length };
+}
+
+export type BackfillState = Readonly<{ ok?: boolean; processed?: number; imagesFound?: number; remaining?: number; message?: string }>;
+
+/**
+ * Re-runs the same SSRF-safe extraction pipeline used by add-by-link
+ * against products saved before image capture existed, purely to backfill
+ * a missing primary image. Processes one bounded, idempotent batch per
+ * call (only ever touches products with no existing media row) — safe to
+ * click repeatedly until remaining reaches 0. Small per-request pause to
+ * avoid hammering any one retailer.
+ */
+export async function backfillLibraryProductImagesAction(
+  _previous: BackfillState,
+  _formData: FormData,
+): Promise<BackfillState> {
+  try {
+    const { user, db } = await libraryAdmin();
+    const { data: withMedia } = await db.from("furnishing_product_media").select("product_id");
+    const excludeIds = new Set((withMedia ?? []).map((row) => row.product_id as string));
+    const { data: candidates } = await db
+      .from("furnishing_products")
+      .select("id,name,furnishing_product_offers!furnishing_product_offers_product_id_fkey(product_url)")
+      .eq("scope", "platform")
+      .neq("status", "archived")
+      .order("updated_at", { ascending: true })
+      .limit(500);
+    const batch = (candidates ?? [])
+      .filter((product) => !excludeIds.has(product.id))
+      .map((product) => ({
+        id: product.id,
+        name: product.name as string,
+        productUrl: ((product as unknown as { furnishing_product_offers?: { product_url?: string }[] }).furnishing_product_offers ?? [])[0]
+          ?.product_url,
+      }))
+      .filter((product): product is { id: string; name: string; productUrl: string } => Boolean(product.productUrl))
+      .slice(0, BACKFILL_BATCH_SIZE);
+
+    let imagesFound = 0;
+    for (const product of batch) {
+      const result = await importProductFromLink(product.productUrl);
+      const imageUrl = result.status === "extracted" || result.status === "manual" ? result.extracted?.imageUrl : undefined;
+      if (imageUrl && /^https:\/\//i.test(imageUrl)) {
+        const { error } = await db
+          .from("furnishing_product_media")
+          .insert({ product_id: product.id, source_url: imageUrl, alt_text: product.name, media_kind: "product", is_primary: true, sort_order: 0, created_by: user.id });
+        if (!error) imagesFound += 1;
+      }
+      await sleep(300);
+    }
+
+    if (batch.length) {
+      await db.from("furnishing_catalog_activity").insert({
+        event_type: "furnishing_library_image_backfill_run",
+        actor_id: user.id,
+        metadata: { processed: batch.length, imagesFound, externalEffects: false },
+      });
+    }
+
+    const remainingStatus = await getLibraryImageBackfillStatus();
+    revalidatePath("/admin/furnishing/products");
+    return { ok: true, processed: batch.length, imagesFound, remaining: remainingStatus.missingCount };
+  } catch (error) {
+    return { ok: false, message: typed(error, "CATALOG_LIBRARY_IMAGE_BACKFILL_UNAVAILABLE") };
+  }
+}

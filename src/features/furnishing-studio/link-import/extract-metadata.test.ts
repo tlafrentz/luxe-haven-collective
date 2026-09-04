@@ -19,6 +19,18 @@ const graphHtml = `<html><head>
 
 const bareHtml = `<html><head><title>Performance Fabric Sofa - Example Store</title></head><body><img src="https://cdn.example.com/sofa.jpg">$899.00</body></html>`;
 
+// Real-world shape seen on retailer sites (e.g. IKEA): `image` is an array
+// of schema.org ImageObject records using `contentUrl`, not plain strings.
+const imageObjectHtml = `<html><head><script type="application/ld+json">${JSON.stringify({
+  "@type": "Product",
+  name: "Soft Toy Shark",
+  image: [
+    { "@type": "ImageObject", contentUrl: "https://cdn.example.com/shark-1.jpg", height: "2000", width: "2000" },
+    { "@type": "ImageObject", contentUrl: "https://cdn.example.com/shark-2.jpg" },
+  ],
+  offers: { price: "24.99", priceCurrency: "USD" },
+})}</script></head><body></body></html>`;
+
 describe("extractJsonLd", () => {
   it("extracts a Product node with nested brand and offer", () => {
     const result = extractJsonLd(jsonLdHtml);
@@ -32,6 +44,11 @@ describe("extractJsonLd", () => {
 
   it("returns null for pages with no JSON-LD", () => {
     expect(extractJsonLd("<html></html>")).toBeNull();
+  });
+
+  it("extracts the image from an array of schema.org ImageObject records (real-world retailer shape)", () => {
+    const result = extractJsonLd(imageObjectHtml);
+    expect(result?.imageUrl).toBe("https://cdn.example.com/shark-1.jpg");
   });
 
   it("does not throw on malformed JSON-LD", () => {

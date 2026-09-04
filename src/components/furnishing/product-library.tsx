@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Boxes, ExternalLink, FilterX, SlidersHorizontal } from "lucide-react";
-import { getFurnishingLibrary, type LibraryFilterValue, type LibraryFilters } from "@/app/actions/furnishing-library";
+import { getFurnishingLibrary, getLibraryImageBackfillStatus, type LibraryFilterValue, type LibraryFilters } from "@/app/actions/furnishing-library";
 import { FurnishingHeader } from "./furnishing-navigation";
 import { ProductThumb } from "./product-thumb";
+import { ImageBackfillPanel } from "./image-backfill-panel";
 
 // Supabase projections remain dynamic until generated FS-UX-010 database types land.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,7 +37,7 @@ function HiddenFields({ filters, exclude }: { filters: Filters; exclude: readonl
 
 export async function ProductLibrary({ searchParams }: { searchParams: Promise<Filters> }) {
   const filters = await searchParams;
-  const data = await getFurnishingLibrary(filters);
+  const [data, backfillStatus] = await Promise.all([getFurnishingLibrary(filters), getLibraryImageBackfillStatus()]);
   const layout = single(filters.layout) === "list" ? "list" : "grid";
   const filtersActive = Boolean(filters.room || filters.style || filters.retailer || filters.category || filters.availability);
 
@@ -57,6 +58,8 @@ export async function ProductLibrary({ searchParams }: { searchParams: Promise<F
           </div>
         }
       />
+
+      <ImageBackfillPanel initialMissingCount={backfillStatus.missingCount} />
 
       <form className="flex flex-wrap items-center gap-3 rounded-2xl border bg-white p-3" role="search">
         <HiddenFields filters={filters} exclude={["q", "cursor", "layout"]} />

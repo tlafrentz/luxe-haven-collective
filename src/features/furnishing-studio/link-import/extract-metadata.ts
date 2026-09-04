@@ -48,6 +48,22 @@ function findProductNode(node: unknown): Record<string, unknown> | null {
   return null;
 }
 
+/**
+ * schema.org `image` may be a plain URL string, an array of them, a single
+ * `ImageObject` ({url|contentUrl}), or an array of those — real retailer
+ * pages (e.g. IKEA) commonly use the ImageObject array form.
+ */
+function extractImageUrl(image: unknown): string | undefined {
+  if (typeof image === "string") return image;
+  if (Array.isArray(image)) return extractImageUrl(image[0]);
+  if (image && typeof image === "object") {
+    const record = image as Record<string, unknown>;
+    const url = record.url ?? record.contentUrl;
+    if (typeof url === "string") return url;
+  }
+  return undefined;
+}
+
 /** Tier 2: JSON-LD `Product` schema. Pure JSON parsing, no script execution. */
 export function extractJsonLd(html: string): ExtractedProduct | null {
   const blocks = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
@@ -65,12 +81,11 @@ export function extractJsonLd(html: string): ExtractedProduct | null {
     const brand = product.brand;
     const brandName =
       typeof brand === "string" ? brand : brand && typeof brand === "object" ? String((brand as Record<string, unknown>).name ?? "") : undefined;
-    const image = Array.isArray(product.image) ? product.image[0] : product.image;
     return {
       source: "json_ld",
       confidence: "high",
       name: typeof product.name === "string" ? decodeEntities(product.name) : undefined,
-      imageUrl: typeof image === "string" ? image : undefined,
+      imageUrl: extractImageUrl(product.image),
       priceAmount: offerRecord.price !== undefined ? String(offerRecord.price) : undefined,
       priceCurrency: typeof offerRecord.priceCurrency === "string" ? offerRecord.priceCurrency : undefined,
       brand: brandName || undefined,
