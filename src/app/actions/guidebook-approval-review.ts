@@ -10,15 +10,24 @@ import {
   resolveWorkspaceAccessContext,
   SupabaseTeamAccessRepository,
 } from "@/features/workspace";
+import { authorizeWithLegacyFallback, PRIVILEGE_IDS, type PlatformAccessClient, type PrivilegeId } from "@/features/platform-access";
 import { SupabaseGuidebookDraftRepository } from "@/features/guidebook-studio";
 import type {
   ApprovalRequestInput,
   ReviewCommentInput,
 } from "@/features/guidebook-studio";
 
+// PA-003: see guidebook-studio.ts's identical helper for the additive-only
+// migration rationale (Contributor/Operator memberships have no PA-001
+// role_assignments yet, so the legacy check must keep deciding access;
+// a PA-001 grant can only extend it, never narrow it).
+function legacyPermissionFor(privilegeId: PrivilegeId): "guidebooks.view" | "guidebooks.manage" {
+  return privilegeId === PRIVILEGE_IDS.guidebooksGuidebookView ? "guidebooks.view" : "guidebooks.manage";
+}
 async function context(
-  workspaceId?: string,
-  permission: "guidebooks.view" | "guidebooks.manage" = "guidebooks.view",
+  workspaceId: string | undefined,
+  privilegeId: PrivilegeId = PRIVILEGE_IDS.guidebooksGuidebookView,
+  scope?: { scopeType?: "workspace" | "property"; scopeId?: string | null },
 ) {
   const { user } = await getSessionProfile();
   if (!user) throw new Error("permission_denied");
@@ -27,8 +36,19 @@ async function context(
     user.id,
     workspaceId,
   );
-  if (!evaluateWorkspacePermission(access, permission))
-    throw new Error("permission_denied");
+  const legacyAllowed = evaluateWorkspacePermission(access, legacyPermissionFor(privilegeId));
+  const allowed = legacyAllowed
+    ? true
+    : await authorizeWithLegacyFallback({
+        client: createAdminClient() as unknown as PlatformAccessClient,
+        subjectId: access.profileId,
+        workspaceId: access.workspaceId,
+        privilegeId,
+        scopeType: scope?.scopeType,
+        scopeId: scope?.scopeId,
+        legacyAllowed,
+      });
+  if (!allowed) throw new Error("permission_denied");
   return { user, access };
 }
 
@@ -68,7 +88,10 @@ export async function getApprovalReviewAction(guidebookId: string): Promise<{
     .eq("id", guidebookId)
     .maybeSingle();
   if (!guidebook) return { request: null, comments: [] };
-  const { access } = await context(String(guidebook.workspace_id));
+  const { access } = await context(String(guidebook.workspace_id), PRIVILEGE_IDS.guidebooksGuidebookView, {
+    scopeType: "property",
+    scopeId: String(guidebook.property_id),
+  });
   if (!evaluatePropertyAccess(access, String(guidebook.property_id)))
     return { request: null, comments: [] };
 
@@ -163,7 +186,6 @@ export async function submitReviewCommentAction(
   const { guidebookId, workspaceId, approvalRequestId, sectionKey, comment } =
     parsed.data;
   try {
-    const { user, access } = await context(workspaceId);
     const admin = createAdminClient();
     const { data: guidebook } = await admin
       .from("guidebooks")
@@ -171,7 +193,12 @@ export async function submitReviewCommentAction(
       .eq("id", guidebookId)
       .eq("workspace_id", workspaceId)
       .maybeSingle();
-    if (!guidebook || !evaluatePropertyAccess(access, String(guidebook.property_id)))
+    if (!guidebook) return { ok: false, message: "This guidebook is not in your workspace." };
+    const { user, access } = await context(workspaceId, PRIVILEGE_IDS.guidebooksGuidebookView, {
+      scopeType: "property",
+      scopeId: String(guidebook.property_id),
+    });
+    if (!evaluatePropertyAccess(access, String(guidebook.property_id)))
       return { ok: false, message: "This guidebook is not in your workspace." };
     const { error } = await admin.from("guidebook_review_comments").insert({
       approval_request_id: approvalRequestId,
@@ -209,7 +236,6 @@ export async function decideGuidebookApprovalAction(formData: FormData) {
   if (!parsed.success) return;
   const { guidebookId, workspaceId, approvalRequestId, decision, decisionNote } =
     parsed.data;
-  const { user, access } = await context(workspaceId, "guidebooks.manage");
   const admin = createAdminClient();
   const { data: guidebook } = await admin
     .from("guidebooks")
@@ -217,8 +243,12 @@ export async function decideGuidebookApprovalAction(formData: FormData) {
     .eq("id", guidebookId)
     .eq("workspace_id", workspaceId)
     .maybeSingle();
-  if (!guidebook || !evaluatePropertyAccess(access, String(guidebook.property_id)))
-    return;
+  if (!guidebook) return;
+  const { user, access } = await context(workspaceId, PRIVILEGE_IDS.guidebooksGuidebookApprove, {
+    scopeType: "property",
+    scopeId: String(guidebook.property_id),
+  });
+  if (!evaluatePropertyAccess(access, String(guidebook.property_id))) return;
   await admin
     .from("guidebook_approval_requests")
     .update({

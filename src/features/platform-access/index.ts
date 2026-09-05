@@ -9,3 +9,4 @@ export {
   type RoleAssignmentResult,
 } from "./assignments";
 export type { PlatformAccessClient } from "./client";
+export { authorizeWithLegacyFallback, type AuthorizeWithLegacyFallbackInput } from "./authorize-with-legacy-fallback";

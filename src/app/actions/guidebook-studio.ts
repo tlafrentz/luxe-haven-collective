@@ -14,6 +14,7 @@ import {
   resolveWorkspaceAccessContext,
   SupabaseTeamAccessRepository,
 } from "@/features/workspace";
+import { authorizeWithLegacyFallback, PRIVILEGE_IDS, type PlatformAccessClient, type PrivilegeId } from "@/features/platform-access";
 import { getCommerceAccessWorkspace } from "./commerce-access";
 import {
   buildGuidebookTimeline,
@@ -46,9 +47,19 @@ import {
   type PublishingValidationIssue,
 } from "@/platform/publishing";
 
+// PA-003: transitional, additive-only migration onto PA-001 privileges. The
+// legacy guidebooks.view/guidebooks.manage check keeps deciding access
+// exactly as it does today (Contributor/Operator memberships have no
+// PA-001 role_assignments yet, and must not lose access) -- a PA-001 grant
+// can only ever extend it, never replace or narrow it. See
+// authorizeWithLegacyFallback for the shared rationale.
+function legacyPermissionFor(privilegeId: PrivilegeId): "guidebooks.view" | "guidebooks.manage" {
+  return privilegeId === PRIVILEGE_IDS.guidebooksGuidebookView ? "guidebooks.view" : "guidebooks.manage";
+}
 async function context(
-  workspaceId?: string,
-  permission: "guidebooks.view" | "guidebooks.manage" = "guidebooks.view",
+  workspaceId: string | undefined,
+  privilegeId: PrivilegeId = PRIVILEGE_IDS.guidebooksGuidebookView,
+  scope?: { scopeType?: "workspace" | "property"; scopeId?: string | null },
 ) {
   const { user } = await getSessionProfile();
   if (!user) throw new Error("permission_denied");
@@ -57,8 +68,19 @@ async function context(
     user.id,
     workspaceId,
   );
-  if (!evaluateWorkspacePermission(access, permission))
-    throw new Error("permission_denied");
+  const legacyAllowed = evaluateWorkspacePermission(access, legacyPermissionFor(privilegeId));
+  const allowed = legacyAllowed
+    ? true
+    : await authorizeWithLegacyFallback({
+        client: createAdminClient() as unknown as PlatformAccessClient,
+        subjectId: access.profileId,
+        workspaceId: access.workspaceId,
+        privilegeId,
+        scopeType: scope?.scopeType,
+        scopeId: scope?.scopeId,
+        legacyAllowed,
+      });
+  if (!allowed) throw new Error("permission_denied");
   return { user, access };
 }
 async function entitlements(workspaceId: string, propertyId?: string) {
@@ -582,7 +604,10 @@ export async function getGuidebookEditorRequest(id: string) {
         .eq("id", id)
         .maybeSingle();
     if (!guidebook) return { ok: false as const, code: "guidebook_not_found" };
-    const { access, user } = await context(guidebook.workspace_id);
+    const { access, user } = await context(guidebook.workspace_id, PRIVILEGE_IDS.guidebooksGuidebookView, {
+      scopeType: "property",
+      scopeId: guidebook.property_id,
+    });
     if (!evaluatePropertyAccess(access, guidebook.property_id))
       return { ok: false as const, code: "permission_denied" };
     const [
@@ -738,10 +763,10 @@ export async function addGuidebookBlockAction(formData: FormData) {
     blockType = String(formData.get("blockType") ?? "rich-text");
   const editor = await getGuidebookEditorRequest(guidebookId);
   if (!editor.ok) throw new Error(editor.code);
-  const { user } = await context(
-    editor.guidebook.workspace_id,
-    "guidebooks.manage",
-  );
+  const { user } = await context(editor.guidebook.workspace_id, PRIVILEGE_IDS.guidebooksGuidebookEdit, {
+    scopeType: "property",
+    scopeId: editor.guidebook.property_id,
+  });
   if (!text) throw new Error("guidebook_invalid");
   const section = editor.sections.find(
     (item: { id: string }) => item.id === sectionId,
@@ -800,10 +825,10 @@ export async function updateGuidebookBlockAction(input: {
 }) {
   const editor = await getGuidebookEditorRequest(input.guidebookId);
   if (!editor.ok) return { ok: false as const, code: editor.code };
-  const { user } = await context(
-    editor.guidebook.workspace_id,
-    "guidebooks.manage",
-  );
+  const { user } = await context(editor.guidebook.workspace_id, PRIVILEGE_IDS.guidebooksGuidebookEdit, {
+    scopeType: "property",
+    scopeId: editor.guidebook.property_id,
+  });
   if (editor.guidebook.status === "archived")
     return { ok: false as const, code: "guidebook_archived" };
   if (Number(editor.guidebook.revision) !== input.expectedRevision)
@@ -872,10 +897,10 @@ export async function addStructuredGuidebookBlockAction(input: {
 }) {
   const editor = await getGuidebookEditorRequest(input.guidebookId);
   if (!editor.ok) return { ok: false as const, code: editor.code };
-  const { user } = await context(
-    editor.guidebook.workspace_id,
-    "guidebooks.manage",
-  );
+  const { user } = await context(editor.guidebook.workspace_id, PRIVILEGE_IDS.guidebooksGuidebookEdit, {
+    scopeType: "property",
+    scopeId: editor.guidebook.property_id,
+  });
   if (Number(editor.guidebook.revision) !== input.expectedRevision)
     return {
       ok: false as const,
@@ -1002,10 +1027,10 @@ export async function copyGuidebookSectionAction(formData: FormData) {
     target.status === "archived"
   )
     return { ok: false as const, code: "copy_target_invalid" };
-  const { user, access } = await context(
-    String(source.workspace_id),
-    "guidebooks.manage",
-  );
+  const { user, access } = await context(String(source.workspace_id), PRIVILEGE_IDS.guidebooksGuidebookEdit, {
+    scopeType: "property",
+    scopeId: String(target.property_id),
+  });
   if (
     !evaluatePropertyAccess(access, String(source.property_id)) ||
     !evaluatePropertyAccess(access, String(target.property_id))
@@ -1078,10 +1103,10 @@ export async function reviewGuidebookPropertyProjectionAction(
   const guidebookId = String(formData.get("guidebookId") ?? ""),
     editor = await getGuidebookEditorRequest(guidebookId);
   if (!editor.ok) return { ok: false as const, code: editor.code };
-  const { user } = await context(
-      editor.guidebook.workspace_id,
-      "guidebooks.manage",
-    ),
+  const { user } = await context(editor.guidebook.workspace_id, PRIVILEGE_IDS.guidebooksGuidebookEdit, {
+      scopeType: "property",
+      scopeId: editor.guidebook.property_id,
+    }),
     admin = createAdminClient(),
     version = editor.propertyProjection.version;
   const { data: existing } = await admin
@@ -1147,10 +1172,10 @@ export async function publishGuidebookAction(formData: FormData) {
       code: editor.code,
       message: "Guidebook publishing is unavailable.",
     };
-  const { user } = await context(
-    editor.guidebook.workspace_id,
-    "guidebooks.manage",
-  );
+  const { user } = await context(editor.guidebook.workspace_id, PRIVILEGE_IDS.guidebooksGuidebookPublish, {
+    scopeType: "property",
+    scopeId: editor.guidebook.property_id,
+  });
   if (!editor.entitlements.publish || !editor.entitlements.host)
     return {
       ok: false as const,
@@ -1265,7 +1290,10 @@ export async function retryGuidebookPublishAction(formData: FormData) {
     return { ok: false as const, code: "retry_unavailable" };
   const editor = await getGuidebookEditorRequest(String(job.guidebook_id));
   if (!editor.ok) return { ok: false as const, code: editor.code };
-  const { user } = await context(String(job.workspace_id), "guidebooks.manage");
+  const { user } = await context(String(job.workspace_id), PRIVILEGE_IDS.guidebooksGuidebookPublish, {
+    scopeType: "property",
+    scopeId: editor.guidebook.property_id,
+  });
   if (user.id !== job.requested_by_profile_id && !editor.permissions.manage)
     return { ok: false as const, code: "permission_denied" };
   await admin

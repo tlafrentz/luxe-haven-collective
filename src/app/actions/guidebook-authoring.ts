@@ -9,6 +9,7 @@ import {
   resolveWorkspaceAccessContext,
   SupabaseTeamAccessRepository,
 } from "@/features/workspace";
+import { authorizeWithLegacyFallback, PRIVILEGE_IDS, type PlatformAccessClient, type PrivilegeId } from "@/features/platform-access";
 import {
   archiveGuidebook,
   createGuidebookWithReceipt,
@@ -102,7 +103,7 @@ export async function uploadGuidebookMediaAction(formData: FormData) {
       file = formData.get("file");
     if (!(file instanceof File))
       return { ok: false as const, code: "MEDIA_TYPE_UNSUPPORTED" };
-    const { user, access } = await authorized(workspaceId, "guidebooks.manage"),
+    const { user, access } = await authorized(workspaceId, PRIVILEGE_IDS.guidebooksGuidebookManageMedia),
       draft = await withGuidebookOperationDeadline(
         () =>
           new SupabaseGuidebookDraftRepository().load({
@@ -153,7 +154,7 @@ export async function listGuidebookDraftMediaAction(input: {
     height?: number;
   }[]
 > {
-  const { access } = await authorized(input.workspaceId, "guidebooks.manage");
+  const { access } = await authorized(input.workspaceId, PRIVILEGE_IDS.guidebooksGuidebookManageMedia);
   const media = await new SupabaseGuidebookMediaRepository().listReady({
     workspaceId: access.workspaceId,
     guidebookId: input.guidebookId,
@@ -167,7 +168,7 @@ export async function rotateGuidebookPublicSlugAction(formData: FormData) {
       workspaceId = String(formData.get("workspaceId") ?? ""),
       expectedRevision = Number(formData.get("revision")),
       commandId = String(formData.get("commandId") ?? crypto.randomUUID()),
-      { user, access } = await authorized(workspaceId, "guidebooks.manage"),
+      { user, access } = await authorized(workspaceId, PRIVILEGE_IDS.guidebooksGuidebookShare),
       draft = await new SupabaseGuidebookDraftRepository().load({
         workspaceId: access.workspaceId,
         guidebookId,
@@ -230,7 +231,7 @@ export async function createGuidebookPropertyAction(
   }>,
 ) {
   try {
-    const { access } = await authorized(input.workspaceId, "guidebooks.manage");
+    const { access } = await authorized(input.workspaceId, PRIVILEGE_IDS.guidebooksGuidebookCreate);
     const validation = validateGuidebookPropertyInput({
       workspaceId: access.workspaceId,
       name: input.name,
@@ -304,7 +305,7 @@ export async function createGuidebookPropertyAction(
 }
 
 export async function listGuidebookPropertyOptionsAction(workspaceId: string) {
-  const { access } = await authorized(workspaceId, "guidebooks.manage");
+  const { access } = await authorized(workspaceId, PRIVILEGE_IDS.guidebooksGuidebookCreate);
   const admin = createAdminClient();
   const { data: capabilityRows, error: capabilityError } = await admin
     .from("property_capability_enrollments")
@@ -365,7 +366,10 @@ export async function createGuidebookResultAction(formData: FormData) {
     propertyId = String(formData.get("propertyId") ?? ""),
     title = String(formData.get("title") ?? ""),
     commandId = String(formData.get("commandId") ?? `create:${propertyId}`);
-  const { user, access } = await authorized(workspaceId, "guidebooks.manage");
+  const { user, access } = await authorized(workspaceId, PRIVILEGE_IDS.guidebooksGuidebookCreate, {
+    scopeType: "property",
+    scopeId: propertyId,
+  });
   if (!evaluatePropertyAccess(access, propertyId)) return denied();
   const commerce = await withGuidebookOperationDeadline(
       () =>
@@ -510,7 +514,10 @@ async function lifecycleAction(
   if (!preliminary) return denied();
   const { user, access } = await authorized(
     String(formData.get("workspaceId") ?? ""),
-    "guidebooks.manage",
+    operation === "restore-version"
+      ? PRIVILEGE_IDS.guidebooksGuidebookEdit
+      : PRIVILEGE_IDS.guidebooksGuidebookArchive,
+    { scopeType: "property", scopeId: preliminary.propertyId },
   );
   if (!evaluatePropertyAccess(access, preliminary.propertyId)) return denied();
   const context: CommandContext = {
@@ -544,7 +551,7 @@ export async function loadGuidebookAuthoringAction(
   try {
     const { user, access } = await authorized(
       input.workspaceId,
-      "guidebooks.view",
+      PRIVILEGE_IDS.guidebooksGuidebookView,
     );
     const draft = await withGuidebookOperationDeadline(
       () =>
@@ -585,7 +592,7 @@ export async function publishCanonicalGuidebookAction(
   try {
     const { user, access } = await authorized(
         input.workspaceId,
-        "guidebooks.manage",
+        PRIVILEGE_IDS.guidebooksGuidebookPublish,
       ),
       drafts = new SupabaseGuidebookDraftRepository(),
       draft = await withGuidebookOperationDeadline(
@@ -655,7 +662,7 @@ export async function loadGuidebookAnalyticsSummaryAction(
   try {
     const { user, access } = await authorized(
         input.workspaceId,
-        "guidebooks.view",
+        PRIVILEGE_IDS.guidebooksGuidebookView,
       ),
       draft = await withGuidebookOperationDeadline(
         () =>
@@ -721,7 +728,7 @@ export async function guidebookAuthoringCommandAction(
   try {
     const { user, access } = await authorized(
         input.workspaceId,
-        "guidebooks.manage",
+        PRIVILEGE_IDS.guidebooksGuidebookEdit,
       ),
       drafts = new SupabaseGuidebookDraftRepository(),
       draft = await withGuidebookOperationDeadline(
@@ -815,9 +822,18 @@ function denied() {
     message: "Guidebook authoring is not permitted.",
   };
 }
+// PA-003: see src/features/platform-access/authorize-with-legacy-fallback.ts
+// for the additive-only migration rationale (Contributor/Operator
+// memberships have no PA-001 role_assignments yet, so the legacy check
+// must keep deciding access on its own; a PA-001 grant only ever extends
+// it, never narrows it).
+function legacyPermissionFor(privilegeId: PrivilegeId): "guidebooks.view" | "guidebooks.manage" {
+  return privilegeId === PRIVILEGE_IDS.guidebooksGuidebookView ? "guidebooks.view" : "guidebooks.manage";
+}
 async function authorized(
   workspaceId: string | undefined,
-  permission: "guidebooks.view" | "guidebooks.manage",
+  privilegeId: PrivilegeId,
+  scope?: { scopeType?: "workspace" | "property"; scopeId?: string | null },
 ) {
   const session = await withGuidebookOperationDeadline(
     () => getSessionProfile(),
@@ -838,7 +854,24 @@ async function authorized(
     5000,
     "COMMAND_TIMEOUT",
   );
-  if (!evaluateWorkspacePermission(access, permission))
+  const legacyAllowed = evaluateWorkspacePermission(access, legacyPermissionFor(privilegeId));
+  const allowed = legacyAllowed
+    ? true
+    : await withGuidebookOperationDeadline(
+        () =>
+          authorizeWithLegacyFallback({
+            client: createAdminClient() as unknown as PlatformAccessClient,
+            subjectId: access.profileId,
+            workspaceId: access.workspaceId,
+            privilegeId,
+            scopeType: scope?.scopeType,
+            scopeId: scope?.scopeId,
+            legacyAllowed,
+          }),
+        5000,
+        "COMMAND_TIMEOUT",
+      );
+  if (!allowed)
     throw Object.assign(new Error("unauthorized"), {
       code: "GUIDEBOOK_UNAUTHORIZED",
     });

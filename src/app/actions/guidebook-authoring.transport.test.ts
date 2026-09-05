@@ -2,12 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   authenticated: false,
   propertyAllowed: false,
+  legacyAllowed: true,
+  privilegeAllowed: false,
   analytics: "zero" as "zero" | "nonzero" | "unavailable",
   propertyRpcCalls: [] as Array<{
     name: string;
     args: Record<string, unknown>;
   }>,
   propertyRpcError: null as Error | null,
+  platformRpcCalls: [] as Array<{
+    name: string;
+    args: Record<string, unknown>;
+  }>,
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/session", () => ({
@@ -28,10 +34,33 @@ vi.mock("@/lib/supabase/server", () => ({
     },
   }),
 }));
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      state.platformRpcCalls.push({ name, args });
+      return {
+        data: [
+          {
+            allowed: state.privilegeAllowed,
+            reason_code: state.privilegeAllowed
+              ? "PA_ALLOW"
+              : "PA_DENY_NO_GRANT",
+            matching_assignment_ids: [],
+          },
+        ],
+        error: null,
+      };
+    },
+    from: () => ({
+      upsert: () => ({ error: null }),
+    }),
+  }),
+}));
 vi.mock("@/features/workspace", () => ({
-  evaluateWorkspacePermission: () => true,
+  evaluateWorkspacePermission: () => state.legacyAllowed,
   evaluatePropertyAccess: () => state.propertyAllowed,
   resolveWorkspaceAccessContext: async () => ({
+    profileId: "actor-a",
     workspaceId: "owner-a",
     ownerId: "owner-a",
   }),
@@ -113,9 +142,12 @@ describe("GB-001B.3 direct authoring transport authorization", () => {
   beforeEach(() => {
     state.authenticated = false;
     state.propertyAllowed = false;
+    state.legacyAllowed = true;
+    state.privilegeAllowed = false;
     state.analytics = "zero";
     state.propertyRpcCalls.length = 0;
     state.propertyRpcError = null;
+    state.platformRpcCalls.length = 0;
     warnings.length = 0;
     vi.spyOn(console, "warn").mockImplementation((...args) => {
       warnings.push(args);
@@ -232,5 +264,59 @@ describe("GB-001B.3 direct authoring transport authorization", () => {
       name: "create_guidebook_flow_property",
       args: { p_workspace_id: "owner-a", p_command_id: "property-command" },
     });
+  });
+});
+
+describe("PA-003 additive privilege gating", () => {
+  beforeEach(() => {
+    state.authenticated = true;
+    state.propertyAllowed = true;
+    state.legacyAllowed = true;
+    state.privilegeAllowed = false;
+    state.analytics = "zero";
+    state.platformRpcCalls.length = 0;
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("keeps today's legacy-contributor access unchanged and never calls evaluate_privilege", async () => {
+    state.legacyAllowed = true;
+    await expect(
+      loadGuidebookAnalyticsSummaryAction({
+        workspaceId: "owner-a",
+        guidebookId: "foreign-guidebook",
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(state.platformRpcCalls).toHaveLength(0);
+  });
+
+  it("lets a PA-001-only grant succeed where the legacy check alone would have failed", async () => {
+    state.legacyAllowed = false;
+    state.privilegeAllowed = true;
+    await expect(
+      loadGuidebookAnalyticsSummaryAction({
+        workspaceId: "owner-a",
+        guidebookId: "foreign-guidebook",
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(state.platformRpcCalls).toHaveLength(1);
+    expect(state.platformRpcCalls[0]).toMatchObject({
+      name: "evaluate_privilege",
+      args: expect.objectContaining({
+        p_privilege_id: "guidebooks.guidebook.view",
+        p_workspace_id: "owner-a",
+      }),
+    });
+  });
+
+  it("fails closed when both the legacy check and the PA-001 grant deny", async () => {
+    state.legacyAllowed = false;
+    state.privilegeAllowed = false;
+    await expect(
+      loadGuidebookAnalyticsSummaryAction({
+        workspaceId: "owner-a",
+        guidebookId: "foreign-guidebook",
+      }),
+    ).resolves.toMatchObject({ ok: false, code: "GUIDEBOOK_UNAUTHORIZED" });
+    expect(state.platformRpcCalls).toHaveLength(1);
   });
 });
