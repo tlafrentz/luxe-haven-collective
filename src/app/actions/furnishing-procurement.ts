@@ -6,6 +6,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { assertFurnishingEntitlement } from "./furnishing-access";
 import { resolveFurnishingCommandContext } from "@/features/furnishing-studio/server-command-context";
+import {
+  authorizeWithLegacyFallback,
+  PRIVILEGE_IDS,
+  type PlatformAccessClient,
+  type PrivilegeId,
+} from "@/features/platform-access";
 // Pending FS migrations are intentionally not represented in generated database types yet.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -23,7 +29,18 @@ const without = (row: Row, keys: readonly string[]) =>
   Object.fromEntries(
     Object.entries(row).filter(([key]) => !keys.includes(key)),
   );
-async function scope(projectId: string, write = false) {
+// PA-007: transitional, additive-only migration onto PA-001 privileges. The
+// workspace-role-list check keeps deciding access exactly as it does today
+// -- a PA-001 grant can only ever extend it, never replace or narrow it.
+// The kill-switch check below is a separate, unconditional workflow guard
+// (per the spec's "ordinary operations use privileges AND workflow guards")
+// and is never bypassable by a PA-001 grant. See
+// authorizeWithLegacyFallback for the shared rationale.
+async function scope(
+  projectId: string,
+  write = false,
+  privilegeId?: PrivilegeId,
+) {
   const { user, profile } = await requireUser();
   const db = createAdminClient();
   const { data: project, error } = await db
@@ -47,7 +64,21 @@ async function scope(projectId: string, write = false) {
         "contributor",
       ]);
     const { data } = await membership.maybeSingle();
-    if (!data) throw new Error("FURNISHING_PROCUREMENT_ACCESS_DENIED");
+    const legacyAllowed = Boolean(data);
+    if (!legacyAllowed) {
+      const allowed =
+        privilegeId &&
+        (await authorizeWithLegacyFallback({
+          client: db as unknown as PlatformAccessClient,
+          subjectId: String(profile?.id),
+          workspaceId: String(project.workspace_id),
+          privilegeId,
+          scopeType: project.property_id ? "property" : undefined,
+          scopeId: project.property_id ? String(project.property_id) : undefined,
+          legacyAllowed,
+        }));
+      if (!allowed) throw new Error("FURNISHING_PROCUREMENT_ACCESS_DENIED");
+    }
   }
   await assertFurnishingEntitlement(
     String(project.workspace_id),
@@ -219,7 +250,11 @@ export async function generateProcurementBaselineAction(formData: FormData) {
   );
   const projectId = context.targetId,
     idempotencyKey = context.idempotencyKey;
-  const { db } = await scope(projectId, true);
+  const { db } = await scope(
+    projectId,
+    true,
+    PRIVILEGE_IDS.furnishingProcurementProcurementPrepare,
+  );
   const [{ data: snapshots, error: snapshotError }, { data: onboarding }] =
     await Promise.all([
       db
@@ -286,7 +321,11 @@ export async function submitPurchaseBatchAction(formData: FormData) {
       .single();
   if (!source) throw new Error("PROCUREMENT_BASELINE_NOT_FOUND");
   const projectId = String(source.project_id);
-  const { db } = await scope(projectId, true);
+  const { db } = await scope(
+    projectId,
+    true,
+    PRIVILEGE_IDS.furnishingProcurementProcurementPrepare,
+  );
   const { data: baseline } = await db
     .from("furnishing_procurement_baselines")
     .select("version")
@@ -329,7 +368,11 @@ export async function authorizePurchaseBatchAction(formData: FormData) {
     : { data: null };
   if (!source) throw new Error("FS006_BATCH_NOT_FOUND");
   const projectId = String(source.project_id);
-  const { db } = await scope(projectId, true);
+  const { db } = await scope(
+    projectId,
+    true,
+    PRIVILEGE_IDS.furnishingProcurementPurchaseAuthorize,
+  );
   const { data: batch } = await db
     .from("furnishing_purchase_batches")
     .select("id,version")
@@ -374,7 +417,11 @@ export async function recordExternalOrderAction(formData: FormData) {
   if (!source) throw new Error("FS006_BATCH_NOT_FOUND");
   const projectId = String(source.project_id);
   if (!externalOrderId) throw new Error("FS006_EXTERNAL_ORDER_ID_REQUIRED");
-  const { db } = await scope(projectId, true);
+  const { db } = await scope(
+    projectId,
+    true,
+    PRIVILEGE_IDS.furnishingProcurementProcurementApprove,
+  );
   const { data: batch } = await db
     .from("furnishing_purchase_batches")
     .select("id,version")
@@ -428,7 +475,11 @@ export async function recordReceivingAction(formData: FormData) {
     : { data: null };
   if (!source) throw new Error("FS006_LINE_NOT_FOUND");
   const projectId = String(source.project_id);
-  const { db } = await scope(projectId, true);
+  const { db } = await scope(
+    projectId,
+    true,
+    PRIVILEGE_IDS.furnishingProcurementProcurementApprove,
+  );
   const { data: line } = await db
     .from("furnishing_procurement_lines")
     .select("id,revision")
@@ -475,7 +526,11 @@ export async function saveProcurementBudgetAction(formData: FormData) {
     contingency < 0
   )
     throw new Error("FS006_BUDGET_INVALID");
-  const { db } = await scope(projectId, true);
+  const { db } = await scope(
+    projectId,
+    true,
+    PRIVILEGE_IDS.furnishingBudgetBudgetApprove,
+  );
   const { data: baseline } = await db
     .from("furnishing_procurement_baselines")
     .select("version")
@@ -518,7 +573,11 @@ export async function resolveProcurementDiscrepancyAction(formData: FormData) {
     .eq("id", exception.baseline_id)
     .single();
   if (!baseline) throw new Error("PROCUREMENT_BASELINE_NOT_FOUND");
-  await scope(String(baseline.project_id), true);
+  await scope(
+    String(baseline.project_id),
+    true,
+    PRIVILEGE_IDS.furnishingProcurementProcurementApprove,
+  );
   const client = await createClient();
   const { error } = await client.rpc("resolve_furnishing_procurement_discrepancy", {
     p_input: {
@@ -544,7 +603,11 @@ export async function adjustProcurementBudgetAction(formData: FormData) {
     .eq("id", command.targetId)
     .single();
   if (!baseline) throw new Error("PROCUREMENT_BASELINE_NOT_FOUND");
-  await scope(String(baseline.project_id), true);
+  await scope(
+    String(baseline.project_id),
+    true,
+    PRIVILEGE_IDS.furnishingBudgetBudgetApprove,
+  );
   const amount = Math.round(Number(text(formData, "amount")) * 100);
   if (!Number.isSafeInteger(amount)) throw new Error("PROCUREMENT_ADJUSTMENT_AMOUNT_INVALID");
   const client = await createClient();

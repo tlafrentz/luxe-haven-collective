@@ -5,6 +5,7 @@ const WORKSPACE_ID = "20000000-0000-4000-8000-000000000002";
 const BASELINE_ID = "30000000-0000-4000-8000-000000000003";
 const BATCH_ID = "40000000-0000-4000-8000-000000000004";
 const LINE_ID = "50000000-0000-4000-8000-000000000005";
+const EXCEPTION_ID = "60000000-0000-4000-8000-000000000006";
 const ACTOR_ID = "actor-1";
 
 const state = vi.hoisted(() => ({
@@ -25,6 +26,8 @@ const state = vi.hoisted(() => ({
   },
   capability: { enabled: true },
   rpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
+  privilegeAllowed: false,
+  platformRpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
 }));
 
 function chain(result: { data: unknown; error: unknown }) {
@@ -36,6 +39,13 @@ function chain(result: { data: unknown; error: unknown }) {
     is: () => builder,
     single: async () => result,
     maybeSingle: async () => result,
+    // Real Supabase query builders are thenable at any point in the chain
+    // (e.g. `.order(...).limit(2)` with no terminal `.single()`), so this
+    // stub must be too.
+    then: (
+      resolve: (value: unknown) => void,
+      reject?: (reason: unknown) => void,
+    ) => Promise.resolve(result).then(resolve, reject),
   };
   return builder;
 }
@@ -91,9 +101,41 @@ function makeDb() {
             data: { id: LINE_ID, baseline_id: BASELINE_ID, revision: 1 },
             error: null,
           });
+        case "furnishing_procurement_exceptions":
+          return chain({
+            data: { baseline_id: BASELINE_ID },
+            error: null,
+          });
+        case "fs008d_project_catalog_snapshots":
+          return chain({
+            data: [
+              {
+                id: "snapshot-1",
+                approved_plan_id: "plan-1",
+                plan_revision: 1,
+                content_hash: "hash-1",
+              },
+            ],
+            error: null,
+          });
         default:
           return chain({ data: null, error: null });
       }
+    },
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      state.platformRpcCalls.push({ name, args });
+      return {
+        data: [
+          {
+            allowed: state.privilegeAllowed,
+            reason_code: state.privilegeAllowed
+              ? "PA_ALLOW"
+              : "PA_DENY_NO_GRANT",
+            matching_assignment_ids: [],
+          },
+        ],
+        error: null,
+      };
     },
   };
 }
@@ -129,9 +171,12 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 import {
+  adjustProcurementBudgetAction,
   authorizePurchaseBatchAction,
+  generateProcurementBaselineAction,
   recordExternalOrderAction,
   recordReceivingAction,
+  resolveProcurementDiscrepancyAction,
   saveProcurementBudgetAction,
   submitPurchaseBatchAction,
 } from "./furnishing-procurement";
@@ -144,24 +189,35 @@ function fd(fields: Record<string, string>) {
 
 const cases = [
   {
+    name: "generateProcurementBaselineAction",
+    targetId: PROJECT_ID,
+    rpc: "create_or_replay_procurement_baseline",
+    privilege: "furnishing.procurement.procurement_prepare",
+    run: () =>
+      generateProcurementBaselineAction(fd({ commandContextId: "cc" })),
+  },
+  {
     name: "submitPurchaseBatchAction",
     targetId: BASELINE_ID,
     rpc: "create_or_replay_procurement_batch",
+    privilege: "furnishing.procurement.procurement_prepare",
     run: () =>
       submitPurchaseBatchAction(
-        fd({ commandContextId: "cc", retailerId: "60000000-0000-4000-8000-000000000006" }),
+        fd({ commandContextId: "cc", retailerId: "60000000-0000-4000-8000-000000000007" }),
       ),
   },
   {
     name: "authorizePurchaseBatchAction",
     targetId: BATCH_ID,
     rpc: "approve_furnishing_procurement_plan",
+    privilege: "furnishing.procurement.purchase_authorize",
     run: () => authorizePurchaseBatchAction(fd({ commandContextId: "cc" })),
   },
   {
     name: "recordExternalOrderAction",
     targetId: BATCH_ID,
     rpc: "record_external_retailer_order",
+    privilege: "furnishing.procurement.procurement_approve",
     run: () =>
       recordExternalOrderAction(
         fd({ commandContextId: "cc", externalOrderId: "EXT-1", orderDate: "2026-01-01" }),
@@ -171,6 +227,7 @@ const cases = [
     name: "recordReceivingAction",
     targetId: LINE_ID,
     rpc: "record_furnishing_procurement_receipt",
+    privilege: "furnishing.procurement.procurement_approve",
     run: () =>
       recordReceivingAction(
         fd({
@@ -185,9 +242,30 @@ const cases = [
     name: "saveProcurementBudgetAction",
     targetId: BASELINE_ID,
     rpc: "reconcile_furnishing_procurement_budget",
+    privilege: "furnishing.budget.budget_approve",
     run: () =>
       saveProcurementBudgetAction(
         fd({ commandContextId: "cc", baseAmount: "100", contingency: "10" }),
+      ),
+  },
+  {
+    name: "resolveProcurementDiscrepancyAction",
+    targetId: EXCEPTION_ID,
+    rpc: "resolve_furnishing_procurement_discrepancy",
+    privilege: "furnishing.procurement.procurement_approve",
+    run: () =>
+      resolveProcurementDiscrepancyAction(
+        fd({ commandContextId: "cc", reason: "Investigated and resolved" }),
+      ),
+  },
+  {
+    name: "adjustProcurementBudgetAction",
+    targetId: BASELINE_ID,
+    rpc: "adjust_furnishing_procurement_budget",
+    privilege: "furnishing.budget.budget_approve",
+    run: () =>
+      adjustProcurementBudgetAction(
+        fd({ commandContextId: "cc", amount: "50", reason: "Scope change" }),
       ),
   },
 ];
@@ -210,6 +288,8 @@ describe("furnishing-procurement.ts write-scope authorization", () => {
     };
     state.capability = { enabled: true };
     state.rpcCalls = [];
+    state.privilegeAllowed = false;
+    state.platformRpcCalls = [];
   });
 
   for (const testCase of cases) {
@@ -231,12 +311,56 @@ describe("furnishing-procurement.ts write-scope authorization", () => {
         expect(state.rpcCalls).toContainEqual(
           expect.objectContaining({ name: testCase.rpc }),
         );
+        expect(state.platformRpcCalls).toHaveLength(0);
       },
     );
 
     it(`now enforces the FS-008A emergency kill switch for ${testCase.name}`, async () => {
       state.targetId = testCase.targetId;
       state.membershipRole = "owner";
+      state.release = {
+        ...state.release,
+        global_kill_switch: true,
+      };
+      await expect(testCase.run()).rejects.toThrow(
+        "FURNISHING_ACTIVATION_DISABLED",
+      );
+      expect(state.rpcCalls).toHaveLength(0);
+    });
+
+    it(`lets a PA-001 grant succeed for ${testCase.name} where the role list alone would have failed`, async () => {
+      state.targetId = testCase.targetId;
+      state.membershipRole = "viewer";
+      state.privilegeAllowed = true;
+      await expect(testCase.run()).resolves.not.toThrow();
+      expect(state.rpcCalls).toContainEqual(
+        expect.objectContaining({ name: testCase.rpc }),
+      );
+      expect(state.platformRpcCalls).toHaveLength(1);
+      expect(state.platformRpcCalls[0]).toMatchObject({
+        name: "evaluate_privilege",
+        args: expect.objectContaining({
+          p_privilege_id: testCase.privilege,
+          p_workspace_id: WORKSPACE_ID,
+        }),
+      });
+    });
+
+    it(`fails closed for ${testCase.name} when both the role list and the PA-001 grant deny`, async () => {
+      state.targetId = testCase.targetId;
+      state.membershipRole = "viewer";
+      state.privilegeAllowed = false;
+      await expect(testCase.run()).rejects.toThrow(
+        "FURNISHING_PROCUREMENT_ACCESS_DENIED",
+      );
+      expect(state.rpcCalls).toHaveLength(0);
+      expect(state.platformRpcCalls).toHaveLength(1);
+    });
+
+    it(`the FS-008A kill switch still blocks ${testCase.name} even with a PA-001 grant`, async () => {
+      state.targetId = testCase.targetId;
+      state.membershipRole = "viewer";
+      state.privilegeAllowed = true;
       state.release = {
         ...state.release,
         global_kill_switch: true,
