@@ -12,8 +12,8 @@ describe("PRIVILEGE_IDS", () => {
     expect(new Set(values).size).toBe(values.length);
   });
 
-  it("seeds exactly the 76 privileges from the spec's module list", () => {
-    expect(values.length).toBe(76);
+  it("seeds exactly the 76 privileges from the spec's module list, plus the PA-006 portfolio privilege addition", () => {
+    expect(values.length).toBe(77);
   });
 });
 

@@ -1,3 +1,4 @@
+import { PRIVILEGE_IDS } from "@/features/platform-access";
 import {
   createActionId, createWorkspaceId, type PlatformActionProvider,
 } from "@/platform/actions";
@@ -25,10 +26,12 @@ export async function createApprovedDecisionActions(input: Readonly<{
       sources: [
         {
           type: "decision", sourceId: input.decision.canonicalDecisionId ?? input.decision.decisionId,
-          capability: "portfolio", recordedAt: new Date(input.occurredAt), recordedBy: actor,
+          capability: "portfolio", sourceModule: "portfolio", requiredPrivilege: PRIVILEGE_IDS.portfolioDecisionApprove,
+          recordedAt: new Date(input.occurredAt), recordedBy: actor,
         },
         ...input.decision.sourceFindingIds.map((sourceId) => ({
           type: "recommendation" as const, sourceId, capability: "portfolio",
+          sourceModule: "portfolio", requiredPrivilege: PRIVILEGE_IDS.portfolioDecisionApprove,
           recordedAt: new Date(input.occurredAt), recordedBy: actor,
         })),
       ],

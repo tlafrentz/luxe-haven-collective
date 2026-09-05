@@ -88,6 +88,10 @@ export const PRIVILEGE_IDS = {
   workspaceEntitlementEntitlementsView: "workspace.entitlement.entitlements_view",
   workspaceBillingBillingManage: "workspace.billing.billing_manage",
   workspaceAuditAuditView: "workspace.audit.audit_view",
+
+  // PA-006: added after the original PA-001 76-privilege spec list, to back
+  // canApprovePortfolioDecision (src/features/portfolio-intelligence/application/decisions/policies.ts).
+  portfolioDecisionApprove: "portfolio.decision.approve",
 } as const;
 
 export type PrivilegeId = (typeof PRIVILEGE_IDS)[keyof typeof PRIVILEGE_IDS];

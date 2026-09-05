@@ -142,7 +142,14 @@ describe("PI-001F capital allocation and strategic decisions", () => {
     });
     expect(plan.actions).toHaveLength(4);
     expect(provider.createDraft).toHaveBeenCalledTimes(4);
-    expect(provider.createDraft.mock.calls[0][0].sources[0]).toMatchObject({ type: "decision", capability: "portfolio" });
+    expect(provider.createDraft.mock.calls[0][0].sources[0]).toMatchObject({
+      type: "decision", capability: "portfolio",
+      sourceModule: "portfolio", requiredPrivilege: "portfolio.decision.approve",
+    });
+    expect(provider.createDraft.mock.calls[0][0].sources[1]).toMatchObject({
+      type: "recommendation", capability: "portfolio",
+      sourceModule: "portfolio", requiredPrivilege: "portfolio.decision.approve",
+    });
     expect(createDecisionMeasurementPlan(approved)).toMatchObject({ ownerProfileId: "profile-owner", reviewAt: approved.reviewAt });
     expect(buildDecisionExecutionPlan(approved).editable).toBe(true);
   });
