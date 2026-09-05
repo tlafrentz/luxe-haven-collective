@@ -286,7 +286,7 @@ export async function submitPurchaseBatchAction(formData: FormData) {
       .single();
   if (!source) throw new Error("PROCUREMENT_BASELINE_NOT_FOUND");
   const projectId = String(source.project_id);
-  const { db } = await scope(projectId);
+  const { db } = await scope(projectId, true);
   const { data: baseline } = await db
     .from("furnishing_procurement_baselines")
     .select("version")
@@ -329,7 +329,7 @@ export async function authorizePurchaseBatchAction(formData: FormData) {
     : { data: null };
   if (!source) throw new Error("FS006_BATCH_NOT_FOUND");
   const projectId = String(source.project_id);
-  const { db } = await scope(projectId);
+  const { db } = await scope(projectId, true);
   const { data: batch } = await db
     .from("furnishing_purchase_batches")
     .select("id,version")
@@ -374,7 +374,7 @@ export async function recordExternalOrderAction(formData: FormData) {
   if (!source) throw new Error("FS006_BATCH_NOT_FOUND");
   const projectId = String(source.project_id);
   if (!externalOrderId) throw new Error("FS006_EXTERNAL_ORDER_ID_REQUIRED");
-  const { db } = await scope(projectId);
+  const { db } = await scope(projectId, true);
   const { data: batch } = await db
     .from("furnishing_purchase_batches")
     .select("id,version")
@@ -428,7 +428,7 @@ export async function recordReceivingAction(formData: FormData) {
     : { data: null };
   if (!source) throw new Error("FS006_LINE_NOT_FOUND");
   const projectId = String(source.project_id);
-  const { db } = await scope(projectId);
+  const { db } = await scope(projectId, true);
   const { data: line } = await db
     .from("furnishing_procurement_lines")
     .select("id,revision")
@@ -475,7 +475,7 @@ export async function saveProcurementBudgetAction(formData: FormData) {
     contingency < 0
   )
     throw new Error("FS006_BUDGET_INVALID");
-  const { db } = await scope(projectId);
+  const { db } = await scope(projectId, true);
   const { data: baseline } = await db
     .from("furnishing_procurement_baselines")
     .select("version")
