@@ -1,27 +1,40 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth/session";
 import {
   createAcquisitionServerCommandBoundary,
   createFailClosedAcquisitionCommandRegistry,
   type AcquisitionServerIdentity,
 } from "@/features/investment-opportunity/acquisition-server";
 import { noopAcquisitionObservability } from "@/features/investment-opportunity/acquisition-pipeline";
+import { getInvestmentOpportunityRequestContext } from "./investment-opportunity-runtime";
 
+// Security fix (flagged during PA-004 research, task_d18a93cd): the previous
+// identity/authorization pair checked a global profiles.role (not workspace
+// membership) and then compared the resolved actor against itself
+// (`actor.id === ownerId`, where `ownerId` was set to `actor.id` moments
+// earlier) -- a tautology that always passed regardless of the target
+// opportunity's real workspace or the caller's role/property scope. This
+// boundary is currently inert (createFailClosedAcquisitionCommandRegistry
+// marks every command "not-verified", so no command can execute yet), but
+// the check needed to be correct before anything is ever turned on. Reuses
+// the same authorizeOpportunity primitive the rest of Investment Analysis
+// already relies on (src/app/actions/investment-opportunity-runtime.ts).
 export function createProductionAcquisitionServerCommandBoundary() {
+  let context: Awaited<ReturnType<typeof getInvestmentOpportunityRequestContext>> | null = null;
   return createAcquisitionServerCommandBoundary({
     identities: {
       resolve: async (): Promise<AcquisitionServerIdentity> => {
-        try {
-          const { user } = await requireRole(["admin", "owner"]);
-          return { authenticated: true, actor: { type: "user", id: user.id }, ownerId: user.id };
-        } catch {
-          return { authenticated: false };
-        }
+        context = await getInvestmentOpportunityRequestContext();
+        if (!context.ok) return { authenticated: false };
+        return { authenticated: true, actor: { type: "user", id: context.actorId }, ownerId: context.workspaceId };
       },
     },
     authorization: {
-      authorize: async ({ actor, ownerId }) => ({ allowed: actor.id === ownerId, conceal: actor.id !== ownerId }),
+      authorize: async ({ opportunityId }) => {
+        if (!context?.ok) return { allowed: false, conceal: true };
+        const allowed = await context.authorizeOpportunity(opportunityId, "opportunity.modify");
+        return { allowed, conceal: false };
+      },
     },
     deployment: createFailClosedAcquisitionCommandRegistry(),
     dispatcher: {
