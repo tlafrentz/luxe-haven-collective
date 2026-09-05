@@ -18,6 +18,7 @@ import {
   createGovernedExecutionService,
   SupabaseAutomationFoundationRepository,
   SupabaseAutomationGovernedExecutionRepository,
+  validateAutomationConfiguration,
   type AutomationAuthorizationPort,
   type AutomationSupabaseClient,
   type AutomationActor,
@@ -72,7 +73,7 @@ function createAutomationAuthorizationPort(
 }
 
 export type AutomationCommandResult = Readonly<
-  { ok: true } | { ok: false; message: string }
+  { ok: true; message?: string } | { ok: false; message: string }
 >;
 
 const APPROVAL_DISPOSITIONS: Readonly<
@@ -158,6 +159,14 @@ export async function executeAutomationWorkspaceCommand(
   }
   if (!flags.authoring)
     return { ok: false, message: "Authoring is disabled for this cohort." };
+  if (command === "validate-draft")
+    return validateAutomationDraftCommand({
+      client: client as unknown as AutomationSupabaseClient,
+      actor,
+      access,
+      tenantId: access.workspaceId,
+      automationId: targetId,
+    });
   const transition = transitionFor(command);
   if (!transition)
     return { ok: false, message: "This command is not recognized." };
@@ -325,6 +334,49 @@ async function cancelAutomationRunCommand(
     `/dashboard/automations/runs/${encodeURIComponent(input.runId)}`,
   );
   return { ok: true };
+}
+
+async function validateAutomationDraftCommand(
+  input: Readonly<{
+    client: AutomationSupabaseClient;
+    actor: AutomationActor;
+    access: Readonly<{ profileId: string; workspaceId: string }>;
+    tenantId: string;
+    automationId: string;
+  }>,
+): Promise<AutomationCommandResult> {
+  const service = createAutomationFoundationService({
+    repository: new SupabaseAutomationFoundationRepository(input.client),
+    authorization: createAutomationAuthorizationPort(input.access),
+    clock: () => new Date().toISOString(),
+    id: randomUUID,
+  });
+  const result = await service.get({
+    actor: input.actor,
+    tenantId: input.tenantId,
+    automationId: input.automationId,
+  });
+  if (!result.ok) return { ok: false, message: result.message };
+  if (result.value.definition.status !== "draft")
+    return { ok: false, message: "Only draft automations can be validated." };
+  const findings = validateAutomationConfiguration(
+    result.value.current.configuration,
+  );
+  return { ok: true, message: summarizeValidationFindings(findings) };
+}
+function summarizeValidationFindings(
+  findings: readonly Readonly<{
+    severity: "blocking" | "warning" | "information";
+    code: string;
+    message: string;
+  }>[],
+): string {
+  if (!findings.length)
+    return "Draft configuration is valid. No issues found.";
+  const label = { blocking: "Blocking", warning: "Warning", information: "Note" } as const;
+  return findings
+    .map(({ severity, message }) => `${label[severity]}: ${message}`)
+    .join(" ");
 }
 
 export async function createAutomationDraft(formData: FormData): Promise<void> {

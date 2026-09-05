@@ -652,7 +652,19 @@ function CommandBar({
                   ? "creates an approval request"
                   : "uses the canonical command boundary"}
               </p>
-              <AutomationCommandForm command={item} interactive={interactive} />
+              {item.type === "open-approval" ? (
+                <Link
+                  href={`/dashboard/automations/approvals/${encodeURIComponent(item.targetId)}`}
+                  className="mt-4 inline-flex min-h-11 items-center rounded-full bg-stone-950 px-5 text-sm font-semibold text-white"
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                <AutomationCommandForm
+                  command={item}
+                  interactive={interactive}
+                />
+              )}
             </details>
           ))}
         </div>

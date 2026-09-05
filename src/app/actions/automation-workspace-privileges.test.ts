@@ -9,20 +9,21 @@ const state = vi.hoisted(() => ({
   role: "operator" as string,
   privilegeAllowed: false,
   platformRpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
+  definitionStatus: "active" as string,
 }));
 
-function definitionRow() {
+function definitionRow(status = "active") {
   return {
     id: EXISTING_AUTOMATION_ID,
     workspace_id: WORKSPACE_ID,
-    status: "active",
+    status,
     current_version: 1,
     aggregate_version: 1,
     created_by_profile_id: ACTOR_ID,
     created_at: "2026-01-01T00:00:00.000Z",
   };
 }
-function versionRow() {
+function versionRow(status = "active") {
   return {
     id: "version-1",
     automation_id: EXISTING_AUTOMATION_ID,
@@ -30,16 +31,16 @@ function versionRow() {
     version: 1,
     name: "Test",
     description: "Test automation",
-    status: "active",
+    status,
     scope_type: "property",
     property_ids: [PROPERTY_ID],
     owner_profile_id: ACTOR_ID,
-    trigger_specification: {},
-    command_specification: {},
-    approval_policy: {},
-    execution_policy: {},
-    retry_policy: {},
-    notification_policy: {},
+    trigger_specification: { schemaVersion: "au001-trigger.v1", sourceCapability: "automation-workspace", kind: "manual", specification: {} },
+    command_specification: { owningCapability: "execute", commandType: "createDraftPlan", contractVersion: "v1" },
+    approval_policy: { mode: "before-run", authority: "workspace-owner" },
+    execution_policy: { maxFanOut: 1, maxChainDepth: 1, concurrency: "queue" },
+    retry_policy: { maxAttempts: 3, timeoutMs: 60000 },
+    notification_policy: { eventTypes: ["failed"] },
     effective_from: "2026-01-01T00:00:00.000Z",
     compatibility: "unverified",
     created_by_profile_id: ACTOR_ID,
@@ -67,10 +68,10 @@ function chainableSupabase() {
           if (table === "automation_definitions") {
             return idFilter && idFilter !== EXISTING_AUTOMATION_ID
               ? { data: null, error: null }
-              : { data: definitionRow(), error: null };
+              : { data: definitionRow(state.definitionStatus), error: null };
           }
           if (table === "automation_definition_versions")
-            return { data: versionRow(), error: null };
+            return { data: versionRow(state.definitionStatus), error: null };
           return { data: null, error: null };
         },
       };
@@ -160,8 +161,33 @@ describe("PA-006 automation-workspace.ts additive privilege gating", () => {
     state.role = "operator";
     state.privilegeAllowed = false;
     state.platformRpcCalls.length = 0;
+    state.definitionStatus = "active";
   });
   afterEach(() => vi.restoreAllMocks());
+
+  it("executeAutomationWorkspaceCommand: validate-draft reads the real draft configuration and reports no issues", async () => {
+    state.definitionStatus = "draft";
+    const result = await executeAutomationWorkspaceCommand(
+      { ok: false, message: "" },
+      commandFormData("validate-draft"),
+    );
+    expect(result).toEqual({
+      ok: true,
+      message: "Draft configuration is valid. No issues found.",
+    });
+  });
+
+  it("executeAutomationWorkspaceCommand: validate-draft refuses a non-draft automation instead of silently no-oping", async () => {
+    state.definitionStatus = "active";
+    const result = await executeAutomationWorkspaceCommand(
+      { ok: false, message: "" },
+      commandFormData("validate-draft"),
+    );
+    expect(result).toEqual({
+      ok: false,
+      message: "Only draft automations can be validated.",
+    });
+  });
 
   it("createAutomationDraft: keeps today's role-list access unchanged and never calls evaluate_privilege", async () => {
     state.role = "operator";

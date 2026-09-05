@@ -64,6 +64,11 @@ export function AutomationCommandForm({
           {state.message}
         </p>
       ) : null}
+      {state.ok && state.message ? (
+        <p role="status" className="text-sm font-semibold text-emerald-700">
+          {state.message}
+        </p>
+      ) : null}
     </form>
   );
 }

@@ -36,6 +36,19 @@ const state = vi.hoisted(() => ({
     tenantId: "workspace-1",
     version: 5,
   } as Record<string, unknown> | null,
+  getResult: {
+    ok: true,
+    value: {
+      definition: { status: "draft" },
+      current: { configuration: {} },
+    },
+  } as Record<string, unknown>,
+  getCalls: [] as Record<string, unknown>[],
+  validationFindings: [] as Array<{
+    severity: "blocking" | "warning" | "information";
+    code: string;
+    message: string;
+  }>,
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -68,7 +81,12 @@ vi.mock("@/platform/automations", () => ({
       state.transitionCalls.push(input);
       return state.transitionResult;
     },
+    async get(input: Record<string, unknown>) {
+      state.getCalls.push(input);
+      return state.getResult;
+    },
   }),
+  validateAutomationConfiguration: () => state.validationFindings,
   SupabaseAutomationGovernedExecutionRepository: class {
     async getApproval() {
       return state.approval;
@@ -139,6 +157,15 @@ describe("executeAutomationWorkspaceCommand", () => {
       version: 2,
     };
     state.run = { id: "run-1", tenantId: "workspace-1", version: 5 };
+    state.getResult = {
+      ok: true,
+      value: {
+        definition: { status: "draft" },
+        current: { configuration: {} },
+      },
+    };
+    state.getCalls = [];
+    state.validationFindings = [];
   });
   afterEach(() => vi.clearAllMocks());
 
@@ -324,6 +351,79 @@ describe("executeAutomationWorkspaceCommand", () => {
         ok: false,
         message: "The automation run changed concurrently.",
       });
+    });
+  });
+
+  describe("validate-draft command (previously silently dead)", () => {
+    it("reports a valid draft with no issues, without mutating anything", async () => {
+      const result = await submit({
+        command: "validate-draft",
+        idempotencyKey: "au001d:validate-draft:automation-1:v3",
+      });
+      expect(result).toEqual({
+        ok: true,
+        message: "Draft configuration is valid. No issues found.",
+      });
+      expect(state.transitionCalls).toHaveLength(0);
+    });
+    it("surfaces warning findings from validateAutomationConfiguration", async () => {
+      state.validationFindings = [
+        {
+          severity: "warning",
+          code: "AUTOMATION_APPROVAL_POLICY_REVIEW",
+          message: "No-approval commands must be explicitly allowlisted before activation.",
+        },
+      ];
+      const result = await submit({
+        command: "validate-draft",
+        idempotencyKey: "au001d:validate-draft:automation-1:v3",
+      });
+      expect(result).toEqual({
+        ok: true,
+        message:
+          "Warning: No-approval commands must be explicitly allowlisted before activation.",
+      });
+    });
+    it("returns an error instead of silently no-oping when the automation no longer exists", async () => {
+      state.getResult = {
+        ok: false,
+        code: "AUTOMATION_NOT_FOUND",
+        message: "Automation was not found.",
+      };
+      const result = await submit({
+        command: "validate-draft",
+        idempotencyKey: "au001d:validate-draft:automation-1:v3",
+      });
+      expect(result).toEqual({
+        ok: false,
+        message: "Automation was not found.",
+      });
+    });
+    it("refuses to validate a non-draft automation", async () => {
+      state.getResult = {
+        ok: true,
+        value: {
+          definition: { status: "active" },
+          current: { configuration: {} },
+        },
+      };
+      const result = await submit({
+        command: "validate-draft",
+        idempotencyKey: "au001d:validate-draft:automation-1:v3",
+      });
+      expect(result).toEqual({
+        ok: false,
+        message: "Only draft automations can be validated.",
+      });
+    });
+    it("is gated on the authoring flag", async () => {
+      state.flags = { ...state.flags, authoring: false };
+      const result = await submit({
+        command: "validate-draft",
+        idempotencyKey: "au001d:validate-draft:automation-1:v3",
+      });
+      expect(result.ok).toBe(false);
+      expect(state.getCalls).toHaveLength(0);
     });
   });
 

@@ -32,6 +32,23 @@ const run = {
   href: "/dashboard/automations/runs/run-1",
   validCommands: [command],
 };
+const openApprovalCommand = {
+  type: "open-approval" as const,
+  label: "Open approval",
+  consequence: "Opens the required approval request.",
+  targetId: "approval-1",
+  expectedVersion: 3,
+  confirmationRequired: false,
+  reason: { required: false, minimumLength: 0, maximumLength: 500 },
+  createsApproval: false,
+  idempotencyRequired: true,
+};
+const awaitingApprovalRun = {
+  ...run,
+  status: "awaiting_approval" as const,
+  attention: "approval" as const,
+  validCommands: [openApprovalCommand],
+};
 const approval = {
   id: "approval-1",
   runId: "run-1",
@@ -92,6 +109,15 @@ describe("AU-001D accessible experience", () => {
     expect(html).toContain("Blind retry is disabled");
     expect(html).toContain("Reconcile outcome");
     expect(html).not.toContain("Retry now");
+  });
+  it("renders open-approval as a real navigation link instead of a broken command form", () => {
+    const html = renderToStaticMarkup(
+      <RunDetailView item={awaitingApprovalRun} flags={flags} />,
+    );
+    expect(html).toContain(
+      'href="/dashboard/automations/approvals/approval-1"',
+    );
+    expect(html).not.toContain('name="command"');
   });
   it("distinguishes automation approval from the underlying business decision", () => {
     const html = renderToStaticMarkup(
