@@ -16,7 +16,7 @@ import {
   WorkspacePage,
   WorkspaceSectionHeading,
 } from "@/components/application-layout";
-import { executeAutomationWorkspaceCommand } from "@/app/actions/automation-workspace";
+import { AutomationCommandForm } from "./automation-command-form";
 import type {
   AutomationExperienceFlags,
   AutomationWorkspaceQuery,
@@ -652,47 +652,7 @@ function CommandBar({
                   ? "creates an approval request"
                   : "uses the canonical command boundary"}
               </p>
-              <form
-                action={executeAutomationWorkspaceCommand}
-                className="mt-4 space-y-3"
-              >
-                <input type="hidden" name="command" value={item.type} />
-                <input type="hidden" name="targetId" value={item.targetId} />
-                <input
-                  type="hidden"
-                  name="expectedVersion"
-                  value={item.expectedVersion}
-                />
-                <input
-                  type="hidden"
-                  name="idempotencyKey"
-                  value={`au001d:${item.type}:${item.targetId}:v${item.expectedVersion}`}
-                />
-                {item.reason.required ? (
-                  <label className="block text-sm font-semibold">
-                    Reason
-                    <textarea
-                      name="reason"
-                      required
-                      minLength={item.reason.minimumLength}
-                      maxLength={item.reason.maximumLength}
-                      className="mt-1 min-h-24 w-full rounded-xl border p-3"
-                    />
-                  </label>
-                ) : null}
-                <button
-                  type="submit"
-                  disabled={!interactive}
-                  className="min-h-11 rounded-full bg-stone-950 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
-                >
-                  Confirm {item.label.toLocaleLowerCase()}
-                </button>
-                {!interactive ? (
-                  <p className="text-xs text-stone-500">
-                    Interaction is disabled for this cohort.
-                  </p>
-                ) : null}
-              </form>
+              <AutomationCommandForm command={item} interactive={interactive} />
             </details>
           ))}
         </div>

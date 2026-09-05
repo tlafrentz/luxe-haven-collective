@@ -15,11 +15,19 @@ import {
 } from "@/features/platform-access";
 import {
   createAutomationFoundationService,
+  createGovernedExecutionService,
   SupabaseAutomationFoundationRepository,
+  SupabaseAutomationGovernedExecutionRepository,
   type AutomationAuthorizationPort,
   type AutomationSupabaseClient,
   type AutomationActor,
+  type AutomationDefinitionExecutionReader,
   type AutomationDefinitionStatus,
+  type AutomationPolicyEvaluator,
+  type AutomationRetryPolicy,
+  type AutomationServiceActor,
+  type GovernedExecutionRepository,
+  type TriggerSupabaseClient,
 } from "@/platform/automations";
 import { automationExperienceFlags } from "@/features/automation-workspace/application/automation-workspace-composition";
 
@@ -63,21 +71,47 @@ function createAutomationAuthorizationPort(
   };
 }
 
+export type AutomationCommandResult = Readonly<
+  { ok: true } | { ok: false; message: string }
+>;
+
+const APPROVAL_DISPOSITIONS: Readonly<
+  Record<string, "approve" | "reject" | "defer" | "request_revision">
+> = Object.freeze({
+  approve: "approve",
+  reject: "reject",
+  defer: "defer",
+  "request-revision": "request_revision",
+});
+
 export async function executeAutomationWorkspaceCommand(
+  _state: AutomationCommandResult,
   formData: FormData,
-): Promise<void> {
+): Promise<AutomationCommandResult> {
   const flags = automationExperienceFlags();
-  if (!flags.workspace || flags.readOnly || !flags.authoring) return;
+  if (!flags.workspace || flags.readOnly)
+    return {
+      ok: false,
+      message: "Automation commands are disabled for this cohort.",
+    };
   const command = text(formData, "command", 40),
     targetId = text(formData, "targetId", 200),
     expectedVersion = integer(formData, "expectedVersion"),
     reason = optionalText(formData, "reason", 500),
     idempotencyKey = text(formData, "idempotencyKey", 200);
-  if (!idempotencyKey.startsWith("au001d:")) return;
+  if (!idempotencyKey.startsWith("au001d:"))
+    return {
+      ok: false,
+      message: "This request could not be verified. Please retry.",
+    };
   const { user } = await requireUser(),
     accessRepository = new SupabaseTeamAccessRepository(),
     access = await accessRepository.resolve(user.id);
-  if (!access || access.status !== "active") return;
+  if (!access || access.status !== "active")
+    return {
+      ok: false,
+      message: "Your workspace access could not be verified.",
+    };
   const actor: AutomationActor = Object.freeze({
     actorId: user.id,
     tenantId: access.workspaceId,
@@ -88,17 +122,53 @@ export async function executeAutomationWorkspaceCommand(
         ? access.propertyAccess.propertyIds
         : (await accessRepository.properties(access)).map(({ id }) => id),
   });
-  const transition = transitionFor(command);
-  if (!transition) return;
-  const client = await createClient(),
-    service = createAutomationFoundationService({
-      repository: new SupabaseAutomationFoundationRepository(
-        client as unknown as AutomationSupabaseClient,
-      ),
-      authorization: createAutomationAuthorizationPort(access),
-      clock: () => new Date().toISOString(),
-      id: randomUUID,
+  const client = await createClient();
+
+  const disposition = APPROVAL_DISPOSITIONS[command];
+  if (disposition) {
+    if (!flags.approvals)
+      return {
+        ok: false,
+        message: "Approval interaction is disabled for this cohort.",
+      };
+    return decideAutomationApprovalCommand({
+      client: client as unknown as TriggerSupabaseClient,
+      actor,
+      tenantId: access.workspaceId,
+      approvalId: targetId,
+      expectedApprovalVersion: expectedVersion,
+      disposition,
+      reason,
     });
+  }
+  if (command === "cancel") {
+    if (!flags.runControls)
+      return {
+        ok: false,
+        message: "Run controls are disabled for this cohort.",
+      };
+    return cancelAutomationRunCommand({
+      client: client as unknown as TriggerSupabaseClient,
+      actor,
+      tenantId: access.workspaceId,
+      runId: targetId,
+      expectedRunVersion: expectedVersion,
+      reason,
+    });
+  }
+  if (!flags.authoring)
+    return { ok: false, message: "Authoring is disabled for this cohort." };
+  const transition = transitionFor(command);
+  if (!transition)
+    return { ok: false, message: "This command is not recognized." };
+  const service = createAutomationFoundationService({
+    repository: new SupabaseAutomationFoundationRepository(
+      client as unknown as AutomationSupabaseClient,
+    ),
+    authorization: createAutomationAuthorizationPort(access),
+    clock: () => new Date().toISOString(),
+    id: randomUUID,
+  });
   const result = await service.transition({
     actor,
     tenantId: access.workspaceId,
@@ -110,12 +180,151 @@ export async function executeAutomationWorkspaceCommand(
     ...(reason ? { reason } : {}),
     correlationId: randomUUID(),
   });
-  if (result.ok) {
-    revalidatePath("/dashboard/automations");
-    revalidatePath(
-      `/dashboard/automations/definitions/${encodeURIComponent(targetId)}`,
+  if (!result.ok) return { ok: false, message: result.message };
+  revalidatePath("/dashboard/automations");
+  revalidatePath(
+    `/dashboard/automations/definitions/${encodeURIComponent(targetId)}`,
+  );
+  return { ok: true };
+}
+
+/**
+ * decideApproval/requestCancellation never read these; the governed
+ * execution service bundles dispatch, policy evaluation, and definition
+ * lookups behind the same factory, so approval and cancellation commands
+ * still need type-valid stand-ins to construct it.
+ */
+const UNUSED_DEFINITIONS: AutomationDefinitionExecutionReader = {
+  async getExecution() {
+    return null;
+  },
+};
+const UNUSED_POLICY: AutomationPolicyEvaluator = {
+  async evaluate() {
+    throw new Error(
+      "Policy evaluation is not reachable from approval or cancellation commands.",
     );
-  }
+  },
+};
+const UNUSED_RETRY_POLICY: AutomationRetryPolicy = Object.freeze({
+  version: "au001d-unused.v1",
+  maximumAttempts: 1,
+  maximumElapsedMs: 1,
+  initialDelayMs: 1,
+  maximumDelayMs: 1,
+  jitterRatio: 0,
+  retryableClassifications: Object.freeze([]),
+});
+function unusedServiceActor(tenantId: string): AutomationServiceActor {
+  return Object.freeze({
+    actorId: "au001d-workspace-command",
+    tenantId,
+    policyId: "au001d-unused",
+    active: true,
+    grants: Object.freeze([]),
+  });
+}
+function createWorkspaceGovernedExecution(
+  repository: GovernedExecutionRepository,
+  tenantId: string,
+) {
+  return createGovernedExecutionService({
+    repository,
+    definitions: UNUSED_DEFINITIONS,
+    policy: UNUSED_POLICY,
+    approvalAuthority: {
+      async canApprove(candidate, run) {
+        return (
+          candidate.active &&
+          candidate.tenantId === tenantId &&
+          run.tenantId === tenantId &&
+          ["owner", "administrator"].includes(candidate.role)
+        );
+      },
+    },
+    ports: [],
+    serviceActor: unusedServiceActor(tenantId),
+    retryPolicy: UNUSED_RETRY_POLICY,
+    clock: () => new Date().toISOString(),
+    id: randomUUID,
+    enabled: () => true,
+    killSwitched: () => false,
+    leaseDurationMs: 60_000,
+  });
+}
+async function decideAutomationApprovalCommand(
+  input: Readonly<{
+    client: TriggerSupabaseClient;
+    actor: AutomationActor;
+    tenantId: string;
+    approvalId: string;
+    expectedApprovalVersion: number;
+    disposition: "approve" | "reject" | "defer" | "request_revision";
+    reason?: string;
+  }>,
+): Promise<AutomationCommandResult> {
+  const repository = new SupabaseAutomationGovernedExecutionRepository(
+    input.client,
+  );
+  const approval = await repository.getApproval(
+    input.tenantId,
+    input.approvalId,
+  );
+  if (!approval)
+    return { ok: false, message: "The approval request was not found." };
+  const run = await repository.getRun(input.tenantId, approval.runId);
+  if (!run)
+    return {
+      ok: false,
+      message: "The associated automation run was not found.",
+    };
+  const service = createWorkspaceGovernedExecution(repository, input.tenantId);
+  const result = await service.decideApproval({
+    tenantId: input.tenantId,
+    approvalId: input.approvalId,
+    expectedApprovalVersion: input.expectedApprovalVersion,
+    expectedRunVersion: run.version,
+    actor: input.actor,
+    disposition: input.disposition,
+    ...(input.reason ? { reason: input.reason } : {}),
+  });
+  if (!result.ok) return { ok: false, message: result.message };
+  revalidatePath("/dashboard/automations");
+  revalidatePath(
+    `/dashboard/automations/approvals/${encodeURIComponent(input.approvalId)}`,
+  );
+  revalidatePath(
+    `/dashboard/automations/runs/${encodeURIComponent(approval.runId)}`,
+  );
+  return { ok: true };
+}
+async function cancelAutomationRunCommand(
+  input: Readonly<{
+    client: TriggerSupabaseClient;
+    actor: AutomationActor;
+    tenantId: string;
+    runId: string;
+    expectedRunVersion: number;
+    reason?: string;
+  }>,
+): Promise<AutomationCommandResult> {
+  const repository = new SupabaseAutomationGovernedExecutionRepository(
+    input.client,
+  );
+  const service = createWorkspaceGovernedExecution(repository, input.tenantId);
+  const result = await service.requestCancellation({
+    tenantId: input.tenantId,
+    runId: input.runId,
+    expectedRunVersion: input.expectedRunVersion,
+    actor: input.actor,
+    reason: input.reason ?? "",
+  });
+  if (!result.ok) return { ok: false, message: result.message };
+  revalidatePath("/dashboard/automations");
+  revalidatePath(
+    `/dashboard/automations/runs/${encodeURIComponent(input.runId)}`,
+  );
+  return { ok: true };
 }
 
 export async function createAutomationDraft(formData: FormData): Promise<void> {
