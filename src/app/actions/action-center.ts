@@ -66,18 +66,23 @@ export async function mutateActionCenterAction(
           "forbidden",
           "You do not have permission to change actions in this workspace.",
         );
+  const controlled = [
+    "start",
+    "block",
+    "unblock",
+    "submit-for-review",
+    "return-for-correction",
+    "complete",
+    "fail",
+    "retry",
+    "reopen",
+  ].includes(input.operation);
+  if (!controlled && !context.viewer.canManage)
+    return failure(
+      "forbidden",
+      "You do not have permission to change actions in this workspace.",
+    );
   try {
-    const controlled = [
-      "start",
-      "block",
-      "unblock",
-      "submit-for-review",
-      "return-for-correction",
-      "complete",
-      "fail",
-      "retry",
-      "reopen",
-    ].includes(input.operation);
     const action = controlled
       ? await executeControlled(input)
       : await execute(createPlatformActionProvider(context.client), {
