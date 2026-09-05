@@ -5,15 +5,63 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { SupabaseTeamAccessRepository } from "@/features/workspace";
+import {
+  authorizeWithLegacyFallback,
+  PRIVILEGE_IDS,
+  type PlatformAccessClient,
+  type PrivilegeId,
+} from "@/features/platform-access";
 import {
   createAutomationFoundationService,
   SupabaseAutomationFoundationRepository,
+  type AutomationAuthorizationPort,
   type AutomationSupabaseClient,
   type AutomationActor,
   type AutomationDefinitionStatus,
 } from "@/platform/automations";
 import { automationExperienceFlags } from "@/features/automation-workspace/application/automation-workspace-composition";
+
+// PA-006: transitional, additive-only migration onto PA-001 privileges. The
+// AutomationFoundationService's own canManageAutomation check keeps deciding
+// access exactly as it does today (see automation-foundation.ts's authorize()
+// wrapper) -- this port is only ever consulted when that check denies, and a
+// PA-001 grant can only extend it, never replace or narrow it.
+function privilegeForOperation(
+  operation: Parameters<AutomationAuthorizationPort["authorize"]>[0]["operation"],
+): PrivilegeId {
+  switch (operation) {
+    case "create":
+      return PRIVILEGE_IDS.automationsAutomationCreate;
+    case "activate":
+    case "pause":
+    case "resume":
+    case "retire":
+    case "archive":
+      return PRIVILEGE_IDS.automationsAutomationEnable;
+    default:
+      return PRIVILEGE_IDS.automationsAutomationEdit;
+  }
+}
+function createAutomationAuthorizationPort(
+  access: Readonly<{ profileId: string; workspaceId: string }>,
+  scope?: { scopeType?: "workspace" | "property"; scopeId?: string | null },
+): AutomationAuthorizationPort {
+  return {
+    authorize: async (input) =>
+      input.legacyAllowed ||
+      authorizeWithLegacyFallback({
+        client: createAdminClient() as unknown as PlatformAccessClient,
+        subjectId: access.profileId,
+        workspaceId: access.workspaceId,
+        privilegeId: privilegeForOperation(input.operation),
+        scopeType: scope?.scopeType,
+        scopeId: scope?.scopeId,
+        legacyAllowed: input.legacyAllowed,
+      }),
+  };
+}
 
 export async function executeAutomationWorkspaceCommand(
   formData: FormData,
@@ -47,14 +95,7 @@ export async function executeAutomationWorkspaceCommand(
       repository: new SupabaseAutomationFoundationRepository(
         client as unknown as AutomationSupabaseClient,
       ),
-      authorization: {
-        authorize: async ({ actor: candidate, propertyIds }) =>
-          candidate.active &&
-          candidate.tenantId === access.workspaceId &&
-          ["owner", "administrator", "operator"].includes(candidate.role) &&
-          (candidate.role !== "operator" ||
-            propertyIds.every((id) => candidate.propertyIds.includes(id))),
-      },
+      authorization: createAutomationAuthorizationPort(access),
       clock: () => new Date().toISOString(),
       id: randomUUID,
     });
@@ -108,13 +149,10 @@ export async function createAutomationDraft(formData: FormData): Promise<void> {
     repository: new SupabaseAutomationFoundationRepository(
       client as unknown as AutomationSupabaseClient,
     ),
-    authorization: {
-      authorize: async ({ actor: candidate, propertyIds }) =>
-        candidate.active &&
-        candidate.tenantId === access.workspaceId &&
-        ["owner", "administrator", "operator"].includes(candidate.role) &&
-        propertyIds.every((id) => authorizedIds.includes(id)),
-    },
+    authorization: createAutomationAuthorizationPort(access, {
+      scopeType: "property",
+      scopeId: propertyId,
+    }),
     clock: () => new Date().toISOString(),
     id: randomUUID,
   });

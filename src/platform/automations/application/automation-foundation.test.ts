@@ -42,12 +42,30 @@ describe("AU-001A automation foundation application", () => {
     expect(repository.notifications[0]).toContain("automation:automation-1:v2:automation-ready-for-review");
   });
 
-  it("denies cross-tenant, unauthorized-property, and inactive actors before persistence", async () => {
-    for (const denied of [{ ...actor, tenantId: "other" }, { ...actor, role: "operator" as const, propertyIds: ["other"] }, { ...actor, active: false }]) {
+  it("denies cross-tenant and inactive actors before persistence, regardless of what the authorization port would allow", async () => {
+    for (const denied of [{ ...actor, tenantId: "other" }, { ...actor, active: false }]) {
       const { service: application, repository } = service();
       const result = await application.createDraft({ actor: denied, tenantId: "tenant-1", automationId: "automation-1", name: "Draft", description: "Governed definition", configuration, correlationId: "correlation-1" });
       expect(result).toMatchObject({ ok: false, code: "AUTOMATION_ACCESS_DENIED" });
       expect(repository.value).toBeNull();
     }
+  });
+
+  it("denies insufficient role/property scope when the authorization port also denies (PA-006: additive, not automatic)", async () => {
+    const repository = new Repository();
+    const application = createAutomationFoundationService({ repository, authorization: { async authorize() { return false; } }, clock: () => "2026-08-10T01:00:00.000Z", id: () => "id-1" });
+    const denied = { ...actor, role: "operator" as const, propertyIds: ["other"] };
+    const result = await application.createDraft({ actor: denied, tenantId: "tenant-1", automationId: "automation-1", name: "Draft", description: "Governed definition", configuration, correlationId: "correlation-1" });
+    expect(result).toMatchObject({ ok: false, code: "AUTOMATION_ACCESS_DENIED" });
+    expect(repository.value).toBeNull();
+  });
+
+  it("allows insufficient role/property scope when the authorization port grants access (PA-006: additive fallback)", async () => {
+    const repository = new Repository();
+    const application = createAutomationFoundationService({ repository, authorization: { async authorize(input) { return input.legacyAllowed === false; } }, clock: () => "2026-08-10T01:00:00.000Z", id: () => "id-1" });
+    const allowed = { ...actor, role: "operator" as const, propertyIds: ["other"] };
+    const result = await application.createDraft({ actor: allowed, tenantId: "tenant-1", automationId: "automation-1", name: "Draft", description: "Governed definition", configuration, correlationId: "correlation-1" });
+    expect(result).toMatchObject({ ok: true });
+    expect(repository.value).not.toBeNull();
   });
 });

@@ -121,8 +121,12 @@ export function requireActiveActor(actor: AutomationActor): AutomationActor {
   return actor;
 }
 
+export function isActiveTenantMember(actor: AutomationActor, tenantId: string): boolean {
+  return actor.active && actor.tenantId === tenantId;
+}
+
 export function canManageAutomation(actor: AutomationActor, tenantId: string, propertyIds: readonly string[]): boolean {
-  if (!actor.active || actor.tenantId !== tenantId || !["owner", "administrator", "operator"].includes(actor.role)) return false;
+  if (!isActiveTenantMember(actor, tenantId) || !["owner", "administrator", "operator"].includes(actor.role)) return false;
   return actor.role === "owner" || actor.role === "administrator" || propertyIds.every((id) => actor.propertyIds.includes(id));
 }
 

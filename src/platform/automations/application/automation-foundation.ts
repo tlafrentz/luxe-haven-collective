@@ -1,4 +1,4 @@
-import { AutomationFoundationError, canManageAutomation, createAutomationDefinitionVersion, transitionAutomationDefinition, type AutomationActor, type AutomationDefinition, type AutomationDefinitionConfiguration, type AutomationDefinitionStatus, type AutomationDefinitionVersion } from "../domain/automation-definition";
+import { AutomationFoundationError, canManageAutomation, createAutomationDefinitionVersion, isActiveTenantMember, transitionAutomationDefinition, type AutomationActor, type AutomationDefinition, type AutomationDefinitionConfiguration, type AutomationDefinitionStatus, type AutomationDefinitionVersion } from "../domain/automation-definition";
 
 export type AutomationActivityEvent = Readonly<{ id: string; tenantId: string; automationId: string; definitionVersion: number; eventType: string; actorId: string; occurredAt: string; correlationId: string; causationId?: string; safeMetadata: Readonly<Record<string, unknown>> }>;
 export type AutomationNotificationIntent = Readonly<{ id: string; tenantId: string; automationId: string; recipientId: string; eventType: string; idempotencyKey: string; safeTemplateVariables: Readonly<Record<string, string>>; createdAt: string }>;
@@ -9,13 +9,21 @@ export interface AutomationDefinitionRepository {
   create(input: Readonly<{ definition: AutomationDefinition; version: AutomationDefinitionVersion; activity: AutomationActivityEvent }>): Promise<void>;
   appendVersion(input: Readonly<{ expectedVersion: number; definition: AutomationDefinition; version: AutomationDefinitionVersion; activity: AutomationActivityEvent; notification?: AutomationNotificationIntent }>): Promise<void>;
 }
-export interface AutomationAuthorizationPort { authorize(input: Readonly<{ actor: AutomationActor; operation: "create" | "edit" | "submit" | "return" | "activate" | "pause" | "resume" | "retire" | "archive"; tenantId: string; propertyIds: readonly string[] }>): Promise<boolean>; }
+export interface AutomationAuthorizationPort { authorize(input: Readonly<{ actor: AutomationActor; operation: "create" | "edit" | "submit" | "return" | "activate" | "pause" | "resume" | "retire" | "archive"; tenantId: string; propertyIds: readonly string[]; legacyAllowed: boolean }>): Promise<boolean>; }
 export interface AutomationFoundationTelemetry { emit(event: Readonly<{ name: string; tenantId: string; automationId: string; correlationId: string; classification: string }>): void; }
 export type AutomationFoundationResult<T> = Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; code: string; message: string; currentVersion?: number }>;
 
 export function createAutomationFoundationService(dependencies: Readonly<{ repository: AutomationDefinitionRepository; authorization: AutomationAuthorizationPort; clock: () => string; id: () => string; telemetry?: AutomationFoundationTelemetry }>) {
+  // PA-006: transitional, additive-only migration onto PA-001 privileges.
+  // isActiveTenantMember is a hard gate (never bypassable). canManageAutomation's
+  // role/property check keeps deciding access exactly as it does today -- the
+  // injectable authorization port can only ever extend it via legacyAllowed,
+  // never replace or narrow it. See authorizeWithLegacyFallback (the
+  // implementation automation-workspace.ts's port uses) for the shared rationale.
   async function authorize(actor: AutomationActor, operation: Parameters<AutomationAuthorizationPort["authorize"]>[0]["operation"], tenantId: string, propertyIds: readonly string[]) {
-    if (!canManageAutomation(actor, tenantId, propertyIds) || !await dependencies.authorization.authorize({ actor, operation, tenantId, propertyIds })) throw new AutomationFoundationError("AUTOMATION_ACCESS_DENIED", "Automation access is denied.");
+    if (!isActiveTenantMember(actor, tenantId)) throw new AutomationFoundationError("AUTOMATION_ACCESS_DENIED", "Automation access is denied.");
+    const legacyAllowed = canManageAutomation(actor, tenantId, propertyIds);
+    if (!legacyAllowed && !await dependencies.authorization.authorize({ actor, operation, tenantId, propertyIds, legacyAllowed })) throw new AutomationFoundationError("AUTOMATION_ACCESS_DENIED", "Automation access is denied.");
   }
   return Object.freeze({
     async createDraft(input: Readonly<{ actor: AutomationActor; tenantId: string; automationId?: string; name: string; description: string; templateOrigin?: string; configuration: AutomationDefinitionConfiguration; correlationId: string }>): Promise<AutomationFoundationResult<Readonly<{ definition: AutomationDefinition; current: AutomationDefinitionVersion }>>> {
@@ -41,7 +49,10 @@ export function createAutomationFoundationService(dependencies: Readonly<{ repos
         if (!input.actor.active || input.actor.tenantId !== input.tenantId) throw new AutomationFoundationError("AUTOMATION_ACCESS_DENIED", "Automation access is denied.");
         const values = await dependencies.repository.list(input.tenantId);
         const authorized = [];
-        for (const value of values) if (canManageAutomation(input.actor, input.tenantId, value.current.configuration.scope.propertyIds) && await dependencies.authorization.authorize({ actor: input.actor, operation: "edit", tenantId: input.tenantId, propertyIds: value.current.configuration.scope.propertyIds })) authorized.push(value);
+        for (const value of values) {
+          const legacyAllowed = canManageAutomation(input.actor, input.tenantId, value.current.configuration.scope.propertyIds);
+          if (legacyAllowed || await dependencies.authorization.authorize({ actor: input.actor, operation: "edit", tenantId: input.tenantId, propertyIds: value.current.configuration.scope.propertyIds, legacyAllowed })) authorized.push(value);
+        }
         return { ok: true, value: Object.freeze(authorized) } as const;
       } catch (error) { return failure(error); }
     },
