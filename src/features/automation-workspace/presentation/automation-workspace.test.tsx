@@ -32,6 +32,15 @@ const run = {
   href: "/dashboard/automations/runs/run-1",
   validCommands: [command],
 };
+const reconcileWithStepCommand = {
+  ...command,
+  stepId: "step-1",
+  stepVersion: 5,
+};
+const reconciliationRunWithStep = {
+  ...run,
+  validCommands: [reconcileWithStepCommand],
+};
 const openApprovalCommand = {
   type: "open-approval" as const,
   label: "Open approval",
@@ -109,6 +118,15 @@ describe("AU-001D accessible experience", () => {
     expect(html).toContain("Blind retry is disabled");
     expect(html).toContain("Reconcile outcome");
     expect(html).not.toContain("Retry now");
+  });
+  it("carries the target step's id and version as hidden fields on a reconcile/retry command form", () => {
+    const html = renderToStaticMarkup(
+      <RunDetailView item={reconciliationRunWithStep} flags={flags} />,
+    );
+    expect(html).toContain('name="stepId"');
+    expect(html).toContain('value="step-1"');
+    expect(html).toContain('name="stepVersion"');
+    expect(html).toContain('value="5"');
   });
   it("renders open-approval as a real navigation link instead of a broken command form", () => {
     const html = renderToStaticMarkup(

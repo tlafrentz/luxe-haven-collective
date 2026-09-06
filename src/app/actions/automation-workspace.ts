@@ -157,6 +157,38 @@ export async function executeAutomationWorkspaceCommand(
       reason,
     });
   }
+  if (command === "retry" || command === "reconcile") {
+    if (!flags.runControls)
+      return {
+        ok: false,
+        message: "Run controls are disabled for this cohort.",
+      };
+    const stepId = optionalText(formData, "stepId", 200),
+      expectedStepVersion = Number(formData.get("stepVersion"));
+    if (!stepId || !Number.isSafeInteger(expectedStepVersion) || expectedStepVersion < 1)
+      return {
+        ok: false,
+        message: "This request could not be verified. Please retry.",
+      };
+    return command === "retry"
+      ? retryAutomationRunStepCommand({
+          client: client as unknown as TriggerSupabaseClient,
+          actor,
+          tenantId: access.workspaceId,
+          runId: targetId,
+          expectedRunVersion: expectedVersion,
+          stepId,
+          expectedStepVersion,
+        })
+      : reconcileAutomationRunStepCommand({
+          client: client as unknown as TriggerSupabaseClient,
+          tenantId: access.workspaceId,
+          runId: targetId,
+          expectedRunVersion: expectedVersion,
+          stepId,
+          expectedStepVersion,
+        });
+  }
   if (!flags.authoring)
     return { ok: false, message: "Authoring is disabled for this cohort." };
   if (command === "validate-draft")
@@ -198,10 +230,10 @@ export async function executeAutomationWorkspaceCommand(
 }
 
 /**
- * decideApproval/requestCancellation never read these; the governed
- * execution service bundles dispatch, policy evaluation, and definition
- * lookups behind the same factory, so approval and cancellation commands
- * still need type-valid stand-ins to construct it.
+ * decideApproval/requestCancellation/reconcile never read these; the
+ * governed execution service bundles dispatch, policy evaluation, and
+ * definition lookups behind the same factory, so those commands still need
+ * type-valid stand-ins to construct it.
  */
 const UNUSED_DEFINITIONS: AutomationDefinitionExecutionReader = {
   async getExecution() {
@@ -215,14 +247,21 @@ const UNUSED_POLICY: AutomationPolicyEvaluator = {
     );
   },
 };
-const UNUSED_RETRY_POLICY: AutomationRetryPolicy = Object.freeze({
-  version: "au001d-unused.v1",
-  maximumAttempts: 1,
-  maximumElapsedMs: 1,
-  initialDelayMs: 1,
-  maximumDelayMs: 1,
-  jitterRatio: 0,
-  retryableClassifications: Object.freeze([]),
+// retryStep DOES read this (via retryDelay) -- these values match the real
+// production runtime's retry policy (production-automation-runtime.ts), not
+// a placeholder, since a manually-requested retry must be governed by the
+// same budget as an automatic one.
+const WORKSPACE_RETRY_POLICY: AutomationRetryPolicy = Object.freeze({
+  version: "au001-runtime-retry.v1",
+  maximumAttempts: 3,
+  maximumElapsedMs: 300_000,
+  initialDelayMs: 1_000,
+  maximumDelayMs: 30_000,
+  jitterRatio: 0.1,
+  retryableClassifications: Object.freeze([
+    "retryable_failure",
+    "known_not_accepted_timeout",
+  ] as const),
 });
 function unusedServiceActor(tenantId: string): AutomationServiceActor {
   return Object.freeze({
@@ -253,7 +292,7 @@ function createWorkspaceGovernedExecution(
     },
     ports: [],
     serviceActor: unusedServiceActor(tenantId),
-    retryPolicy: UNUSED_RETRY_POLICY,
+    retryPolicy: WORKSPACE_RETRY_POLICY,
     clock: () => new Date().toISOString(),
     id: randomUUID,
     enabled: () => true,
@@ -327,6 +366,78 @@ async function cancelAutomationRunCommand(
     expectedRunVersion: input.expectedRunVersion,
     actor: input.actor,
     reason: input.reason ?? "",
+  });
+  if (!result.ok) return { ok: false, message: result.message };
+  revalidatePath("/dashboard/automations");
+  revalidatePath(
+    `/dashboard/automations/runs/${encodeURIComponent(input.runId)}`,
+  );
+  return { ok: true };
+}
+
+async function retryAutomationRunStepCommand(
+  input: Readonly<{
+    client: TriggerSupabaseClient;
+    actor: AutomationActor;
+    tenantId: string;
+    runId: string;
+    expectedRunVersion: number;
+    stepId: string;
+    expectedStepVersion: number;
+  }>,
+): Promise<AutomationCommandResult> {
+  const repository = new SupabaseAutomationGovernedExecutionRepository(
+    input.client,
+  );
+  const run = await repository.getRun(input.tenantId, input.runId);
+  if (!run)
+    return {
+      ok: false,
+      message: "The associated automation run was not found.",
+    };
+  const service = createWorkspaceGovernedExecution(repository, input.tenantId);
+  const result = await service.retryStep({
+    tenantId: input.tenantId,
+    runId: input.runId,
+    stepId: input.stepId,
+    expectedRunVersion: input.expectedRunVersion,
+    expectedStepVersion: input.expectedStepVersion,
+    actor: input.actor,
+    // Matches the automated runtime processor's own convention
+    // (production-execute-draft-plan-boundary's caller in
+    // automation-runtime-processor.ts): elapsed time is measured from the
+    // run's creation, and a manually-requested retry has no real jitter
+    // source, so it is deterministically zero rather than randomized.
+    elapsedMs: Math.max(0, Date.now() - Date.parse(run.createdAt)),
+    deterministicJitter: 0,
+  });
+  if (!result.ok) return { ok: false, message: result.message };
+  revalidatePath("/dashboard/automations");
+  revalidatePath(
+    `/dashboard/automations/runs/${encodeURIComponent(input.runId)}`,
+  );
+  return { ok: true };
+}
+async function reconcileAutomationRunStepCommand(
+  input: Readonly<{
+    client: TriggerSupabaseClient;
+    tenantId: string;
+    runId: string;
+    expectedRunVersion: number;
+    stepId: string;
+    expectedStepVersion: number;
+  }>,
+): Promise<AutomationCommandResult> {
+  const repository = new SupabaseAutomationGovernedExecutionRepository(
+    input.client,
+  );
+  const service = createWorkspaceGovernedExecution(repository, input.tenantId);
+  const result = await service.reconcile({
+    tenantId: input.tenantId,
+    runId: input.runId,
+    stepId: input.stepId,
+    expectedRunVersion: input.expectedRunVersion,
+    expectedStepVersion: input.expectedStepVersion,
   });
   if (!result.ok) return { ok: false, message: result.message };
   revalidatePath("/dashboard/automations");

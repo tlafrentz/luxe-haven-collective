@@ -152,6 +152,29 @@ describe("AU-001D server projections", () => {
     expect(value.attention).toBe("uncertain");
     expect(value.validCommands.map(({ type }) => type)).toEqual(["reconcile"]);
   });
+  it("carries the reconciliation-required step's id and version on the reconcile command", () => {
+    const value = projectRun(run, [step]);
+    const reconcileCommand = value.validCommands.find(
+      ({ type }) => type === "reconcile",
+    );
+    expect(reconcileCommand).toMatchObject({
+      stepId: "step-1",
+      stepVersion: 5,
+    });
+  });
+  it("carries the failed-retryable step's id and version on the retry command", () => {
+    const failedStep: AutomationRunStep = {
+      ...step,
+      status: "failed_retryable",
+      version: 7,
+    };
+    const runningRun: AutomationRun = { ...run, status: "running" };
+    const value = projectRun(runningRun, [failedStep]);
+    const retryCommand = value.validCommands.find(
+      ({ type }) => type === "retry",
+    );
+    expect(retryCommand).toMatchObject({ stepId: "step-1", stepVersion: 7 });
+  });
   it("invalidates expired approvals and removes decision commands", () => {
     const value = projectApproval(
       approval,

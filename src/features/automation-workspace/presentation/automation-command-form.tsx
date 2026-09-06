@@ -33,6 +33,12 @@ export function AutomationCommandForm({
         name="idempotencyKey"
         value={`au001d:${command.type}:${command.targetId}:v${command.expectedVersion}`}
       />
+      {command.stepId ? (
+        <input type="hidden" name="stepId" value={command.stepId} />
+      ) : null}
+      {command.stepVersion !== undefined ? (
+        <input type="hidden" name="stepVersion" value={command.stepVersion} />
+      ) : null}
       {command.reason.required ? (
         <label className="block text-sm font-semibold">
           Reason

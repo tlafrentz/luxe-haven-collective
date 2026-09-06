@@ -35,7 +35,12 @@ const state = vi.hoisted(() => ({
     id: "run-1",
     tenantId: "workspace-1",
     version: 5,
+    createdAt: "2026-01-01T00:00:00.000Z",
   } as Record<string, unknown> | null,
+  retryResult: { ok: true, value: {} } as Record<string, unknown>,
+  retryCalls: [] as Record<string, unknown>[],
+  reconcileResult: { ok: true, value: {} } as Record<string, unknown>,
+  reconcileCalls: [] as Record<string, unknown>[],
   getResult: {
     ok: true,
     value: {
@@ -104,6 +109,14 @@ vi.mock("@/platform/automations", () => ({
       state.cancelCalls.push(input);
       return state.cancelResult;
     },
+    async retryStep(input: Record<string, unknown>) {
+      state.retryCalls.push(input);
+      return state.retryResult;
+    },
+    async reconcile(input: Record<string, unknown>) {
+      state.reconcileCalls.push(input);
+      return state.reconcileResult;
+    },
   }),
 }));
 
@@ -156,7 +169,16 @@ describe("executeAutomationWorkspaceCommand", () => {
       runId: "run-1",
       version: 2,
     };
-    state.run = { id: "run-1", tenantId: "workspace-1", version: 5 };
+    state.run = {
+      id: "run-1",
+      tenantId: "workspace-1",
+      version: 5,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    state.retryResult = { ok: true, value: {} };
+    state.retryCalls = [];
+    state.reconcileResult = { ok: true, value: {} };
+    state.reconcileCalls = [];
     state.getResult = {
       ok: true,
       value: {
@@ -427,11 +449,157 @@ describe("executeAutomationWorkspaceCommand", () => {
     });
   });
 
+  describe("retry command (previously silently dead)", () => {
+    it("dispatches to retryStep with the run and step ids/versions and a real elapsed time", async () => {
+      const result = await submit({
+        command: "retry",
+        targetId: "run-1",
+        expectedVersion: "5",
+        idempotencyKey: "au001d:retry:run-1:v5",
+        stepId: "step-1",
+        stepVersion: "2",
+      });
+      expect(result).toEqual({ ok: true });
+      expect(state.retryCalls).toHaveLength(1);
+      expect(state.retryCalls[0]).toMatchObject({
+        tenantId: "workspace-1",
+        runId: "run-1",
+        stepId: "step-1",
+        expectedRunVersion: 5,
+        expectedStepVersion: 2,
+        deterministicJitter: 0,
+      });
+      expect(state.retryCalls[0].elapsedMs).toBeGreaterThanOrEqual(0);
+    });
+    it("returns an error instead of silently no-oping when the run no longer exists", async () => {
+      state.run = null;
+      const result = await submit({
+        command: "retry",
+        targetId: "run-1",
+        expectedVersion: "5",
+        idempotencyKey: "au001d:retry:run-1:v5",
+        stepId: "step-1",
+        stepVersion: "2",
+      });
+      expect(result).toEqual({
+        ok: false,
+        message: "The associated automation run was not found.",
+      });
+      expect(state.retryCalls).toHaveLength(0);
+    });
+    it("surfaces the governed execution service's failure message instead of silently no-oping", async () => {
+      state.retryResult = {
+        ok: false,
+        code: "RETRY_BUDGET_EXHAUSTED",
+        message: "The retry budget is exhausted.",
+      };
+      const result = await submit({
+        command: "retry",
+        targetId: "run-1",
+        expectedVersion: "5",
+        idempotencyKey: "au001d:retry:run-1:v5",
+        stepId: "step-1",
+        stepVersion: "2",
+      });
+      expect(result).toEqual({
+        ok: false,
+        message: "The retry budget is exhausted.",
+      });
+    });
+    it("fails closed without calling retryStep when stepId/stepVersion are missing", async () => {
+      const result = await submit({
+        command: "retry",
+        targetId: "run-1",
+        expectedVersion: "5",
+        idempotencyKey: "au001d:retry:run-1:v5",
+      });
+      expect(result.ok).toBe(false);
+      expect(state.retryCalls).toHaveLength(0);
+    });
+    it("is gated on the runControls flag and never reaches retryStep when disabled", async () => {
+      state.flags = { ...state.flags, runControls: false };
+      const result = await submit({
+        command: "retry",
+        targetId: "run-1",
+        expectedVersion: "5",
+        idempotencyKey: "au001d:retry:run-1:v5",
+        stepId: "step-1",
+        stepVersion: "2",
+      });
+      expect(result.ok).toBe(false);
+      expect(state.retryCalls).toHaveLength(0);
+    });
+  });
+
+  describe("reconcile command (previously silently dead)", () => {
+    it("dispatches to reconcile with the run and step ids/versions", async () => {
+      const result = await submit({
+        command: "reconcile",
+        targetId: "run-1",
+        expectedVersion: "5",
+        idempotencyKey: "au001d:reconcile:run-1:v5",
+        stepId: "step-1",
+        stepVersion: "2",
+      });
+      expect(result).toEqual({ ok: true });
+      expect(state.reconcileCalls).toHaveLength(1);
+      expect(state.reconcileCalls[0]).toMatchObject({
+        tenantId: "workspace-1",
+        runId: "run-1",
+        stepId: "step-1",
+        expectedRunVersion: 5,
+        expectedStepVersion: 2,
+      });
+    });
+    it("surfaces the governed execution service's failure message instead of silently no-oping", async () => {
+      state.reconcileResult = {
+        ok: false,
+        code: "RECONCILIATION_REQUIRED",
+        message: "This step is not eligible for reconciliation.",
+      };
+      const result = await submit({
+        command: "reconcile",
+        targetId: "run-1",
+        expectedVersion: "5",
+        idempotencyKey: "au001d:reconcile:run-1:v5",
+        stepId: "step-1",
+        stepVersion: "2",
+      });
+      expect(result).toEqual({
+        ok: false,
+        message: "This step is not eligible for reconciliation.",
+      });
+    });
+    it("fails closed without calling reconcile when stepId/stepVersion are missing", async () => {
+      const result = await submit({
+        command: "reconcile",
+        targetId: "run-1",
+        expectedVersion: "5",
+        idempotencyKey: "au001d:reconcile:run-1:v5",
+      });
+      expect(result.ok).toBe(false);
+      expect(state.reconcileCalls).toHaveLength(0);
+    });
+    it("is gated on the runControls flag and never reaches reconcile when disabled", async () => {
+      state.flags = { ...state.flags, runControls: false };
+      const result = await submit({
+        command: "reconcile",
+        targetId: "run-1",
+        expectedVersion: "5",
+        idempotencyKey: "au001d:reconcile:run-1:v5",
+        stepId: "step-1",
+        stepVersion: "2",
+      });
+      expect(result.ok).toBe(false);
+      expect(state.reconcileCalls).toHaveLength(0);
+    });
+  });
+
   describe("unrecognized or disabled commands", () => {
     it("returns an explicit error for a command with no dispatch mapping, instead of silently no-oping", async () => {
       const result = await submit({
-        command: "retry",
-        idempotencyKey: "au001d:retry:automation-1:v3",
+        command: "not-a-real-command",
+        idempotencyKey: "au001d:not-a-real-command:automation-1:v3",
       });
       expect(result).toEqual({
         ok: false,

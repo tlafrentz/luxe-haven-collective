@@ -38,6 +38,8 @@ export type AutomationExperienceCommand = Readonly<{
   }>;
   createsApproval: boolean;
   idempotencyRequired: boolean;
+  stepId?: string;
+  stepVersion?: number;
 }>;
 export type ProjectionNotice = Readonly<{
   classification: "partial" | "stale" | "unavailable" | "restricted";
@@ -418,11 +420,18 @@ function runCommands(
     values.push(
       command("cancel", "Cancel run", run.id, run.version, true, true),
     );
-  if (steps.some(({ status }) => status === "failed_retryable"))
+  const retryable = steps.find(({ status }) => status === "failed_retryable");
+  if (retryable)
     values.push(
-      command("retry", "Schedule safe retry", run.id, run.version, true, false),
+      command("retry", "Schedule safe retry", run.id, run.version, true, false, false, {
+        stepId: retryable.id,
+        stepVersion: retryable.version,
+      }),
     );
-  if (steps.some(({ status }) => status === "reconciliation_required"))
+  const reconcilable = steps.find(
+    ({ status }) => status === "reconciliation_required",
+  );
+  if (reconcilable)
     values.push(
       command(
         "reconcile",
@@ -431,6 +440,8 @@ function runCommands(
         run.version,
         true,
         false,
+        false,
+        { stepId: reconcilable.id, stepVersion: reconcilable.version },
       ),
     );
   if (run.status === "awaiting_approval" && run.approvalId)
@@ -454,6 +465,7 @@ function command(
   confirmationRequired: boolean,
   reasonRequired: boolean,
   createsApproval = false,
+  step?: Readonly<{ stepId: string; stepVersion: number }>,
 ): AutomationExperienceCommand {
   return Object.freeze({
     type,
@@ -469,6 +481,7 @@ function command(
     }),
     createsApproval,
     idempotencyRequired: true,
+    ...(step ? { stepId: step.stepId, stepVersion: step.stepVersion } : {}),
   });
 }
 function consequence(type: AutomationExperienceCommandType) {
