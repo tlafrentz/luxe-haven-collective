@@ -45,32 +45,39 @@ export type ExecuteRuntimeResult =
       message: string;
     }>;
 
-// AUTH-012 Phase 3 (log-only, not enforced): a role-based decision that
-// currently allows the actor to touch this action is checked a second time
-// against the originating module's own required privilege, if the action
-// carries one (see AUTH-012 Phase 2, execute-application.ts's
-// actionFromProposal -- today this is only ever set on actions activated
-// from a portfolio decision). The result is never ANDed into the returned
-// decision; it is only logged, so real mismatch data can accumulate before
-// enforcement is ever flipped on. An action with more than one source
-// carrying different requiredPrivilege values is not a case that exists
-// today (every producer stamps exactly one source per action) -- picking
-// the first one found is a placeholder, not a resolved design, if that
-// ever changes.
-async function logInheritedPrivilegeMismatch(
+// AUTH-012 Phase 3: a role-based decision that currently allows the actor to
+// touch this action is checked a second time against the originating
+// module's own required privilege, if the action carries one (see AUTH-012
+// Phase 2, execute-application.ts's actionFromProposal -- today this is
+// only ever set on actions activated from a portfolio decision). Whether a
+// mismatch actually denies the request, or is only logged, is controlled by
+// AUTH012_INHERITED_PRIVILEGE_ENFORCEMENT_ENABLED (default off, matching
+// this codebase's existing kill-switch convention, e.g.
+// AUTOMATION_WORKSPACE_KILL_SWITCH) -- this branch has not yet been
+// deployed, so there is no real mismatch telemetry yet to justify
+// unconditional enforcement; the flag lets enforcement ship now without
+// forcing that decision blind, and gives an instant, deploy-free rollback if
+// real traffic surfaces a mapping problem once it's flipped on. An action
+// with more than one source carrying different requiredPrivilege values is
+// not a case that exists today (every producer stamps exactly one source
+// per action) -- picking the first one found is a placeholder, not a
+// resolved design, if that ever changes.
+function auth012EnforcementEnabled(): boolean {
+  return process.env.AUTH012_INHERITED_PRIVILEGE_ENFORCEMENT_ENABLED === "true";
+}
+async function evaluateInheritedPrivilege(
   input: Readonly<{
     action: PlatformAction;
     operation: "work" | "review" | "manage";
-    legacyDecision: boolean;
     subjectId: string;
     workspaceId: string;
   }>,
-): Promise<void> {
-  if (!input.legacyDecision) return;
+): Promise<boolean> {
   const requiredPrivilege = input.action.sources.find(
     (source) => source.requiredPrivilege,
   )?.requiredPrivilege;
-  if (!requiredPrivilege) return;
+  if (!requiredPrivilege) return true;
+  const enforcing = auth012EnforcementEnabled();
   try {
     const decision = await evaluatePrivilege(
       createAdminClient() as unknown as PlatformAccessClient,
@@ -81,22 +88,32 @@ async function logInheritedPrivilegeMismatch(
       },
     );
     if (!decision.allowed) {
-      console.warn("auth012_inherited_privilege_mismatch", {
-        actionId: input.action.id.value,
-        operation: input.operation,
-        requiredPrivilege,
-        subjectId: input.subjectId,
-        workspaceId: input.workspaceId,
-        reasonCode: decision.reasonCode,
-      });
+      console.warn(
+        enforcing
+          ? "auth012_inherited_privilege_denied"
+          : "auth012_inherited_privilege_mismatch",
+        {
+          actionId: input.action.id.value,
+          operation: input.operation,
+          requiredPrivilege,
+          subjectId: input.subjectId,
+          workspaceId: input.workspaceId,
+          reasonCode: decision.reasonCode,
+          enforced: enforcing,
+        },
+      );
+      return !enforcing;
     }
+    return true;
   } catch (error) {
     console.warn("auth012_inherited_privilege_check_failed", {
       actionId: input.action.id.value,
       operation: input.operation,
       requiredPrivilege,
       error: error instanceof Error ? error.message : "unknown",
+      enforced: enforcing,
     });
+    return !enforcing;
   }
 }
 
@@ -237,14 +254,13 @@ export async function composeExecuteRuntime(workspaceId?: string): Promise<Execu
           legacyAllowed,
           PRIVILEGE_IDS.actionsActionExecute,
         );
-        await logInheritedPrivilegeMismatch({
+        if (!decision) return false;
+        return evaluateInheritedPrivilege({
           action,
           operation: "work",
-          legacyDecision: decision,
           subjectId: access.profileId,
           workspaceId: access.workspaceId,
         });
-        return decision;
       },
       canReview: async ({ workspaceId, action, actor: commandActor }) => {
         if (workspaceId !== access.workspaceId || commandActor.id !== user.id)
@@ -256,14 +272,13 @@ export async function composeExecuteRuntime(workspaceId?: string): Promise<Execu
           legacyAllowed,
           PRIVILEGE_IDS.actionsActionApprove,
         );
-        await logInheritedPrivilegeMismatch({
+        if (!decision) return false;
+        return evaluateInheritedPrivilege({
           action,
           operation: "review",
-          legacyDecision: decision,
           subjectId: access.profileId,
           workspaceId: access.workspaceId,
         });
-        return decision;
       },
       canManage: async ({ workspaceId, action, actor: commandActor }) => {
         if (workspaceId !== access.workspaceId || commandActor.id !== user.id)
@@ -275,14 +290,13 @@ export async function composeExecuteRuntime(workspaceId?: string): Promise<Execu
           legacyAllowed,
           PRIVILEGE_IDS.actionsActionDismiss,
         );
-        await logInheritedPrivilegeMismatch({
+        if (!decision) return false;
+        return evaluateInheritedPrivilege({
           action,
           operation: "manage",
-          legacyDecision: decision,
           subjectId: access.profileId,
           workspaceId: access.workspaceId,
         });
-        return decision;
       },
       canAccessDependency: async ({
         workspaceId,
