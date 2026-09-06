@@ -5,7 +5,7 @@ import {
   resolveWorkspaceAccessContext,
   SupabaseTeamAccessRepository,
 } from "@/features/workspace";
-import { authorizeWithLegacyFallback, PRIVILEGE_IDS, type PlatformAccessClient, type PrivilegeId } from "@/features/platform-access";
+import { authorizeWithLegacyFallback, evaluatePrivilege, PRIVILEGE_IDS, type PlatformAccessClient, type PrivilegeId } from "@/features/platform-access";
 import {
   ExecuteControlsService,
   ExecutePlanApplicationService,
@@ -19,6 +19,7 @@ import {
   type ExecuteAuthorization,
   type ExecuteControlAuthorization,
   type ExecuteSupabaseClient,
+  type PlatformAction,
 } from "@/platform/actions";
 import { SupabasePortfolioDecisionRepository } from "@/features/portfolio-intelligence";
 
@@ -43,6 +44,61 @@ export type ExecuteRuntimeResult =
         | "DEPENDENCY_UNAVAILABLE";
       message: string;
     }>;
+
+// AUTH-012 Phase 3 (log-only, not enforced): a role-based decision that
+// currently allows the actor to touch this action is checked a second time
+// against the originating module's own required privilege, if the action
+// carries one (see AUTH-012 Phase 2, execute-application.ts's
+// actionFromProposal -- today this is only ever set on actions activated
+// from a portfolio decision). The result is never ANDed into the returned
+// decision; it is only logged, so real mismatch data can accumulate before
+// enforcement is ever flipped on. An action with more than one source
+// carrying different requiredPrivilege values is not a case that exists
+// today (every producer stamps exactly one source per action) -- picking
+// the first one found is a placeholder, not a resolved design, if that
+// ever changes.
+async function logInheritedPrivilegeMismatch(
+  input: Readonly<{
+    action: PlatformAction;
+    operation: "work" | "review" | "manage";
+    legacyDecision: boolean;
+    subjectId: string;
+    workspaceId: string;
+  }>,
+): Promise<void> {
+  if (!input.legacyDecision) return;
+  const requiredPrivilege = input.action.sources.find(
+    (source) => source.requiredPrivilege,
+  )?.requiredPrivilege;
+  if (!requiredPrivilege) return;
+  try {
+    const decision = await evaluatePrivilege(
+      createAdminClient() as unknown as PlatformAccessClient,
+      {
+        subjectId: input.subjectId,
+        workspaceId: input.workspaceId,
+        privilegeId: requiredPrivilege as PrivilegeId,
+      },
+    );
+    if (!decision.allowed) {
+      console.warn("auth012_inherited_privilege_mismatch", {
+        actionId: input.action.id.value,
+        operation: input.operation,
+        requiredPrivilege,
+        subjectId: input.subjectId,
+        workspaceId: input.workspaceId,
+        reasonCode: decision.reasonCode,
+      });
+    }
+  } catch (error) {
+    console.warn("auth012_inherited_privilege_check_failed", {
+      actionId: input.action.id.value,
+      operation: input.operation,
+      requiredPrivilege,
+      error: error instanceof Error ? error.message : "unknown",
+    });
+  }
+}
 
 export async function composeExecuteRuntime(workspaceId?: string): Promise<ExecuteRuntimeResult> {
   try {
@@ -177,32 +233,56 @@ export async function composeExecuteRuntime(workspaceId?: string): Promise<Execu
             action.owner.id === user.id ||
             ["owner", "administrator", "operator"].includes(access.role),
         );
-        return withPrivilegeFallback(
+        const decision = await withPrivilegeFallback(
           legacyAllowed,
           PRIVILEGE_IDS.actionsActionExecute,
         );
+        await logInheritedPrivilegeMismatch({
+          action,
+          operation: "work",
+          legacyDecision: decision,
+          subjectId: access.profileId,
+          workspaceId: access.workspaceId,
+        });
+        return decision;
       },
-      canReview: async ({ workspaceId, actor: commandActor }) => {
+      canReview: async ({ workspaceId, action, actor: commandActor }) => {
         if (workspaceId !== access.workspaceId || commandActor.id !== user.id)
           return false;
         const legacyAllowed = ["owner", "administrator", "operator"].includes(
           access.role,
         );
-        return withPrivilegeFallback(
+        const decision = await withPrivilegeFallback(
           legacyAllowed,
           PRIVILEGE_IDS.actionsActionApprove,
         );
+        await logInheritedPrivilegeMismatch({
+          action,
+          operation: "review",
+          legacyDecision: decision,
+          subjectId: access.profileId,
+          workspaceId: access.workspaceId,
+        });
+        return decision;
       },
-      canManage: async ({ workspaceId, actor: commandActor }) => {
+      canManage: async ({ workspaceId, action, actor: commandActor }) => {
         if (workspaceId !== access.workspaceId || commandActor.id !== user.id)
           return false;
         const legacyAllowed = ["owner", "administrator", "operator"].includes(
           access.role,
         );
-        return withPrivilegeFallback(
+        const decision = await withPrivilegeFallback(
           legacyAllowed,
           PRIVILEGE_IDS.actionsActionDismiss,
         );
+        await logInheritedPrivilegeMismatch({
+          action,
+          operation: "manage",
+          legacyDecision: decision,
+          subjectId: access.profileId,
+          workspaceId: access.workspaceId,
+        });
+        return decision;
       },
       canAccessDependency: async ({
         workspaceId,

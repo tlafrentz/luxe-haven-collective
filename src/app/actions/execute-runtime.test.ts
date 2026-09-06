@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   role: "operator" as string,
   privilegeAllowed: false,
+  inheritedPrivilegeAllowed: false,
   platformRpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
 }));
 
@@ -34,13 +35,15 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     rpc: async (name: string, args: Record<string, unknown>) => {
       state.platformRpcCalls.push({ name, args });
+      const allowed =
+        args.p_privilege_id === "portfolio.decision.approve"
+          ? state.inheritedPrivilegeAllowed
+          : state.privilegeAllowed;
       return {
         data: [
           {
-            allowed: state.privilegeAllowed,
-            reason_code: state.privilegeAllowed
-              ? "PA_ALLOW"
-              : "PA_DENY_NO_GRANT",
+            allowed,
+            reason_code: allowed ? "PA_ALLOW" : "PA_DENY_NO_GRANT",
             matching_assignment_ids: [],
           },
         ],
@@ -58,17 +61,39 @@ async function runtime() {
   return result.runtime;
 }
 
-const notAssigneeAction = {
-  activeAssignment: null,
-  owner: { id: "someone-else" },
-} as unknown as Parameters<
+type ExecuteAction = Parameters<
   Awaited<ReturnType<typeof runtime>>["controlAuthorization"]["canWork"]
 >[0]["action"];
+const notAssigneeAction = {
+  id: { value: "action-1" },
+  activeAssignment: null,
+  owner: { id: "someone-else" },
+  sources: [],
+} as unknown as ExecuteAction;
+function portfolioSourcedAction(): ExecuteAction {
+  return {
+    id: { value: "action-portfolio-1" },
+    activeAssignment: null,
+    owner: { id: "someone-else" },
+    sources: [
+      {
+        type: "decision",
+        sourceId: "decision-1",
+        capability: "portfolio",
+        sourceModule: "portfolio",
+        requiredPrivilege: "portfolio.decision.approve",
+        recordedAt: new Date(),
+        recordedBy: { type: "user", id: "someone-else" },
+      },
+    ],
+  } as unknown as ExecuteAction;
+}
 
 describe("PA-005 execute-runtime.ts additive privilege gating", () => {
   beforeEach(() => {
     state.role = "operator";
     state.privilegeAllowed = false;
+    state.inheritedPrivilegeAllowed = false;
     state.platformRpcCalls.length = 0;
   });
   afterEach(() => vi.restoreAllMocks());
@@ -133,6 +158,79 @@ describe("PA-005 execute-runtime.ts additive privilege gating", () => {
       }),
     ).resolves.toBe(true);
     expect(state.platformRpcCalls).toHaveLength(0);
+  });
+
+  describe("AUTH-012 Phase 3: inherited-privilege check is log-only, never enforced", () => {
+    it("still allows canWork when the role list grants access but the actor lacks the source's inherited privilege", async () => {
+      state.role = "operator";
+      state.inheritedPrivilegeAllowed = false;
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { controlAuthorization } = await runtime();
+      await expect(
+        controlAuthorization.canWork({
+          workspaceId: WORKSPACE_ID,
+          actor: { type: "user", id: ACTOR_ID },
+          action: portfolioSourcedAction(),
+        }),
+      ).resolves.toBe(true);
+      expect(state.platformRpcCalls).toHaveLength(1);
+      expect(state.platformRpcCalls[0]).toMatchObject({
+        name: "evaluate_privilege",
+        args: expect.objectContaining({
+          p_privilege_id: "portfolio.decision.approve",
+        }),
+      });
+      expect(warn).toHaveBeenCalledWith(
+        "auth012_inherited_privilege_mismatch",
+        expect.objectContaining({
+          actionId: "action-portfolio-1",
+          operation: "work",
+          requiredPrivilege: "portfolio.decision.approve",
+        }),
+      );
+    });
+    it("checks the inherited privilege and logs nothing when it is satisfied", async () => {
+      state.role = "operator";
+      state.inheritedPrivilegeAllowed = true;
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { controlAuthorization } = await runtime();
+      await expect(
+        controlAuthorization.canReview({
+          workspaceId: WORKSPACE_ID,
+          actor: { type: "user", id: ACTOR_ID },
+          action: portfolioSourcedAction(),
+        }),
+      ).resolves.toBe(true);
+      expect(state.platformRpcCalls).toHaveLength(1);
+      expect(warn).not.toHaveBeenCalled();
+    });
+    it("never checks the inherited privilege when the actor is denied outright (nothing to log)", async () => {
+      state.role = "viewer";
+      const { controlAuthorization } = await runtime();
+      await expect(
+        controlAuthorization.canManage({
+          workspaceId: WORKSPACE_ID,
+          actor: { type: "user", id: ACTOR_ID },
+          action: portfolioSourcedAction(),
+        }),
+      ).resolves.toBe(false);
+      expect(state.platformRpcCalls).toHaveLength(1);
+      expect(state.platformRpcCalls[0]).toMatchObject({
+        args: expect.objectContaining({
+          p_privilege_id: "actions.action.dismiss",
+        }),
+      });
+    });
+    it("adds no extra RPC call for an action with no inherited-privilege source", async () => {
+      state.role = "operator";
+      const { controlAuthorization } = await runtime();
+      await controlAuthorization.canWork({
+        workspaceId: WORKSPACE_ID,
+        actor: { type: "user", id: ACTOR_ID },
+        action: notAssigneeAction,
+      });
+      expect(state.platformRpcCalls).toHaveLength(0);
+    });
   });
 
   it("lets a PA-001 assign grant succeed for canAssign where the membership check alone would have failed", async () => {
