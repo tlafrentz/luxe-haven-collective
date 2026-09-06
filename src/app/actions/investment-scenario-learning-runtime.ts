@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { buildScenarioLearningProjection, type ScenarioOutcomeMetricKey, type ScenarioOutcomeRevision } from "@/features/investment-opportunity";
 import { getInvestmentScenarioWorkspaceRequest } from "./investment-scenario-runtime";
+import { getInvestmentOpportunityRequestContext } from "./investment-opportunity-runtime";
 
 type Row=Record<string,unknown>;
 
@@ -36,6 +37,7 @@ export async function recordInvestmentScenarioOutcomeAction(formData:FormData){
   const metrics:Partial<Record<ScenarioOutcomeMetricKey,number>>={};
   for(const key of METRIC_KEYS){const raw=value(formData,key);if(raw!==""){const parsed=Number(raw);if(!Number.isFinite(parsed))throw new Error("scenario_outcome_invalid");metrics[key]=parsed;}}
   if(!opportunityId||!scenarioId||!periodStart||!periodEnd||Object.keys(metrics).length===0)throw new Error("scenario_outcome_invalid");
+  const context=await getInvestmentOpportunityRequestContext();if(!context.ok||!await context.authorizeOpportunity(opportunityId,"scenario.modify"))throw new Error("scenario_permission_denied");
   const source=value(formData,"evidenceSource")||"manual-observation",label=value(formData,"evidenceLabel").trim()||"Operator-recorded operating outcome",confidence=value(formData,"confidence")||"moderate";
   const client=await createClient(),{error}=await client.rpc("record_investment_scenario_outcome",{p_opportunity_id:opportunityId,p_scenario_id:scenarioId,p_outcome_id:`scenario-outcome-${crypto.randomUUID()}`,p_command_id:value(formData,"commandId")||crypto.randomUUID(),p_period_start:periodStart,p_period_end:periodEnd,p_actual_metrics:metrics,p_recommendation_outcome:value(formData,"recommendationOutcome")||"insufficient-data",p_confidence:confidence,p_evidence:[{source,label,quality:confidence==="insufficient-evidence"?"low":confidence}]});
   if(error)throw new Error(safeError(error.message));
@@ -45,6 +47,7 @@ export async function recordInvestmentScenarioOutcomeAction(formData:FormData){
 export async function addInvestmentScenarioObservationAction(formData:FormData){
   const opportunityId=value(formData,"opportunityId"),scenarioId=value(formData,"scenarioId"),body=value(formData,"body").trim();
   if(!opportunityId||!scenarioId||!body||body.length>5000)throw new Error("scenario_observation_invalid");
+  const context=await getInvestmentOpportunityRequestContext();if(!context.ok||!await context.authorizeOpportunity(opportunityId,"scenario.modify"))throw new Error("scenario_permission_denied");
   const client=await createClient(),{error}=await client.rpc("add_investment_scenario_observation",{p_opportunity_id:opportunityId,p_scenario_id:scenarioId,p_observation_id:`scenario-observation-${crypto.randomUUID()}`,p_command_id:value(formData,"commandId")||crypto.randomUUID(),p_body:body,p_observed_at:value(formData,"observedAt")||new Date().toISOString()});
   if(error)throw new Error(safeError(error.message));
   revalidate(opportunityId);redirect(`/dashboard/investments/opportunities/${opportunityId}/learning?scenario=${encodeURIComponent(scenarioId)}`);

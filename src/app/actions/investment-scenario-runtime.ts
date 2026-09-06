@@ -56,6 +56,7 @@ export async function getInvestmentScenarioComparisonRequest(opportunityId:strin
 export async function saveScenarioComparisonSelectionAction(formData:FormData){
   const opportunityId=String(formData.get("opportunityId")??""),scenarioIds=formData.getAll("scenarioId").map(String).filter(Boolean);
   if(scenarioIds.length<2||scenarioIds.length>4)throw new Error("Select between two and four scenarios.");
+  const context=await getInvestmentOpportunityRequestContext();if(!context.ok||!await context.authorizeOpportunity(opportunityId,"scenario.read"))throw new Error("scenario_permission_denied");
   const client=await createClient(),{error}=await client.rpc("save_scenario_comparison_session",{p_opportunity_id:opportunityId,p_scenario_ids:scenarioIds});
   if(error)throw new Error(scenarioError(error.message));
   redirect(`/dashboard/investments/opportunities/${opportunityId}/compare?${scenarioIds.map(id=>`scenario=${encodeURIComponent(id)}`).join("&")}`);
