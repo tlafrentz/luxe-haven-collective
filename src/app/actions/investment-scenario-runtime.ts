@@ -86,6 +86,7 @@ export type ScenarioSaveState=Readonly<{ok:boolean;message:string}>;
 export async function saveInvestmentScenarioDetailsAction(_state:ScenarioSaveState,formData:FormData):Promise<ScenarioSaveState>{
   const opportunityId=String(formData.get("opportunityId")??""),scenarioId=String(formData.get("scenarioId")??""),expectedVersion=Number(formData.get("expectedVersion")),expectedRevision=Number(formData.get("expectedRevision"));
   if(!opportunityId||!scenarioId||!Number.isInteger(expectedVersion)||!Number.isInteger(expectedRevision))return{ok:false,message:"The scenario save request is incomplete."};
+  const context=await getInvestmentOpportunityRequestContext();if(!context.ok||!await context.authorizeOpportunity(opportunityId,"scenario.modify"))return{ok:false,message:"You don't have permission to edit this scenario."};
   const client=await createClient(),{data,error}=await client.rpc("mutate_investment_scenario",{p_opportunity_id:opportunityId,p_scenario_id:scenarioId,p_operation:"save",p_name:String(formData.get("name")??"").trim(),p_description:String(formData.get("description")??"").trim(),p_notes:String(formData.get("notes")??"").trim(),p_expected_scenario_revision:expectedRevision,p_expected_version:expectedVersion,p_command_id:String(formData.get("commandId")??crypto.randomUUID())});
   if(error)return{ok:false,message:scenarioError(error.message)};
   revalidateScenario(opportunityId);return{ok:true,message:data?.[0]?.changed===false?"No changes to save.":"Scenario saved and confirmed by the server."};

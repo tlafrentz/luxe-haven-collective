@@ -37,8 +37,11 @@ export async function createInvestmentReportShareAction(_state: ShareActionState
 export async function replaceInvestmentReportShareAction(_state: ShareActionState, formData: FormData): Promise<ShareActionState> {
   const oldShareId = String(formData.get("shareId") ?? ""), duration = Number(formData.get("durationHours") ?? 168);
   try { validateShareDuration(duration); } catch { return fail("Choose an approved expiration period."); }
+  const client = await createClient();
+  const { data: existingShare } = await client.from("investment_report_shares").select("id").eq("id", oldShareId).maybeSingle();
+  if (!existingShare) return fail("That share could not be found.");
   const credential = generateShareCredential(), newShareId = `investment-report-share-${crypto.randomUUID()}`;
-  const client = await createClient(), recipientLabel = String(formData.get("recipientLabel") ?? "").trim().slice(0, 160), allowPdf = formData.get("allowPdfDownload") === "on";
+  const recipientLabel = String(formData.get("recipientLabel") ?? "").trim().slice(0, 160), allowPdf = formData.get("allowPdfDownload") === "on";
   const { data, error } = await client.rpc("replace_investment_report_share_v1", { p_old_share_id: oldShareId, p_new_share_id: newShareId, p_credential_digest: credential.digest, p_duration_hours: duration, p_recipient_label: recipientLabel, p_allow_pdf_download: allowPdf, p_idempotency_key: String(formData.get("idempotencyKey") ?? crypto.randomUUID()) });
   const result = data as unknown as { shareId?: string; expiresAt?: string } | null;
   if (error || !result?.shareId) return fail("The replacement could not be created. The existing link was not changed.");
@@ -49,6 +52,7 @@ export async function replaceInvestmentReportShareAction(_state: ShareActionStat
 
 export async function revokeInvestmentReportShareAction(formData: FormData) {
   const shareId = String(formData.get("shareId") ?? ""), reportId = String(formData.get("reportId") ?? ""), client = await createClient();
+  if (!await getInvestmentReport(reportId)) return;
   const { error } = await client.rpc("revoke_investment_report_share_v1", { p_share_id: shareId });
   if (error) return;
   console.info("investment_report_share_revoked", { shareId, reportId, outcome: "revoked" });

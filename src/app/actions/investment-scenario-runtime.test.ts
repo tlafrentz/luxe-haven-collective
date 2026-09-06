@@ -36,12 +36,25 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-import { saveScenarioComparisonSelectionAction } from "./investment-scenario-runtime";
+import {
+  saveInvestmentScenarioDetailsAction,
+  saveScenarioComparisonSelectionAction,
+} from "./investment-scenario-runtime";
 
 function formData(scenarioIds = ["scenario-a", "scenario-b"]) {
   const data = new FormData();
   data.set("opportunityId", "investment-opportunity-1");
   for (const id of scenarioIds) data.append("scenarioId", id);
+  return data;
+}
+
+function detailsFormData() {
+  const data = new FormData();
+  data.set("opportunityId", "investment-opportunity-1");
+  data.set("scenarioId", "scenario-a");
+  data.set("expectedVersion", "1");
+  data.set("expectedRevision", "1");
+  data.set("name", "Updated scenario name");
   return data;
 }
 
@@ -94,5 +107,53 @@ describe("saveScenarioComparisonSelectionAction", () => {
     await expect(saveScenarioComparisonSelectionAction(formData())).rejects.toThrow(
       "You don't have permission",
     );
+  });
+});
+
+describe("saveInvestmentScenarioDetailsAction", () => {
+  beforeEach(() => {
+    state.contextOk = true;
+    state.authorizeAllowed = true;
+    state.authorizeCalls = [];
+    state.rpcCalls = [];
+    state.rpcError = null;
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("checks scenario.modify authorization before calling the RPC (previously had no authorization check at all)", async () => {
+    const result = await saveInvestmentScenarioDetailsAction(
+      { ok: false, message: "" },
+      detailsFormData(),
+    );
+    expect(state.authorizeCalls).toEqual([
+      { opportunityId: "investment-opportunity-1", operation: "scenario.modify" },
+    ]);
+    expect(state.rpcCalls).toHaveLength(1);
+    expect(state.rpcCalls[0].name).toBe("mutate_investment_scenario");
+    expect(result.ok).toBe(true);
+  });
+
+  it("fails closed without calling the RPC when the actor is not authorized", async () => {
+    state.authorizeAllowed = false;
+    const result = await saveInvestmentScenarioDetailsAction(
+      { ok: false, message: "" },
+      detailsFormData(),
+    );
+    expect(result).toEqual({
+      ok: false,
+      message: "You don't have permission to edit this scenario.",
+    });
+    expect(state.rpcCalls).toHaveLength(0);
+  });
+
+  it("fails closed without calling the RPC when unauthenticated", async () => {
+    state.contextOk = false;
+    const result = await saveInvestmentScenarioDetailsAction(
+      { ok: false, message: "" },
+      detailsFormData(),
+    );
+    expect(result.ok).toBe(false);
+    expect(state.rpcCalls).toHaveLength(0);
+    expect(state.authorizeCalls).toHaveLength(0);
   });
 });

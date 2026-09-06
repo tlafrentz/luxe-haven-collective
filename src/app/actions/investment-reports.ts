@@ -96,6 +96,7 @@ export async function listInvestmentReportsForOpportunity(opportunityId: string)
 export async function transitionInvestmentReportAction(formData: FormData) {
   const reportId = String(formData.get("reportId") ?? ""), operation = String(formData.get("operation") ?? "");
   if (operation !== "archive" && operation !== "restore") redirect("/dashboard/reports?error=invalid-transition");
+  if (!await getInvestmentReport(reportId)) redirect("/dashboard/reports?error=not-found");
   const client = await createClient();
   const { error } = await client.rpc("transition_investment_report_v1", { p_report_id: reportId, p_operation: operation });
   if (error) redirect(`/dashboard/reports?error=${operation}-conflict`);
