@@ -16,6 +16,17 @@ export type CommerceOnboardingEvent =
   | "team_step_skipped"
   | "workspace_setup_completed";
 
-export function track(event: CommerceOnboardingEvent, props?: Record<string, unknown>) {
+// LHS-AN-001: the Mesa direct-booking funnel.
+export type DirectBookingEvent =
+  | "stay_property_viewed"
+  | "stay_availability_interaction"
+  | "stay_quote_shown"
+  | "stay_checkout_launched"
+  | "stay_booking_verified"
+  | "stay_booking_cancelled";
+
+export type TrackedEvent = CommerceOnboardingEvent | DirectBookingEvent;
+
+export function track(event: TrackedEvent, props?: Record<string, unknown>) {
   console.log("[track]", event, props ?? {});
 }

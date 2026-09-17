@@ -87,6 +87,7 @@ describe("BookingWorkspace", () => {
         source: "Airbnb",
         lastSynchronizedAt: "2026-07-24T14:00:00.000Z",
         synchronizationStatus: "current",
+      manageUrl: null,
       },
     };
     const context = buildReservationContext(

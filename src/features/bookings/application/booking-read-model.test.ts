@@ -34,6 +34,7 @@ function booking(
       source: id === "b-1" ? "Airbnb" : "Direct",
       lastSynchronizedAt: "2026-07-24T15:00:00.000Z",
       synchronizationStatus: "current",
+      manageUrl: null,
     },
   };
 }

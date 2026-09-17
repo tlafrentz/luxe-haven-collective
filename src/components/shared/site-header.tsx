@@ -35,7 +35,7 @@ const navigation = [
 ] as const;
 
 const directNavigation = [
-  ["Properties", "/stays", "header_properties"],
+  ["Stays", "/stays", "header_stays"],
   ["About", "/about", "header_about"],
 ] as const;
 

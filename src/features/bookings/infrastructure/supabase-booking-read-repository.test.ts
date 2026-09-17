@@ -19,6 +19,7 @@ describe("Supabase booking read mapping", () => {
         status: "confirmed",
         source: "Airbnb",
         external_provider: "hospitable",
+        external_reservation_id: "hospitable-reservation-1",
         booking_code: "HM123",
         last_synced_at: "2026-07-24T15:00:00.000Z",
         properties: {
@@ -39,6 +40,7 @@ describe("Supabase booking read mapping", () => {
       source: "Airbnb",
       lastSynchronizedAt: "2026-07-24T15:00:00.000Z",
       synchronizationStatus: "current",
+      manageUrl: null,
     });
     expect(mapped).not.toHaveProperty("external_provider");
   });

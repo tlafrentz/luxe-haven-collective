@@ -19,7 +19,7 @@ export async function FeaturedProperties() {
 
           <div className="lg:justify-self-end">
             <Link
-              href="/stays/mesa-downtown-retreat"
+              href="/stays"
               className="text-sm font-semibold uppercase tracking-[0.18em] text-accent"
             >
               Explore Our Properties →

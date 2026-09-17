@@ -5,20 +5,24 @@ import { calculateHealth, calculateSuccessRate, type AdminAuditEvent, type Provi
 import type { ReportingPeriod } from "./reporting-period";
 
 const canonicalId = (value:string): IntegrationId => value === "realtyapi" ? "realty_api" : value as IntegrationId;
-export type AdminIntegration = Readonly<{ definition:(typeof INTEGRATION_REGISTRY)[number]; configurationStatus:ReturnType<typeof configurationStatus>; runtimeStatus:RuntimeStatus; lastSuccessfulActivity?:string; lastFailedActivity?:string; recentSuccessRate?:number; relatedCount?:number }>;
+export type AdminIntegration = Readonly<{ definition:(typeof INTEGRATION_REGISTRY)[number]; configurationStatus:ReturnType<typeof configurationStatus>; runtimeStatus:RuntimeStatus; lastSuccessfulActivity?:string; lastFailedActivity?:string; recentSuccessRate?:number; relatedCount?:number; lastWebhookReceivedAt?:string; openExceptionCount?:number }>;
 
 export async function listAdminIntegrations(): Promise<readonly AdminIntegration[]> {
   const db = await createClient();
   const since = new Date(Date.now()-7*86_400_000).toISOString();
-  const [attemptsResult, healthResult, settingsResult, propertiesResult] = await Promise.all([
+  const [attemptsResult, healthResult, settingsResult, propertiesResult, webhookResult, exceptionResult] = await Promise.all([
     db.from("sync_attempts").select("integration_id,status,started_at").gte("started_at",since).order("started_at",{ascending:false}),
     db.from("provider_health_observations").select("integration_id,observed_at,outcome,latency_ms,failure_classification,source,capability").gte("observed_at",since).order("observed_at",{ascending:false}),
     db.from("integration_runtime_settings").select("integration_id,enabled"),
     db.from("external_properties").select("provider"),
+    db.from("hospitable_reservation_events").select("received_at").eq("status","processed").order("received_at",{ascending:false}).limit(1).maybeSingle(),
+    db.from("booking_exceptions").select("id",{count:"exact",head:true}).eq("status","open"),
   ]);
   const attempts = attemptsResult.error ? [] : attemptsResult.data ?? [];
   const observations = healthResult.error ? [] : healthResult.data ?? [];
   const settings = new Map((settingsResult.error ? [] : settingsResult.data ?? []).map((row) => [row.integration_id,row.enabled]));
+  const lastWebhookReceivedAt = webhookResult.error ? undefined : webhookResult.data?.received_at ?? undefined;
+  const openExceptionCount = exceptionResult.error ? undefined : exceptionResult.count ?? undefined;
   return INTEGRATION_REGISTRY.map((definition) => {
     const providerAttempts = attempts.filter((row) => canonicalId(row.integration_id)===definition.id);
     const providerObservations = observations.filter((row) => canonicalId(row.integration_id)===definition.id).map((row)=>({id:`projection:${definition.id}:${row.observed_at}`,integrationId:definition.id,observedAt:row.observed_at,outcome:row.outcome,...(row.latency_ms===null?{}:{latencyMs:row.latency_ms}),...(row.failure_classification?{failureClassification:row.failure_classification}:{}),source:row.source,...(row.capability?{capability:row.capability}:{})})) as ProviderHealthObservation[];
@@ -28,7 +32,7 @@ export async function listAdminIntegrations(): Promise<readonly AdminIntegration
     return { definition, configurationStatus: settings.get(definition.id)===false ? "disabled" : configurationStatus(definition), runtimeStatus: health === "partial_outage" ? "unavailable" : health === "outage" ? "unavailable" : health,
       ...(lastSuccess?{lastSuccessfulActivity:lastSuccess}:{}), ...(lastFailure?{lastFailedActivity:lastFailure}:{}),
       ...(calculateSuccessRate(providerAttempts.map((row)=>row.status as SyncAttempt["status"]))===undefined?{}:{recentSuccessRate:calculateSuccessRate(providerAttempts.map((row)=>row.status as SyncAttempt["status"]))}),
-      ...(definition.id==="hospitable"?{relatedCount:(propertiesResult.error?[]:propertiesResult.data??[]).filter((row)=>row.provider==="hospitable").length}:{}) };
+      ...(definition.id==="hospitable"?{relatedCount:(propertiesResult.error?[]:propertiesResult.data??[]).filter((row)=>row.provider==="hospitable").length,...(lastWebhookReceivedAt?{lastWebhookReceivedAt}:{}),...(openExceptionCount===undefined?{}:{openExceptionCount})}:{}) };
   });
 }
 
@@ -46,6 +50,8 @@ export async function getProviderHealthSummary(period:ReportingPeriod){const db=
 export async function getProviderHealthDetails(id:IntegrationId,period:ReportingPeriod){return(await getProviderHealthSummary(period)).find((item)=>item.definition.id===id)??null;}
 
 export async function listAdminAuditEvents(period:ReportingPeriod,filters:Readonly<Record<string,string|undefined>>={}){const db=await createClient();let query=db.from("admin_audit_events").select("*").gte("occurred_at",period.from).lte("occurred_at",period.to).order("occurred_at",{ascending:false}).order("id",{ascending:false}).limit(100);if(filters.actor)query=query.eq("actor_id",filters.actor);if(filters.action)query=query.eq("action",filters.action);if(filters.category)query=query.eq("category",filters.category);if(filters.result)query=query.eq("result",filters.result);if(filters.targetType)query=query.eq("target_type",filters.targetType);if(filters.correlationId)query=query.eq("correlation_id",filters.correlationId);const{data,error}=await query;if(error)throw new Error("Unable to load administrative audit events.");return(data??[]).map((row)=>({id:row.id,occurredAt:row.occurred_at,...(row.actor_id?{actorId:row.actor_id}:{}),...(row.actor_role?{actorRole:row.actor_role}:{}),action:row.action,category:row.category,...(row.target_type?{targetType:row.target_type}:{}),...(row.target_id?{targetId:row.target_id}:{}),result:row.result,...(row.correlation_id?{correlationId:row.correlation_id}:{}),source:row.source,metadata:row.metadata??{}})) as AdminAuditEvent[];}
+
+export async function listBookingExceptions(filters:Readonly<{status?:string}>={}){const db=await createClient();let query=db.from("booking_exceptions").select("id,reservation_external_id,property_id,issue_type,detected_at,provider_evidence,status,next_action,owner_id,resolution_notes,resolved_at,properties(name)").order("detected_at",{ascending:false}).limit(100);if(filters.status)query=query.eq("status",filters.status);const{data,error}=await query;if(error)throw new Error("Unable to load booking exceptions.");return(data??[]).map((row)=>{const relation=row.properties as unknown as {name:string}|{name:string}[]|null;const property=Array.isArray(relation)?relation[0]:relation;return{id:row.id,reservationExternalId:row.reservation_external_id,propertyId:row.property_id,propertyName:property?.name??null,issueType:row.issue_type,detectedAt:row.detected_at,providerEvidence:row.provider_evidence??{},status:row.status as "open"|"reviewing"|"resolved",nextAction:row.next_action,ownerId:row.owner_id,resolutionNotes:row.resolution_notes,resolvedAt:row.resolved_at};});}
 
 export async function listSupportTickets(period:ReportingPeriod,filters:Readonly<Record<string,string|undefined>>={}){const db=await createClient();let query=db.from("support_tickets").select("id,ticket_number,workspace_id,customer_id,source_inquiry_id,subject,status,priority,assigned_admin_id,created_at,updated_at,resolved_at,closed_at").gte("created_at",period.from).lte("created_at",period.to).order("updated_at",{ascending:false}).order("id",{ascending:false}).limit(100);if(filters.status)query=query.eq("status",filters.status);if(filters.priority)query=query.eq("priority",filters.priority);if(filters.assignee)query=query.eq("assigned_admin_id",filters.assignee);if(filters.customer)query=query.eq("customer_id",filters.customer);if(filters.source==="inquiry")query=query.not("source_inquiry_id","is",null);if(filters.search)query=query.ilike("subject",`%${filters.search.replaceAll("%","")}%`);const{data,error}=await query;if(error)throw new Error("Unable to load support tickets.");return data??[];}
 export async function getSupportTicket(id:string){const db=await createClient();const[ticket,messages,activity]=await Promise.all([db.from("support_tickets").select("*").eq("id",id).maybeSingle(),db.from("support_ticket_messages").select("*").eq("ticket_id",id).order("created_at"),db.from("support_ticket_activity").select("*").eq("ticket_id",id).order("occurred_at")]);if(ticket.error||messages.error||activity.error)throw new Error("Unable to load support ticket.");return ticket.data?{ticket:ticket.data,messages:messages.data??[],activity:activity.data??[]}:null;}

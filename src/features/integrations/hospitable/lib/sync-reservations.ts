@@ -427,7 +427,7 @@ async function fetchReservationDetails({
   });
 }
 
-async function upsertBooking(
+export async function upsertBooking(
   booking: ReturnType<
     typeof mapHospitableReservation
   >["booking"],

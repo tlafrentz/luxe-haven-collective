@@ -27,6 +27,7 @@ type BookingRow = Readonly<{
   status: StoredBookingStatus;
   source: string | null;
   external_provider: string | null;
+  external_reservation_id: string | null;
   booking_code: string | null;
   last_synced_at: string | null;
   properties:
@@ -50,6 +51,19 @@ type BookingRow = Readonly<{
 
 function relatedProperty(row: BookingRow) {
   return Array.isArray(row.properties) ? row.properties[0] : row.properties;
+}
+
+function buildManageUrl(
+  externalProvider: string | null,
+  externalReservationId: string | null,
+): string | null {
+  if (!externalReservationId) return null;
+  const template =
+    externalProvider === "hospitable"
+      ? process.env.HOSPITABLE_DASHBOARD_RESERVATION_URL_TEMPLATE
+      : undefined;
+  if (!template) return null;
+  return template.replace("{reservationId}", encodeURIComponent(externalReservationId));
 }
 
 export function mapBookingRow(
@@ -97,6 +111,7 @@ export function mapBookingRow(
         lastSynchronizedAt: row.last_synced_at,
         now,
       }),
+      manageUrl: buildManageUrl(row.external_provider, row.external_reservation_id),
     },
   };
 }
@@ -115,6 +130,7 @@ const selection = `
   status,
   source,
   external_provider,
+  external_reservation_id,
   booking_code,
   last_synced_at,
   properties!inner (

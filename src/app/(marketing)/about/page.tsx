@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Check, Eye, Target, Zap, GraduationCap, Search } from "lucide-react";
 import { SafeImage } from "@/components/shared/safe-image";
-import { mesaAirbnbImages } from "@/lib/mesa-airbnb";
+import { getPublishedProperties, propertyImage } from "@/lib/properties";
 
 const values = [
   [
@@ -18,7 +18,10 @@ const values = [
   ],
 ] as const;
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const properties = (await getPublishedProperties()).slice(0, 3);
+  const heroImage = properties[0] ? propertyImage(properties[0]) : propertyImage({ featured_image_url: null, image_urls: [] });
+
   return (
     <main className="bg-[#fffdf9]">
       <section className="py-14">
@@ -53,7 +56,7 @@ export default function AboutPage() {
           </div>
           <div className="relative aspect-[1.15/1] overflow-hidden rounded-xl">
             <SafeImage
-              src={mesaAirbnbImages[0]}
+              src={heroImage}
               alt="Luxe Haven hospitality interior"
               fill
               priority
@@ -114,28 +117,22 @@ export default function AboutPage() {
             Featured properties
           </p>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            {mesaAirbnbImages.slice(0, 3).map((image, index) => (
+            {properties.map((property) => (
               <Link
-                key={image}
-                href="/stays/mesa-downtown-retreat"
+                key={property.id}
+                href={`/stays/${property.slug}`}
                 className="overflow-hidden rounded-xl border bg-white"
               >
                 <div className="relative aspect-[16/10]">
                   <SafeImage
-                    src={image}
-                    alt={`Mesa property view ${index + 1}`}
+                    src={propertyImage(property)}
+                    alt={property.name}
                     fill
                     className="object-cover"
                     sizes="33vw"
                   />
                 </div>
-                <p className="p-4 font-semibold">
-                  {index === 0
-                    ? "Thoughtfully Designed Mesa Getaway"
-                    : index === 1
-                      ? "Outdoor Living"
-                      : "Comfortable Interiors"}
-                </p>
+                <p className="p-4 font-semibold">{property.name}</p>
               </Link>
             ))}
           </div>

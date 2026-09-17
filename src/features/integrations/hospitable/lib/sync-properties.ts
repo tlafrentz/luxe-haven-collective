@@ -8,8 +8,7 @@ const PROVIDER = "hospitable";
 const CONNECTION_NAME = "Hospitable Primary";
 
 const PROPERTY_LINKS: Record<string, string> = {
-  "676a35c9-7d07-44af-ae44-90a242e4b297":
-    "mesa-downtown-retreat",
+  "676a35c9-7d07-44af-ae44-90a242e4b297": "mesa",
 };
 
 type IntegrationConnectionRow = {

@@ -55,7 +55,7 @@ export const INTEGRATION_REGISTRY: readonly IntegrationDefinition[] = Object.fre
     description: "Property, reservation, guest, and messaging synchronization.",
     capabilities: ["Properties", "Reservations", "Guests", "Messages", "Webhooks"],
     dependentWorkflows: ["Operations workspace", "Guest communications", "Booking context"],
-    configurationRequirements: [requirement("HOSPITABLE_API_TOKEN", "API token"), requirement("HOSPITABLE_WEBHOOK_SECRET", "Webhook signing secret", false), requirement("HOSPITABLE_SYNC_SECRET", "Scheduled sync secret", false)],
+    configurationRequirements: [requirement("HOSPITABLE_API_TOKEN", "API token"), requirement("HOSPITABLE_WEBHOOK_SECRET", "Messaging webhook signing secret", false), requirement("HOSPITABLE_RESERVATIONS_WEBHOOK_SECRET", "Reservation webhook signing secret", false), requirement("HOSPITABLE_SYNC_SECRET", "Scheduled sync secret", false), requirement("HOSPITABLE_DIRECT_WIDGET_EMBED_HTML", "Direct booking widget embed", false, false), requirement("HOSPITABLE_DIRECT_CHECKOUT_URL_TEMPLATE", "Direct booking checkout URL template", false, false)],
     supportsManualSync: true, supportsConnectionTest: true, supportsWebhooks: true, supportsHealthChecks: true,
     managementMode: "platform", documentationUrl: "https://developer.hospitable.com/", managementUrl: "https://my.hospitable.com/",
   },

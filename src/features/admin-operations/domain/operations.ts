@@ -6,7 +6,7 @@ export type HealthOutcome = "success" | "failure" | "timeout";
 export type ProviderHealthObservation = Readonly<{ id:string; integrationId:IntegrationId; capability?:string; observedAt:string; outcome:HealthOutcome; latencyMs?:number; failureClassification?:string; source:"active_check"|"provider_request"|"webhook"|"sync" }>;
 export type ProviderHealthStatus = "operational"|"degraded"|"partial_outage"|"outage"|"unknown";
 export type AdminAuditEvent = Readonly<{ id:string; occurredAt:string; actorId?:string; actorRole?:string; action:string; category:string; targetType?:string; targetId?:string; result:"succeeded"|"failed"|"denied"; correlationId?:string; source:"admin_ui"|"server_action"|"api"|"webhook"|"system"; metadata:Record<string,string|number|boolean|null> }>;
-export type IntegrationOperationalRecord = Readonly<{ id:IntegrationId; configurationStatus:ConfigurationStatus; runtimeStatus:RuntimeStatus; lastSuccessfulActivity?:string; lastFailedActivity?:string; recentSuccessRate?:number; relatedCount?:number }>;
+export type IntegrationOperationalRecord = Readonly<{ id:IntegrationId; configurationStatus:ConfigurationStatus; runtimeStatus:RuntimeStatus; lastSuccessfulActivity?:string; lastFailedActivity?:string; recentSuccessRate?:number; relatedCount?:number; lastWebhookReceivedAt?:string; openExceptionCount?:number }>;
 
 export function calculateHealth(observations: readonly ProviderHealthObservation[]): ProviderHealthStatus {
   if (!observations.length) return "unknown";

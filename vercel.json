@@ -7,6 +7,10 @@
     {
       "path": "/api/internal/guidebook-creation/process",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/internal/hospitable-reconciliation",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

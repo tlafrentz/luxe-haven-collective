@@ -47,6 +47,10 @@ export type BookingProviderMetadata = Readonly<{
   source: string;
   lastSynchronizedAt: string | null;
   synchronizationStatus: SynchronizationStatus;
+  /** LHS-OPS-002: a controlled deep link into the authoritative provider for
+   * permitted changes. Null until a provider dashboard URL template is
+   * configured — no local control ever substitutes for it (LHS-OPS-006). */
+  manageUrl: string | null;
 }>;
 
 export type Booking = Readonly<{

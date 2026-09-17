@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { CTASection } from "@/components/marketing/cta-section";
 import { SafeImage } from "@/components/shared/safe-image";
 import { getPublishedPropertyBySlug, propertyImage } from "@/lib/properties";
-import { mesaAirbnbImages, mesaAirbnbUrl } from "@/lib/mesa-airbnb";
+import { isDirectBookingEnabled } from "@/lib/direct-booking";
+import { track } from "@/lib/analytics/track";
 
 type PropertyPageProps = {
   params: Promise<{
@@ -42,15 +43,15 @@ export default async function PropertyDetailPage({
   const { slug } = await params;
   const property = await getPublishedPropertyBySlug(slug);
 
-  const isMesa = property.slug === "mesa-downtown-retreat";
-  const gallery = (
-    isMesa
-      ? [...mesaAirbnbImages]
-      : [propertyImage(property), ...(property.image_urls ?? [])]
-  )
+  const gallery = [propertyImage(property), ...(property.image_urls ?? [])]
     .filter(Boolean)
     .filter((image, index, images) => images.indexOf(image) === index)
     .slice(0, 5);
+
+  const bookable = isDirectBookingEnabled(property);
+  if (bookable) {
+    track("stay_property_viewed", { slug: property.slug });
+  }
 
   return (
     <main>
@@ -70,6 +71,17 @@ export default async function PropertyDetailPage({
                 property.short_description ||
                 property.description}
             </p>
+
+            {bookable ? (
+              <div className="mt-5 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span className="rounded-full border border-border bg-card px-3 py-1">
+                  ✓ Professionally managed
+                </span>
+                <span className="rounded-full border border-border bg-card px-3 py-1">
+                  ✓ Secure direct booking
+                </span>
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm">
@@ -91,13 +103,25 @@ export default async function PropertyDetailPage({
             </div>
 
             <a
-              href={isMesa ? mesaAirbnbUrl : "/contact?service=stay"}
-              target={isMesa ? "_blank" : undefined}
-              rel={isMesa ? "noreferrer" : undefined}
+              href={bookable ? `/stays/${property.slug}/book` : "/contact?service=stay"}
               className="mt-6 block rounded-full bg-primary px-6 py-3 text-center text-sm font-semibold text-primary-foreground"
             >
-              {isMesa ? "View availability on Airbnb" : "Request Dates"}
+              {bookable ? "Check availability" : "Request Dates"}
             </a>
+
+            {bookable ? (
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                No third-party account required. See our{" "}
+                <a href="/terms" className="underline">
+                  booking terms
+                </a>{" "}
+                and{" "}
+                <a href="/terms#cancellation" className="underline">
+                  cancellation policy
+                </a>{" "}
+                before you book.
+              </p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -198,22 +222,21 @@ export default async function PropertyDetailPage({
         </div>
       </section>
 
-      {isMesa ? (
+      {bookable ? (
         <section className="pb-16">
           <div className="container-shell flex flex-wrap items-center justify-between gap-5 rounded-3xl bg-emerald-950 p-8 text-white">
             <div>
               <h2 className="font-serif text-3xl">Interested in this stay?</h2>
               <p className="mt-2 text-sm text-white/70">
-                View live availability, rates, and booking details on Airbnb.
+                Check live availability and pricing, then complete a secure
+                checkout — directly with Luxe Haven.
               </p>
             </div>
             <a
-              href={mesaAirbnbUrl}
-              target="_blank"
-              rel="noreferrer"
+              href={`/stays/${property.slug}/book`}
               className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-emerald-950"
             >
-              View and book on Airbnb →
+              Check availability →
             </a>
           </div>
         </section>

@@ -187,3 +187,93 @@ export type PropertyMedia = {
 
   created_at: string;
 };
+
+// ======================================================
+// LHS-001: Mesa Direct Booking Pilot
+// ======================================================
+
+export type CheckoutAttemptStatus =
+  | "started"
+  | "redirected"
+  | "verification_pending"
+  | "confirmed"
+  | "abandoned"
+  | "failed";
+
+export type CheckoutAttempt = {
+  id: string;
+
+  attempt_token: string;
+
+  property_id: string;
+  external_property_id: string | null;
+
+  arrival: string | null;
+  departure: string | null;
+  guest_count: number | null;
+
+  status: CheckoutAttemptStatus;
+
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  referral_id: string | null;
+
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
+};
+
+export type HospitableReservationEventStatus =
+  | "received"
+  | "processed"
+  | "duplicate"
+  | "unresolved"
+  | "ignored"
+  | "failed";
+
+export type HospitableReservationEvent = {
+  id: string;
+
+  environment: "test" | "live";
+  provider_event_id: string;
+  provider_event_type: string;
+  provider_created_at: string | null;
+
+  status: HospitableReservationEventStatus;
+
+  related_property_id: string | null;
+  related_reservation_external_id: string | null;
+
+  normalized_event: Record<string, unknown>;
+
+  received_at: string;
+  processed_at: string | null;
+
+  last_error_code: string | null;
+  last_error_message: string | null;
+};
+
+export type BookingExceptionStatus = "open" | "reviewing" | "resolved";
+
+export type BookingException = {
+  id: string;
+
+  reservation_external_id: string | null;
+  property_id: string | null;
+
+  issue_type: string;
+  detected_at: string;
+
+  provider_evidence: Record<string, unknown>;
+
+  status: BookingExceptionStatus;
+  next_action: string | null;
+  owner_id: string | null;
+
+  resolution_notes: string | null;
+  resolved_at: string | null;
+
+  created_at: string;
+  updated_at: string;
+};

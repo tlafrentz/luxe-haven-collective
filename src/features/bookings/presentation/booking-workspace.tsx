@@ -504,6 +504,22 @@ function BookingDetail({
           value={formatTimestamp(booking.provider.lastSynchronizedAt)}
         />
       </dl>
+      {booking.provider.manageUrl ? (
+        <div className="mt-4">
+          <a
+            href={booking.provider.manageUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+          >
+            Manage in {booking.provider.provider} →
+          </a>
+          <p className="mt-2 text-xs text-stone-500">
+            Dates, price, payment, and cancellation state can only be
+            changed through the provider — not here.
+          </p>
+        </div>
+      ) : null}
       <div className="mt-6 flex items-start gap-2 rounded-xl border border-stone-200 bg-white p-4">
         <UserRound
           aria-hidden="true"
