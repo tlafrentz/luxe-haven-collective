@@ -16,14 +16,23 @@ export type CommerceOnboardingEvent =
   | "team_step_skipped"
   | "workspace_setup_completed";
 
-// LHS-AN-001: the Mesa direct-booking funnel.
+// LHS-AN-001: the Mesa direct-booking-REQUEST funnel (v2.0). Superseded
+// v1's Hospitable-Direct-checkout funnel (stay_checkout_launched,
+// stay_booking_verified) with the request/review/block/payment lifecycle.
 export type DirectBookingEvent =
-  | "stay_property_viewed"
-  | "stay_availability_interaction"
-  | "stay_quote_shown"
-  | "stay_checkout_launched"
-  | "stay_booking_verified"
-  | "stay_booking_cancelled";
+  | "property_viewed"
+  | "request_started"
+  | "request_submitted"
+  | "alternate_proposed"
+  | "request_approved"
+  | "block_recorded"
+  | "payment_invited"
+  | "payment_started"
+  | "payment_verified"
+  | "booking_confirmed"
+  | "request_declined"
+  | "request_withdrawn"
+  | "request_expired";
 
 export type TrackedEvent = CommerceOnboardingEvent | DirectBookingEvent;
 

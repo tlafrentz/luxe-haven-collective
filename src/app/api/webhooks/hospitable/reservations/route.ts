@@ -8,7 +8,6 @@ import { resolveHospitableMessagingWorkspace } from "@/features/integrations/hos
 import { sanitizeAuditMetadata } from "@/features/admin-operations/domain/operations";
 import { buildBookingExceptionAction } from "@/features/integrations/hospitable/lib/booking-exception-action";
 import { SupabasePlatformActionRepository } from "@/platform/actions";
-import { track } from "@/lib/analytics/track";
 
 /**
  * LHS-INT-010..015: Hospitable reservation webhook.
@@ -20,6 +19,12 @@ import { track } from "@/lib/analytics/track";
  * (`upsertBooking`), so the result always converges on Hospitable's current
  * state regardless of webhook delivery order — this is what satisfies
  * LHS-INT-014 (no out-of-order overwrite) without needing a timestamp diff.
+ *
+ * LHS-HOS-002/003 (v2.0 pivot): this webhook is channel-sync visibility
+ * only. It has no coupling to booking_requests and can never confirm or
+ * touch an LHS direct booking — that authority now belongs solely to
+ * confirm_booking_from_payment (see the LHS-001 v2 migration), driven by a
+ * verified Stripe event, not anything Hospitable reports.
  *
  * Known limitation (documented, not fixed in this pass): processing runs
  * synchronously in the request path rather than being queued, so LHS-INT-015
@@ -122,10 +127,6 @@ export async function POST(request: Request) {
     });
     const mapping = mapHospitableReservation({ reservation, localPropertyId });
     await upsertBooking(mapping.booking, messagingWorkspace.workspaceId);
-    await correlateCheckoutAttempt(admin, localPropertyId, mapping.booking);
-    if (mapping.booking.status === "cancelled" && mapping.booking.external_platform.toLowerCase() === "direct") {
-      track("stay_booking_cancelled", { reservationId });
-    }
   } catch (error) {
     await markReceiptFailed(admin, receiptId, "reservation_upsert_failed", error);
     await createException(admin, {
@@ -228,41 +229,6 @@ async function markReceiptUnresolved(
       related_reservation_external_id: reservationId,
     })
     .eq("id", receiptId);
-}
-
-/**
- * Best-effort attribution join (LHS-AN-002/003): Hospitable's checkout does
- * not currently echo our attempt token back on the reservation, so this
- * matches on property + exact dates among still-open attempts. If Hospitable
- * Direct later supports a passthrough reference, prefer that over this.
- */
-async function correlateCheckoutAttempt(
-  admin: ReturnType<typeof createAdminClient>,
-  localPropertyId: string,
-  booking: { external_reservation_id: string; check_in: string; check_out: string; external_platform: string },
-): Promise<void> {
-  if (booking.external_platform.toLowerCase() !== "direct") return;
-
-  const { data: attempt } = await admin
-    .from("checkout_attempts")
-    .select("id")
-    .eq("property_id", localPropertyId)
-    .eq("arrival", booking.check_in)
-    .eq("departure", booking.check_out)
-    .in("status", ["started", "redirected", "verification_pending"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!attempt) return;
-
-  await admin
-    .from("bookings")
-    .update({ checkout_attempt_id: attempt.id })
-    .eq("external_provider", "hospitable")
-    .eq("external_reservation_id", booking.external_reservation_id);
-
-  await admin.from("checkout_attempts").update({ status: "confirmed", updated_at: new Date().toISOString() }).eq("id", attempt.id);
 }
 
 async function createBookingExceptionAction(

@@ -189,21 +189,17 @@ export type PropertyMedia = {
 };
 
 // ======================================================
-// LHS-001: Mesa Direct Booking Pilot
+// LHS-001 v2.0: Mesa Direct Booking Request Pilot
 // ======================================================
+// See src/features/booking-requests/domain for the canonical
+// BookingRequestStatus lifecycle type. checkout_attempts (v1) was renamed
+// and extended into booking_requests (v2) — see
+// supabase/migrations/20260918100000_lhs001v2_request_to_book.sql.
 
-export type CheckoutAttemptStatus =
-  | "started"
-  | "redirected"
-  | "verification_pending"
-  | "confirmed"
-  | "abandoned"
-  | "failed";
-
-export type CheckoutAttempt = {
+export type BookingRequest = {
   id: string;
 
-  attempt_token: string;
+  request_token: string;
 
   property_id: string;
   external_property_id: string | null;
@@ -211,8 +207,26 @@ export type CheckoutAttempt = {
   arrival: string | null;
   departure: string | null;
   guest_count: number | null;
+  adults: number | null;
+  children: number;
+  pets: number;
 
-  status: CheckoutAttemptStatus;
+  status:
+    | "draft"
+    | "submitted"
+    | "under_review"
+    | "alternate_proposed"
+    | "approved"
+    | "awaiting_payment"
+    | "confirmed"
+    | "payment_failed"
+    | "declined"
+    | "withdrawn"
+    | "expired";
+
+  owner_id: string | null;
+  sla_due_at: string | null;
+  withdrawn_at: string | null;
 
   utm_source: string | null;
   utm_medium: string | null;

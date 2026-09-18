@@ -82,19 +82,6 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
         ],
       },
-      {
-        // LHS-SEC-006: narrow frame/connect allowance for the Hospitable
-        // Direct booking widget and checkout boundary. Hostnames are
-        // placeholders pending the real Hospitable Direct account
-        // configuration — see docs/Product/lhs-001-mesa-direct-booking.md.
-        source: "/stays/:slug/book",
-        headers: [
-          {
-            key: "Content-Security-Policy",
-            value: `default-src 'self'; frame-src 'self' https://*.hospitable.com; connect-src 'self' https://*.hospitable.com; img-src 'self' https: data:; script-src 'self' https://*.hospitable.com 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}; style-src 'self' 'unsafe-inline'`,
-          },
-        ],
-      },
     ];
   },
   experimental: {

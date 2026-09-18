@@ -50,7 +50,7 @@ export default async function PropertyDetailPage({
 
   const bookable = isDirectBookingEnabled(property);
   if (bookable) {
-    track("stay_property_viewed", { slug: property.slug });
+    track("property_viewed", { slug: property.slug });
   }
 
   return (
@@ -78,7 +78,7 @@ export default async function PropertyDetailPage({
                   ✓ Professionally managed
                 </span>
                 <span className="rounded-full border border-border bg-card px-3 py-1">
-                  ✓ Secure direct booking
+                  ✓ Secure, direct payment
                 </span>
               </div>
             ) : null}
@@ -106,20 +106,21 @@ export default async function PropertyDetailPage({
               href={bookable ? `/stays/${property.slug}/book` : "/contact?service=stay"}
               className="mt-6 block rounded-full bg-primary px-6 py-3 text-center text-sm font-semibold text-primary-foreground"
             >
-              {bookable ? "Check availability" : "Request Dates"}
+              {bookable ? "Request these dates" : "Request Dates"}
             </a>
 
             {bookable ? (
               <p className="mt-3 text-center text-xs text-muted-foreground">
-                No third-party account required. See our{" "}
+                Availability is manually verified before payment — submitting
+                a request does not hold these dates. See our{" "}
                 <a href="/terms" className="underline">
                   booking terms
                 </a>{" "}
                 and{" "}
                 <a href="/terms#cancellation" className="underline">
                   cancellation policy
-                </a>{" "}
-                before you book.
+                </a>
+                .
               </p>
             ) : null}
           </div>
@@ -228,15 +229,15 @@ export default async function PropertyDetailPage({
             <div>
               <h2 className="font-serif text-3xl">Interested in this stay?</h2>
               <p className="mt-2 text-sm text-white/70">
-                Check live availability and pricing, then complete a secure
-                checkout — directly with Luxe Haven.
+                Send a no-obligation request — we&apos;ll verify availability
+                and follow up with secure payment details.
               </p>
             </div>
             <a
               href={`/stays/${property.slug}/book`}
               className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-emerald-950"
             >
-              Check availability →
+              Request these dates →
             </a>
           </div>
         </section>

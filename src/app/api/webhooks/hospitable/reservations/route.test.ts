@@ -117,7 +117,6 @@ describe("Hospitable reservation webhook", () => {
       { data: null, error: null }, // final status update ack
     ]);
     configureTable("external_properties", [{ data: { property_id: "local-property-1", connection_id: "connection-1" }, error: null }]);
-    configureTable("checkout_attempts", [{ data: null, error: null }]);
   });
 
   it("rejects a request with no or invalid authorization before touching the database", async () => {
