@@ -55,7 +55,7 @@ vi.mock("@/lib/auth/session", () => ({
   getSessionProfile: vi.fn(async () => ({ user: { id: "admin-1" }, profile: { role: "admin" } })),
 }));
 
-import { createPaymentInvitation, previewBookingRequestQuote, recordCalendarBlock } from "./booking-requests";
+import { approveRequestForBlock, createPaymentInvitation, declineRequest, previewBookingRequestQuote, recordCalendarBlock } from "./booking-requests";
 
 const NOW = Date.now();
 const FUTURE = new Date(NOW + 60 * 60 * 1000).toISOString();
@@ -168,5 +168,40 @@ describe("recordCalendarBlock — cannot be recorded outside the approved state"
     await expect(
       recordCalendarBlock("req-1", { calendarSystem: "Hospitable", externalReference: "BLOCK-1", expiresAt: FUTURE }),
     ).rejects.toThrow("Only an approved request can be blocked.");
+  });
+});
+
+// Regression test for a real production bug: the operator UI has one review
+// screen with no separate "start review" click, so approve/decline/alternate
+// must work starting directly from "submitted", not only from "under_review".
+describe("operator decisions fold the submitted -> under_review hop in automatically", () => {
+  beforeEach(() => {
+    tableState.clear();
+  });
+
+  it("approveRequestForBlock succeeds starting from submitted (not just under_review)", async () => {
+    configureTable("booking_requests", [
+      { data: { status: "submitted" }, error: null }, // initial status read
+      { data: null, error: null }, // submitted -> under_review
+      { data: null, error: null }, // under_review -> approved
+    ]);
+    configureTable("request_quotes", [{ data: { id: "quote-1" }, error: null }]);
+    configureTable("request_reviews", [{ data: null, error: null }]);
+    configureTable("admin_audit_events", [{ data: null, error: null }]);
+
+    await expect(approveRequestForBlock("req-1", { conflictCheckEvidence: { ota: true } })).resolves.toBeUndefined();
+  });
+
+  it("declineRequest succeeds starting from submitted", async () => {
+    configureTable("booking_requests", [
+      { data: { status: "submitted", property_id: "property-1" }, error: null },
+      { data: null, error: null }, // submitted -> under_review
+      { data: null, error: null }, // under_review -> declined
+    ]);
+    configureTable("request_reviews", [{ data: null, error: null }]);
+    configureTable("admin_audit_events", [{ data: null, error: null }]);
+    configureTable("calendar_blocks", [{ data: null, error: null }]); // releaseIfBlocked: no active block
+
+    await expect(declineRequest("req-1", { notes: "No availability." })).resolves.toBeUndefined();
   });
 });

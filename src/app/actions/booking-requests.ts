@@ -85,6 +85,21 @@ async function transition(db: AdminClient, requestId: string, current: BookingRe
   if (error) throw new Error(`Unable to transition booking request: ${error.message}`);
 }
 
+/**
+ * The operator UI has one review screen, not a separate "start review"
+ * click — an operator opens a submitted request and immediately
+ * approves/declines/proposes alternates from there. The lifecycle still
+ * models submitted -> under_review -> {approved,declined,alternate_proposed}
+ * as distinct steps (so under_review is a real, auditable state), so this
+ * folds the first hop in automatically when the caller starts from
+ * "submitted" rather than requiring a second explicit action.
+ */
+async function ensureUnderReview(db: AdminClient, requestId: string, current: BookingRequestStatus): Promise<BookingRequestStatus> {
+  if (current !== "submitted") return current;
+  await transition(db, requestId, "submitted", "under_review");
+  return "under_review";
+}
+
 // ---------------------------------------------------------------------
 // Guest: preview + submit
 // ---------------------------------------------------------------------
@@ -367,7 +382,8 @@ export async function approveRequestForBlock(requestId: string, input: { conflic
 
   const { data: quote } = await c.db.from("request_quotes").select("id").eq("booking_request_id", requestId).eq("status", "accepted").order("version", { ascending: false }).limit(1).maybeSingle();
 
-  await transition(c.db, requestId, request.status as BookingRequestStatus, "approved");
+  const underReview = await ensureUnderReview(c.db, requestId, request.status as BookingRequestStatus);
+  await transition(c.db, requestId, underReview, "approved");
   const { error: reviewError } = await c.db.from("request_reviews").insert({
     booking_request_id: requestId,
     decision: "approved",
@@ -386,7 +402,8 @@ export async function declineRequest(requestId: string, input: { notes: string }
   const { data: request, error } = await c.db.from("booking_requests").select("status, property_id").eq("id", requestId).single();
   if (error || !request) throw new Error("Booking request not found.");
 
-  await transition(c.db, requestId, request.status as BookingRequestStatus, "declined");
+  const underReview = await ensureUnderReview(c.db, requestId, request.status as BookingRequestStatus);
+  await transition(c.db, requestId, underReview, "declined");
   await c.db.from("request_reviews").insert({ booking_request_id: requestId, decision: "declined", actor_id: c.user.id, notes: input.notes.trim() });
   await audit(c.db, { actorId: c.user.id, actorRole: c.profile.role, action: "booking_request.declined", targetId: requestId, result: "succeeded", correlationId: c.correlationId, metadata: { reason: "operator_declined" } });
 
@@ -425,7 +442,8 @@ export async function proposeAlternateRequestDates(
   if (quoteError) throw new Error(`Unable to record the alternate quote: ${quoteError.message}`);
 
   await c.db.from("booking_requests").update({ arrival: input.arrival, departure: input.departure, updated_at: new Date().toISOString() }).eq("id", requestId);
-  await transition(c.db, requestId, request.status as BookingRequestStatus, "alternate_proposed");
+  const underReview = await ensureUnderReview(c.db, requestId, request.status as BookingRequestStatus);
+  await transition(c.db, requestId, underReview, "alternate_proposed");
   await c.db.from("request_reviews").insert({ booking_request_id: requestId, decision: "alternate_proposed", actor_id: c.user.id, quote_id: newQuote.id, notes: input.notes?.trim() || null });
   await audit(c.db, { actorId: c.user.id, actorRole: c.profile.role, action: "booking_request.alternate_proposed", targetId: requestId, result: "succeeded", correlationId: c.correlationId });
 }
