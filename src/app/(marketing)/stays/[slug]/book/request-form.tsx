@@ -35,7 +35,6 @@ export function RequestForm({
   const [departure, setDeparture] = useState(initialDeparture);
   const [adults, setAdults] = useState(initialGuests ? Math.max(1, initialGuests) : 1);
   const [children, setChildren] = useState(0);
-  const [pets, setPets] = useState(0);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -86,7 +85,6 @@ export function RequestForm({
       departure,
       adults,
       children,
-      pets,
       fullName,
       email,
       phone: phone || undefined,
@@ -119,7 +117,6 @@ export function RequestForm({
             <p className="text-sm text-stone-600">
               {adults} adult{adults === 1 ? "" : "s"}
               {children ? `, ${children} child${children === 1 ? "" : "ren"}` : ""}
-              {pets ? `, ${pets} pet${pets === 1 ? "" : "s"}` : ""}
             </p>
             <p className="mt-2 text-sm text-stone-600">Contact: {email}</p>
             {visitPurpose ? <p className="text-sm text-stone-600">Purpose: {visitPurpose}</p> : null}
@@ -200,11 +197,7 @@ export function RequestForm({
         Children
         <input type="number" min={0} value={children} onChange={(event) => setChildren(Number(event.target.value))} className="rounded-md border px-3 py-2 text-sm font-normal normal-case text-stone-900" />
       </label>
-      <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-stone-500">
-        Pets
-        <input type="number" min={0} value={pets} onChange={(event) => setPets(Number(event.target.value))} className="rounded-md border px-3 py-2 text-sm font-normal normal-case text-stone-900" />
-      </label>
-      <div />
+      <p className="col-span-full text-xs text-stone-500">Pets are not permitted at this property.</p>
 
       <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-stone-500">
         Full name

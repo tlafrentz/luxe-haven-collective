@@ -7,6 +7,7 @@ import { assertBookingRequestTransition, type BookingRequestStatus } from "@/fea
 import { getBookingStripeClient } from "@/features/booking-requests/infrastructure/stripe-payment-client";
 import { computeRefundable, sumCommittedRefunds, sumSucceededRefunds, validateRefundRequest, type RefundLedgerEntry, type RefundStatus } from "@/features/booking-requests/domain/refund";
 import { track } from "@/lib/analytics/track";
+import { sendBookingNotification } from "@/features/booking-requests/infrastructure/notifier";
 import { buildBlockReleaseAction, buildBookingRequestReviewAction } from "@/features/booking-requests/infrastructure/booking-request-action";
 import { SupabasePlatformActionRepository } from "@/platform/actions";
 import { sanitizeAuditMetadata } from "@/features/admin-operations/domain/operations";
@@ -143,7 +144,6 @@ export type SubmitBookingRequestInput = {
   departure: string;
   adults: number;
   children?: number;
-  pets?: number;
   fullName: string;
   email: string;
   phone?: string;
@@ -167,8 +167,7 @@ function validateSubmission(input: SubmitBookingRequestInput, maxGuests: number,
   if (!input.consentAcknowledged) return false;
   if (!Number.isInteger(input.adults) || input.adults < 1) return false;
   const children = input.children ?? 0;
-  const pets = input.pets ?? 0;
-  if (!Number.isInteger(children) || children < 0 || !Number.isInteger(pets) || pets < 0) return false;
+  if (!Number.isInteger(children) || children < 0) return false;
   if (input.adults + children > maxGuests) return false;
   if (nights < minimumNights) return false;
   return true;
@@ -213,7 +212,6 @@ export async function submitBookingRequest(input: SubmitBookingRequestInput): Pr
       guest_count: input.adults + (input.children ?? 0),
       adults: input.adults,
       children: input.children ?? 0,
-      pets: input.pets ?? 0,
       status: "submitted",
       sla_due_at: slaDueAt.toISOString(),
       utm_source: input.utmSource ?? null,
@@ -265,6 +263,9 @@ export async function submitBookingRequest(input: SubmitBookingRequestInput): Pr
       slaDueAt: slaDueAt.toISOString(),
     }),
   );
+
+  await sendBookingNotification(admin, { template: "request_received", bookingRequestId: request.id, dedupeKey: "submitted" });
+  await sendBookingNotification(admin, { template: "operator_new_request", bookingRequestId: request.id, dedupeKey: "submitted" });
 
   return { ok: true, requestToken, slaDueAt: slaDueAt.toISOString(), totalMinor: quote.totalMinor, currency: quote.currency };
 }
@@ -425,6 +426,7 @@ export async function declineRequest(requestId: string, input: { notes: string }
   await audit(c.db, { actorId: c.user.id, actorRole: c.profile.role, action: "booking_request.declined", targetId: requestId, result: "succeeded", correlationId: c.correlationId, metadata: { reason: "operator_declined" } });
 
   await releaseIfBlocked(c.db, requestId, request.property_id, "Request declined.");
+  await sendBookingNotification(c.db, { template: "request_declined", bookingRequestId: requestId, dedupeKey: "declined" });
 }
 
 export async function proposeAlternateRequestDates(
@@ -463,6 +465,7 @@ export async function proposeAlternateRequestDates(
   await transition(c.db, requestId, underReview, "alternate_proposed");
   await c.db.from("request_reviews").insert({ booking_request_id: requestId, decision: "alternate_proposed", actor_id: c.user.id, quote_id: newQuote.id, notes: input.notes?.trim() || null });
   await audit(c.db, { actorId: c.user.id, actorRole: c.profile.role, action: "booking_request.alternate_proposed", targetId: requestId, result: "succeeded", correlationId: c.correlationId });
+  await sendBookingNotification(c.db, { template: "alternate_proposed", bookingRequestId: requestId, dedupeKey: newQuote.id });
 }
 
 export async function acceptAlternateProposal(requestToken: string): Promise<{ ok: boolean }> {
@@ -514,6 +517,12 @@ export async function recordCalendarBlock(requestId: string, input: RecordCalend
 
   await transition(c.db, requestId, "approved", "awaiting_payment");
   await audit(c.db, { actorId: c.user.id, actorRole: c.profile.role, action: "booking_request.block_recorded", targetId: requestId, result: "succeeded", correlationId: c.correlationId, metadata: { calendarSystem: input.calendarSystem } });
+  await sendBookingNotification(c.db, {
+    template: "payment_ready",
+    bookingRequestId: requestId,
+    dedupeKey: `${quote.id}:${input.expiresAt}`,
+    extras: { holdExpiresAt: input.expiresAt },
+  });
 }
 
 export async function releaseCalendarBlock(blockId: string, input: { reference?: string; outcome: string }): Promise<void> {
@@ -582,6 +591,20 @@ export async function createPaymentInvitation(requestToken: string): Promise<Cre
 
   try {
     const client = getBookingStripeClient();
+
+    // The session's expiry is tied to the hold, so retrying with the same idempotency key would be
+    // rejected by Stripe once its parameters shift. Hand the guest back to a session that is still
+    // open instead of minting (or failing to mint) a second one.
+    const { data: existingInvitation } = await admin
+      .from("payment_invitations")
+      .select("stripe_checkout_session_id, status, environment")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    if (existingInvitation?.stripe_checkout_session_id && existingInvitation.environment === client.environment && ["created", "started"].includes(existingInvitation.status)) {
+      const open = await client.retrieveCheckoutSession(existingInvitation.stripe_checkout_session_id);
+      if (open.status === "open" && open.url) return { ok: true, redirectUrl: open.url };
+    }
+
     const session = await client.createCheckoutSession({
       customerEmail: guest.email,
       currency: quote.currency,
@@ -596,6 +619,7 @@ export async function createPaymentInvitation(requestToken: string): Promise<Cre
         calendar_block_id: block.id,
       },
       idempotencyKey,
+      holdExpiresAt: new Date(block.expires_at),
     });
 
     await admin.from("payment_invitations").upsert(
@@ -823,7 +847,15 @@ export async function refundBooking(bookingId: string, input: RefundBookingInput
     metadata: { refundRecordId: row.id, refundStatus: stripeRefund.status, bookingCancelled: cancelled },
   });
 
-  if (accepted) track("booking_refunded", { bookingId: booking.id });
+  if (accepted) {
+    await sendBookingNotification(c.db, {
+      template: "refund_issued",
+      bookingRequestId: booking.booking_request_id,
+      dedupeKey: row.id,
+      extras: { amountMinor: Number(row.amount_minor), currency: invitation.currency, bookingCancelled: cancelled },
+    });
+    track("booking_refunded", { bookingId: booking.id });
+  }
   if (cancelled) track("booking_cancelled", { bookingId: booking.id });
 
   if (!accepted) return refundFailure("stripe_failed");

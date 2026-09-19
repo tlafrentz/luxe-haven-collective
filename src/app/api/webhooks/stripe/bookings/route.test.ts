@@ -3,8 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const rpc = vi.fn();
+const bookingLookup = vi.fn();
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => ({ rpc: (name: string, params: unknown) => rpc(name, params) }),
+  createAdminClient: () => ({
+    rpc: (name: string, params: unknown) => rpc(name, params),
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => bookingLookup() }) }) }),
+  }),
+}));
+
+const sendBookingNotification = vi.fn();
+vi.mock("@/features/booking-requests/infrastructure/notifier", () => ({
+  sendBookingNotification: (...args: unknown[]) => sendBookingNotification(...args),
 }));
 
 const verifyStripeWebhook = vi.fn();
@@ -43,6 +52,27 @@ describe("Stripe booking payment webhook", () => {
     resolveStripeCommerceEnvironment.mockReset().mockReturnValue("test");
     verifyStripeWebhook.mockReset().mockResolvedValue(fakeStripeEvent);
     rpc.mockReset().mockResolvedValue({ data: { status: "processed", outcome: "confirmed", bookingId: "booking-1" }, error: null });
+    bookingLookup.mockReset().mockResolvedValue({ data: { booking_request_id: "req-1", booking_code: "LHS-MESA-ABC", total_amount: 1638, currency: "USD" }, error: null });
+    sendBookingNotification.mockReset().mockResolvedValue("sent");
+  });
+
+  it("emails the guest a confirmation once, only for a confirmed outcome", async () => {
+    await POST(request());
+    expect(sendBookingNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ template: "booking_confirmed", bookingRequestId: "req-1", dedupeKey: "booking-1", extras: { confirmationCode: "LHS-MESA-ABC", amountMinor: 163_800, currency: "USD" } }),
+    );
+
+    sendBookingNotification.mockClear();
+    rpc.mockResolvedValue({ data: { status: "duplicate" }, error: null });
+    await POST(request());
+    expect(sendBookingNotification).not.toHaveBeenCalled();
+  });
+
+  it("still acknowledges the payment when the confirmation email cannot be sent", async () => {
+    sendBookingNotification.mockRejectedValue(new Error("mail down"));
+    const response = await POST(request());
+    expect(response.status).toBe(200);
   });
 
   it("returns 503 without touching the database when the booking webhook secret is not configured", async () => {

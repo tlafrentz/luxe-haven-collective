@@ -4,6 +4,7 @@ import { verifyStripeWebhook, resolveStripeCommerceEnvironment } from "@/platfor
 import { getBookingStripeWebhookConfig } from "@/features/booking-requests/infrastructure/config";
 import { normalizeBookingPaymentEvent, BookingPaymentEnvironmentMismatch } from "@/features/booking-requests/infrastructure/webhook-event";
 import { track } from "@/lib/analytics/track";
+import { sendBookingNotification } from "@/features/booking-requests/infrastructure/notifier";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,30 @@ export async function POST(request: Request) {
   if (result?.status === "processed" && result.outcome === "confirmed" && result.bookingId) {
     // Fires only after the verified, atomic confirmation transaction commits.
     track("booking_confirmed", { bookingId: result.bookingId });
+
+    // Best-effort and at-most-once: a mail failure (or a failed lookup) must never make Stripe
+    // retry a payment we've already confirmed.
+    try {
+      const { data: booking } = await admin
+        .from("bookings")
+        .select("booking_request_id, booking_code, total_amount, currency")
+        .eq("id", result.bookingId)
+        .maybeSingle();
+      if (booking?.booking_request_id) {
+        await sendBookingNotification(admin, {
+          template: "booking_confirmed",
+          bookingRequestId: booking.booking_request_id,
+          dedupeKey: result.bookingId,
+          extras: {
+            confirmationCode: booking.booking_code,
+            amountMinor: booking.total_amount === null ? null : Math.round(Number(booking.total_amount) * 100),
+            currency: booking.currency,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("booking_confirmation_email_failed", { message: error instanceof Error ? error.message.slice(0, 200) : "unknown" });
+    }
   }
 
   return NextResponse.json({ accepted: true, result });

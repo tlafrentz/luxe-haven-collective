@@ -75,7 +75,6 @@ export type BookingRequestDetail = {
   guestCount: number;
   adults: number | null;
   children: number;
-  pets: number;
   slaDueAt: string | null;
   createdAt: string;
   guest: { fullName: string; email: string; phone: string | null; visitPurpose: string | null; accessibilityNeeds: string | null } | null;
@@ -84,6 +83,7 @@ export type BookingRequestDetail = {
   blocks: readonly { id: string; status: string; calendarSystem: string; externalReference: string | null; operatorId: string; createdAt: string; expiresAt: string }[];
   invitations: readonly { id: string; status: string; amountMinor: number; currency: string; expiresAt: string }[];
   booking: BookingRefundSummary | null;
+  notifications: readonly { id: string; template: string; audience: string; status: string; failureCode: string | null; createdAt: string }[];
 };
 
 export type BookingRefundSummary = {
@@ -110,17 +110,18 @@ export async function getBookingRequestDetail(id: string): Promise<BookingReques
   const db = await requireAdmin();
   const { data: request } = await db
     .from("booking_requests")
-    .select("id, request_token, status, property_id, arrival, departure, guest_count, adults, children, pets, sla_due_at, created_at, property:properties!inner(name)")
+    .select("id, request_token, status, property_id, arrival, departure, guest_count, adults, children, sla_due_at, created_at, property:properties!inner(name)")
     .eq("id", id)
     .maybeSingle();
   if (!request) return null;
 
-  const [{ data: guest }, { data: quotes }, { data: reviews }, { data: blocks }, { data: invitations }] = await Promise.all([
+  const [{ data: guest }, { data: quotes }, { data: reviews }, { data: blocks }, { data: invitations }, { data: notifications }] = await Promise.all([
     db.from("booking_request_guests").select("full_name, email, phone, visit_purpose, accessibility_needs").eq("booking_request_id", id).maybeSingle(),
     db.from("request_quotes").select("id, version, status, total_minor, currency, expires_at").eq("booking_request_id", id).order("version", { ascending: false }),
     db.from("request_reviews").select("id, decision, actor_id, decided_at, notes").eq("booking_request_id", id).order("decided_at", { ascending: false }),
     db.from("calendar_blocks").select("id, status, calendar_system, external_reference, operator_id, created_at, expires_at").eq("booking_request_id", id).order("created_at", { ascending: false }),
     db.from("payment_invitations").select("id, status, amount_minor, currency, expires_at").eq("booking_request_id", id).order("created_at", { ascending: false }),
+    db.from("booking_notifications").select("id, template, audience, status, failure_code, created_at").eq("booking_request_id", id).order("created_at", { ascending: false }),
   ]);
 
   const property = request.property as unknown as { name: string } | { name: string }[];
@@ -173,7 +174,6 @@ export async function getBookingRequestDetail(id: string): Promise<BookingReques
     guestCount: request.guest_count ?? 0,
     adults: request.adults,
     children: request.children,
-    pets: request.pets,
     slaDueAt: request.sla_due_at,
     createdAt: request.created_at,
     guest: guest ? { fullName: guest.full_name, email: guest.email, phone: guest.phone, visitPurpose: guest.visit_purpose, accessibilityNeeds: guest.accessibility_needs } : null,
@@ -182,5 +182,6 @@ export async function getBookingRequestDetail(id: string): Promise<BookingReques
     blocks: (blocks ?? []).map((block) => ({ id: block.id, status: block.status, calendarSystem: block.calendar_system, externalReference: block.external_reference, operatorId: block.operator_id, createdAt: block.created_at, expiresAt: block.expires_at })),
     invitations: (invitations ?? []).map((invitation) => ({ id: invitation.id, status: invitation.status, amountMinor: invitation.amount_minor, currency: invitation.currency, expiresAt: invitation.expires_at })),
     booking,
+    notifications: (notifications ?? []).map((n) => ({ id: n.id, template: n.template, audience: n.audience, status: n.status, failureCode: n.failure_code, createdAt: n.created_at })),
   };
 }

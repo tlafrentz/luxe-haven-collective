@@ -35,7 +35,9 @@ Same category as before — these need a business owner and, per the PRD's own D
 
 - Assign at least one operator with admin access to `/admin/booking-requests` who will actually run the review → block → monitor workflow.
 - Decide the calendar system operators check against for conflicts (Hospitable is the existing one) and make sure whoever reviews requests has access to it.
-- Refund initiation is **not built** in this pass (see the main doc's "known limitations") — confirm the plan is to handle any pilot refunds manually in the Stripe dashboard for now.
+- Refunds are built: operators issue partial/full refunds from the request page. The refund *policy* (who gets what) is still a business decision — the operator picks the amount and gives a reason for now.
+- Booking emails are built (see the main doc). Before inviting real guests: confirm `RESEND_FROM_EMAIL` is a verified sending domain, set `BOOKING_OPERATOR_EMAIL` to the mailbox that will actually watch new requests (otherwise it falls back to `CONTACT_TO_EMAIL`), and send yourself a test request to see each email land.
+- The lifecycle maintenance cron runs once a day. If you need lapsed holds released within hours rather than a day, move to a plan with sub-daily crons or point an external scheduler at `/api/internal/booking-requests/maintenance` with the `CRON_SECRET` bearer token.
 
 ## 4. What happens once these land
 

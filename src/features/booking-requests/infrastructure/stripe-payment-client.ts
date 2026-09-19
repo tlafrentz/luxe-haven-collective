@@ -17,6 +17,8 @@ export type CreateBookingCheckoutInput = Readonly<{
   cancelUrl: string;
   metadata: Readonly<Record<string, string>>;
   idempotencyKey: string;
+  /** The calendar hold's expiry: the session is made unpayable after it (clamped to Stripe's 30 min – 24 h window). */
+  holdExpiresAt?: Date;
 }>;
 
 export type BookingCheckoutSession = Readonly<{
@@ -66,6 +68,11 @@ export class BookingStripeClient {
       body.set(`metadata[${key}]`, value);
       body.set(`payment_intent_data[metadata][${key}]`, value);
     }
+    if (input.holdExpiresAt) {
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const wanted = Math.floor(input.holdExpiresAt.getTime() / 1000);
+      body.set("expires_at", String(Math.min(Math.max(wanted, nowSeconds + 31 * 60), nowSeconds + 23 * 3600 + 59 * 60)));
+    }
 
     const response = await this.fetcher("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
@@ -85,6 +92,19 @@ export class BookingStripeClient {
       status: value.status === "complete" ? "complete" as const : value.status === "expired" ? "expired" as const : "open" as const,
       expiresAt: new Date(Number(value.expires_at) * 1000),
       environment: this.config.environment,
+    });
+  }
+
+  /** Used to hand a guest back to a payment session that is still open instead of minting a second one. */
+  async retrieveCheckoutSession(sessionId: string): Promise<Pick<BookingCheckoutSession, "id" | "url" | "status">> {
+    if (!/^cs_[A-Za-z0-9_]+$/.test(sessionId)) throw new Error("Booking checkout session reference is invalid.");
+    const response = await this.fetcher(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, { method: "GET", headers: this.headers() });
+    if (!response.ok) throw await stripeError(response);
+    const value = (await response.json()) as Record<string, unknown>;
+    return Object.freeze({
+      id: String(value.id),
+      url: typeof value.url === "string" ? value.url : null,
+      status: value.status === "complete" ? "complete" as const : value.status === "expired" ? "expired" as const : "open" as const,
     });
   }
 

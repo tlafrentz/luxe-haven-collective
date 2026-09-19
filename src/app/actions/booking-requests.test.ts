@@ -40,14 +40,19 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 const createCheckoutSession = vi.fn();
 const createRefund = vi.fn();
+const retrieveCheckoutSession = vi.fn();
 let stripeEnvironment: "test" | "live" = "test";
 vi.mock("@/features/booking-requests/infrastructure/stripe-payment-client", () => ({
   getBookingStripeClient: () => ({
     environment: stripeEnvironment,
     createCheckoutSession: (...args: unknown[]) => createCheckoutSession(...args),
     createRefund: (...args: unknown[]) => createRefund(...args),
+    retrieveCheckoutSession: (...args: unknown[]) => retrieveCheckoutSession(...args),
   }),
 }));
+
+const sendBookingNotification = vi.fn(async () => "sent");
+vi.mock("@/features/booking-requests/infrastructure/notifier", () => ({ sendBookingNotification: (...args: unknown[]) => sendBookingNotification(...(args as [])) }));
 
 const track = vi.fn();
 vi.mock("@/lib/analytics/track", () => ({ track: (...args: unknown[]) => track(...args) }));
@@ -68,7 +73,7 @@ vi.mock("@/lib/auth/session", () => ({
 }));
 
 import { buildBlockReleaseAction } from "@/features/booking-requests/infrastructure/booking-request-action";
-import { approveRequestForBlock, createPaymentInvitation, declineRequest, previewBookingRequestQuote, recordCalendarBlock, refundBooking } from "./booking-requests";
+import { approveRequestForBlock, createPaymentInvitation, declineRequest, previewBookingRequestQuote, recordCalendarBlock, refundBooking, submitBookingRequest } from "./booking-requests";
 
 const NOW = Date.now();
 const FUTURE = new Date(NOW + 60 * 60 * 1000).toISOString();
@@ -157,6 +162,20 @@ describe("createPaymentInvitation — the hard gate (LHS-PR-002/LHS-BLK-003)", (
     expect(createCheckoutSession).not.toHaveBeenCalled();
   });
 
+  it("hands the guest back to a session that is still open instead of creating a second one", async () => {
+    configureTable("booking_requests", [{ data: { id: "req-1", status: "awaiting_payment", property_id: "property-1", request_token: "tok-1" }, error: null }]);
+    configureTable("request_quotes", [{ data: { id: "quote-1", total_minor: 163_800, currency: "USD", expires_at: FUTURE }, error: null }]);
+    configureTable("calendar_blocks", [{ data: { id: "block-1", quote_id: "quote-1", expires_at: FUTURE }, error: null }]);
+    configureTable("booking_request_guests", [{ data: { email: "guest@example.com", full_name: "Guest" }, error: null }]);
+    configureTable("properties", [{ data: { name: "Mesa stay" }, error: null }]);
+    configureTable("payment_invitations", [{ data: { stripe_checkout_session_id: "cs_existing", status: "created", environment: "test" }, error: null }]);
+    retrieveCheckoutSession.mockResolvedValue({ id: "cs_existing", url: "https://checkout.stripe.com/cs_existing", status: "open" });
+
+    const result = await createPaymentInvitation("tok-1");
+    expect(result).toEqual({ ok: true, redirectUrl: "https://checkout.stripe.com/cs_existing" });
+    expect(createCheckoutSession).not.toHaveBeenCalled();
+  });
+
   it("creates a Stripe session only once every gate condition passes", async () => {
     configureTable("booking_requests", [{ data: { id: "req-1", status: "awaiting_payment", property_id: "property-1", request_token: "tok-1" }, error: null }]);
     configureTable("request_quotes", [{ data: { id: "quote-1", total_minor: 163_800, currency: "USD", expires_at: FUTURE }, error: null }]);
@@ -167,7 +186,7 @@ describe("createPaymentInvitation — the hard gate (LHS-PR-002/LHS-BLK-003)", (
     const result = await createPaymentInvitation("tok-1");
     expect(result).toEqual({ ok: true, redirectUrl: "https://checkout.stripe.com/cs_1" });
     expect(createCheckoutSession).toHaveBeenCalledTimes(1);
-    expect(createCheckoutSession.mock.calls[0][0]).toMatchObject({ amountMinor: 163_800, currency: "USD" });
+    expect(createCheckoutSession.mock.calls[0][0]).toMatchObject({ amountMinor: 163_800, currency: "USD", holdExpiresAt: new Date(FUTURE) });
   });
 });
 
@@ -203,6 +222,16 @@ describe("operator decisions fold the submitted -> under_review hop in automatic
     configureTable("admin_audit_events", [{ data: null, error: null }]);
 
     await expect(approveRequestForBlock("req-1", { conflictCheckEvidence: { ota: true } })).resolves.toBeUndefined();
+  });
+
+  it("declineRequest emails the guest once the decline is recorded", async () => {
+    sendBookingNotification.mockClear();
+    configureTable("booking_requests", [{ data: { status: "submitted", property_id: "property-1" }, error: null }, { data: null, error: null }, { data: null, error: null }]);
+    configureTable("request_reviews", [{ data: null, error: null }]);
+    configureTable("admin_audit_events", [{ data: null, error: null }]);
+    configureTable("calendar_blocks", [{ data: null, error: null }]);
+    await declineRequest("req-1", { notes: "No availability." });
+    expect(sendBookingNotification).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ template: "request_declined", bookingRequestId: "req-1" }));
   });
 
   it("declineRequest succeeds starting from submitted", async () => {
@@ -268,6 +297,7 @@ describe("refundBooking", () => {
     stripeEnvironment = "test";
     createRefund.mockReset().mockResolvedValue({ id: "re_1", status: "succeeded", amountMinor: 50_000 });
     track.mockReset();
+    sendBookingNotification.mockClear();
     vi.mocked(buildBlockReleaseAction).mockClear();
   });
 
@@ -326,6 +356,10 @@ describe("refundBooking", () => {
     expect(buildBlockReleaseAction).not.toHaveBeenCalled();
     expect(track).toHaveBeenCalledWith("booking_refunded", { bookingId: "booking-1" });
     expect(track).not.toHaveBeenCalledWith("booking_cancelled", expect.anything());
+    expect(sendBookingNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ template: "refund_issued", bookingRequestId: "req-1", dedupeKey: "refund-1", extras: { amountMinor: 50_000, currency: "USD", bookingCancelled: false } }),
+    );
   });
 
   it("records the requester and reason on the refund row", async () => {
@@ -348,6 +382,7 @@ describe("refundBooking", () => {
     expect(bookingUpdate?.payload).toMatchObject({ status: "cancelled", payment_status: "refunded" });
     expect(buildBlockReleaseAction).toHaveBeenCalledWith(expect.objectContaining({ bookingRequestId: "req-1", calendarBlockId: "block-1" }));
     expect(track).toHaveBeenCalledWith("booking_cancelled", { bookingId: "booking-1" });
+    expect(sendBookingNotification).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ template: "refund_issued", extras: expect.objectContaining({ bookingCancelled: true }) }));
   });
 
   it("does not cancel when the refund is full but cancel was not selected", async () => {
@@ -379,6 +414,7 @@ describe("refundBooking", () => {
     expect(failedUpdate?.payload).toMatchObject({ status: "failed", failure_code: "charge_already_refunded" });
     expect(writes.some((write) => write.table === "bookings" && write.op === "update")).toBe(false);
     expect(track).not.toHaveBeenCalled();
+    expect(sendBookingNotification).not.toHaveBeenCalled();
   });
 
   it("reuses the first attempt when the same request key is submitted again", async () => {
@@ -403,5 +439,37 @@ describe("refundBooking", () => {
     expect(result).toMatchObject({ ok: false, code: "stripe_failed" });
     expect(writes.some((write) => write.table === "bookings" && write.op === "update")).toBe(false);
     expect(track).not.toHaveBeenCalledWith("booking_refunded", expect.anything());
+  });
+});
+
+describe("submitBookingRequest", () => {
+  const property = { id: "property-1", name: "Mesa stay", metadata: { direct_booking_enabled: true }, nightly_rate: 148, cleaning_fee: 145, tax_rate: 0.0825, max_guests: 4, minimum_nights: 2 };
+  const base = { propertySlug: "mesa", arrival: "2026-11-10", departure: "2026-11-13", adults: 2, fullName: "Sam Guest", email: "sam@example.com", consentAcknowledged: true };
+
+  beforeEach(() => {
+    tableState.clear();
+    writes.length = 0;
+    sendBookingNotification.mockClear();
+    configureTable("properties", [{ data: property, error: null }, { data: { owner_id: "ws-1" }, error: null }]);
+    configureTable("booking_requests", [{ data: { id: "req-1" }, error: null }]);
+  });
+
+  it("does not accept or store a pet count — pets are not permitted at the property", async () => {
+    const result = await submitBookingRequest({ ...base, pets: 2 } as never);
+    expect(result.ok).toBe(true);
+    const insert = writes.find((write) => write.table === "booking_requests" && write.op === "insert");
+    expect(insert?.payload).not.toHaveProperty("pets");
+  });
+
+  it("emails the guest a receipt and the operator a review prompt after the request is stored", async () => {
+    await submitBookingRequest(base);
+    const templates = sendBookingNotification.mock.calls.map((call) => (call as unknown as [unknown, { template: string }])[1].template);
+    expect(templates).toEqual(["request_received", "operator_new_request"]);
+  });
+
+  it("sends no email for an invalid submission", async () => {
+    const result = await submitBookingRequest({ ...base, consentAcknowledged: false });
+    expect(result).toEqual({ ok: false, code: "invalid_input" });
+    expect(sendBookingNotification).not.toHaveBeenCalled();
   });
 });

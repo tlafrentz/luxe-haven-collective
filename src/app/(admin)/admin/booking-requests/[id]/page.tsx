@@ -38,7 +38,7 @@ export default async function BookingRequestDetailPage({ params }: { params: Pro
             <p className="mt-3 text-sm text-stone-500">No contact details recorded.</p>
           )}
           <dl className="mt-4 space-y-1 border-t pt-3 text-sm text-stone-700">
-            <div><dt className="inline text-stone-500">Guests: </dt><dd className="inline">{detail.adults ?? 0} adults, {detail.children} children, {detail.pets} pets</dd></div>
+            <div><dt className="inline text-stone-500">Guests: </dt><dd className="inline">{detail.adults ?? 0} adults, {detail.children} children</dd></div>
             <div><dt className="inline text-stone-500">Submitted: </dt><dd className="inline">{fmt(detail.createdAt)}</dd></div>
             {detail.slaDueAt ? <div><dt className="inline text-stone-500">Review due: </dt><dd className="inline">{fmt(detail.slaDueAt)}</dd></div> : null}
           </dl>
@@ -79,6 +79,23 @@ export default async function BookingRequestDetailPage({ params }: { params: Pro
       <RequestReviewPanel requestId={detail.id} status={detail.status} arrival={detail.arrival} departure={detail.departure} activeQuoteId={activeQuote?.id ?? null} activeBlockId={activeBlock?.id ?? null} />
 
       {detail.booking ? <RefundPanel booking={detail.booking} /> : null}
+
+      {detail.notifications.length ? (
+        <section className="rounded-xl border border-stone-200 bg-white p-5">
+          <h2 className="font-semibold">Emails</h2>
+          <ul className="mt-3 space-y-2 text-sm text-stone-700">
+            {detail.notifications.map((n) => (
+              <li key={n.id} className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{n.template.replaceAll("_", " ")}</span>
+                <span className="text-stone-500">to {n.audience}</span>
+                <StatusPill value={n.status} />
+                {n.failureCode ? <span className="text-xs text-stone-500">{n.failureCode.replaceAll("_", " ")}</span> : null}
+                <span className="text-stone-500">{fmt(n.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {detail.reviews.length ? (
         <section className="rounded-xl border border-stone-200 bg-white p-5">

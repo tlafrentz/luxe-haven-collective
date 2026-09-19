@@ -69,6 +69,7 @@ export function FinalTerms({
               </Link>
               .
             </label>
+            <p className="mt-3 text-xs text-stone-500">Pets are not permitted at this property.</p>
             <p className="mt-4 text-xs text-stone-500">
               Payment is collected securely by Stripe. Luxe Haven never receives or stores your card
               details.

@@ -46,6 +46,21 @@ describe("BookingStripeClient.createCheckoutSession", () => {
     expect(body).toContain("metadata%5Bbooking_request_id%5D=req-1");
   });
 
+  it("makes the session unpayable after the calendar hold, clamped to Stripe's allowed window", async () => {
+    const ok = () => new Response(JSON.stringify({ id: "cs_1", url: "u", status: "open", expires_at: 1 }), { status: 200 });
+    const base = { customerEmail: "g@example.com", currency: "USD", amountMinor: 100, productName: "Mesa", successUrl: "https://e.com/r", cancelUrl: "https://e.com/c", metadata: {}, idempotencyKey: "k" };
+    const expiresParam = async (holdExpiresAt?: Date) => {
+      const fetcher = vi.fn().mockResolvedValue(ok());
+      await new BookingStripeClient(config, fetcher).createCheckoutSession({ ...base, holdExpiresAt });
+      return ((fetcher.mock.calls[0] as [string, RequestInit])[1].body as URLSearchParams).get("expires_at");
+    };
+    const now = Math.floor(Date.now() / 1000);
+    expect(Number(await expiresParam(new Date(Date.now() + 3 * 3600_000)))).toBeCloseTo(now + 3 * 3600, -1);
+    expect(Number(await expiresParam(new Date(Date.now() + 60_000)))).toBeGreaterThanOrEqual(now + 30 * 60);
+    expect(Number(await expiresParam(new Date(Date.now() + 72 * 3600_000)))).toBeLessThanOrEqual(now + 24 * 3600);
+    expect(await expiresParam(undefined)).toBeNull();
+  });
+
   it("throws a descriptive error when Stripe returns a non-ok response", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: "card_declined", message: "Your card was declined." } }), { status: 402 }));
     const client = new BookingStripeClient(config, fetcher);
@@ -101,5 +116,20 @@ describe("BookingStripeClient.createRefund", () => {
   it("throws the Stripe error message when the refund is rejected", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: "charge_already_refunded", message: "Charge has already been refunded." } }), { status: 400 }));
     await expect(new BookingStripeClient(config, fetcher).createRefund(base)).rejects.toThrow("Charge has already been refunded.");
+  });
+});
+
+describe("BookingStripeClient.retrieveCheckoutSession", () => {
+  it("returns the session's status and url", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "cs_1", url: "https://checkout.stripe.com/cs_1", status: "open" }), { status: 200 }));
+    const session = await new BookingStripeClient(config, fetcher).retrieveCheckoutSession("cs_1");
+    expect(session).toEqual({ id: "cs_1", url: "https://checkout.stripe.com/cs_1", status: "open" });
+    expect((fetcher.mock.calls[0] as [string, RequestInit])[0]).toBe("https://api.stripe.com/v1/checkout/sessions/cs_1");
+  });
+
+  it("rejects a malformed session reference before calling Stripe", async () => {
+    const fetcher = vi.fn();
+    await expect(new BookingStripeClient(config, fetcher).retrieveCheckoutSession("../customers")).rejects.toThrow();
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });
