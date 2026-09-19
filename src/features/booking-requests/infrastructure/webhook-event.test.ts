@@ -56,4 +56,37 @@ describe("normalizeBookingPaymentEvent", () => {
     const normalized = normalizeBookingPaymentEvent(event, "test");
     expect(normalized.metadata).toEqual({ valid: "yes" });
   });
+
+  it("maps refund.created/updated/failed to refund.updated with the refund id, payment intent, status, and failure code", () => {
+    for (const type of ["refund.created", "refund.updated", "refund.failed"]) {
+      const normalized = normalizeBookingPaymentEvent(
+        stripeEvent({
+          type,
+          object: { id: "re_1", payment_intent: "pi_9", amount: 5_000, currency: "usd", status: "failed", failure_reason: "lost_or_stolen_card", metadata: { booking_refund_id: "r-1" } },
+        }),
+        "test",
+      );
+      expect(normalized).toMatchObject({
+        providerEventType: "refund.updated",
+        providerRefundId: "re_1",
+        providerPaymentIntentId: "pi_9",
+        amountMinor: 5_000,
+        currency: "USD",
+        refundStatus: "failed",
+        failureCode: "lost_or_stolen_card",
+        metadata: { booking_refund_id: "r-1" },
+      });
+    }
+  });
+
+  it("treats unknown or in-flight refund statuses as pending and does not set a checkout session id", () => {
+    const normalized = normalizeBookingPaymentEvent(stripeEvent({ type: "refund.created", object: { id: "re_2", payment_intent: "pi_9", amount: 100, status: "requires_action" } }), "test");
+    expect(normalized.refundStatus).toBe("pending");
+    expect(normalized.providerCheckoutSessionId).toBeUndefined();
+    expect(normalized.failureCode).toBeUndefined();
+  });
+
+  it("leaves ambiguous cumulative charge.refunded events unsupported", () => {
+    expect(normalizeBookingPaymentEvent(stripeEvent({ type: "charge.refunded", object: { id: "ch_1", payment_intent: "pi_9", amount_refunded: 100 } }), "test").providerEventType).toBe("unsupported");
+  });
 });

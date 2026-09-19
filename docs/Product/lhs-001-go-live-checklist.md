@@ -9,7 +9,7 @@ The Stripe account itself is already live and configured — this pilot reuses i
 | # | Item | Where | Status |
 |---|---|---|---|
 | 1 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / environment | Vercel production env vars | Already configured |
-| 2 | **New** booking payments webhook endpoint | Stripe Dashboard → Developers → Webhooks → Add endpoint, URL `https://luxehavencollective.co/api/webhooks/stripe/bookings`, events: `checkout.session.completed`, `checkout.session.expired`, `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled` | **Needed** |
+| 2 | **New** booking payments webhook endpoint | Stripe Dashboard → Developers → Webhooks → Add endpoint, URL `https://luxehavencollective.co/api/webhooks/stripe/bookings`, events: `checkout.session.completed`, `checkout.session.expired`, `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `refund.created`, `refund.updated`, `refund.failed` | **Needed** |
 | 3 | `STRIPE_BOOKING_WEBHOOK_SECRET` | That new endpoint's signing secret, set as a Vercel env var | **Needed** |
 
 Once #2/#3 are done, hand the secret back and it's a config-only change — no code changes needed.

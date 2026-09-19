@@ -115,6 +115,17 @@ export function RequestStatusView({ requestToken }: { requestToken: string }) {
     );
   }
 
+  if (result.state === "cancelled") {
+    return (
+      <StatusShell
+        title="This booking has been cancelled"
+        body={`Your stay at ${result.propertyName} (${result.checkIn} to ${result.checkOut}) was cancelled${result.confirmationCode ? ` — confirmation ${result.confirmationCode}` : ""}. Any refund has been sent to your original payment method and can take several business days to appear.`}
+      >
+        <SupportLink />
+      </StatusShell>
+    );
+  }
+
   // state === "active"
   if (result.status === "awaiting_payment") {
     return (

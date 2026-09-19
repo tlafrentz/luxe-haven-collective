@@ -32,7 +32,9 @@ export type DirectBookingEvent =
   | "booking_confirmed"
   | "request_declined"
   | "request_withdrawn"
-  | "request_expired";
+  | "request_expired"
+  | "booking_refunded"
+  | "booking_cancelled";
 
 export type TrackedEvent = CommerceOnboardingEvent | DirectBookingEvent;
 

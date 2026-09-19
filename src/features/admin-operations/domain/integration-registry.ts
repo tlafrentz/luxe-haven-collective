@@ -89,7 +89,7 @@ export const INTEGRATION_REGISTRY: readonly IntegrationDefinition[] = Object.fre
   {
     id: "stripe", adapterIds: ["stripe"], displayName: "Stripe", category: "Commerce",
     description: "Checkout, payments, subscriptions, invoices, and verified webhooks.",
-    capabilities: ["Checkout", "Payments", "Subscriptions", "Invoices", "Webhooks", "Booking payments"],
+    capabilities: ["Checkout", "Payments", "Subscriptions", "Invoices", "Webhooks", "Booking payments", "Booking refunds"],
     dependentWorkflows: ["Commerce", "Billing", "Fulfillment", "Mesa direct booking"],
     configurationRequirements: [requirement("STRIPE_SECRET_KEY", "Restricted API key"), requirement("STRIPE_WEBHOOK_SECRET", "Commerce webhook signing secret"), requirement("STRIPE_BOOKING_WEBHOOK_SECRET", "Booking payments webhook signing secret", false)],
     supportsManualSync: false, supportsConnectionTest: true, supportsWebhooks: true, supportsHealthChecks: true,

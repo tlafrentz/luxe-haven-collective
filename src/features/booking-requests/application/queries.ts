@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { BookingRequestStatus } from "../domain";
+import { computeRefundable, sumCommittedRefunds, type BookingRequestStatus, type RefundStatus } from "../domain";
 
 async function requireAdmin() {
   const { getSessionProfile } = await import("@/lib/auth/session");
@@ -83,6 +83,27 @@ export type BookingRequestDetail = {
   reviews: readonly { id: string; decision: string; actorId: string | null; decidedAt: string; notes: string | null }[];
   blocks: readonly { id: string; status: string; calendarSystem: string; externalReference: string | null; operatorId: string; createdAt: string; expiresAt: string }[];
   invitations: readonly { id: string; status: string; amountMinor: number; currency: string; expiresAt: string }[];
+  booking: BookingRefundSummary | null;
+};
+
+export type BookingRefundSummary = {
+  bookingId: string;
+  bookingCode: string | null;
+  bookingStatus: string;
+  paymentStatus: string;
+  currency: string;
+  paidMinor: number;
+  refundedMinor: number;
+  refundableMinor: number;
+  refunds: readonly {
+    id: string;
+    amountMinor: number;
+    status: RefundStatus;
+    origin: string;
+    reason: string | null;
+    failureCode: string | null;
+    createdAt: string;
+  }[];
 };
 
 export async function getBookingRequestDetail(id: string): Promise<BookingRequestDetail | null> {
@@ -105,6 +126,42 @@ export async function getBookingRequestDetail(id: string): Promise<BookingReques
   const property = request.property as unknown as { name: string } | { name: string }[];
   const propertyName = Array.isArray(property) ? property[0]?.name : property?.name;
 
+  const { data: bookingRow } = await db
+    .from("bookings")
+    .select("id, booking_code, status, payment_status, currency, payment_invitation_id")
+    .eq("booking_request_id", id)
+    .maybeSingle();
+  let booking: BookingRefundSummary | null = null;
+  if (bookingRow) {
+    const paidInvitation = (invitations ?? []).find((invitation) => invitation.id === bookingRow.payment_invitation_id);
+    const { data: refundRows } = await db
+      .from("booking_refunds")
+      .select("id, amount_minor, status, origin, reason, failure_code, created_at")
+      .eq("booking_id", bookingRow.id)
+      .order("created_at", { ascending: false });
+    const ledger = (refundRows ?? []).map((refund) => ({ amountMinor: Number(refund.amount_minor), status: refund.status as RefundStatus }));
+    const paidMinor = paidInvitation ? Number(paidInvitation.amount_minor) : 0;
+    booking = {
+      bookingId: bookingRow.id,
+      bookingCode: bookingRow.booking_code,
+      bookingStatus: bookingRow.status,
+      paymentStatus: bookingRow.payment_status,
+      currency: paidInvitation?.currency ?? bookingRow.currency ?? "USD",
+      paidMinor,
+      refundedMinor: sumCommittedRefunds(ledger),
+      refundableMinor: computeRefundable(paidMinor, ledger),
+      refunds: (refundRows ?? []).map((refund) => ({
+        id: refund.id,
+        amountMinor: Number(refund.amount_minor),
+        status: refund.status as RefundStatus,
+        origin: refund.origin,
+        reason: refund.reason,
+        failureCode: refund.failure_code,
+        createdAt: refund.created_at,
+      })),
+    };
+  }
+
   return {
     id: request.id,
     requestToken: request.request_token,
@@ -124,5 +181,6 @@ export async function getBookingRequestDetail(id: string): Promise<BookingReques
     reviews: (reviews ?? []).map((review) => ({ id: review.id, decision: review.decision, actorId: review.actor_id, decidedAt: review.decided_at, notes: review.notes })),
     blocks: (blocks ?? []).map((block) => ({ id: block.id, status: block.status, calendarSystem: block.calendar_system, externalReference: block.external_reference, operatorId: block.operator_id, createdAt: block.created_at, expiresAt: block.expires_at })),
     invitations: (invitations ?? []).map((invitation) => ({ id: invitation.id, status: invitation.status, amountMinor: invitation.amount_minor, currency: invitation.currency, expiresAt: invitation.expires_at })),
+    booking,
   };
 }

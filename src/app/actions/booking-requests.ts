@@ -5,6 +5,8 @@ import { getSessionProfile } from "@/lib/auth/session";
 import { calculateProvisionalQuote } from "@/features/booking-requests/domain/quote";
 import { assertBookingRequestTransition, type BookingRequestStatus } from "@/features/booking-requests/domain/request-lifecycle";
 import { getBookingStripeClient } from "@/features/booking-requests/infrastructure/stripe-payment-client";
+import { computeRefundable, sumCommittedRefunds, sumSucceededRefunds, validateRefundRequest, type RefundLedgerEntry, type RefundStatus } from "@/features/booking-requests/domain/refund";
+import { track } from "@/lib/analytics/track";
 import { buildBlockReleaseAction, buildBookingRequestReviewAction } from "@/features/booking-requests/infrastructure/booking-request-action";
 import { SupabasePlatformActionRepository } from "@/platform/actions";
 import { sanitizeAuditMetadata } from "@/features/admin-operations/domain/operations";
@@ -274,6 +276,12 @@ export async function submitBookingRequest(input: SubmitBookingRequestInput): Pr
 export type BookingRequestStatusView = {
   state: "not_found";
 } | {
+  state: "cancelled";
+  confirmationCode: string | null;
+  propertyName: string;
+  checkIn: string;
+  checkOut: string;
+} | {
   state: "active";
   status: BookingRequestStatus;
   propertyName: string;
@@ -314,9 +322,18 @@ export async function getBookingRequestStatus(requestToken: string): Promise<Boo
   if (request.status === "confirmed") {
     const { data: booking } = await admin
       .from("bookings")
-      .select("booking_code, check_in, check_out, guests, total_amount, currency")
+      .select("booking_code, check_in, check_out, guests, total_amount, currency, status")
       .eq("booking_request_id", request.id)
       .maybeSingle();
+    if (booking?.status === "cancelled") {
+      return {
+        state: "cancelled",
+        confirmationCode: booking.booking_code,
+        propertyName: propertyName ?? "your stay",
+        checkIn: booking.check_in,
+        checkOut: booking.check_out,
+      };
+    }
     if (booking) {
       return {
         state: "confirmed",
@@ -605,3 +622,210 @@ export async function createPaymentInvitation(requestToken: string): Promise<Cre
   }
 }
 
+
+// ---------------------------------------------------------------------
+// Operator: refunds (LHS-CAN-001..003)
+// ---------------------------------------------------------------------
+
+export type RefundBookingInput = { amountMinor: number; reason: string; cancelBooking: boolean; requestKey: string };
+export type RefundBookingResult =
+  | { ok: true; refundId: string; status: RefundStatus; cancelled: boolean }
+  | {
+      ok: false;
+      code:
+        | "invalid_request_key"
+        | "not_refundable"
+        | "environment_mismatch"
+        | "invalid_amount"
+        | "reason_required"
+        | "reason_too_long"
+        | "exceeds_refundable"
+        | "stripe_failed";
+      message: string;
+    };
+
+const REFUND_ERROR_MESSAGES = {
+  invalid_request_key: "The refund request could not be identified. Reload the page and try again.",
+  not_refundable: "This booking has no refundable direct payment.",
+  environment_mismatch: "The booking payment was made in a different Stripe environment than this deployment is configured for.",
+  invalid_amount: "Enter a refund amount greater than zero.",
+  reason_required: "Enter a reason for the refund.",
+  reason_too_long: "The refund reason is too long.",
+  exceeds_refundable: "The refund amount is more than what remains refundable.",
+  stripe_failed: "Stripe could not process the refund. No money was returned.",
+} as const;
+
+function refundFailure(code: keyof typeof REFUND_ERROR_MESSAGES): RefundBookingResult {
+  return { ok: false, code, message: REFUND_ERROR_MESSAGES[code] };
+}
+
+type RefundRow = { id: string; amount_minor: number; status: RefundStatus; stripe_refund_id: string | null; cancel_booking: boolean };
+
+function toLedger(rows: readonly { amount_minor: number; status: string }[]): RefundLedgerEntry[] {
+  return rows.map((row) => ({ amountMinor: Number(row.amount_minor), status: row.status as RefundStatus }));
+}
+
+export async function refundBooking(bookingId: string, input: RefundBookingInput): Promise<RefundBookingResult> {
+  const c = await adminContext();
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(input.requestKey)) return refundFailure("invalid_request_key");
+
+  const { data: booking } = await c.db
+    .from("bookings")
+    .select("id, source, status, property_id, booking_request_id, payment_invitation_id, stripe_payment_intent_id, currency")
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (!booking || booking.source !== "Luxe Haven Direct" || !booking.stripe_payment_intent_id || !booking.payment_invitation_id || !booking.booking_request_id) {
+    return refundFailure("not_refundable");
+  }
+
+  const { data: invitation } = await c.db
+    .from("payment_invitations")
+    .select("id, environment, amount_minor, currency")
+    .eq("id", booking.payment_invitation_id)
+    .maybeSingle();
+  if (!invitation) return refundFailure("not_refundable");
+
+  let client: ReturnType<typeof getBookingStripeClient>;
+  try {
+    client = getBookingStripeClient();
+  } catch {
+    return refundFailure("stripe_failed");
+  }
+  // Fail closed on a test/live mix-up: a live key must never be asked to
+  // refund a sandbox payment (or the reverse).
+  if (client.environment !== invitation.environment) return refundFailure("environment_mismatch");
+
+  const idempotencyKey = `booking-refund:${booking.id}:${input.requestKey}`;
+
+  // Replay of the same request (double click, second tab): reuse the first
+  // attempt rather than creating a second refund.
+  const { data: existing } = await c.db
+    .from("booking_refunds")
+    .select("id, amount_minor, status, stripe_refund_id, cancel_booking")
+    .eq("idempotency_key", idempotencyKey)
+    .maybeSingle();
+  if (existing?.stripe_refund_id || existing?.status === "failed") {
+    return existing.status === "failed"
+      ? refundFailure("stripe_failed")
+      : { ok: true, refundId: existing.id, status: existing.status as RefundStatus, cancelled: booking.status === "cancelled" };
+  }
+
+  const { data: ledgerRows } = await c.db.from("booking_refunds").select("amount_minor, status").eq("booking_id", booking.id);
+  const ledger = toLedger(ledgerRows ?? []);
+  const paidMinor = Number(invitation.amount_minor);
+  const refundableMinor = computeRefundable(paidMinor, ledger);
+
+  let row: RefundRow;
+  if (existing) {
+    // A prior attempt recorded the row but never reached Stripe; retry with the
+    // same Stripe idempotency key so a refund that did go through isn't repeated.
+    row = existing as RefundRow;
+  } else {
+    const invalid = validateRefundRequest({ amountMinor: input.amountMinor, reason: input.reason, refundableMinor });
+    if (invalid) return refundFailure(invalid);
+
+    const { data: inserted, error: insertError } = await c.db
+      .from("booking_refunds")
+      .insert({
+        booking_id: booking.id,
+        booking_request_id: booking.booking_request_id,
+        payment_invitation_id: invitation.id,
+        environment: invitation.environment,
+        stripe_payment_intent_id: booking.stripe_payment_intent_id,
+        amount_minor: input.amountMinor,
+        currency: invitation.currency,
+        reason: input.reason.trim(),
+        status: "requested",
+        origin: "app",
+        cancel_booking: input.cancelBooking,
+        requested_by: c.user.id,
+        idempotency_key: idempotencyKey,
+      })
+      .select("id, amount_minor, status, stripe_refund_id, cancel_booking")
+      .single();
+    if (insertError || !inserted) {
+      if ((insertError as { code?: string } | null)?.code === "23505") {
+        // Lost a race with an identical concurrent request; it owns the Stripe call.
+        return refundFailure("stripe_failed");
+      }
+      throw new Error("Unable to record the refund request.");
+    }
+    row = inserted as RefundRow;
+  }
+
+  let stripeRefund: Awaited<ReturnType<typeof client.createRefund>>;
+  try {
+    stripeRefund = await client.createRefund({
+      paymentIntentId: booking.stripe_payment_intent_id,
+      amountMinor: Number(row.amount_minor),
+      metadata: { booking_refund_id: row.id, booking_id: booking.id },
+      idempotencyKey,
+    });
+  } catch (error) {
+    const failureCode = (error as { code?: string }).code ?? "stripe_error";
+    await c.db.from("booking_refunds").update({ status: "failed", failure_code: failureCode, updated_at: new Date().toISOString() }).eq("id", row.id).eq("status", "requested");
+    console.error("booking_refund_stripe_failed", { bookingId: booking.id, failureCode });
+    await audit(c.db, { actorId: c.user.id, actorRole: c.profile.role, action: "booking_request.refund_failed", targetId: booking.booking_request_id, result: "failed", correlationId: c.correlationId, metadata: { refundRecordId: row.id, failureCode } });
+    return refundFailure("stripe_failed");
+  }
+
+  const now = new Date().toISOString();
+  await c.db.from("booking_refunds").update({ stripe_refund_id: stripeRefund.id, updated_at: now }).eq("id", row.id);
+  // The webhook may already have advanced this row; only move it off "requested".
+  await c.db
+    .from("booking_refunds")
+    .update({ status: stripeRefund.status, failure_code: stripeRefund.failureCode ?? null, updated_at: now })
+    .eq("id", row.id)
+    .eq("status", "requested");
+
+  const accepted = stripeRefund.status === "pending" || stripeRefund.status === "succeeded";
+  const cumulative = [...ledger, { amountMinor: Number(row.amount_minor), status: stripeRefund.status } satisfies RefundLedgerEntry];
+  const fullyRefunded = accepted && sumCommittedRefunds(cumulative) >= paidMinor;
+
+  let cancelled = booking.status === "cancelled";
+  if (row.cancel_booking && fullyRefunded && !cancelled) {
+    const settled = sumSucceededRefunds(cumulative) >= paidMinor;
+    const { error: cancelError } = await c.db
+      .from("bookings")
+      .update({ status: "cancelled", ...(settled ? { payment_status: "refunded" } : {}), updated_at: now })
+      .eq("id", booking.id);
+    if (cancelError) throw new Error(`The refund was issued but the booking could not be cancelled: ${cancelError.message}`);
+    cancelled = true;
+
+    // The calendar hold is released by a person in the operational calendar
+    // (same task as decline/withdraw); give that person an owned Action Center item.
+    const { data: block } = await c.db
+      .from("calendar_blocks")
+      .select("id")
+      .eq("booking_request_id", booking.booking_request_id)
+      .in("status", ["active", "consumed"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (block) {
+      const workspaceId = await resolvePropertyWorkspaceId(c.db, booking.property_id);
+      const { data: property } = await c.db.from("properties").select("name").eq("id", booking.property_id).maybeSingle();
+      await createActionCenterTask(
+        c.db,
+        workspaceId,
+        buildBlockReleaseAction({ workspaceId: workspaceId ?? "", bookingRequestId: booking.booking_request_id, calendarBlockId: block.id, propertyName: property?.name ?? "the property", reason: "booking cancelled and refunded in full" }),
+      );
+    }
+  }
+
+  await audit(c.db, {
+    actorId: c.user.id,
+    actorRole: c.profile.role,
+    action: cancelled ? "booking_request.refund_issued_and_cancelled" : "booking_request.refund_issued",
+    targetId: booking.booking_request_id,
+    result: "succeeded",
+    correlationId: c.correlationId,
+    metadata: { refundRecordId: row.id, refundStatus: stripeRefund.status, bookingCancelled: cancelled },
+  });
+
+  if (accepted) track("booking_refunded", { bookingId: booking.id });
+  if (cancelled) track("booking_cancelled", { bookingId: booking.id });
+
+  if (!accepted) return refundFailure("stripe_failed");
+  return { ok: true, refundId: row.id, status: stripeRefund.status, cancelled };
+}

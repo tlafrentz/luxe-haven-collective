@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { StatusPill } from "@/components/admin/operations-ui";
 import { getBookingRequestDetail } from "@/features/booking-requests/application";
+import { RefundPanel } from "./refund-panel";
 import { RequestReviewPanel } from "./request-review-panel";
 
 const fmt = (v: string) => new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(v));
@@ -76,6 +77,8 @@ export default async function BookingRequestDetailPage({ params }: { params: Pro
       </section>
 
       <RequestReviewPanel requestId={detail.id} status={detail.status} arrival={detail.arrival} departure={detail.departure} activeQuoteId={activeQuote?.id ?? null} activeBlockId={activeBlock?.id ?? null} />
+
+      {detail.booking ? <RefundPanel booking={detail.booking} /> : null}
 
       {detail.reviews.length ? (
         <section className="rounded-xl border border-stone-200 bg-white p-5">

@@ -17,6 +17,7 @@ export type BookingPaymentEventType =
   | "payment.failed"
   | "payment.cancelled"
   | "checkout.expired"
+  | "refund.updated"
   | "unsupported";
 
 export type NormalizedBookingPaymentEvent = Readonly<{
@@ -28,6 +29,9 @@ export type NormalizedBookingPaymentEvent = Readonly<{
   providerPaymentIntentId?: string;
   amountMinor?: number;
   currency?: string;
+  providerRefundId?: string;
+  refundStatus?: "pending" | "succeeded" | "failed" | "canceled";
+  failureCode?: string;
   metadata: Readonly<Record<string, string>>;
 }>;
 
@@ -44,7 +48,13 @@ function mapEventType(type: string): BookingPaymentEventType {
   if (type === "payment_intent.succeeded") return "payment.succeeded";
   if (type === "payment_intent.payment_failed") return "payment.failed";
   if (type === "payment_intent.canceled") return "payment.cancelled";
+  if (type === "refund.created" || type === "refund.updated" || type === "refund.failed") return "refund.updated";
   return "unsupported";
+}
+
+function mapRefundStatus(value: unknown): "pending" | "succeeded" | "failed" | "canceled" {
+  if (value === "succeeded" || value === "failed" || value === "canceled") return value;
+  return "pending";
 }
 
 function stringMetadata(value: unknown): Record<string, string> {
@@ -66,6 +76,7 @@ export function normalizeBookingPaymentEvent(
   const object = event.data.object;
   const isCheckoutSession = event.type.startsWith("checkout.session.");
   const isPaymentIntent = event.type.startsWith("payment_intent.");
+  const isRefund = event.type.startsWith("refund.");
 
   const amountMinor =
     typeof object.amount_total === "number"
@@ -89,6 +100,13 @@ export function normalizeBookingPaymentEvent(
         : {}),
     ...(amountMinor !== undefined ? { amountMinor } : {}),
     ...(typeof object.currency === "string" ? { currency: object.currency.toUpperCase() } : {}),
+    ...(isRefund && typeof object.id === "string"
+      ? {
+          providerRefundId: object.id,
+          refundStatus: mapRefundStatus(object.status),
+          ...(typeof object.failure_reason === "string" ? { failureCode: object.failure_reason } : {}),
+        }
+      : {}),
     metadata: stringMetadata(object.metadata),
   });
 }
